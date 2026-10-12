@@ -1278,6 +1278,109 @@ local function parse_rows(blob, stride, spec)
     return index, entries
 end
 
+-- Destruction (issue #44): what destroys a unit outright, by demolition force, apart from its health.
+--   DestructionSettings: one table per unit (1641, back to back): 3 levels of 48 bytes: +0 effects (pointer,
+--     count), +16 the tier (pointer to its template), +24 its type, +32 / +40 the same for direct hits
+--     (type 0: none).
+--   DestructionTemplates: (pointer, count), then templates of 16 bytes: +0 type, +4 demolition threshold
+--     (1 small arms 10, 2 HMG / grenades 20, 3 autocannon / recoilless 30, 4 Strider / Eagle rockets 40,
+--     5 orbital 50, 6 Hellbomb 60, 9 scripted 250). Another table of this type holds no templates.
+--   DestructionHashMap: (pointer, count), then buckets of (u64 entity, u64 its settings' number); the
+--     settings are numbered in the order they lie in memory.
+--   HealthComponentData +21984: the type a unit applies to itself when its health runs out.
+-- A level's row offers the tiers (OFFER) and writes the template pointer and type together, as the game
+-- builds them; the health's type follows the level it named.
+TYPES.destruction, TYPES.destruction_map, TYPES.destruction_tiers = 0xD6A11545, 0x49795156, 0xFB45E243
+KINDS[TYPES.destruction] = { name = 'destruction', stride = 1, found = {}, OFFER = { 1, 2, 3, 4, 5, 6, 9 }, DEATH = 21984 }
+KINDS[TYPES.destruction_map] = { name = 'destruction map', stride = 16 }
+KINDS[TYPES.destruction_tiers] = { name = 'destruction tiers', stride = 16 }
+
+-- (pointer, count) at +0: the array's payload offset (16, right after) and its count, or nil
+KINDS[TYPES.destruction].array_at = function(blob, address)
+    local lo, hi, count = u32(blob, 0), u32(blob, 4), u32(blob, 8)
+    local at = lo and hi and lo + hi * 4294967296 - address - HEADER_BYTES
+    if at ~= 16 or not count or u32(blob, 12) ~= 0 then return nil end
+    return at, count
+end
+
+KINDS[TYPES.destruction_map].parse = function(blob, stride, spec, address)
+    local at, count = KINDS[TYPES.destruction].array_at(blob, address)
+    if not at or at + count * 16 > #blob then return nil, 'destruction map layout does not match this build' end
+    local index, entries, ZERO8 = {}, 0, string.rep('\0', 8)
+    for k = 0, count - 1 do
+        local key = blob:sub(at + k * 16 + 1, at + k * 16 + 8)
+        if key ~= ZERO8 then index[key] = u32(blob, at + k * 16 + 8); entries = entries + 1 end
+    end
+    return index, entries
+end
+
+KINDS[TYPES.destruction_tiers].parse = function(blob, stride, spec, address)
+    local at, count = KINDS[TYPES.destruction].array_at(blob, address)
+    local fits = at and count >= 10 and count <= 64 and at + count * 16 <= #blob
+    for k = 0, fits and count - 1 or -1 do
+        if u32(blob, at + k * 16) ~= k then fits = false break end
+    end
+    if not fits then
+        parsed_blocks[address] = true   -- the other table of this type: not looked at again
+        return nil, 'not the demolition tiers'
+    end
+    local index = {}
+    for k = 0, count - 1 do index[k] = at + k * 16 end
+    return index, count
+end
+
+-- The settings tables, once the map has as many as were found (in memory order): one table entry whose
+-- block is the first; a unit's fields are at its own table's offset from there.
+KINDS[TYPES.destruction].ready = function()
+    local spec, map = KINDS[TYPES.destruction], tables[TYPES.destruction_map]
+    if tables[TYPES.destruction] then return true end
+    if not (map and tables[TYPES.destruction_tiers]) then return false end
+    if #spec.found ~= map.entries then
+        if not spec.told then spec.told = true; log('destruction: ' .. #spec.found .. ' settings for ' .. map.entries .. ' units; not editable') end
+        return false
+    end
+    table.sort(spec.found)
+    local head = api.read(spec.found[1], HEADER_BYTES)
+    if not head then return false end
+    tables[TYPES.destruction] = { payload = u32(head, 12), index = {}, entries = #spec.found, copies = { spec.found[1] },
+                                  type = TYPES.destruction }
+    log('destruction: ' .. #spec.found .. ' unit settings')
+    return true
+end
+
+-- A level's demolition threshold from its 12 bytes (template pointer, type), nil unless the pointer is that
+-- type's template
+KINDS[TYPES.destruction].threshold = function(b)
+    local tiers = tables[TYPES.destruction_tiers]
+    if not tiers or not b or #b ~= 12 then return nil end
+    local rel = tiers.index[u32(b, 8)]
+    local rec = rel and tiers.copies[1] + HEADER_BYTES + rel
+    if not rec or u32(b, 0) + u32(b, 4) * 4294967296 ~= rec then return nil end
+    return KINDS[TYPES.destruction].at(rec + 4)
+end
+
+KINDS[TYPES.destruction].at = function(address)
+    local b = api.read(address, 4)
+    return b and #b == 4 and u32(b, 0) or nil
+end
+
+-- The bytes for a threshold: the tier with exactly it, else the next one in the direction of the change
+-- (from the level's current one), nil past the last
+KINDS[TYPES.destruction].bytes = function(f, value, now)
+    local spec, tiers = KINDS[TYPES.destruction], tables[TYPES.destruction_tiers]
+    local best, pick = nil, nil
+    for _, t in ipairs(spec.OFFER) do
+        local rec = tiers.index[t] and tiers.copies[1] + HEADER_BYTES + tiers.index[t]
+        local th = rec and spec.at(rec + 4)
+        if th and math.abs(th - value) < 0.5 then best, pick = th, t break end
+        if th and now and value > now and th >= value and (not best or th < best) then best, pick = th, t end
+        if th and now and value < now and th <= value and (not best or th > best) then best, pick = th, t end
+    end
+    if not pick then return nil end
+    local rec = tiers.copies[1] + HEADER_BYTES + tiers.index[pick]
+    return u32_bytes(rec % 4294967296) .. u32_bytes(math.floor(rec / 4294967296)) .. u32_bytes(pick)
+end
+
 local function have_all_tables()
     for _, kind in ipairs(KIND_ORDER) do
         if not tables[kind] then return false end
@@ -1316,8 +1419,15 @@ local function peek4(address)
 end
 
 local function read_field(f)
+    if f.storage == 'virtual' then   -- a value the editor keeps itself (no table field)
+        if f.value == nil then return f.default end
+        return f.value
+    end
     local entry = tables[f.kind]
     if not entry then return nil end
+    if f.storage == 'tier' then   -- a destruction level: its template pointer and type, read as the threshold
+        return KINDS[TYPES.destruction].threshold(api.read(entry.copies[1] + HEADER_BYTES + f.offset, 12))
+    end
     if f.storage == 'grenade' then
         return KINDS[TYPES.throwable].read_entity(api.read(entry.copies[1] + HEADER_BYTES + f.offset, 8))
     end
@@ -1348,14 +1458,22 @@ end
 
 -- Writes every copy of the table; read back, or rolled back.
 local function write_field(f, value)
+    if f.storage == 'virtual' then
+        default_of(f)
+        f.value = value
+        state.writes = state.writes + 1
+        return true
+    end
     local entry = tables[f.kind]
     if not entry then return false, 'table not found' end
     if read_field(f) == nil then return false, 'current value implausible' end
     if type(value) == 'number' and not MOD.parse_number(value) then return false, 'not a finite number' end
     default_of(f)
     if f.most and value > f.most then value = f.most end
-    local bytes, done = encode(f, value), {}
-    if not bytes then return false, 'unknown grenade selection' end
+    local bytes, done = nil, {}
+    if f.storage == 'tier' then bytes = KINDS[TYPES.destruction].bytes(f, value, read_field(f))
+    else bytes = encode(f, value) end
+    if not bytes then return false, f.storage == 'tier' and 'no demolition tier there' or 'unknown grenade selection' end
     if f.storage == 'grenade' and value ~= 0 then
         local ok, why = KINDS[TYPES.throwable].ensure_launch()
         if not ok then return false, why end
@@ -1377,6 +1495,7 @@ local function write_field(f, value)
     end
     state.writes = state.writes + 1
     if f.storage == 'grenade' then KINDS[TYPES.throwable].rearm() end
+    if f.storage == 'tier' and f.death then write_field(f.death, u32(bytes, 8)) end   -- the health's type follows
     return true
 end
 
@@ -2323,6 +2442,14 @@ local function resolve_gun(weapon, key)
         -- is allowed below this many rounds left (f32; 0: below the capacity)
         add_row(weapon, 'Ammo', 'rounds_per_reload', 'Rounds per reload', 'u32',
                 { part('rounds_per_reload', T_ROUNDS, rounds + 92, 'u32', 100000) }, 1, 999, 1, 5)
+        local clip = key == weapon.key and KINDS[T_ROUNDS].CLIPS[weapon.hash]
+        if clip then
+            local f = field_at(T_ROUNDS, 'clip' .. rounds, 'virtual', 100000)
+            f.default, f.rounds = clip.count, rounds
+            local row = add_row(weapon, 'Ammo', 'rounds_per_clip', 'Rounds per ' .. clip.name .. ' (empty)', 'u32',
+                                { { id = 'rounds_per_clip', field = f } }, 1, 999, 1, 5)
+            row.note = 'loaded into an empty weapon, from your spare rounds'
+        end
         if (read_field(field_at(T_ROUNDS, rounds + 96, 'f32', 100000)) or 0) > 0 then
             add_row(weapon, 'Ammo', 'reload_below', 'Reload allowed below (rounds)', 'f32',
                     { part('reload_below', T_ROUNDS, rounds + 96, 'f32', 100000) }, 1, 999, 1, 5)
@@ -2651,6 +2778,67 @@ local function build_stratagems()
     for _, entry in ipairs(list) do entry.stratagem.rearm = defs[EAGLE_REARM] end
 end
 
+-- A sentry's or emplacement's body (issue #44), by its entity (`key`): health +0 (with each zone that has a
+-- pool of its own the same size: the emplacements' one zone, 1000 of the HMG's 1000), the durable ratio
+-- (+268, with the zones that have the same), then for each destruction level the demolition force that
+-- destroys it (its tier; direct hits: the level's own when set).
+KINDS[TYPES.destruction].body_rows = function(entry, key, section, prefix)
+    local ht = tables[TYPES.health]
+    local at = ht and ht.index[key]
+    if not at then return end
+    local zones = {}
+    for z = 0, 37 do
+        local base = at + 520 + z * 552
+        if (KINDS[TYPES.destruction].at(ht.copies[1] + HEADER_BYTES + base + 96) or 0) ~= 0 then zones[#zones + 1] = { z, base } end
+    end
+    local function follow(id, offset, zone_offset, storage, limit)
+        local parts = { part(prefix .. id, TYPES.health, at + offset, storage, limit) }
+        local own = default_of(parts[1].field)
+        for _, z in ipairs(zones) do
+            local p = part(prefix .. id .. '_z' .. z[1], TYPES.health, z[2] + zone_offset, storage, limit)
+            if own and default_of(p.field) == own then parts[#parts + 1] = p end
+        end
+        return parts
+    end
+    add_row(entry, section, prefix .. 'health', 'Health', 'u32', follow('health', 0, 232, 'u32', 1000000), 0, 100000, 5, 25)
+    local durable = add_row(entry, section, prefix .. 'durable', 'Durable ratio (0-1)', 'f32', follow('durable', 268, 204, 'f32', 1),
+                            0, 1, 0.05, 0.1)
+    durable.note = "0: hits deal their normal damage, 1: their durable damage (the weapon's lower one)"
+    local spec = KINDS[TYPES.destruction]
+    local n = spec.ready() and tables[TYPES.destruction_map].index[key]
+    local block = n and spec.found[n + 1]
+    if not block then return end
+    local base = block - spec.found[1]
+    local death = field_at(TYPES.health, at + spec.DEATH, 'u32', 100)
+    local levels = {}
+    for level = 0, 2 do
+        for _, o in ipairs({ 16, 32 }) do
+            local f = field_at(TYPES.destruction, base + level * 48 + o, 'tier', 1000)
+            local own = default_of(f)
+            if own and own > 0 then
+                local t = spec.at(tables[TYPES.destruction].copies[1] + HEADER_BYTES + base + level * 48 + o + 8)
+                if t and t == default_of(death) then f.death = death end
+                levels[#levels + 1] = { f = f, level = level, hit = o == 32 }
+            end
+        end
+    end
+    local stages = 0
+    for _, l in ipairs(levels) do if not l.hit then stages = stages + 1 end end
+    for k, l in ipairs(levels) do
+        local id = prefix .. 'demolition' .. (l.level > 0 and l.level + 1 or '') .. (l.hit and '_hit' or '')
+        local label = (stages > 1 and not l.hit) and ('Demolition force, stage ' .. (l.level + 1))
+                      or ('Demolition force to destroy it' .. (l.hit and ' (direct hits)' or ''))
+        local row = add_row(entry, section, id, label, 'u32', { { id = id, field = l.f } }, 1, 250, 10, 10)
+        if k == 1 then row.note = 'the game\'s tiers: 10 small arms, 20 HMG, 30 autocannon, 40 Strider, 50 orbital, 60 Hellbomb, 250 never' end
+    end
+    if #levels > 0 then
+        local t = {}
+        for _, l in ipairs(levels) do t[#t + 1] = (l.hit and 'hit ' or 'level ') .. (l.level + 1) .. ' ' .. tostring(default_of(l.f)) end
+        log('destruction: ' .. entry.name .. ' settings ' .. n .. ': ' .. table.concat(t, ', ') ..
+            ', on death ' .. tostring(default_of(death)))
+    end
+end
+
 -- A unit's own rows (a Guard Dog's drone, a sentry or emplacement): health +0, spotting range +0,
 -- target search interval +0 / +4, turret turn speed +12 horizontal / +8 vertical, where it has them.
 local function unit_rows(entry, key, section, prefix)
@@ -2661,7 +2849,8 @@ local function unit_rows(entry, key, section, prefix)
                     0, max, small, big)
         end
     end
-    unit(TYPES.health, 'health', 'Health', 0, 'u32', 100000, 5, 25)
+    if prefix == 'unit_' then KINDS[TYPES.destruction].body_rows(entry, key, section, prefix)
+    else unit(TYPES.health, 'health', 'Health', 0, 'u32', 100000, 5, 25) end
     unit(TYPES.sensor, 'sight', 'Spotting range (m)', 0, 'f32', 1000, 1, 5)
     unit(TYPES.detector, 'search_min', 'Target search interval, min (s)', 0, 'f32', 60, 0.05, 0.25)
     unit(TYPES.detector, 'search_max', 'Target search interval, max (s)', 4, 'f32', 60, 0.05, 0.25)
@@ -3883,6 +4072,11 @@ end
 local function handle_table(address, kind, payload, blob)
     local spec = KINDS[kind]
     if not spec or parsed_blocks[address] then return end
+    if spec.found then   -- one of many tables taken by address (the destruction settings)
+        spec.found[#spec.found + 1] = address
+        parsed_blocks[address] = true
+        return
+    end
     local parse = spec.parse or (spec.keyed and parse_keyed or parse_rows)
     local started = api.now()
     local index, info = parse(blob, spec.stride, spec, address)
@@ -3939,6 +4133,7 @@ local function rescan()
     tables, parsed_blocks, stratagem_groups = {}, {}, {}
     KINDS[TYPES.items].list = {}
     KINDS[TYPES.passive].list = {}
+    KINDS[TYPES.destruction].found, KINDS[TYPES.destruction].told = {}, nil
     state.tables = 0
     set_status('searching', 'a table moved; scanning again')
     if hub then hub.wake() end
@@ -6843,6 +7038,204 @@ function MOD.same(p) return p end
     end
 end)()
 
+-- Speedloaders and stripper clips (issue #45): an empty P-4 Senator takes a speedloader of 6, an empty
+-- R-2124 Constitution a clip of 5, whatever its capacity: the reload animation sets the number, no table
+-- does. The 'Rounds per speedloader / clip' rows: once the game has put one in, the live rounds component
+-- gets the rest from the spare rounds (or gives the difference back). Live rounds: game.dll's manager
+-- (HD2 HUD Plus's layout for this build): +40 map live entity id -> row, +64 row -> owner (entity hash +0,
+-- id +8), +88 rows of 20 bytes: +0 spare rounds, +4 magazine in use (0 / 1), +8 / +12 rounds loaded.
+KINDS[T_ROUNDS].CLIPS = { ['8D3D52A3B2F19402'] = { count = 6, name = 'speedloader' },   -- P-4 Senator
+                          ['7B75E5132FFD4CA6'] = { count = 5, name = 'clip' } }          -- R-2124 Constitution
+KINDS[T_ROUNDS].live = { RVA = 0x3326CF0, seen = {}, told = 0, next_check = 0, targets = {}, any = false }
+;(function()
+    local L = KINDS[T_ROUNDS].live
+    local function pointer(at)
+        local b = api.read(at, 8)
+        if not b or #b ~= 8 or u32(b, 4) > 32767 then return nil end
+        local n = u32(b, 0) + u32(b, 4) * 4294967296
+        return n >= 65536 and n or nil
+    end
+    -- game.dll, when it is the build the layout is known for
+    local function game()
+        if L.base ~= nil then return L.base end
+        L.base = false
+        local base = rawget(_G, 'TEST_GAME_BASE')
+        if not base then
+            local handle = ffi.load('kernel32').GetModuleHandleA('game.dll')
+            base = handle ~= nil and tonumber(ffi.cast('uintptr_t', handle))
+        end
+        local dos = base and api.read(base, 64)
+        local pe = dos and #dos == 64 and u32(dos, 60)
+        local head = pe and api.read(base + pe, 16)
+        if head and head:sub(1, 4) == 'PE\0\0' and u32(head, 8) == GAME_STAMP then L.base = base
+        else log('clips: off (game.dll is another build)') end
+        return L.base
+    end
+    -- every second: the weapons whose clip is changed, by entity bytes
+    function L.refresh()
+        L.targets, L.any = {}, false
+        for hash in pairs(KINDS[T_ROUNDS].CLIPS) do
+            local w = by_hash[hash]
+            local p = w and w.by_id.rounds_per_clip
+            local now = p and settings.changes and read_field(p.field)
+            if now and now ~= p.field.default then
+                L.targets[w.key] = { count = now, rounds = p.field.rounds, name = w.name }
+                L.any = true
+            end
+        end
+    end
+    -- the magazine's capacity (rounds)
+    function L.capacity(t, sel)
+        local cap = read_field(field_at(T_ROUNDS, t.rounds + 72 + sel * 4, 'f32', 100000))
+        return cap and cap >= 1 and math.floor(cap) or nil
+    end
+    -- the clip that went in makes `count` rounds loaded (capacity and spare rounds allowing); the new loaded / spare
+    function L.top_up(t, row, sel, loaded, spare)
+        local cap = L.capacity(t, sel)
+        local want = math.min(t.count, loaded + spare)
+        if cap then want = math.min(want, cap) end
+        if want == loaded or want < 1 then return loaded, spare end
+        local left = spare + loaded - want
+        if api.write(row + 8 + sel * 4, u32_bytes(want)) and api.write(row, u32_bytes(left)) then return want, left end
+        return loaded, spare
+    end
+    -- one live manager's map + owners: its rows by live entity id ({ index, key }), or nil and why
+    function L.rows_of(manager, map_at, owners_at)
+        local h = api.read(manager + map_at, 20)
+        if not h or #h ~= 20 then return nil, 'no map header' end
+        local slots, cap, empty = u32(h, 0) + u32(h, 4) * 4294967296, u32(h, 8), u32(h, 12)
+        local p2 = 1
+        while p2 < cap do p2 = p2 * 2 end
+        if slots < 65536 or cap < 1 or cap > 65536 or p2 ~= cap then return nil, 'map header ' .. slots .. ' ' .. cap end
+        local map, owners = api.read(slots, cap * 8), pointer(manager + owners_at)
+        if not (map and #map == cap * 8 and owners) then return nil, 'map or owners unreadable' end
+        local out = {}
+        for i = 0, cap - 1 do
+            local id, index = u32(map, i * 8), u32(map, i * 8 + 4)
+            if id ~= empty and id ~= 4294967295 and index < 4096 then
+                local owner = pointer(owners + index * 8)
+                local identity = owner and api.read(owner, 12)
+                if identity and #identity == 12 and u32(identity, 8) == id then
+                    out[id] = { index = index, key = identity:sub(1, 8) }
+                end
+            end
+        end
+        return out
+    end
+    -- the rounds manager: game.dll + 0x3326CF0 in game (HUD Plus has + 0x3326EF0, empty in game), else found by its shape in
+    -- game.dll's data (a page a frame): a map whose every live owner is a rounds-fed weapon
+    function L.looks(at)
+        local live = at and L.rows_of(at, 40, 64)
+        if not (live and pointer(at + 88)) then return false end
+        local any = false
+        for _, e in pairs(live) do
+            if not tables[T_ROUNDS].index[e.key] then return false end
+            any = true
+        end
+        return any
+    end
+    L.SCAN_FROM, L.SCAN_TO = 0x3300000, 0x3360000
+    function L.manager(base)
+        local known = pointer(base + L.RVA)
+        if known and L.looks(known) then return known end
+        if L.found and L.looks(L.found) then return L.found end
+        L.found = nil
+        if not L.page or L.page >= L.SCAN_TO then
+            if L.page and api.now() < (L.rest or 0) then return nil end
+            L.rest = api.now() + 3   -- a pass takes 96 frames; then 3 s between passes
+            L.page = L.SCAN_FROM
+            if L.raw ~= tostring(known) then
+                L.raw = tostring(known)
+                local function raw(rva)
+                    local b = api.read(base + rva, 8)
+                    return b and #b == 8 and string.format('%08X%08X', u32(b, 4), u32(b, 0)) or 'nothing readable'
+                end
+                log(string.format('clips: game.dll+0x%X holds %s (magazine manager %s, heat %s); searching game.dll+0x%X-0x%X',
+                    L.RVA, raw(L.RVA), raw(0x3326848), raw(0x3326F48), L.SCAN_FROM, L.SCAN_TO))
+            end
+        end
+        local page = L.page
+        L.page = page + 4096
+        local blob = api.read(base + page, 4096)
+        if not blob or #blob ~= 4096 then return nil end
+        for k = 0, 511 do
+            local lo, hi = u32(blob, k * 8), u32(blob, k * 8 + 4)
+            if hi > 0 and hi <= 32767 and lo % 8 == 0 then
+                local at = lo + hi * 4294967296
+                if L.looks(at) then
+                    L.found = at
+                    log(string.format('clips: rounds manager found at game.dll+0x%X (expected +0x%X)', page + k * 8, L.RVA))
+                    return at
+                end
+            end
+        end
+        return nil
+    end
+    -- every frame while a clip is changed: a weapon that was empty and, within 0.4 s, got at least the
+    -- game's clip (all at once or a round per frame; single rounds take far longer) just took its clip
+    L.WINDOW = 0.4
+    function L.step()
+        if not (L.any or L.watch) then return end
+        local base = game()
+        local manager = base and tables[T_ROUNDS] and L.manager(base)
+        local live, why = nil, 'no rounds manager'
+        if manager then live, why = L.rows_of(manager, 40, 64) end
+        local rows = live and pointer(manager + 88)
+        if not rows then
+            if L.why ~= why then L.why = why; log('clips: waiting (' .. tostring(why or 'no rows') .. ')') end
+            return
+        end
+        if L.why ~= false then
+            L.why = false
+            log(string.format('clips: rounds manager 0x%X, rows 0x%X', manager, rows))
+        end
+        local now = api.now()
+        local present = {}
+        for id, e in pairs(live) do
+            local key = e.key
+            local t = L.targets[key]
+            local name = t and t.name or (L.watch and L.watch(key))
+            if name then
+                present[id] = true
+                local row = rows + e.index * 20
+                local s = api.read(row, 16)
+                local spare = s and #s == 16 and u32(s, 0)
+                local sel = spare and u32(s, 4)
+                if spare and sel <= 1 and spare < 100000 then
+                    local loaded = u32(s, 8 + sel * 4)
+                    local last = L.seen[id]
+                    local same = last and last.key == key and last.sel == sel
+                    local clip = KINDS[T_ROUNDS].CLIPS[string.format('%08X%08X', u32(key, 4), u32(key, 0))]
+                    if not same then
+                        last = { key = key, sel = sel }
+                        if clip and L.told < 200 then
+                            L.told = L.told + 1
+                            log(string.format('clips: %s live (id %d, row %d): spare %d, magazine %d, rounds %d / %d',
+                                name, id, e.index, spare, sel, u32(s, 8), u32(s, 12)))
+                        end
+                    else
+                        if loaded < last.loaded then last.done = nil end   -- fired: a new reload may follow
+                        if loaded == 0 then last.empty = nil
+                        elseif last.loaded == 0 then last.empty = now end
+                        local was = loaded
+                        if t and clip and last.empty and not last.done and now - last.empty <= L.WINDOW and loaded >= clip.count and loaded < 1000 then
+                            last.done = true
+                            loaded, spare = L.top_up(t, row, sel, loaded, spare)
+                            if L.told < 200 then
+                                L.told = L.told + 1
+                                log('clips: ' .. t.name .. ' took ' .. was .. ', now ' .. loaded .. ' (spare ' .. spare .. ')')
+                            end
+                        end
+                    end
+                    last.loaded, last.spare = loaded, spare
+                    L.seen[id] = last
+                end
+            end
+        end
+        for id in pairs(L.seen) do if not present[id] then L.seen[id] = nil end end
+    end
+end)()
+
 local function tick()
     state.frame = state.frame + 1
     local now = api.now()
@@ -6868,6 +7261,18 @@ local function tick()
             settings.arc.next_check = now + 1
             local ok, why = pcall(settings.arc.check)
             if not ok then log('arc chains: ' .. tostring(why)) end
+        end
+        do
+            local live = KINDS[T_ROUNDS].live
+            if now >= live.next_check then
+                live.next_check = now + 1
+                local ok, why = pcall(live.refresh)
+                if not ok then log('clips: ' .. tostring(why)) end
+            end
+            if not live.failed then
+                local ok, why = pcall(live.step)
+                if not ok then live.failed = true; log('clips: off: ' .. tostring(why)) end
+            end
         end
         if now >= packages.next_check and not packages.off then
             packages.next_check = now + 1
