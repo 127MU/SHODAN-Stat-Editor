@@ -2976,8 +2976,9 @@ end
 --     packs). Each pack gets only the fields its flight code reads (HD2Runtime 0.30.3 research): the Jump
 --     Pack its launch force +0 (x (1 - t^2) over the launch duration +24), forward share of it +32, the
 --     boost after it (duration +40; its force +36 is capped by the game at 2.5 x speed per second, so not
---     offered) and mid-air steering +60; the Hover Pack (skips the launch) its hover speed +176, fuel
---     rates +200 / +204, climb speed (+196 with +180), climb acceleration +168 and climb time limit +156
+--     offered) and mid-air steering +60 (both packs); the Hover Pack (skips the launch) its hover speed +176,
+--     horizontal acceleration +160 / +164 (blended over a zero-width speed range: always written together),
+--     fuel rates +200 / +204, climb speed (+196 with +180), climb acceleration +168 and climb time limit +156
 --   Warp Pack: explosion +56 (set off by an unsafe warp), warp distance +120, reach up +128 / down +132,
 --     heat: safe below +140, unsafe above +144, per warp +148, cooling per second +152; injuries of an
 --     unsafe warp: 12 of 24 bytes from +160 (+0 body part, +4 damage): head, 2 arms, 2 legs
@@ -3011,8 +3012,8 @@ KINDS[TYPES.jumppack].backpack = function(entry, key, ammo)
             r(section, 'bp_takeoff', 'Launch duration (s)', TYPES.jumppack, jump + 24, 'f32', 5, 0.05, 0.25)
             r(section, 'bp_forward', 'Forward share of the launch (0-1)', TYPES.jumppack, jump + 32, 'f32', 1, 0.05, 0.1)
             r(section, 'bp_landing_time', 'Boost after the launch (s)', TYPES.jumppack, jump + 40, 'f32', 10, 0.05, 0.25)
-            r(section, 'bp_steer', 'Mid-air steering force', TYPES.jumppack, jump + 60, 'f32', 200, 0.5, 2)
         end
+        r(section, 'bp_steer', 'Mid-air steering force', TYPES.jumppack, jump + 60, 'f32', 200, 0.5, 2)
         -- hover fuel is the recharge meter: each second hovering adds 1 + a fuel rate (+200 holding height,
         -- +204 at 8 m/s vertical speed) seconds to it, and the pack cuts out once it is full; times: the
         -- recharge time over 1 + that rate, kept when the recharge time changes (+156 only gates climbing)
@@ -3035,6 +3036,12 @@ KINDS[TYPES.jumppack].backpack = function(entry, key, ammo)
         end
         if hover then
             r(section, 'bp_hover_speed', 'Hover speed (m/s)', TYPES.jumppack, jump + 176, 'f32', 50, 0.5, 2)
+            -- agility: how fast the hover speeds up toward the movement input; its two ends of a zero-width
+            -- speed range must stay equal (one alone divides by zero), so the second follows the first
+            local agility = add_row(entry, section, 'bp_agility', 'Hover agility (acceleration)', 'f32',
+                { part('bp_agility', TYPES.jumppack, jump + 160, 'f32', 1000000),
+                  part('bp_agility_high', TYPES.jumppack, jump + 164, 'f32', 1000000) }, 0.1, 200, 0.5, 2)
+            agility.lead = true
             -- climbing: the speed nears the end of the vertical speed range +196 (the acceleration +168 fades to
             -- +172 = 0 there; the climb target +180 sits above it), so the row shows +196 and scales +180 with it
             local climb = add_row(entry, section, 'bp_climb_speed', 'Climb speed (m/s)', 'f32',
