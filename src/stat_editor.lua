@@ -2328,11 +2328,20 @@ local function resolve_gun(weapon, key)
         end
     end
     if fire then
-        local rates = {}
+        local rates, values = {}, {}
         for n, offset in ipairs({ 4, 8, 12 }) do
             local f = field_at(T_FIRE, fire + offset, 'f32', 100000)
             local v = read_field(f)
             if v and v > 0 then rates[#rates + 1] = { n = n, offset = offset } end
+            values[n] = default_of(f)
+        end
+        -- three settings of one value (Maxigun, Bullet Storm, SG-88): no rate to pick in game, so one
+        -- row writes all three (its first part is the default setting, the one the game fires at)
+        if #rates == 3 and values[1] == values[2] and values[2] == values[3] then
+            add_row(weapon, 'Fire', 'rpm', 'Fire rate (RPM)', 'f32',
+                    { part('rpm', T_FIRE, fire + 8, 'f32', 100000), part('rpm_1', T_FIRE, fire + 4, 'f32', 100000),
+                      part('rpm_3', T_FIRE, fire + 12, 'f32', 100000) }, 1, 6000, 10, 50)
+            rates = {}
         end
         for k, rate in ipairs(rates) do
             local id = ({ 'rpm_1', 'rpm', 'rpm_3' })[rate.n]
