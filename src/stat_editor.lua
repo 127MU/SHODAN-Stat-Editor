@@ -3179,6 +3179,12 @@ KINDS[TYPES.minefield].rows = function(entry, key)
             end
         end
     end
+    -- the pod itself (enemies go for it like a sentry): health, durable ratio, demolition force, armor +280
+    if thrower then
+        KINDS[TYPES.destruction].body_rows(entry, key, 'Deployer', 'pod_')
+        local body = tables[TYPES.health] and tables[TYPES.health].index[key]
+        if body then r('Deployer', 'pod_armor', 'Armor', TYPES.health, body + 280, 'u32', 0, 10, 1, 1) end
+    end
     return true
 end
 
