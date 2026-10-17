@@ -1066,7 +1066,10 @@ local KINDS = {
         -- stratagem id -> sentry gun, for sentries whose stratagem drops a body the panel does not list
         -- (Laser Cannon Sentry, Tesla Tower, Defense Wall Grenade Launcher = the Grenadier Battlement)
         sentry_ids = { [0x393E6019] = '56070F36CFFFA8A8', [0x8F349F3B] = '74599E56F72F9D7E',
-                       [0x93D3C05C] = '1D5943301A29C940' } },
+                       [0x93D3C05C] = '1D5943301A29C940' },
+        -- the loadout's stratagem where a sentry has more than one (its cooldown is the one shown): the
+        -- Rocket Sentry's payload is also called by an unlisted 0xC3386D38 (97.5 s vs 150 s)
+        main_ids = { [0x2AC7580F] = true } },
     [TYPES.sensor] = { name = 'sensor', stride = 44, keyed = true },
     [TYPES.detector] = { name = 'detector', stride = 24, keyed = true },
     [TYPES.turret] = { name = 'turret', stride = 76, keyed = true },
@@ -2725,8 +2728,9 @@ local function build_stratagems()
         local sentry = def and by_hash[KINDS[TYPES.health].sentry_ids[id] or '']
         for _, key in ipairs(keys) do sentry = sentry or sentries[key] end
         if sentry and sentry.sentry_defs then
-            sentry.sentry_defs[#sentry.sentry_defs + 1] = def
-            log('stratagem ' .. id_hex(id) .. ': cooldown on ' .. sentry.name)
+            table.insert(sentry.sentry_defs, KINDS[TYPES.health].main_ids[id] and 1 or #sentry.sentry_defs + 1, def)
+            local bits = peek4(def.at + 104)
+            log(string.format('stratagem %s: cooldown on %s (%.1f s)', id_hex(id), sentry.name, bits and bits_to_f32(bits) or -1))
             return nil
         end
         local drone = family == 'backpack' and drone_of(keys) or nil
