@@ -1229,12 +1229,30 @@ local tables, parsed_blocks, stratagem_groups = {}, {}, {}
 
 -- Keyed table: bucket array (u64 entity hash, u32 record index, u32 0) holding exactly twice as
 -- many buckets as entities, then fixed-stride records. Record bytes can look like buckets, so
--- every candidate bucket count is checked and exactly one must fit.
+-- every candidate bucket count is checked and exactly one must fit. Other mods can add entities
+-- to the free buckets later (a new weapon or soldier), which breaks the twice rule (or makes a
+-- wrong count fit it), so the count that fits is the one where every key sits where the game
+-- looks it up (hash % buckets, then the next buckets up to the first empty one); the twice rule
+-- alone is the fallback.
 local function parse_keyed(blob, stride, spec)
     local MAX_UNINDEXED_RECORDS, ZERO8 = 2, string.rep('\0', 8)
     local slack = spec and spec.slack or 0   -- padding after the records
     local total, count, live, top, offset = #blob, 0, 0, -1, 0
-    local fits = {}
+    local candidates, twice = {}, {}
+    local function empty(k) return u32(blob, k * 16) == 0 and u32(blob, k * 16 + 4) == 0 end
+    local function placed(buckets)
+        local wrap = 4294967296 % buckets
+        for k = 0, buckets - 1 do
+            if not empty(k) then
+                local at = ((u32(blob, k * 16 + 4) % buckets) * wrap + u32(blob, k * 16)) % buckets
+                while at ~= k do
+                    if empty(at) then return false end
+                    at = (at + 1) % buckets
+                end
+            end
+        end
+        return true
+    end
     while offset + 16 <= total do
         local slot, pad = u32(blob, offset + 8), u32(blob, offset + 12)
         if pad ~= 0 or slot > 100000 then break end
@@ -1245,11 +1263,17 @@ local function parse_keyed(blob, stride, spec)
         end
         offset = offset + 16
         local array = total - count * 16 - slack
-        if count == 2 * live and array > 0 and array % stride == 0 then
+        if count <= 2 * live and array > 0 and array % stride == 0 then
             local records = array / stride
-            if records > top and records <= live + MAX_UNINDEXED_RECORDS then fits[#fits + 1] = count end
+            if records > top and records <= live + MAX_UNINDEXED_RECORDS then
+                candidates[#candidates + 1] = count
+                if count == 2 * live then twice[#twice + 1] = count end
+            end
         end
     end
+    local fits = {}
+    for _, n in ipairs(candidates) do if placed(n) then fits[#fits + 1] = n end end
+    if #fits ~= 1 then fits = twice end
     if #fits ~= 1 then return nil, #fits .. ' layouts fit (need exactly 1)' end
     local buckets, index, entries = fits[1], {}, 0
     for k = 0, buckets - 1 do
