@@ -1,7 +1,7 @@
 # SHODAN Stat Editor
 
-Change the stats of weapons, throwables, stratagems, mechas, attachments and armor passives in
-**Helldivers 2**, and transmog armor passives: stack any passives into one. **SHODAN Stat Editor
+Change the stats of weapons, throwables, stratagems, mechas, attachments, armor passives and your
+helldiver in **Helldivers 2**, and transmog armor passives: stack any passives into one. **SHODAN Stat Editor
 Offline** (SSEO) is a Windows program: pick a weapon, change its numbers, press **Install into the
 game**, and play. It writes your values into the game's own
 data files, so no mod loader is needed and the game does not have to run while you edit. Keep
@@ -115,6 +115,19 @@ Give an armor passive the effects of any other passives, as many as you like. On
   not let one armor be changed alone.
 - **Reset passive** clears its stack and turns its own effects back on.
 
+**Helldiver**: first on the Armors tab: health, each body part's health, movement speeds and
+stamina. It changes every helldiver in your game: restore the game's files before joining other
+players' lobbies.
+
+### Explosions and records
+
+- Each shot's **Impact explosion** and **Expiry explosion** can be any explosion of the game, or
+  none (0), with its **Blast proximity** (a flak fuse) and **Blast delay**; each explosion's
+  **Shrapnel** can be any projectile. These rows are at the bottom of a weapon page.
+- The **Records** tab lists every projectile, explosion and status record of the game, named after
+  the game's rounds and the weapons using them. The explosion rows on a weapon page stay its own
+  explosion's: edit a newly chosen one here.
+
 ## Install
 
 1. Download `SHODAN-Stat-Editor-Offline-v<version>.zip` from the [releases page](../../releases/latest) and
@@ -177,6 +190,7 @@ The **Settings** button at the bottom right opens its options:
   [Development build](../../releases/tag/dev), built automatically from every change pushed to
   this repository, before it is tested. It may break; switch back to Releases to get the next
   tested version.
+- **Tabs shown**: hide the tabs you do not use (their items leave the search too).
 - **Several vehicles of a kind**: on by default; a loadout can take more than one exosuit, FRV or tank.
 - **Reset all values**: every change of the current setup back to the game's values (asks
   "Sure?" first; click again to confirm).
@@ -188,7 +202,8 @@ The page also has the version, a link to this page and **Logs and Presets**, whi
 
 Click the box under the weapon list (or press Ctrl+F) and type: the list shows the weapons and
 stratagems of every tab whose name holds all the words typed ("orb las" finds the Orbital
-Laser). Enter keeps the results; Esc or **X** clears the search.
+Laser). On the Records tab it searches the records. Enter keeps the results; Esc or **X** clears
+the search.
 
 ## Presets
 
@@ -197,14 +212,14 @@ pick a number, then **Save** (its current values), **Load** or **Clear**. Number
 preset. Loading one sets the weapon exactly as saved; anything the preset doesn't name goes back
 to the game's value.
 
-**Full presets.** Up to 50, on the **Presets** tab, each with a name you choose and every change
+**Full presets.** Up to 50, under the **Presets** button (left of Settings), each with a name you choose and every change
 you have made.
 
 - **+ New preset** saves your current changes as one, then you type its name (Enter keeps it,
   Esc cancels).
 - **Load** replaces all current changes with the preset. **Save current changes here**,
   **Rename** and **Delete** work on the chosen one; overwriting and deleting ask twice.
-- Keyboard on that tab: Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves
+- Keyboard there: Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves
   into the chosen one, F2 renames, Del deletes.
 
 Presets are saved next to config.txt, as `weapon_presets.txt` and `preset_01.txt` …
