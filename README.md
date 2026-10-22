@@ -1,13 +1,18 @@
 # SHODAN Stat Editor
 
-An in-game panel for **Helldivers 2** that changes the stats of weapons, throwables, stratagems,
-mechas, attachments and armor passives while you play. Press **F8**, pick one, and change its numbers. Changes apply at once, are
-saved, and are applied again automatically every time the game starts. Keep setups as presets:
-5 per weapon, and up to 50 named ones for everything you have changed.
+Change the stats of weapons, throwables, stratagems, mechas, attachments and armor passives in
+**Helldivers 2**. **SHODAN Stat Editor Offline** (SSEO) is a Windows program: pick a weapon, change
+its numbers, press **Install into the game**, and play. It writes your values into the game's own
+data files, so no mod loader is needed and the game does not have to run while you edit. Keep
+setups as presets: 5 per weapon, and up to 50 named ones for everything you have changed.
+English, Simplified Chinese, Traditional Chinese and Russian, in one program.
 
-**[Download the latest release](../../releases/latest)** · Requires **Bingus Shared Loader** (v15 or newer)
+**[Download the latest release](../../releases/latest)** · Windows · No mod loader needed
 
-![The panel](images/feature.png)
+Since game build 25988413 the in-game panel (v2.5.0 and earlier, run by Bingus Shared Loader)
+no longer works; SSEO replaces it. See [In-game version](#in-game-version).
+
+![SHODAN Stat Editor Offline](images/feature.png)
 
 ## What you can change
 
@@ -21,11 +26,11 @@ saved, and are applied again automatically every time the game starts. Keep setu
 | Arc | Range, chain length, chain split (Arc Thrower, Blitzer, K-9 Guard Dog, Tesla Tower) |
 | Burning / Gas | How much fire or gas each hit applies (flamethrowers, Coyote, Hyena, incendiary shotguns, lasers, EAT-700, gas weapons); burn / gas damage, armor penetration and duration |
 | Fire | Fire rate (every fire mode the weapon has) |
-| Ammo | Magazine size, starting magazines, magazines from supply, max spare magazines (or rounds, for weapons loaded by the round), reload time, rounds per reload and reload allowed below (clip weapons) |
+| Ammo | Magazine size, starting magazines, magazines from supply, max spare magazines (or rounds, for weapons loaded by the round), reload time, rounds per reload and reload allowed below (clip weapons, in-game version only) |
 | Handling | Recoil (horizontal, vertical), spread (horizontal, vertical), sway, ergonomics |
 | Heat | Overheat threshold, heat per shot / per second, cool-down time (lasers, Quasar Cannon), heatsinks |
 | Projectile swap | The projectile the weapon fires: pick another weapon's (by name, or type its id) |
-| Grenade swap | Fire a throwable grenade, Dynamite or a throwable mine from a grenade launcher or pistol, the One-Two's launcher or the Grenadier Battlement (solo missions) |
+| Grenade swap | In-game version only: fire a throwable grenade, Dynamite or a throwable mine from a grenade launcher or pistol, the One-Two's launcher or the Grenadier Battlement (solo missions) |
 
 Beam weapons (Scythe, Dagger, Trident, Laser Cannon, Meltagun) get their damage from their beam,
 flame weapons (Flamethrower, Torcher, Crisper, Cremator, Sterilizer) from their spray, arc weapons
@@ -40,7 +45,7 @@ enemies' fire included. To make one weapon burn harder, raise its own values.
 sets the cooling rate, so raising the overheat threshold also lengthens it. The Quasar Cannon's
 recharge is its "cool-down time after overheat".
 
-**Grenade swap**: pick the grenade by name with - / +; 0 is the launcher's own round. The
+**Grenade swap** (in-game version only): pick the grenade by name with - / +; 0 is the launcher's own round. The
 grenade's assets load first, so the choice applies a second or two later. Ammo, fire rate and
 handling stay the launcher's; edit the grenade itself on the Throwables tab. A grenade choice
 takes priority over Projectile swap.
@@ -96,26 +101,33 @@ hit is an ability, not a weapon stat, so it has no damage to change.
 An attachment's values apply to every weapon fitted with it (an ammunition type's, to every
 weapon loaded with it).
 
-**Armor passives**: all 31, on the Armors tab
+**Armor passives**: all 32, on the Armors tab
 
 | Passive | Stats |
 |---|---|
-| Every armor passive (Fortified, Servo-Assisted, Med-Kit, Siege-Ready, Gunslinger, Democracy Protects, ...) | Every value it has: damage taken from explosions, fire, gas, arc, impacts and to the chest; extra stims and throwables; stim duration; reload speeds; ammo capacity; throw range; melee damage; limb health; noise and detection range; armor rating and ergonomics bonuses; and the weapon stat values some passives carry |
+| Every armor passive (Fortified, Servo-Assisted, Med-Kit, Siege-Ready, Gunslinger, Democracy Protects, Stationary Shroud, ...) | Every value it has: damage taken from explosions, fire, gas, arc, impacts and to the chest; extra stims and throwables; stim duration; reload speeds; ammo capacity; throw range; melee damage; limb health; noise and detection range; armor rating and ergonomics bonuses; and the weapon stat values some passives carry |
 
 Multipliers show as the game stores them: 1 is no change, 0.5 damage taken is 50% resistance,
 1.3 reload speed is 30% faster. A passive's values apply to every armor that has it.
 
 ## Install
 
-1. Install **Bingus Shared Loader** (v15 or newer).
-2. Download `SHODAN-Stat-Editor-v2.3.1.zip` from the [releases page](../../releases/latest).
-3. Install the zip with your Helldivers 2 mod manager, like any other mod package.
+1. Download `SHODAN-Stat-Editor-Offline-v3.0.0.zip` from the [releases page](../../releases/latest) and
+   unzip it anywhere (keep the files together).
+2. Close Helldivers 2 and start **SHODAN Stat Editor Offline.exe**. It finds the game through Steam;
+   if it cannot, write your Helldivers 2 folder's path into
+   `%LOCALAPPDATA%\SHODAN\StatEditor\game folder.txt` and start it again.
+3. Change values, press **Install into the game**, then start the game.
+
+**Restore the game's files** puts the game's own files back; your values stay saved, and Install
+puts them in again. After a game update or Steam's "Verify integrity of game files" the game's own
+files are back: start SSEO and press Install again.
+
+Windows SmartScreen or an antivirus may warn about the program the first time (it is not signed).
 
 ## Use
 
-Press **F8** in game to open or close the panel, or click its **X**. While it is open the game
-gets none of your keys or mouse input, so typing never moves you or opens a game menu (this can
-be turned off in Settings).
+The window is the panel: click, or use the keys.
 
 | Key | Action |
 |---|---|
@@ -134,30 +146,27 @@ what the stat can take is set to the nearest allowed one, and the panel says so.
 Every change is saved to
 
 ```
-%LOCALAPPDATA%\CowboyBingus\Helldivers2\StatEditor\config.txt
+%LOCALAPPDATA%\SHODAN\StatEditor\config.txt
 ```
 
-and applied again on every start, a few seconds after launch (on the title screen). Delete a
-line, or the whole file, to go back to the game's values.
+with your presets. The game gets them when you press **Install into the game** (with the game
+closed: it reads its files when it starts). The bar at the bottom says whether your values are in
+the game.
 
 ## Settings
 
-The **Settings** button at the bottom right of the panel opens its options:
+The **Settings** button at the bottom right opens its options:
 
-- **Open / close key**: click it and press the key you want (F1–F12, Insert, Home, End, Pause or
-  Scroll Lock).
-- **Block game input while open**: on by default.
-- **Apply my changes**: turn it off to play with the game's own values; your changes are kept
-  and come back when you turn it on.
-- **Panel size**, **side** and **background opacity**.
+- **Language**: English, Simplified Chinese, Traditional Chinese or Russian.
+- **Apply my changes**: turn it off (then Install) to play with the game's own values; your
+  changes are kept and come back when you turn it on.
 - **Remember last tab and weapon**.
 - **Several vehicles of a kind**: on by default; a loadout can take more than one exosuit, FRV or tank.
-- **Unlock unused items**: adds items that are in the game files but the game doesn't offer: the
-  M-104 Incinerator FRV (stratagem list), the P-41 Ombudsman, G-11 Caltrops and LAS-22 Shear (armory).
 - **Reset all values**: every change of the current setup back to the game's values (asks
   "Sure?" first; click again to confirm).
 
-The page also has the mod's version, a link to this page and the log file's location.
+The page also has the version, a link to this page and **Logs and Presets**, which opens the
+`%LOCALAPPDATA%\SHODAN\StatEditor` folder.
 
 ## Search
 
@@ -210,25 +219,53 @@ share the whole setup.
 - **Custom muzzle brakes.** Seven weapons come with a muzzle brake of their own (Liberator
   Penetrator, Pacifier, Coyote, Adjudicator, Tenderizer, Hyena, Diligence Counter Sniper). Each is
   an entry on the Attachments tab, named after its weapon ("Muzzle brake (Liberator Penetrator)").
-- The **armory** still shows the game's own numbers; the changes apply in play.
 - **In multiplayer** your changes exist only in your game.
 - **Other mods** that change the same stats will fight over them; use one or the other.
-- **Nothing on disk is modified.** The mod changes the game's settings in memory while it runs.
+- **SSEO changes the game's data files.** The changed files keep the checksum the game expects,
+  and the originals are kept in `%LOCALAPPDATA%\SHODAN\StatEditor\originals` (Restore puts them
+  back). Use it at your own risk, and keep to private games with friends if in doubt.
+- **Projectile swap** works offline, but a swapped projectile has its trail only if someone in
+  the mission carries the weapon it comes from. Arc chain length / split edits also apply with
+  other players.
 
 ## Reporting problems
 
-Open an [issue](../../issues) and attach the log:
+Open an [issue](../../issues) and attach the logs (Settings > Logs and Presets opens their folder):
 
 ```
-%LOCALAPPDATA%\CowboyBingus\Helldivers2\Logs\SHODANStatEditor.log
+%LOCALAPPDATA%\SHODAN\StatEditor\Logs\SHODANStatEditor.log
+%LOCALAPPDATA%\SHODAN\StatEditor\Logs\SHODANStatEditorHost.log
 ```
 
-The log lists the tables the mod found, every stratagem it listed, and anything it could not
-match, which is usually enough to find the cause.
+The logs list the game files and tables SSEO found, every stratagem it listed, what Install
+wrote, and anything it could not match, which is usually enough to find the cause.
+
+## In-game version
+
+Versions up to v2.5.0 were an in-game panel (F8) run by **Bingus Shared Loader**, changing the
+game's settings in memory while it ran. Game build 25988413 removed what it needed, so it no
+longer works; SSEO edits the same values in the game's files instead. Grenade swap, speedloader /
+clip sizes and unlocking unused items (M-104 Incinerator FRV, P-41 Ombudsman, G-11 Caltrops,
+LAS-22 Shear) need the running game and exist only there. `src/stat_editor.lua` is the in-game
+version's source.
+
+## Building from source
+
+`offline/` holds SSEO: `host.lua` (the program), `engine_shim.lua` (its window), `gamedata.lua`
+(reading and sealing the game's data files), `install.lua` (Install / Restore) and `launcher/`
+(the .exe, and `shodan_hash.dll` for the checksums). The panel is `src/stat_editor_offline.lua`.
+
+1. Build [LuaJIT](https://luajit.org) 2.1 (`msvcbuild.bat`), then `offline\launcher\build.bat`
+   with `LJ` set to LuaJIT's `src` folder (Visual Studio 2022 Build Tools).
+2. Put `lua51.dll` (LuaJIT) and `libsodium.dll` ([libsodium](https://libsodium.org), x64) in
+   `offline\runtime\`.
+3. `python offline\package.py` makes the release zip in `offline\release\`.
 
 ## Credits
 
-- **Bingus Shared Loader** by CowboyBingus, which runs the mod.
+- **Bingus Shared Loader** by CowboyBingus, which runs the in-game version.
+- **[LuaJIT](https://luajit.org)** (MIT) and **[libsodium](https://libsodium.org)** (ISC), which SSEO
+  ships: their licences are in the release's THIRD-PARTY-NOTICES.txt.
 - **HD2Runtime** by Skyeshade, whose weapon and stratagem catalogs name the weapons and map
   every strike to its projectiles, blasts and damage, and whose research locates package loading
   and the live entity and unit layouts that Grenade swap uses.
