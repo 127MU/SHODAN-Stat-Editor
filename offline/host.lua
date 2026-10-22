@@ -10,6 +10,7 @@ local shim = require('engine_shim')
 local G = require('gamedata')
 local D = require('hostdata')
 local I = require('install')
+local U = require('update')
 
 pcall(ffi.cdef, 'uint64_t GetTickCount64(void);')
 local function clock() return tonumber(ffi.C.GetTickCount64()) / 1000 end
@@ -103,7 +104,9 @@ local function main()
     if not ok then fatal('Stat Editor did not start:\n' .. tostring(err)) end
     local state = rawget(_G, 'ShodanStatEditor')
     if type(state) ~= 'table' then fatal('Stat Editor did not start (no state).') end
-    shim.set_title('SHODAN Stat Editor Offline v' .. tostring(state.version))
+    local build = U.build(here)   -- app/build.txt: version, commit, channel
+    shim.set_title('SHODAN Stat Editor Offline v' .. tostring(state.version)
+                   .. (build.channel == 'dev' and build.commit and ' (dev ' .. build.commit:sub(1, 7) .. ')' or ''))
     -- the host's own text in the panel's language, drawn with its font
     local function tr(text) return type(state.tr) == 'function' and state.tr(text) or text end
     if type(state.lang) == 'function' then shim.lang = state.lang end
@@ -117,6 +120,11 @@ local function main()
             { key = 'install', label = 'Install into the game', x0 = 30 * s, x1 = 290 * s, y0 = y0, y1 = y1 },
             { key = 'restore', label = 'Restore the game\'s files', x0 = 302 * s, x1 = 562 * s, y0 = y0, y1 = y1 },
         }
+        if bar.release then
+            local x1 = shim.w - 30 * s
+            bar.buttons[3] = { key = 'update', label = 'Update to ' .. bar.release.label, x0 = x1 - 170 * s, x1 = x1,
+                               y0 = 9 * s, y1 = 41 * s, gold = true }   -- top right, in the tagline's place
+        end
         bar.s = s
     end
     layout()
@@ -141,7 +149,7 @@ local function main()
         shim.fill(0, 0, shim.w, 46 * s, BACK)
         shim.text('SHODAN Stat Editor', 30 * s, 32 * s, 24 * s, GOLD, true)
         local t = tr('OFFLINE  -  edits the game\'s files; they apply when the game starts')
-        shim.text(t, shim.w - 30 * s - shim.text_width(t, 15 * s), 31 * s, 15 * s, MUTED)
+        if not bar.release then shim.text(t, shim.w - 30 * s - shim.text_width(t, 15 * s), 31 * s, 15 * s, MUTED) end
         for _, b in ipairs(bar.buttons) do
             local hovered = bar.hover == b.key and not bar.busy
             shim.fill(b.x0, b.y0, b.x1, b.y1, hovered and { 255, 52, 66, 80 } or { 255, 28, 34, 42 })
@@ -152,7 +160,8 @@ local function main()
             shim.flush()
             local size, label = 16 * s, tr(b.label)
             while size > 10 * s and shim.text_width(label, size) > b.x1 - b.x0 - 12 * s do size = size - 0.5 end
-            shim.text(label, (b.x0 + b.x1 - shim.text_width(label, size)) / 2, (b.y0 + b.y1) / 2 + size * 0.35, size, WHITE)
+            shim.text(label, (b.x0 + b.x1 - shim.text_width(label, size)) / 2, (b.y0 + b.y1) / 2 + size * 0.35, size,
+                      b.gold and GOLD or WHITE)
         end
         local text, tone = status()
         text = tr(text)
@@ -188,6 +197,14 @@ local function main()
         if I.game_running() then say('Helldivers 2 is running: close it, then Install.', WARN); return end
         busy('Installing: finding what changed...')
         local changes = D.diff()
+        local stacked, why_not = D.stack(changes, state.stacks and state.stacks(), log, state.own_off and state.own_off())
+        if not stacked then
+            for _, c in ipairs(changes) do G.free(c.plain) end
+            bar.busy = nil
+            log('install stopped: passive stacking: ' .. tostring(why_not))
+            say('Not installed: the armor passives could not be stacked (' .. tostring(why_not) .. '). Nothing was changed.', WARN)
+            return
+        end
         local writes, made, back = {}, 0, 0
         for k, c in ipairs(changes) do
             busy(string.format('Installing: preparing %s (%d of %d)...', c.name, k, #changes))
@@ -239,6 +256,41 @@ local function main()
         say('The game\'s own files are back. Your values stay saved here (Install puts them in again).', GOOD)
     end
 
+    -- ------------------------------------------------------------ updates (update.lua)
+    local exe_dir = exe_dir
+    local function update_program()
+        local release = bar.release
+        busy('Updating: downloading ' .. release.label .. '...')
+        local zip = U.dir .. '/' .. release.name
+        local job, why = U.fetch(release.url, zip)
+        local done = nil
+        if job then
+            repeat
+                if not shim.pump() then bar.busy = nil; return false end
+                shim.sleep(20)
+                done, why = U.poll(job)
+            until done ~= nil
+        end
+        if not done then
+            bar.busy = nil
+            log('update: download failed: ' .. tostring(why))
+            say('Update failed: ' .. tostring(why) .. '. The release page has it: ' .. U.PAGE, WARN)
+            return false
+        end
+        busy('Updating: installing ' .. release.label .. '...')
+        local exe, problem = U.install(zip, exe_dir, log)
+        bar.busy = nil
+        if not exe then
+            log('update: not installed: ' .. tostring(problem))
+            say('Update failed: ' .. tostring(problem) .. '. Nothing was changed.', WARN)
+            return false
+        end
+        log('update: ' .. release.label .. ' installed, restarting: ' .. exe)
+        U.note(release.label)
+        bar.restart = exe
+        return true
+    end
+
     -- ------------------------------------------------------------ the frame loop
     local painted, was_down, armed, said_ready = nil, false, nil, false
     local last = clock()
@@ -251,8 +303,34 @@ local function main()
             bar.base = installed_count() > 0 and state.writes or nil
             log(string.format('ready: %s weapons, %s values applied, %s refused', tostring(state.weapons),
                 tostring(state.applied), tostring(state.refused)))
-            if installed_count() == 0 and (state.applied or 0) > 0 then bar.base = -1 end
+            local stacks = state.stacks and state.stacks() or {}
+            local own_off = state.own_off and state.own_off() or {}
+            if installed_count() == 0 and ((state.applied or 0) > 0 or next(stacks) or next(own_off)) then bar.base = -1 end
             if I.game_running() then say('Helldivers 2 is running: you can edit, but close it before you Install.', WARN) end
+            local updated = U.cleanup()
+            if updated then say('Updated to ' .. updated .. '.', GOOD) end
+        end
+        -- updates: asked at start, and again when Settings > Update channel changes
+        local channel = type(state.update_channel) == 'function' and state.update_channel() or 'releases'
+        if said_ready and U.available and channel ~= bar.channel and not U.checking and not bar.restart then
+            bar.channel = channel
+            if bar.release then bar.release = nil; layout() end
+            U.check(channel)
+        end
+        if U.checking then
+            local current = { version = state.version, commit = build.commit }
+            local release = U.check_poll(current)
+            if release and bar.channel ~= U.channel then release = nil end   -- the channel changed meanwhile
+            if release then
+                bar.release = release
+                layout()
+                log('update: ' .. release.label .. ' is available (' .. release.name .. ')')
+                -- Settings > Updates: Automatic
+                if type(state.updates) == 'function' and state.updates() == 'auto' and update_program() then break end
+            elseif release == false then
+                log('update: nothing newer on ' .. tostring(U.channel) .. ' than v' .. tostring(current.version)
+                    .. (current.commit and ' (' .. current.commit:sub(1, 7) .. ')' or ''))
+            end
         end
         -- the bar's buttons
         local x, y = nil, nil
@@ -266,13 +344,14 @@ local function main()
         if down and not was_down then armed = hover end
         if not down and was_down and armed and armed == hover and state.phase == 'ready' then
             bar.message = nil
-            if hover == 'install' then install() elseif hover == 'restore' then restore() end
+            if hover == 'install' then install() elseif hover == 'restore' then restore()
+            elseif hover == 'update' and update_program() then break end
             armed = nil
         end
         was_down = down
         local text = status()
         local signature = table.concat({ shim.version, state.phase, tostring(state.status), tostring(hover), text,
-                                         shim.lang() }, '|')
+                                         shim.lang(), bar.release and bar.release.label or '' }, '|')
         if signature ~= painted then
             painted = signature
             paint()
@@ -282,6 +361,12 @@ local function main()
     -- the editor saves its values a moment after a change
     local stop = clock() + 1.5
     while clock() < stop do update(0.05); shim.sleep(20) end
+    if bar.restart then
+        local go = true
+        if go and not U.launch(bar.restart) then
+            shim.message_box('Updated. Start ' .. bar.restart:gsub('/', '\\') .. ' again.', 0x40)
+        end
+    end
     log('closed')
 end
 

@@ -174,8 +174,111 @@ function M.diff()
     return out
 end
 
+-- ---------------------------------------------------------------- passive stacking
+-- Every armor with passive T also gets passive S's modifiers and weapon stat modifiers (their values as edited):
+-- they are appended to T's block (payload: 56 bytes, the modifiers at +56, 16 bytes each, then the weapon stat
+-- modifiers, 12 bytes each), so the file grows; the hash correction works at any length.
+-- stacks: target passive id -> { source passive id, ... }; own_off: passive id -> true: its own modifiers left out
+-- (only the stacked ones; none: the passive does nothing). Adds to / changes `changes` (from M.diff) in place.
+local PASSIVE = 0x63CE0FEB
+function M.stack(changes, stacks, log, own_off)
+    log, stacks, own_off = log or function() end, stacks or {}, own_off or {}
+    local any = next(own_off) ~= nil
+    for _, list in pairs(stacks) do if #list > 0 then any = true end end
+    if not any then return true end
+    local f
+    for _, file in pairs(M.files) do
+        for _, h in ipairs(G.headers(file.p, file.n)) do if h.type == PASSIVE then f = file; break end end
+        if f then break end
+    end
+    if not f then return nil, 'the armor passive file is not loaded' end
+    local c
+    for _, x in ipairs(changes) do if x.name == f.name then c = x end end
+    if not c then
+        local plain, n = G.open_sealed(f.cipher)
+        if not plain then return nil, f.name .. ': ' .. tostring(n) end
+        c = { name = f.name, plain = plain, n = n, bytes = 0, floats = {}, hash = f.hash }
+        changes[#changes + 1] = c
+        table.sort(changes, function(x, y) return x.name < y.name end)
+    end
+    local p, n = c.plain, c.n
+    local hs = G.headers(p, n)
+    -- every passive's modifiers and weapon stat modifiers, as edited (before any grows)
+    local blocks = {}
+    for _, h in ipairs(hs) do
+        if h.type == PASSIVE and h.size >= 56 then
+            local P = h.at + 24
+            local mc, sc = u32(p, P + 24), u32(p, P + 40)
+            local mo = mc > 0 and tonumber(ffi.cast(u64p, p + P + 16)[0]) or 56
+            local so = sc > 0 and tonumber(ffi.cast(u64p, p + P + 32)[0]) or 56 + mc * 16
+            if mo == 56 and so == 56 + mc * 16 and h.size == so + sc * 12 then
+                blocks[u32(p, P)] = { mods = ffi.string(p + P + 56, mc * 16), stats = ffi.string(p + P + so, sc * 12) }
+            end
+        end
+    end
+    local out, done = { ffi.string(p, hs[1].at) }, 0
+    for k, h in ipairs(hs) do
+        local P = h.at + 24
+        local id = h.type == PASSIVE and h.size >= 56 and u32(p, P)
+        local own, list = id and blocks[id], id and stacks[id]
+        local mods, stats, names = own and own.mods, own and own.stats, {}
+        if own and own_off[id] then mods, stats = '', '' end
+        for _, s in ipairs(own and list or {}) do
+            if s ~= id and blocks[s] then
+                mods, stats = mods .. blocks[s].mods, stats .. blocks[s].stats
+                names[#names + 1] = tostring(s)
+            elseif s ~= id then
+                log('passive ' .. s .. ' (stacked on ' .. id .. ') is not in this game\'s file: left out')
+            end
+        end
+        local block_end = k < #hs and hs[k + 1].at or n
+        if #names > 0 or (own and own_off[id]) then
+            local head = ffi.new('uint8_t[80]')
+            ffi.copy(head, p + h.at, 80)
+            local payload = head + 24
+            local mc, sc = #mods / 16, #stats / 12
+            ffi.cast('uint32_t *', head + 12)[0] = 56 + #mods + #stats                           -- block size
+            ffi.cast(u64p, payload + 16)[0] = mc > 0 and 56 or NONE
+            ffi.cast('uint32_t *', payload + 24)[0] = mc
+            ffi.cast(u64p, payload + 32)[0] = sc > 0 and 56 + #mods or NONE
+            ffi.cast('uint32_t *', payload + 40)[0] = sc
+            out[#out + 1] = ffi.string(head, 80) .. mods .. stats
+            out[#out + 1] = ffi.string(p + P + h.size, block_end - P - h.size)                   -- any padding after
+            log(string.format('passive %d: %s, stacked %s (%d modifiers, %d weapon stat modifiers)', id,
+                own_off[id] and 'own effects off' or 'own effects on', #names > 0 and table.concat(names, ', ') or 'none',
+                mc, sc))
+            done = done + 1
+        else
+            out[#out + 1] = ffi.string(p + h.at, block_end - h.at)
+        end
+    end
+    if done == 0 then return true end
+    local s = table.concat(out)
+    local grown = G.alloc(#s)
+    ffi.copy(grown, s, #s)
+    G.free(c.plain)
+    -- the edited floats moved: the other headers' reserved bytes salt the hash correction
+    c.plain, c.n, c.bytes, c.floats = grown, #s, c.bytes + #s - n, {}
+    return true
+end
+
 -- seal one changed file: { name, sealed } or nil, why
 function M.build(change, log)
+    log = log or function() end
+    -- a one-table file whose changes hold no float to vary (whole numbers, zeros): nothing in it may vary for the
+    -- hash correction, so its table grows by 16 zero bytes after everything it holds (the game reads only what
+    -- its offsets name; grown tables load, as stacked passives do), and those vary instead
+    local hs = G.headers(change.plain, change.n)
+    if #change.floats == 0 and #hs == 1 and hs[1].at + 24 + hs[1].size == change.n then
+        local n = change.n
+        local salt = n + (8 - n % 8) % 8                -- a word of its own (the native search needs the words whole)
+        local grown = G.alloc(salt + 16)               -- (zeroed)
+        ffi.copy(grown, change.plain, n)
+        ffi.cast('uint32_t *', grown + hs[1].at + 12)[0] = salt + 16 - hs[1].at - 24
+        G.free(change.plain)
+        change.plain, change.n, change.floats = grown, salt + 16, { salt }
+        log(string.format('no float among the changes: the table grows by %d bytes for the hash correction', salt + 16 - n))
+    end
     local ok, why = G.correct(change.plain, change.n, change.hash, change.floats, log)
     if not ok then G.free(change.plain); return nil, why end
     local sealed = G.seal(change.plain, change.n)

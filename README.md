@@ -1,8 +1,9 @@
 # SHODAN Stat Editor
 
 Change the stats of weapons, throwables, stratagems, mechas, attachments and armor passives in
-**Helldivers 2**. **SHODAN Stat Editor Offline** (SSEO) is a Windows program: pick a weapon, change
-its numbers, press **Install into the game**, and play. It writes your values into the game's own
+**Helldivers 2**, and transmog armor passives: stack any passives into one. **SHODAN Stat Editor
+Offline** (SSEO) is a Windows program: pick a weapon, change its numbers, press **Install into the
+game**, and play. It writes your values into the game's own
 data files, so no mod loader is needed and the game does not have to run while you edit. Keep
 setups as presets: 5 per weapon, and up to 50 named ones for everything you have changed.
 English, Simplified Chinese, Traditional Chinese and Russian, in one program.
@@ -20,22 +21,17 @@ no longer works; SSEO replaces it. See [In-game version](#in-game-version).
 
 | Section | Stats |
 |---|---|
-| Damage | Damage, durable damage, armor penetration (direct, slight, large and extreme angle), demolition force, stagger force, push force (from the bullet, beam, flame, arc or melee strike) |
+| Damage | Damage, durable damage, armor penetration, demolition force, stagger force, push force |
 | Projectile | Projectiles per shot, velocity, drag factor, penetration slowdown |
-| Explosion | Inner, outer and shockwave radius of the blast (grenade launchers and pistols, EATs, recoilless, Autocannon, Eruptor and every other weapon with explosive rounds); the Breaching Hammer's explosion also has its full damage set |
-| Arc | Range, chain length, chain split (Arc Thrower, Blitzer, K-9 Guard Dog, Tesla Tower) |
-| Burning / Gas | How much fire or gas each hit applies (flamethrowers, Coyote, Hyena, incendiary shotguns, lasers, EAT-700, gas weapons); burn / gas damage, armor penetration and duration |
-| Fire | Fire rate (every fire mode the weapon has) |
-| Ammo | Magazine size, starting magazines, magazines from supply, max spare magazines (or rounds, for weapons loaded by the round), reload time, rounds per reload and reload allowed below (clip weapons, in-game version only) |
-| Handling | Recoil (horizontal, vertical), spread (horizontal, vertical), sway, ergonomics |
-| Heat | Overheat threshold, heat per shot / per second, cool-down time (lasers, Quasar Cannon), heatsinks |
+| Explosion | Inner, outer and shockwave radius of the blast; the Breaching Hammer's explosion also has its full damage set |
+| Arc | Range, chain length, chain split |
+| Burning / Gas | How much fire or gas each hit applies; burn / gas damage, armor penetration and duration |
+| Fire | Fire rate |
+| Ammo | Magazine size, starting magazines, magazines from supply, max spare magazines, reload time, rounds per reload and reload allowed below (clip weapons, in-game version only) |
+| Handling | Recoil, spread, sway, ergonomics |
+| Heat | Overheat threshold, heat per shot / per second, cool-down time, heatsinks |
 | Projectile swap | The projectile the weapon fires: pick another weapon's (by name, or type its id) |
 | Grenade swap | In-game version only: fire a throwable grenade, Dynamite or a throwable mine from a grenade launcher or pistol, the One-Two's launcher or the Grenadier Battlement (solo missions) |
-
-Beam weapons (Scythe, Dagger, Trident, Laser Cannon, Meltagun) get their damage from their beam,
-flame weapons (Flamethrower, Torcher, Crisper, Cremator, Sterilizer) from their spray, arc weapons
-from their arc and melee weapons (Breaching Hammer, Machete, Saber, ...) from their strike; all
-are fully supported. A flamer's **Damage** is what each flame hit does.
 
 **Burning and gas are shared.** "Burning applied per hit" belongs to the weapon; the **Burning**
 (or **Gas**) section below it is the effect itself, shared by every source of it in the game,
@@ -50,13 +46,13 @@ grenade's assets load first, so the choice applies a second or two later. Ammo, 
 handling stay the launcher's; edit the grenade itself on the Throwables tab. A grenade choice
 takes priority over Projectile swap.
 
-**Throwables**: all 23 grenades, knives, throwable mines and the shield, on the Throwables tab
+**Throwables**: every grenade, knife and throwable mine, and the shield, on the Throwables tab
 
 | Section | Stats |
 |---|---|
 | Throwable | Starting count, max carried, from supply, max throw distance, fuse time (timed ones) |
-| Explosion | The full damage set above, inner / outer / shockwave radius, and the burning or gas it applies (incendiary and gas grenades) |
-| Shrapnel | Pieces, their damage and velocity (G-6 Frag, TM-1 Lure Mine); the G-7 Pineapple's bomblets and their explosion |
+| Explosion | The full damage set above, inner / outer / shockwave radius, and the burning or gas it applies |
+| Shrapnel | Pieces, their damage and velocity; the G-7 Pineapple's bomblets and their explosion |
 | Arc / Damage | The G-31 Arc's arc (range, chain length, split, damage); the K-2 Throwing Knife's hit |
 
 **Stratagems**
@@ -68,25 +64,19 @@ takes priority over Projectile swap.
 | Orbital and Eagle strikes | For every projectile and blast they use: velocity, inner / outer / shockwave radius, and the full damage set above |
 | Orbital barrages and strikes | Salvos, shells per salvo, time between shells, time between salvos, spread area; the Walking Barrage's walking speed |
 | Orbital Laser | Duration, tracking speed, search radius, damage tick |
-| Guard Dogs (AR-23, Rover, Dog Breath, Hot Dog, K-9) | The drone's health, spotting range and target search interval, and the gun it carries, stat for stat like a weapon |
-| Sentries and emplacements (all ten sentries, HMG and Anti-Tank Emplacements, Grenadier Battlement) | Cooldown, health, spotting range, target search interval, turret turn speed, and their weapon stat for stat (the Tesla Tower's arc included) |
-| Anti-Personnel, Anti-Tank, Gas and Incendiary Minefields | Panels and mines per panel (lower only), arming time, throw velocity and spread; the mines' trigger and chain reaction delays, their explosion's damage and radii |
+| Guard Dogs | The drone's health, spotting range and target search interval, and the gun it carries, stat for stat like a weapon |
+| Sentries and emplacements | Cooldown, health, spotting range, target search interval, turret turn speed, and their weapon stat for stat (the Tesla Tower's arc included) |
+| Anti-Personnel, Anti-Tank, Gas and Incendiary Minefields | Panels and mines per panel, arming time, throw velocity and spread; the mines' trigger and chain reaction delays, their explosion's damage and radii |
 | LIFT-850 Jump Pack, LIFT-860 Hover Pack | Recharge time; Jump Pack: launch force and duration, forward share of the launch, boost after the launch, mid-air steering; Hover Pack: hover time, hover speed, climb speed, acceleration and time limit |
 | LIFT-182 Warp Pack | Warp distance, reach up / down, heat per warp, cooling, safe and unsafe heat, the damage an unsafe warp does to you and its explosion |
-| Supply Pack, Portable Hellbomb, Guard Dogs; the ammo backpacks of the Autocannon, Recoilless Rifle, Spear, W.A.S.P., Airburst, Maxigun, Cremator and Belt-Fed GL (on the weapon's page) | Backpack charges: capacity, at the start, from resupply |
-
-A backpack reads its values when it is called in: edit them, then call in a new one.
-
-How far a Guard Dog flies from you is decided by its behaviour in the game code, not by the data
-the panel edits, so it can't be changed. The AR-23 dog's bullet is the Liberator Penetrator's and
-the Hot Dog's flame damage is the Torcher's; the panel notes values that change together.
+| Supply Pack, Portable Hellbomb, Guard Dogs; the ammo backpacks of the Autocannon, Recoilless Rifle, Spear, W.A.S.P., Airburst, Maxigun, Cremator and Belt-Fed GL | Backpack charges: capacity, at the start, from resupply |
 
 **Mechas**: the exosuits, FRVs and tanks, on the Mechas tab
 
 | Mecha | Stats |
 |---|---|
-| Exosuits (Patriot, Emancipator, Lumberer, Breacher), FRVs (Gunner, Supply, Incinerator), tanks (Bastion, Maelstrom) | Cooldown, health and armor; the health and armor of every body part (legs, cockpit, tracks, doors, ...) |
-| Their weapons (the arms, turrets and guns) | Each an entry of its own, stat for stat like a weapon |
+| Every exosuit, FRV and tank | Cooldown, health and armor; the health and armor of every body part (legs, cockpit, tracks, doors, ...) |
+| Their weapons | Each an entry of its own, stat for stat like a weapon |
 
 Body parts whose names aren't known show as "Part N". The Breacher's left arm is a shield whose
 hit is an ability, not a weapon stat, so it has no damage to change.
@@ -95,24 +85,39 @@ hit is an ability, not a weapon stat, so it has no damage to change.
 
 | Attachment | Stats |
 |---|---|
-| Optics, underbarrels, muzzles (weapons' own Custom muzzle brakes included), shotgun chokes | Ergonomics bonus, and where the attachment has them: sway, recoil (horizontal, vertical), recoil climb (horizontal, vertical) and spread (horizontal, vertical) multipliers |
-| Ammunition types (94, alternate loads included), by their names in game | Recoil and spread multipliers |
+| Optics, underbarrels, muzzles (weapons' own Custom muzzle brakes included), shotgun chokes | Ergonomics bonus, and where the attachment has them: sway, recoil, climb and spread multipliers |
+| Ammunition types (alternate loads included), by their names in game | Recoil and spread multipliers |
 
 An attachment's values apply to every weapon fitted with it (an ammunition type's, to every
 weapon loaded with it).
 
-**Armor passives**: all 32, on the Armors tab
+**Armor passives**: every one, on the Armors tab
 
 | Passive | Stats |
 |---|---|
-| Every armor passive (Fortified, Servo-Assisted, Med-Kit, Siege-Ready, Gunslinger, Democracy Protects, Stationary Shroud, ...) | Every value it has: damage taken from explosions, fire, gas, arc, impacts and to the chest; extra stims and throwables; stim duration; reload speeds; ammo capacity; throw range; melee damage; limb health; noise and detection range; armor rating and ergonomics bonuses; and the weapon stat values some passives carry |
+| Every armor passive | Every value it has: damage taken from explosions, fire, gas, arc, impacts and to the chest; extra stims and throwables; stim duration; reload speeds; ammo capacity; throw range; melee damage; limb health; noise and detection range; armor rating and ergonomics bonuses; and the weapon stat values some passives carry |
 
 Multipliers show as the game stores them: 1 is no change, 0.5 damage taken is 50% resistance,
 1.3 reload speed is 30% faster. A passive's values apply to every armor that has it.
 
+### Transmog
+
+Give an armor passive the effects of any other passives, as many as you like. On a passive's page
+(Armors tab), **Also includes** lists the passives stacked on it:
+
+- **+ Add passive** picks one from a list; **Remove** takes it off; **Open** goes to its page.
+- **Own effects**: **On** keeps the passive's own stats; **Off** leaves them out, so only the
+  passives listed below it apply. Off with Engineering Kit listed turns Med-Kit into Engineering
+  Kit on every Med-Kit armor.
+- A stacked passive brings every effect it has (Engineering Kit: its grenades and its recoil
+  reduction), at the values set on its own page.
+- Like every passive value, a transmog applies to every armor with that passive: the game does
+  not let one armor be changed alone.
+- **Reset passive** clears its stack and turns its own effects back on.
+
 ## Install
 
-1. Download `SHODAN-Stat-Editor-Offline-v3.0.0.zip` from the [releases page](../../releases/latest) and
+1. Download `SHODAN-Stat-Editor-Offline-v<version>.zip` from the [releases page](../../releases/latest) and
    unzip it anywhere (keep the files together).
 2. Close Helldivers 2 and start **SHODAN Stat Editor Offline.exe**. It finds the game through Steam;
    if it cannot, write your Helldivers 2 folder's path into
@@ -122,6 +127,11 @@ Multipliers show as the game stores them: 1 is no change, 0.5 damage taken is 50
 **Restore the game's files** puts the game's own files back; your values stay saved, and Install
 puts them in again. After a game update or Steam's "Verify integrity of game files" the game's own
 files are back: start SSEO and press Install again.
+
+**Updates.** From v3.1.0 SSEO asks GitHub for its latest release at start. When there is a newer
+one, **Update to v…** appears at the top right: one click downloads it, swaps the new files in
+and restarts. Your values, presets and the game's originals stay as they are. (v3.0.0 has no
+updater: download v3.1.0 once by hand.)
 
 Windows SmartScreen or an antivirus may warn about the program the first time (it is not signed).
 
@@ -161,6 +171,12 @@ The **Settings** button at the bottom right opens its options:
 - **Apply my changes**: turn it off (then Install) to play with the game's own values; your
   changes are kept and come back when you turn it on.
 - **Remember last tab and weapon**.
+- **Updates**: **Ask** (the Update button; the default) or **Automatic** (updates at start
+  without asking).
+- **Update channel**: **Releases** (tested versions; the default) or **Every commit**: the
+  [Development build](../../releases/tag/dev), built automatically from every change pushed to
+  this repository, before it is tested. It may break; switch back to Releases to get the next
+  tested version.
 - **Several vehicles of a kind**: on by default; a loadout can take more than one exosuit, FRV or tank.
 - **Reset all values**: every change of the current setup back to the game's values (asks
   "Sure?" first; click again to confirm).
@@ -227,6 +243,8 @@ share the whole setup.
 - **Projectile swap** works offline, but a swapped projectile has its trail only if someone in
   the mission carries the weapon it comes from. Arc chain length / split edits also apply with
   other players.
+- **Game Updates** might require you to use the "Restore the game's files" option and then 
+  "Install into the game" again, otherwise your game may fail to connect to EAC.
 
 ## Reporting problems
 
@@ -252,14 +270,18 @@ version's source.
 ## Building from source
 
 `offline/` holds SSEO: `host.lua` (the program), `engine_shim.lua` (its window), `gamedata.lua`
-(reading and sealing the game's data files), `install.lua` (Install / Restore) and `launcher/`
-(the .exe, and `shodan_hash.dll` for the checksums). The panel is `src/stat_editor_offline.lua`.
+(reading and sealing the game's data files), `install.lua` (Install / Restore), `update.lua` (the
+updater) and `launcher/` (the .exe, and `shodan_hash.dll` for the checksums and downloads). The
+panel is `src/stat_editor_offline.lua`.
 
 1. Build [LuaJIT](https://luajit.org) 2.1 (`msvcbuild.bat`), then `offline\launcher\build.bat`
    with `LJ` set to LuaJIT's `src` folder (Visual Studio 2022 Build Tools).
 2. Put `lua51.dll` (LuaJIT) and `libsodium.dll` ([libsodium](https://libsodium.org), x64) in
    `offline\runtime\`.
 3. `python offline\package.py` makes the release zip in `offline\release\`.
+
+`.github/workflows/dev-build.yml` does the same on GitHub for every push to `main` and publishes
+the result as the Development build pre-release.
 
 ## Credits
 
