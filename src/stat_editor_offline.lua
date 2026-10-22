@@ -1,6 +1,6 @@
 -- HD2-Addon: mods/shodan/stat_editor
--- SHODAN Stat Editor v3.0.0 by SHODAN. Run by SHODAN Stat Editor Offline (offline/host.lua).
-local MOD = { global = 'ShodanStatEditor', title = 'SHODAN Stat Editor', version = '3.0.0', author = 'SHODAN', log = 'SHODANStatEditor.log' }
+-- SHODAN Stat Editor v3.1.0 by SHODAN. Run by SHODAN Stat Editor Offline (offline/host.lua).
+local MOD = { global = 'ShodanStatEditor', title = 'SHODAN Stat Editor', version = '3.1.0', author = 'SHODAN', log = 'SHODANStatEditor.log' }
 -- magazines, heatsinks and ammunition types: the game's names, by the text id of the item (its English text)
 MOD.item_names = {
     [0x046FF548] = '5.5x50mm Ripper',
@@ -184,6 +184,7 @@ MOD.langs = {
     fonts = { { font = '160f67c841834f8d', atlas = '808957ab8b672904' }, { font = 'e01b1c60bb279a7c', atlas = '1a87fa21dafbd90e' } },
     exact = {
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '“+ 新建预设”（或 Insert 键）会把当前修改存为一组，接着你可以为它命名。',
+      ['+ Add passive'] = '+ 添加被动',
       ['+ Armor rating'] = '护甲值',
       ['+ Ergonomics'] = '人机工效',
       ['+ New preset from current changes'] = '从当前修改新建预设',
@@ -341,10 +342,9 @@ MOD.langs = {
       ['Adjudicator'] = '审判者',
       ['Adreno-Defibrillator'] = '肾上腺素除颤器',
       ['Advanced Filtration'] = '高级过滤能力',
-      ['Aiming sway (1)'] = '瞄准晃动（1）',
-      ['Aiming sway (2)'] = '瞄准晃动（2）',
-      ['Aiming sway (3)'] = '瞄准晃动（3）',
+      ['Aiming sway'] = '瞄准晃动',
       ['Airburst Rocket Launcher'] = '空爆火箭弹发射器',
+      ['Also includes'] = '同时包含',
       ['Alternate ammunition'] = '备用弹药',
       ['Amendment'] = '修正',
       ['Ammo'] = '弹药',
@@ -378,11 +378,13 @@ MOD.langs = {
       ['Armor pen. (large angle)'] = '穿甲(大角度)',
       ['Armor pen. (slight angle)'] = '穿甲(小角度)',
       ['Armors'] = '护甲',
+      ['Ask'] = '询问',
       ['Assault Rifle'] = '突击步枪',
       ['Attachment'] = '配件',
       ['Attachments'] = '配件',
       ['Autocannon'] = '机炮',
       ['Autocannon Sentry'] = '自动哨戒炮',
+      ['Automatic'] = '自动',
       ['B-1 Supply Pack'] = 'B-1 补给背包',
       ['B-100 Portable Hellbomb'] = 'B-100 便携式地狱火炸弹',
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 焚燃者',
@@ -558,6 +560,10 @@ MOD.langs = {
       ['Ergonomics'] = '人机工效',
       ['Ergonomics bonus'] = '人机工效加成',
       ['Eruptor'] = '爆裂铳',
+      ['Every armor with this passive gets their effects too (set on their own pages).'] = '拥有此被动的所有护甲也会获得它们的效果（在各自页面设置）。',
+      ['Every change as soon as it is pushed, before testing: it may break.'] = '每项更改一经推送即更新，未经测试：可能出错。',
+      ['Every commit'] = '每次提交',
+      ['Every passive is in already.'] = '所有被动都已添加。',
       ['Evictor'] = '驱逐者',
       ['Expendable Anti-Tank'] = '消耗性反坦克武器',
       ['Expendable Napalm'] = '消耗性凝固汽油弹',
@@ -697,6 +703,8 @@ MOD.langs = {
       ['Integrated Explosives'] = '集成炸药',
       ['Interface language'] = '界面语言',
       ['Iron Sights'] = '机械瞄具',
+      ['Its effects are added to every armor with this passive.'] = '其效果会添加到拥有此被动的所有护甲上。',
+      ['Its stats above apply.'] = '上方的数值生效。',
       ['JAR-5 Dominator'] = 'JAR-5 主宰',
       ['Jump Pack'] = '喷射背包',
       ['Jump pack'] = '跳跃背包',
@@ -838,6 +846,7 @@ MOD.langs = {
       ['OK'] = '确定',
       ['ORBITAL BEAM'] = '轨道光束',
       ['Off'] = '关',
+      ['Off: its stats above are left out; only the passives below apply.'] = '关闭：上方的数值不生效；只有下方的被动生效。',
       ['Off: the game\'s values everywhere; your '] = '关闭：全局使用游戏数值，你的',
       ['Off: with other players, arc chain length / split use the game\'s values (else arcs can stay on screen).'] = '关闭：多人对局时电弧连锁长度 / 分裂使用游戏数值（否则电弧可留在屏幕上）。',
       ['Ombudsman'] = '巡察者',
@@ -873,6 +882,7 @@ MOD.langs = {
       ['Outer radius (m)'] = '外半径(米)',
       ['Overcharge limit (s)'] = '过载上限(秒)',
       ['Overheat threshold'] = '过热阈值',
+      ['Own effects'] = '自身效果',
       ['Oxygenator'] = '供氧器',
       ['P-11 Stim Pistol'] = 'P-11 治疗剂手枪',
       ['P-113 Verdict'] = 'P-113 裁决',
@@ -976,10 +986,12 @@ MOD.langs = {
       ['Reduced Signature'] = '隐迹潜踪',
       ['Regeneration (health/s)'] = '再生(生命/秒)',
       ['Reinforced Epaulettes'] = '强化肩章',
+      ['Releases'] = '正式版',
       ['Reload allowed below (rounds)'] = '允许换弹下限(发)',
       ['Reload time (s)'] = '换弹时间(秒)',
       ['Reload time (s; 0 = animation length)'] = '装填时间（秒；0 = 动画时长）',
       ['Remember last tab and weapon'] = '记住上次的页签与武器',
+      ['Remove'] = '移除',
       ['Rename'] = '重命名',
       ['Reprimand'] = '训斥',
       ['Reset all values'] = '重置全部数值',
@@ -1164,6 +1176,7 @@ MOD.langs = {
       ['Target search interval, min (s)'] = '索敌间隔，最小（秒）',
       ['Tenderizer'] = '肉锤',
       ['Tesla Tower'] = '特斯拉塔',
+      ['Tested releases only.'] = '仅限经过测试的正式版。',
       ['That did not work; see the log.'] = '操作失败，请查看日志。',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = '“仲裁者”的下挂霰弹枪，不是步枪本身。',
       ['The Defender SEAF soldiers carry. Not yours.'] = 'SEAF 士兵携带的“防卫者”。不是你的那把。',
@@ -1173,6 +1186,7 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = '你携带的冲锋枪。其下挂火焰喷射器单独列出。',
       ['The Scythe you carry.'] = '你携带的“收割者”。',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = '“司炉者”的下挂火焰喷射器，不是冲锋枪本身。',
+      ['The armor passives could not be stacked'] = '无法叠加护甲被动',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = '充能背包、充能及其爆炸。冷却时间见“战略配备”页。',
       ['The flamethrower you carry.'] = '你携带的火焰喷射器。',
       ['The game holds at most 2048 rounds in a magazine.'] = '游戏中一个弹匣最多容纳 2048 发。',
@@ -1229,6 +1243,8 @@ MOD.langs = {
       ['Up'] = '上移',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = '上下键选择数值项，左右键调整（Shift 为大步长），点击数值或按回车直接输入，',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = '上下键选择，回车读取，Insert 新建，Shift+Insert 存入当前预设，F2 重命名，Del 删除。',
+      ['Update channel'] = '更新渠道',
+      ['Updates'] = '更新',
       ['Urchin'] = '海胆',
       ['Uses per mission'] = '每次任务使用次数',
       ['Uses per rearm'] = '每次补充可用次数',
@@ -2235,6 +2251,14 @@ MOD.langs = {
       { '^Installed %((%d+) game files changed%)%. Start the game to play with your values%.$', '已安装（修改了 %1 个游戏文件）。启动游戏即可使用你的数值。' },
       { '^Installed %((%d+) game files changed, (%d+) back to the original%)%. Start the game to play with your values%.$', '已安装（修改了 %1 个游戏文件，%2 个恢复为原始文件）。启动游戏即可使用你的数值。' },
       { '^Not restored: (.+)$', '未恢复：%1' },
+      { '^Update failed: (.+)%. The release page has it: (.+)$', '更新失败：%1。可在发布页面下载：%2' },
+      { '^Update failed: (.+)%. Nothing was changed%.$', '更新失败：%1。未做任何更改。' },
+      { '^Update to (.+)$', '更新到 %1' },
+      { '^Updating: downloading (.+)%.%.%.$', '正在更新：下载 %1...' },
+      { '^Updating: installing (.+)%.%.%.$', '正在更新：安装 %1...' },
+      { '^Updated to (.+)%.$', '已更新到 %1。' },
+      { '^Add a passive to (.+)$', '为 %1 添加被动' },
+      { '^Not installed: the armor passives could not be stacked %((.+)%)%. Nothing was changed%.$', '未安装：无法叠加护甲被动（%1）。未做任何更改。' },
       { '^Heat level (%d+)$', '热量等级 %1' },
       { '^(.+); ammo type shared with (.+)$', '%1；弹种与以下共用：%L2' },
       { '^fires: (.+)%. The rows above stay its own$', '发射：%1。上方各行仍为其自身数值' },
@@ -2369,6 +2393,7 @@ MOD.langs = {
     fonts = { { font = '8a030b00915bbb37', atlas = '4f7e02a3f5a824ec' }, { font = '3da89f2c15b53d65', atlas = '86667f650dca00f9' } },
     exact = {
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '「+ 新建預設」（或 Insert 鍵）會把當前修改存為一組，接著你可以為它命名。',
+      ['+ Add passive'] = '+ 新增被動',
       ['+ Armor rating'] = '護甲值',
       ['+ Ergonomics'] = '人機工效',
       ['+ New preset from current changes'] = '從當前修改新建預設',
@@ -2526,10 +2551,9 @@ MOD.langs = {
       ['Adjudicator'] = '審判者',
       ['Adreno-Defibrillator'] = '腎上腺素除顫器',
       ['Advanced Filtration'] = '進階過濾',
-      ['Aiming sway (1)'] = '瞄準晃動（1）',
-      ['Aiming sway (2)'] = '瞄準晃動（2）',
-      ['Aiming sway (3)'] = '瞄準晃動（3）',
+      ['Aiming sway'] = '瞄準晃動',
       ['Airburst Rocket Launcher'] = '空爆火箭發射器',
+      ['Also includes'] = '同時包含',
       ['Alternate ammunition'] = '備用彈藥',
       ['Amendment'] = '修正',
       ['Ammo'] = '彈藥',
@@ -2563,11 +2587,13 @@ MOD.langs = {
       ['Armor pen. (large angle)'] = '穿甲(大角度)',
       ['Armor pen. (slight angle)'] = '穿甲(小角度)',
       ['Armors'] = '護甲',
+      ['Ask'] = '詢問',
       ['Assault Rifle'] = '突擊步槍',
       ['Attachment'] = '配件',
       ['Attachments'] = '配件',
       ['Autocannon'] = '機炮',
       ['Autocannon Sentry'] = '哨戒機炮',
+      ['Automatic'] = '自動',
       ['B-1 Supply Pack'] = 'B-1 補給背包',
       ['B-100 Portable Hellbomb'] = 'B-100 可攜式絕地彈',
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 火葬者',
@@ -2743,6 +2769,10 @@ MOD.langs = {
       ['Ergonomics'] = '人機工效',
       ['Ergonomics bonus'] = '人機工效加成',
       ['Eruptor'] = '噴發者',
+      ['Every armor with this passive gets their effects too (set on their own pages).'] = '擁有此被動的所有護甲也會獲得它們的效果（在各自頁面設定）。',
+      ['Every change as soon as it is pushed, before testing: it may break.'] = '每項更改一經推送即更新，未經測試：可能出錯。',
+      ['Every commit'] = '每次提交',
+      ['Every passive is in already.'] = '所有被動都已新增。',
       ['Evictor'] = '驅離者',
       ['Expendable Anti-Tank'] = '反坦克消耗品',
       ['Expendable Napalm'] = '消耗型凝固汽油彈',
@@ -2882,6 +2912,8 @@ MOD.langs = {
       ['Integrated Explosives'] = '整合型炸藥',
       ['Interface language'] = '介面語言',
       ['Iron Sights'] = '金屬瞄具',
+      ['Its effects are added to every armor with this passive.'] = '其效果會新增到擁有此被動的所有護甲上。',
+      ['Its stats above apply.'] = '上方的數值生效。',
       ['JAR-5 Dominator'] = 'JAR-5 主導者',
       ['Jump Pack'] = '彈跳背包',
       ['Jump pack'] = '跳躍背包',
@@ -3023,6 +3055,7 @@ MOD.langs = {
       ['OK'] = '確定',
       ['ORBITAL BEAM'] = '軌道光束',
       ['Off'] = '關',
+      ['Off: its stats above are left out; only the passives below apply.'] = '關閉：上方的數值不生效；只有下方的被動生效。',
       ['Off: the game\'s values everywhere; your '] = '關閉：全域性使用遊戲數值，你的',
       ['Off: with other players, arc chain length / split use the game\'s values (else arcs can stay on screen).'] = '關閉：多人對局時電弧連鎖長度 / 分裂使用遊戲數值（否則電弧可留在螢幕上）。',
       ['Ombudsman'] = '監察官',
@@ -3058,6 +3091,7 @@ MOD.langs = {
       ['Outer radius (m)'] = '外半徑(米)',
       ['Overcharge limit (s)'] = '過載上限(秒)',
       ['Overheat threshold'] = '過熱閾值',
+      ['Own effects'] = '自身效果',
       ['Oxygenator'] = '氧合器',
       ['P-11 Stim Pistol'] = 'P-11 治療槍',
       ['P-113 Verdict'] = 'P-113 判官',
@@ -3161,10 +3195,12 @@ MOD.langs = {
       ['Reduced Signature'] = '隱跡',
       ['Regeneration (health/s)'] = '再生(生命/秒)',
       ['Reinforced Epaulettes'] = '強化護肩',
+      ['Releases'] = '正式版',
       ['Reload allowed below (rounds)'] = '允許換彈下限(發)',
       ['Reload time (s)'] = '換彈時間(秒)',
       ['Reload time (s; 0 = animation length)'] = '裝填時間（秒；0 = 動畫時長）',
       ['Remember last tab and weapon'] = '記住上次的分頁與武器',
+      ['Remove'] = '移除',
       ['Rename'] = '重新命名',
       ['Reprimand'] = '懲戒',
       ['Reset all values'] = '重置全部數值',
@@ -3349,6 +3385,7 @@ MOD.langs = {
       ['Target search interval, min (s)'] = '索敵間隔，最小（秒）',
       ['Tenderizer'] = '肉錘',
       ['Tesla Tower'] = '特斯拉塔',
+      ['Tested releases only.'] = '僅限經過測試的正式版。',
       ['That did not work; see the log.'] = '操作失敗，請檢視日誌。',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = '「仲裁者」的下掛霰彈槍，不是步槍本身。',
       ['The Defender SEAF soldiers carry. Not yours.'] = 'SEAF 士兵攜帶的「防衛者」。不是你的那把。',
@@ -3358,6 +3395,7 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = '你攜帶的衝鋒槍。其下掛火焰噴射器單獨列出。',
       ['The Scythe you carry.'] = '你攜帶的「收割者」。',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = '「司爐者」的下掛火焰噴射器，不是衝鋒槍本身。',
+      ['The armor passives could not be stacked'] = '無法疊加護甲被動',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = '充能背包、充能及其爆炸。冷卻時間見「戰略配備」頁。',
       ['The flamethrower you carry.'] = '你攜帶的火焰噴射器。',
       ['The game holds at most 2048 rounds in a magazine.'] = '遊戲中一個彈匣最多容納 2048 發。',
@@ -3414,6 +3452,8 @@ MOD.langs = {
       ['Up'] = '上移',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = '上下鍵選擇數值項，左右鍵調整（Shift 為大步長），點選數值或按回車直接輸入，',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = '上下鍵選擇，回車讀取，Insert 新建，Shift+Insert 存入當前預設，F2 重新命名，Del 刪除。',
+      ['Update channel'] = '更新渠道',
+      ['Updates'] = '更新',
       ['Urchin'] = '海膽',
       ['Uses per mission'] = '每次任務使用次數',
       ['Uses per rearm'] = '每次補充可用次數',
@@ -4420,6 +4460,14 @@ MOD.langs = {
       { '^Installed %((%d+) game files changed%)%. Start the game to play with your values%.$', '已安裝（修改了 %1 個遊戲檔案）。啟動遊戲即可使用你的數值。' },
       { '^Installed %((%d+) game files changed, (%d+) back to the original%)%. Start the game to play with your values%.$', '已安裝（修改了 %1 個遊戲檔案，%2 個恢復為原始檔案）。啟動遊戲即可使用你的數值。' },
       { '^Not restored: (.+)$', '未恢復：%1' },
+      { '^Update failed: (.+)%. The release page has it: (.+)$', '更新失敗：%1。可在釋出頁面下載：%2' },
+      { '^Update failed: (.+)%. Nothing was changed%.$', '更新失敗：%1。未做任何更改。' },
+      { '^Update to (.+)$', '更新到 %1' },
+      { '^Updating: downloading (.+)%.%.%.$', '正在更新：下載 %1...' },
+      { '^Updating: installing (.+)%.%.%.$', '正在更新：安裝 %1...' },
+      { '^Updated to (.+)%.$', '已更新到 %1。' },
+      { '^Add a passive to (.+)$', '為 %1 新增被動' },
+      { '^Not installed: the armor passives could not be stacked %((.+)%)%. Nothing was changed%.$', '未安裝：無法疊加護甲被動（%1）。未做任何更改。' },
       { '^Heat level (%d+)$', '熱量等級 %1' },
       { '^(.+); ammo type shared with (.+)$', '%1；彈種與以下共用：%L2' },
       { '^fires: (.+)%. The rows above stay its own$', '發射：%1。上方各行仍為其自身數值' },
@@ -4554,6 +4602,7 @@ MOD.langs = {
     fonts = { { font = 'abf8b5ba1469879a', atlas = '6b02f70a77aafd2d' }, { font = 'e6944ade8a140216', atlas = '529a0ff67a1c8a0b' } },
     exact = {
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '«+ Новый пресет» (или Insert) сохраняет текущие изменения как пресет; затем вы даете ему имя.',
+      ['+ Add passive'] = '+ Добавить эффект',
       ['+ Armor rating'] = '+ Рейтинг брони',
       ['+ Ergonomics'] = '+ Эргономика',
       ['+ New preset from current changes'] = '+ Новый пресет из текущих изменений',
@@ -4711,10 +4760,9 @@ MOD.langs = {
       ['Adjudicator'] = '«Эксперт»',
       ['Adreno-Defibrillator'] = 'Адрено-дефибрилятор',
       ['Advanced Filtration'] = 'Продвинутая фильтрация',
-      ['Aiming sway (1)'] = 'Покачивание при прицеливании (1)',
-      ['Aiming sway (2)'] = 'Покачивание при прицеливании (2)',
-      ['Aiming sway (3)'] = 'Покачивание при прицеливании (3)',
+      ['Aiming sway'] = 'Покачивание при прицеливании',
       ['Airburst Rocket Launcher'] = '«Ракетница с подрывом в воздухе»',
+      ['Also includes'] = 'Также включает',
       ['Alternate ammunition'] = 'Альтернативные боеприпасы',
       ['Amendment'] = 'Поправка',
       ['Ammo'] = 'Боеприпасы',
@@ -4748,11 +4796,13 @@ MOD.langs = {
       ['Armor pen. (large angle)'] = 'Пробив. брони (большой угол)',
       ['Armor pen. (slight angle)'] = 'Пробив. брони (малый угол)',
       ['Armors'] = 'Броня',
+      ['Ask'] = 'Спрашивать',
       ['Assault Rifle'] = 'Штурмовая винтовка',
       ['Attachment'] = 'Модуль',
       ['Attachments'] = 'Модули',
       ['Autocannon'] = '«Автопушка»',
       ['Autocannon Sentry'] = '«Турель с автопушкой»',
+      ['Automatic'] = 'Автоматически',
       ['B-1 Supply Pack'] = 'B-1 «Рюкзак: боеприпасы»',
       ['B-100 Portable Hellbomb'] = 'B-100 Переносная Адская бомба',
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 Крематорий',
@@ -4928,6 +4978,10 @@ MOD.langs = {
       ['Ergonomics'] = 'Эргономика',
       ['Ergonomics bonus'] = 'Бонус эргономики',
       ['Eruptor'] = '«Извергатель»',
+      ['Every armor with this passive gets their effects too (set on their own pages).'] = 'Вся броня с этим эффектом получает и их эффекты (настраиваются на их страницах).',
+      ['Every change as soon as it is pushed, before testing: it may break.'] = 'Каждое изменение сразу после публикации, без проверки: возможны ошибки.',
+      ['Every commit'] = 'Каждый коммит',
+      ['Every passive is in already.'] = 'Все пассивные эффекты уже добавлены.',
       ['Evictor'] = 'Вытеснитель',
       ['Expendable Anti-Tank'] = '«Одноразовый бронебой»',
       ['Expendable Napalm'] = 'Одноразовый напалм',
@@ -5067,6 +5121,8 @@ MOD.langs = {
       ['Integrated Explosives'] = 'Встроенная взрывчатка',
       ['Interface language'] = 'Язык интерфейса',
       ['Iron Sights'] = 'Механический прицел',
+      ['Its effects are added to every armor with this passive.'] = 'Его эффекты добавляются всей броне с этим пассивным эффектом.',
+      ['Its stats above apply.'] = 'Его характеристики выше действуют.',
       ['JAR-5 Dominator'] = 'JAR-5 «Угнетатель»',
       ['Jump Pack'] = '«Реактивный ранец»',
       ['Jump pack'] = 'Реактивный ранец',
@@ -5208,6 +5264,7 @@ MOD.langs = {
       ['OK'] = 'ОК',
       ['ORBITAL BEAM'] = 'ОРБИТАЛЬНЫЙ ЛУЧ',
       ['Off'] = 'Выкл',
+      ['Off: its stats above are left out; only the passives below apply.'] = 'Выкл.: его характеристики выше не действуют; действуют только эффекты ниже.',
       ['Off: the game\'s values everywhere; your '] = 'Выкл: везде значения игры; ваши ',
       ['Off: with other players, arc chain length / split use the game\'s values (else arcs can stay on screen).'] = 'Выкл: с другими игроками длина и разветвление цепи дуги берутся из игры (иначе дуги могут оставаться на экране).',
       ['Ombudsman'] = 'Омбудсмен',
@@ -5243,6 +5300,7 @@ MOD.langs = {
       ['Outer radius (m)'] = 'Внешний радиус (м)',
       ['Overcharge limit (s)'] = 'Предел перезаряда (с)',
       ['Overheat threshold'] = 'Порог перегрева',
+      ['Own effects'] = 'Свои эффекты',
       ['Oxygenator'] = 'Аэратор',
       ['P-11 Stim Pistol'] = 'P-11 Стим-пистолет',
       ['P-113 Verdict'] = 'P-113 «Вердикт»',
@@ -5346,10 +5404,12 @@ MOD.langs = {
       ['Reduced Signature'] = 'Уменьшенный след',
       ['Regeneration (health/s)'] = 'Регенерация (здоровье/с)',
       ['Reinforced Epaulettes'] = 'Армированные эполеты',
+      ['Releases'] = 'Релизы',
       ['Reload allowed below (rounds)'] = 'Перезарядка разрешена ниже (патронов)',
       ['Reload time (s)'] = 'Время перезарядки (с)',
       ['Reload time (s; 0 = animation length)'] = 'Время перезарядки (с; 0 = длина анимации)',
       ['Remember last tab and weapon'] = 'Запоминать последнюю вкладку и оружие',
+      ['Remove'] = 'Убрать',
       ['Rename'] = 'Переимен.',
       ['Reprimand'] = 'Взыскание',
       ['Reset all values'] = 'Сбросить все значения',
@@ -5534,6 +5594,7 @@ MOD.langs = {
       ['Target search interval, min (s)'] = 'Интервал поиска цели, мин. (с)',
       ['Tenderizer'] = '«Размягчитель»',
       ['Tesla Tower'] = '«Тесла-башня»',
+      ['Tested releases only.'] = 'Только проверенные релизы.',
       ['That did not work; see the log.'] = 'Не получилось; см. журнал.',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = 'Подствольный дробовик «Третейского судьи», а не сама винтовка.',
       ['The Defender SEAF soldiers carry. Not yours.'] = '«Защитник» солдат ВССЗ. Не ваш.',
@@ -5543,6 +5604,7 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = 'Пистолет-пулемет, который вы носите. Его подствольный огнемет указан отдельно.',
       ['The Scythe you carry.'] = '«Коса», которую вы носите.',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = 'Подствольный огнемет «Топки», а не сам пистолет-пулемет.',
+      ['The armor passives could not be stacked'] = 'Не удалось объединить пассивные эффекты брони',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = 'Рюкзак с зарядом, сам заряд и его взрыв. Перезарядка: вкладка «Стратагемы».',
       ['The flamethrower you carry.'] = 'Огнемет, который вы носите.',
       ['The game holds at most 2048 rounds in a magazine.'] = 'Игра вмещает в магазин не более 2048 патронов.',
@@ -5599,6 +5661,8 @@ MOD.langs = {
       ['Up'] = 'Вверх',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = 'Вверх/Вниз — выбор параметра, Влево/Вправо — изменение (Shift: крупный шаг), щелкните значение или нажмите Enter для ввода,',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = 'Вверх/Вниз — выбор, Enter — загрузить, Insert — новый, Shift+Insert — сохранить в него, F2 — переименовать, Del — удалить.',
+      ['Update channel'] = 'Канал обновлений',
+      ['Updates'] = 'Обновления',
       ['Urchin'] = 'Озорник',
       ['Uses per mission'] = 'Применений за миссию',
       ['Uses per rearm'] = 'Применений за перевооружение',
@@ -6175,6 +6239,14 @@ MOD.langs = {
       { '^Installed %((%d+) game files changed%)%. Start the game to play with your values%.$', 'Установлено (изменено файлов игры: %1). Запустите игру, чтобы играть с вашими значениями.' },
       { '^Installed %((%d+) game files changed, (%d+) back to the original%)%. Start the game to play with your values%.$', 'Установлено (изменено файлов игры: %1, возвращено исходных: %2). Запустите игру, чтобы играть с вашими значениями.' },
       { '^Not restored: (.+)$', 'Не возвращено: %1' },
+      { '^Update failed: (.+)%. The release page has it: (.+)$', 'Обновление не удалось: %1. Его можно скачать на странице релиза: %2' },
+      { '^Update failed: (.+)%. Nothing was changed%.$', 'Обновление не удалось: %1. Ничего не изменено.' },
+      { '^Update to (.+)$', 'Обновить до %1' },
+      { '^Updating: downloading (.+)%.%.%.$', 'Обновление: загрузка %1...' },
+      { '^Updating: installing (.+)%.%.%.$', 'Обновление: установка %1...' },
+      { '^Updated to (.+)%.$', 'Обновлено до %1.' },
+      { '^Add a passive to (.+)$', 'Добавить пассивный эффект к %1' },
+      { '^Not installed: the armor passives could not be stacked %((.+)%)%. Nothing was changed%.$', 'Не установлено: не удалось объединить пассивные эффекты брони (%1). Ничего не изменено.' },
       { '^Heat level (%d+)$', 'Уровень нагрева %1' },
       { '^(.+); ammo type shared with (.+)$', '%1; тип боеприпасов общий с: %L2' },
       { '^fires: (.+)%. The rows above stay its own$', 'стреляет: %1. Строки выше остаются его собственными' },
@@ -6511,14 +6583,14 @@ local STRATAGEMS = {
     { 3413606544, 'EAT-17 Expendable Anti-Tank', 'support', { '0DC7A18342B62BEC', '73F8498BFFDCF415' }, {  } },
     { 2934950455, 'EAT-411 Leveller', 'support', { '8A9E543022C18092', '73F8498BFFDCF415' }, {  } },
     { 1813634375, 'EAT-700 Expendable Napalm', 'support', { '20AAFC3A504D2E5F', '73F8498BFFDCF415' }, {  } },
-    { 1979913877, 'Eagle 110mm Rocket Pods', 'eagle', { '397792815583DA29' }, { { 'P', 82, 'Projectile' }, { 'D', 248, 'Direct hit' }, { 'X', 229, 'Blast radius' }, { 'D', 403, 'Blast' } } },
-    { 4119049995, 'Eagle 500kg Bomb', 'eagle', { 'E44B691DC039A505' }, { { 'P', 239, 'Projectile' }, { 'D', 251, 'Direct hit' }, { 'X', 193, 'Blast radius' }, { 'D', 421, 'Blast' }, { 'X', 277, 'Burst radius' }, { 'D', 453, 'Burst' } } },
-    { 1238358532, 'Eagle Airstrike', 'eagle', { '2EA01CB1676ACA29' }, { { 'P', 170, 'Projectile' }, { 'D', 234, 'Direct hit' }, { 'X', 194, 'Blast radius' }, { 'D', 422, 'Blast' } } },
-    { 3656370131, 'Eagle Cluster Bomb', 'eagle', { '9D4F7CB4EB34515D' }, { { 'P', 286, 'Projectile' }, { 'D', 234, 'Direct hit' }, { 'X', 417, 'Burst radius' }, { 'D', 388, 'Burst' }, { 'P', 131, 'Shrapnel projectile' }, { 'D', 32, 'Shrapnel direct hit' }, { 'X', 162, 'Shrapnel blast radius' } } },
-    { 4196275240, 'Eagle Gas Airstrike', 'eagle', { 'DBB286AD7ED9DF96' }, { { 'P', 188, 'Projectile' }, { 'D', 234, 'Direct hit' }, { 'X', 331, 'Blast radius' }, { 'D', 391, 'Blast' } } },
-    { 2040137691, 'Eagle Napalm Airstrike', 'eagle', { '27BB558C893383CC' }, { { 'P', 141, 'Projectile' }, { 'D', 234, 'Direct hit' }, { 'X', 359, 'Blast radius' }, { 'D', 390, 'Blast' } } },
-    { 1685231450, 'Eagle Smoke Strike', 'eagle', { '1B3BCADABC7EF8D6' }, { { 'P', 130, 'Projectile' }, { 'D', 234, 'Direct hit' }, { 'X', 75, 'Blast radius' } } },
-    { 2808191861, 'Eagle Strafing Run', 'eagle', { '23A60681DD4383EC' }, { { 'P', 16, 'Projectile' }, { 'D', 218, 'Direct hit' }, { 'X', 50, 'Blast radius' }, { 'D', 367, 'Blast' } } },
+    { 1979913877, 'Eagle 110mm Rocket Pods', 'eagle', { '397792815583DA29' }, { { 'P', 84, 'Projectile' }, { 'D', 258, 'Direct hit' }, { 'X', 229, 'Blast radius' }, { 'D', 414, 'Blast' } } },
+    { 4119049995, 'Eagle 500kg Bomb', 'eagle', { 'E44B691DC039A505' }, { { 'P', 243, 'Projectile' }, { 'D', 261, 'Direct hit' }, { 'X', 193, 'Blast radius' }, { 'D', 432, 'Blast' }, { 'X', 277, 'Burst radius' }, { 'D', 465, 'Burst' } } },
+    { 1238358532, 'Eagle Airstrike', 'eagle', { '2EA01CB1676ACA29' }, { { 'P', 173, 'Projectile' }, { 'D', 244, 'Direct hit' }, { 'X', 194, 'Blast radius' }, { 'D', 433, 'Blast' } } },
+    { 3656370131, 'Eagle Cluster Bomb', 'eagle', { '9D4F7CB4EB34515D' }, { { 'P', 291, 'Projectile' }, { 'D', 244, 'Direct hit' }, { 'X', 419, 'Burst radius' }, { 'D', 399, 'Burst' }, { 'P', 133, 'Shrapnel projectile' }, { 'D', 39, 'Shrapnel direct hit' }, { 'X', 162, 'Shrapnel blast radius' } } },
+    { 4196275240, 'Eagle Gas Airstrike', 'eagle', { 'DBB286AD7ED9DF96' }, { { 'P', 192, 'Projectile' }, { 'D', 244, 'Direct hit' }, { 'X', 331, 'Blast radius' }, { 'D', 402, 'Blast' } } },
+    { 2040137691, 'Eagle Napalm Airstrike', 'eagle', { '27BB558C893383CC' }, { { 'P', 143, 'Projectile' }, { 'D', 244, 'Direct hit' }, { 'X', 360, 'Blast radius' }, { 'D', 401, 'Blast' } } },
+    { 1685231450, 'Eagle Smoke Strike', 'eagle', { '1B3BCADABC7EF8D6' }, { { 'P', 132, 'Projectile' }, { 'D', 244, 'Direct hit' }, { 'X', 75, 'Blast radius' } } },
+    { 2808191861, 'Eagle Strafing Run', 'eagle', { '23A60681DD4383EC' }, { { 'P', 17, 'Projectile' }, { 'D', 228, 'Direct hit' }, { 'X', 50, 'Blast radius' }, { 'D', 377, 'Blast' } } },
     { 3923676543, 'FAF-14 Spear', 'support', { 'C57F85252B7D853B', '73F8498BFFDCF415' }, {  } },
     { 1432571981, 'FLAM-40 Flamethrower', 'support', { 'E90F771A36FB441E', '73F8498BFFDCF415' }, {  } },
     { 3343676429, 'GL-21 Grenade Launcher', 'support', { '20225DEE487C9F5F', '73F8498BFFDCF415' }, {  } },
@@ -6535,18 +6607,18 @@ local STRATAGEMS = {
     { 3288352984, 'MGX-42 Bullet Storm', 'support', { 'C87555EED1E9F092', '73F8498BFFDCF415' }, {  } },
     { 2232989803, 'MLS-4X Commando', 'support', { 'A0E691598F32932F', '73F8498BFFDCF415' }, {  } },
     { 1337271929, 'MS-11 Solo Silo', 'support', { 'DE18775FA447A9BF', 'FBE75EC44E7C9A50' }, {  } },
-    { 1063322614, 'Orbital 120mm HE Barrage', 'orbital', { '2D3BD00B1ED411B1' }, { { 'P', 194, 'Round 1 projectile' }, { 'D', 262, 'Direct hit' }, { 'X', 213, 'Round 1 blast radius' }, { 'D', 445, 'Blast' }, { 'P', 137, 'Rounds 2, 3 projectile' }, { 'X', 176, 'Rounds 2, 3 blast radius' } } },
-    { 3108516875, 'Orbital 380mm HE Barrage', 'orbital', { 'EF66B417EDC3B1D6' }, { { 'P', 80, 'Round 1 projectile' }, { 'D', 263, 'Direct hit' }, { 'X', 301, 'Round 1 blast radius' }, { 'D', 444, 'Blast' }, { 'P', 266, 'Rounds 2, 3 projectile' }, { 'X', 94, 'Rounds 2, 3 blast radius' } } },
-    { 1560416221, 'Orbital Airburst Strike', 'orbital', { '75B131DC1DDC02D5' }, { { 'P', 158, 'Projectile' }, { 'D', 261, 'Direct hit' }, { 'X', 379, 'Blast radius' }, { 'D', 388, 'Blast' }, { 'P', 11, 'Shrapnel projectile' }, { 'D', 190, 'Shrapnel direct hit' }, { 'X', 106, 'Shrapnel blast radius' } } },
-    { 1280711447, 'Orbital EMS Strike', 'orbital', { '55F3747B8C27AEF6' }, { { 'P', 74, 'Projectile' }, { 'D', 261, 'Direct hit' }, { 'X', 188, 'Blast radius' }, { 'D', 451, 'Blast' } } },
-    { 3193297673, 'Orbital Gas Strike', 'orbital', { '05F3C83A91075766' }, { { 'P', 197, 'Projectile' }, { 'D', 261, 'Direct hit' }, { 'X', 82, 'Blast radius' }, { 'D', 447, 'Blast' } } },
-    { 2084654169, 'Orbital Gatling Barrage', 'orbital', { '2F257B91037AC421' }, { { 'P', 77, 'Round 1 projectile' }, { 'D', 218, 'Direct hit' }, { 'X', 266, 'Round 1 blast radius' }, { 'D', 367, 'Round 1 blast' }, { 'P', 42, 'Rounds 2, 3, 4 projectile' } } },
-    { 970450596, 'Orbital Laser', 'orbital', { 'EC3575E7A93793BB' }, { { 'D', 513, 'Laser damage' } } },
-    { 2902516083, 'Orbital Napalm Barrage', 'orbital', { 'A16AB4FF66AE6970' }, { { 'P', 234, 'Round 1 projectile' }, { 'D', 265, 'Direct hit' }, { 'X', 63, 'Round 1 blast radius' }, { 'D', 266, 'Blast' }, { 'P', 238, 'Rounds 2, 3 projectile' }, { 'X', 74, 'Rounds 2, 3 blast radius' } } },
-    { 3523620028, 'Orbital Precision Strike', 'orbital', { 'C897C0D84448AB2C' }, { { 'P', 100, 'Projectile' }, { 'D', 264, 'Direct hit' }, { 'X', 343, 'Blast radius' }, { 'D', 446, 'Blast' } } },
-    { 2744472229, 'Orbital Railcannon Strike', 'orbital', { 'AC129AA2DB5EABC9' }, { { 'P', 277, 'Projectile' }, { 'D', 267, 'Direct hit' }, { 'X', 52, 'Burst radius' }, { 'D', 443, 'Burst' } } },
-    { 3713568312, 'Orbital Smoke Strike', 'orbital', { 'DA76A06325E692C9' }, { { 'P', 247, 'Projectile' }, { 'D', 261, 'Direct hit' }, { 'X', 75, 'Blast radius' } } },
-    { 3279813377, 'Orbital Walking Barrage', 'orbital', { 'CB7F154719F331EC' }, { { 'P', 80, 'Round 1 projectile' }, { 'D', 263, 'Direct hit' }, { 'X', 301, 'Round 1 blast radius' }, { 'D', 444, 'Blast' }, { 'P', 266, 'Rounds 2, 3 projectile' }, { 'X', 94, 'Rounds 2, 3 blast radius' } } },
+    { 1063322614, 'Orbital 120mm HE Barrage', 'orbital', { '2D3BD00B1ED411B1' }, { { 'P', 197, 'Round 1 projectile' }, { 'D', 272, 'Direct hit' }, { 'X', 213, 'Round 1 blast radius' }, { 'D', 457, 'Blast' }, { 'P', 139, 'Rounds 2, 3 projectile' }, { 'X', 177, 'Rounds 2, 3 blast radius' } } },
+    { 3108516875, 'Orbital 380mm HE Barrage', 'orbital', { 'EF66B417EDC3B1D6' }, { { 'P', 82, 'Round 1 projectile' }, { 'D', 273, 'Direct hit' }, { 'X', 301, 'Round 1 blast radius' }, { 'D', 456, 'Blast' }, { 'P', 270, 'Rounds 2, 3 projectile' }, { 'X', 94, 'Rounds 2, 3 blast radius' } } },
+    { 1560416221, 'Orbital Airburst Strike', 'orbital', { '75B131DC1DDC02D5' }, { { 'P', 160, 'Projectile' }, { 'D', 271, 'Direct hit' }, { 'X', 380, 'Blast radius' }, { 'D', 399, 'Blast' }, { 'P', 12, 'Shrapnel projectile' }, { 'D', 199, 'Shrapnel direct hit' }, { 'X', 106, 'Shrapnel blast radius' } } },
+    { 1280711447, 'Orbital EMS Strike', 'orbital', { '55F3747B8C27AEF6' }, { { 'P', 76, 'Projectile' }, { 'D', 271, 'Direct hit' }, { 'X', 188, 'Blast radius' }, { 'D', 463, 'Blast' } } },
+    { 3193297673, 'Orbital Gas Strike', 'orbital', { '05F3C83A91075766' }, { { 'P', 200, 'Projectile' }, { 'D', 271, 'Direct hit' }, { 'X', 82, 'Blast radius' }, { 'D', 459, 'Blast' } } },
+    { 2084654169, 'Orbital Gatling Barrage', 'orbital', { '2F257B91037AC421' }, { { 'P', 79, 'Round 1 projectile' }, { 'D', 228, 'Direct hit' }, { 'X', 266, 'Round 1 blast radius' }, { 'D', 377, 'Round 1 blast' }, { 'P', 43, 'Rounds 2, 3, 4 projectile' } } },
+    { 970450596, 'Orbital Laser', 'orbital', { 'EC3575E7A93793BB' }, { { 'D', 525, 'Laser damage' } } },
+    { 2902516083, 'Orbital Napalm Barrage', 'orbital', { 'A16AB4FF66AE6970' }, { { 'P', 238, 'Round 1 projectile' }, { 'D', 275, 'Direct hit' }, { 'X', 63, 'Round 1 blast radius' }, { 'D', 276, 'Blast' }, { 'P', 242, 'Rounds 2, 3 projectile' }, { 'X', 74, 'Rounds 2, 3 blast radius' } } },
+    { 3523620028, 'Orbital Precision Strike', 'orbital', { 'C897C0D84448AB2C' }, { { 'P', 102, 'Projectile' }, { 'D', 274, 'Direct hit' }, { 'X', 343, 'Blast radius' }, { 'D', 458, 'Blast' } } },
+    { 2744472229, 'Orbital Railcannon Strike', 'orbital', { 'AC129AA2DB5EABC9' }, { { 'P', 282, 'Projectile' }, { 'D', 277, 'Direct hit' }, { 'X', 52, 'Burst radius' }, { 'D', 455, 'Burst' } } },
+    { 3713568312, 'Orbital Smoke Strike', 'orbital', { 'DA76A06325E692C9' }, { { 'P', 251, 'Projectile' }, { 'D', 271, 'Direct hit' }, { 'X', 75, 'Blast radius' } } },
+    { 3279813377, 'Orbital Walking Barrage', 'orbital', { 'CB7F154719F331EC' }, { { 'P', 82, 'Round 1 projectile' }, { 'D', 273, 'Direct hit' }, { 'X', 301, 'Round 1 blast radius' }, { 'D', 456, 'Blast' }, { 'P', 270, 'Rounds 2, 3 projectile' }, { 'X', 94, 'Rounds 2, 3 blast radius' } } },
     { 4261593827, 'PLAS-45 Epoch', 'support', { '46B9E3BE0AE9972E', '73F8498BFFDCF415' }, {  } },
     { 2007887745, 'RL-77 Airburst Rocket Launcher', 'support', { 'CA6E81E2B3E22B18', '73F8498BFFDCF415' }, {  } },
     { 3078242205, 'RS-422 Railgun', 'support', { 'B62620AE2CD89F49', '73F8498BFFDCF415' }, {  } },
@@ -7376,10 +7448,13 @@ KINDS[TYPES.passive].MODS = {
     [0x22035F3C] = 'Secondary recoil', [0x73734D67] = 'Flinch (0 prevents it)',
     [0x21A7BA64] = 'Marker radar scan every (s)', [0x35F17BEC] = 'Support reload speed',
     [0xA189ADB6] = '+ Stamina when hit', [0x14ECCE15] = 'Enemy detection range',
-    -- Stationary Shroud (game build 25988413): three aiming sway values (the game describes them as one), and
-    -- the concealment while still and crouched / prone
-    [0xF0B70521] = 'Aiming sway (1)', [0x0FF508EB] = 'Aiming sway (2)', [0x33235131] = 'Aiming sway (3)',
+    -- Stationary Shroud (game build 25988413): aiming sway (three values, JOINED below), and the concealment while
+    -- still and crouched / prone
+    [0x33235131] = 'Aiming sway',
     [0x776A91FF] = 'Concealment when still, crouched / prone' }
+-- modifiers the game describes as one (only the last carries the armory's text): one row writes them all, by
+-- the id of the one with the text
+KINDS[TYPES.passive].JOINED = { [0xF0B70521] = 0x33235131, [0x0FF508EB] = 0x33235131, [0x33235131] = 0x33235131 }
 -- the weapon stat modifiers some passives also carry, by stat
 KINDS[TYPES.passive].STATS = {
     [11] = 'Flinch', [12] = 'Ammo capacity', [13] = 'Primary reload speed', [14] = 'Support reload speed',
@@ -8071,13 +8146,23 @@ KINDS[TYPES.passive].resolve = function(entry)
     if not t then return end
     --        type: min, max, small step, big step
     local RANGE = { [0] = { 0, 10, 1, 1 }, [1] = { 0, 1000, 0.5, 5 }, [2] = { 0, 10, 0.05, 0.25 }, [3] = { 0, 600, 0.5, 2 } }
+    local joined = {}   -- a modifier the game describes with another -> that one's row
     for k, m in ipairs(t.index.mods) do
         local r = RANGE[m.type]
         if m.id ~= 0 and r then
             local id = string.format('mod_%08X', m.id)
             if entry.by_id[id] then id = id .. '_' .. k end
-            add_row(entry, 'Passive', id, spec.MODS[m.id] or string.format('Modifier %08X', m.id), 'f32',
-                    { part(id, entry.passive, m.offset, 'f32', 100000) }, r[1], r[2], r[3], r[4])
+            local p, with = part(id, entry.passive, m.offset, 'f32', 100000), spec.JOINED[m.id]
+            local row = with and joined[with .. '_' .. m.type]
+            if row then
+                row.parts[#row.parts + 1] = p
+                entry.by_id[id], p.row = p, row
+                p.field.users[#p.field.users + 1] = entry
+            else
+                row = add_row(entry, 'Passive', id, spec.MODS[with or m.id] or string.format('Modifier %08X', m.id), 'f32',
+                              { p }, r[1], r[2], r[3], r[4])
+                if with then joined[with .. '_' .. m.type] = row end
+            end
         end
     end
     for _, st in ipairs(t.index.stats) do
@@ -8503,12 +8588,18 @@ local function resolve_gun(weapon, key)
             if v and v > 0 then rates[#rates + 1] = { n = n, offset = offset } end
             values[n] = default_of(f)
         end
-        -- three settings of one value (Maxigun, Bullet Storm, SG-88): no rate to pick in game, so one
-        -- row writes all three (its first part is the default setting, the one the game fires at)
-        if #rates == 3 and values[1] == values[2] and values[2] == values[3] then
-            add_row(weapon, 'Fire', 'rpm', 'Fire rate (RPM)', 'f32',
-                    { part('rpm', T_FIRE, fire + 8, 'f32', 100000), part('rpm_1', T_FIRE, fire + 4, 'f32', 100000),
-                      part('rpm_3', T_FIRE, fire + 12, 'f32', 100000) }, 1, 6000, 10, 50)
+        -- settings of one value (Maxigun, Bullet Storm, SG-88: all three; LAS-44 Nova: two, the first 0): no
+        -- rate to pick in game, so one row writes them all (its first part is the default setting, the one the
+        -- game fires at)
+        local same = #rates > 1
+        for _, rate in ipairs(rates) do same = same and values[rate.n] == values[rates[1].n] end
+        if same then
+            local parts = {}
+            for _, rate in ipairs(rates) do
+                local id = ({ 'rpm_1', 'rpm', 'rpm_3' })[rate.n]
+                table.insert(parts, rate.n == 2 and 1 or #parts + 1, part(id, T_FIRE, fire + rate.offset, 'f32', 100000))
+            end
+            add_row(weapon, 'Fire', parts[1].id, 'Fire rate (RPM)', 'f32', parts, 1, 6000, 10, 50)
             rates = {}
         end
         for k, rate in ipairs(rates) do
@@ -9927,7 +10018,7 @@ local config_dirty_at = nil
 -- or the id of a translation: fixed by the build (a language's release, MOD.lang), not a choice; offline (every
 -- language built in) a choice, saved as 'lang'.
 local settings = { changes = true, block_input = true, size = 80, side = 'right', opacity = 90,
-                   remember = true, arc_mp = true, lang = MOD.lang or MOD.offline and rawget(_G, 'SHODAN_OFFLINE_LANG') or 'en',
+                   remember = true, arc_mp = true, updates = 'ask', update_channel = 'releases', stacks = {}, own_off = {}, lang = MOD.lang or MOD.offline and rawget(_G, 'SHODAN_OFFLINE_LANG') or 'en',
                    last_tab = nil, last_weapon = nil,
                    GITHUB = 'https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor',
                    RANGE = { size = { 50, 100 }, opacity = { 10, 100 } } }
@@ -9979,6 +10070,10 @@ do
     if MOD.offline then   -- for the host's own text and fonts
         state.tr = function(v) return settings.tr(v) end
         state.lang = function() return settings.lang end
+        state.updates = function() return settings.updates end   -- the host's updater: 'ask' or 'auto'
+        state.update_channel = function() return settings.update_channel end   -- 'releases' or 'commits'
+        state.stacks = function() return settings.stacks end   -- passive id -> { passive ids stacked on it }
+        state.own_off = function() return settings.own_off end -- passive id -> true: its own effects left out
     end
     function settings.tr(v)
         if settings.lang == 'en' or not LANG[settings.lang] then return v end
@@ -10050,6 +10145,27 @@ local function save_config()
         lines[#lines + 1] = line
     end
     if MOD.offline then lines[#lines + 1] = 'lang ' .. settings.lang end
+    if MOD.offline then
+        lines[#lines + 1] = 'updates ' .. settings.updates
+        lines[#lines + 1] = 'update_channel ' .. settings.update_channel
+        -- passive_stack <passive id> <passive id>,<passive id>...: the passives stacked on it
+        local ids, NAMES = {}, KINDS[TYPES.passive].NAMES
+        for id in pairs(settings.stacks) do ids[#ids + 1] = id end
+        table.sort(ids)
+        for _, id in ipairs(ids) do
+            local names = {}
+            for k, other in ipairs(settings.stacks[id]) do names[k] = NAMES[other] or ('Passive ' .. other) end
+            lines[#lines + 1] = 'passive_stack ' .. id .. ' ' .. table.concat(settings.stacks[id], ',') ..
+                                '   # ' .. (NAMES[id] or ('Passive ' .. id)) .. ': ' .. table.concat(names, ', ')
+        end
+        -- passive_own <passive id> off: its own effects left out (only the passives stacked on it apply)
+        ids = {}
+        for id in pairs(settings.own_off) do ids[#ids + 1] = id end
+        table.sort(ids)
+        for _, id in ipairs(ids) do
+            lines[#lines + 1] = 'passive_own ' .. id .. ' off   # ' .. (NAMES[id] or ('Passive ' .. id))
+        end
+    end
     lines[#lines + 1] = 'unlock_unused ' .. onoff(settings.unlock_any())
     lines[#lines + 1] = 'several_vehicles ' .. onoff(MOD.vehicles.on)
     if settings.remember and settings.last_tab then lines[#lines + 1] = 'last_tab ' .. settings.last_tab end
@@ -10076,8 +10192,28 @@ local function load_config()
         local key = line:match('^%s*hotkey%s+(%S+)')
         if key then hotkey_name = key; known = true end
         local name, value = line:match('^%s*([%a_]+)%s+(%S+)%s*$')
+        local target, sources = line:match('^%s*passive_stack%s+(%d+)%s+([%d,]+)%s*$')
+        if target and MOD.offline then
+            local list, seen = {}, { [tonumber(target)] = true }
+            for id in sources:gmatch('%d+') do
+                id = tonumber(id)
+                if not seen[id] then seen[id], list[#list + 1] = true, id end
+            end
+            settings.stacks[tonumber(target)] = #list > 0 and list or nil
+            known = true
+        end
+        local own = line:match('^%s*passive_own%s+(%d+)%s+off%s*$')
+        if own and MOD.offline then settings.own_off[tonumber(own)], known = true, true end
         if name == 'changes' or name == 'block_input' or name == 'remember' then
             settings[name] = value ~= 'off'
+            known = true
+        elseif name == 'check_updates' or name == 'updates' and value == 'off' then   -- test builds' (no Off now)
+            known = true
+        elseif name == 'update_channel' and (value == 'releases' or value == 'commits') then
+            settings.update_channel = value
+            known = true
+        elseif name == 'updates' and (value == 'ask' or value == 'auto') then
+            settings.updates = value
             known = true
         elseif name == 'arc_chains_multiplayer' then
             settings.arc_mp = value == 'on'
@@ -10635,7 +10771,9 @@ local function modified(weapon)
     for _, o in ipairs(overrides) do
         if o.hash == weapon.hash and MOD.parts_of(weapon, o.id) then return true end
     end
-    return false
+    -- an armor passive with passives stacked on it (offline)
+    local t = weapon.passive and tables[weapon.passive]
+    return t ~= nil and (settings.stacks[t.index.id] ~= nil or settings.own_off[t.index.id] ~= nil)
 end
 
 -- Font: the game's UI font (the resource ids HD2 HUD Plus and DiverKit read from game.dll
@@ -10758,7 +10896,7 @@ end
 
 local function select_weapon(weapon)
     ui.weapon = weapon
-    ui.row, ui.scroll, ui.settings, ui.binding = 1, 1, false, nil
+    ui.row, ui.scroll, ui.settings, ui.binding, ui.stack_pick = 1, 1, false, nil, nil
     if weapon and settings.remember and state.phase == 'ready' and settings.last_weapon ~= weapon.hash then
         settings.last_tab, settings.last_weapon = weapon.slot, weapon.hash
         mark_config_dirty()
@@ -10898,6 +11036,12 @@ end
 
 local function reset_weapon(weapon)
     for _, row in ipairs(weapon.rows) do reset_row(weapon, row) end
+    local t = weapon.passive and tables[weapon.passive]   -- an armor passive: its stacked passives go too
+    if t and (settings.stacks[t.index.id] or settings.own_off[t.index.id]) then
+        settings.stacks[t.index.id], settings.own_off[t.index.id] = nil, nil
+        state.writes = state.writes + 1
+        mark_config_dirty()
+    end
 end
 
 local function reset_all()
@@ -11365,20 +11509,22 @@ local function draw(width, height)
         step('Gui.text')
         Gui.text(gui, value, ink_font, size, ink_material, Vector3(px, height - oy - y * s - size * 0.8, z or 953), c or WHITE)
     end
-    local function outline(x, y, w, h, c)
-        rect(x, y, w, 2, c, 952); rect(x, y + h - 2, w, 2, c, 952)
-        rect(x, y, 2, h, c, 952); rect(x + w - 2, y, 2, h, c, 952)
+    local function outline(x, y, w, h, c, z)
+        z = z or 952
+        rect(x, y, w, 2, c, z); rect(x, y + h - 2, w, 2, c, z)
+        rect(x, y, 2, h, c, z); rect(x + w - 2, y, 2, h, c, z)
     end
     local function region(key, x, y, w, h, enabled)
         regions[#regions + 1] = { key = key, x = ox + x * s, y = height - oy - (y + h) * s, w = w * s, h = h * s,
                                   enabled = enabled ~= false }
     end
-    local function button(key, label, x, y, w, h, enabled, active, ink)
+    -- z: over an overlay (its buttons at z, z + 1, z + 2)
+    local function button(key, label, x, y, w, h, enabled, active, ink, z)
         local hovered = ui.hover == key and enabled ~= false
         local fill = active and color(90, 74, 8) or hovered and color(52, 66, 80) or color(28, 34, 42)
-        rect(x, y, w, h, fill, 951)
-        outline(x, y, w, h, enabled == false and DIM or (active or hovered) and GOLD or color(70, 82, 94))
-        text(label, x + 8, y + (h - 16) / 2, 16, enabled == false and DIM or ink or WHITE, w - 12)
+        rect(x, y, w, h, fill, z or 951)
+        outline(x, y, w, h, enabled == false and DIM or (active or hovered) and GOLD or color(70, 82, 94), z and z + 1)
+        text(label, x + 8, y + (h - 16) / 2, 16, enabled == false and DIM or ink or WHITE, w - 12, false, z and z + 2)
         region(key, x, y, w, h, enabled)
     end
 
@@ -11602,6 +11748,22 @@ local function draw(width, height)
             percent('Background opacity', 'opacity')
         end
         choice('Remember last tab and weapon', 'remember', ONOFF, onoff(settings.remember))
+        if MOD.offline then   -- wider buttons than choice()'s: 'Automatic', 'Every commit' in every language
+            text('Updates', x0, y + 6, 16, WHITE, 270)
+            for k, o in ipairs({ { 'ask', 'Ask' }, { 'auto', 'Automatic' } }) do
+                button('set:updates:' .. o[1], o[2], 640 + (k - 1) * 134, y, 130, 28, true, settings.updates == o[1])
+            end
+            y = y + 36
+            text('Update channel', x0, y + 6, 16, WHITE, 270)
+            for k, o in ipairs({ { 'releases', 'Releases' }, { 'commits', 'Every commit' } }) do
+                button('set:update_channel:' .. o[1], o[2], 640 + (k - 1) * 134, y, 130, 28, true,
+                       settings.update_channel == o[1])
+            end
+            text(settings.update_channel == 'commits' and 'Every change as soon as it is pushed, before testing: it may break.'
+                 or 'Tested releases only.', x0 + 16, y + 34, 14, settings.update_channel == 'commits' and WARN or MUTED,
+                 W - x0 - 40)
+            y = y + 56
+        end
         local arc = settings.arc
         if not MOD.offline then
         choice('Arc chain edits in multiplayer', 'arc_mp', ONOFF, onoff(settings.arc_mp))
@@ -11685,6 +11847,10 @@ local function draw(width, height)
         button('wpreset:load', 'Load', x0 + 412, sy, 90, 30, chosen ~= nil)
         button('wpreset:clear', 'Clear', x0 + 508, sy, 90, 30, chosen ~= nil)
         local bottom = H - 70 - 40
+        -- an armor passive (offline): the passives stacked on it, under its rows
+        local stack_id = MOD.offline and weapon.passive and tables[weapon.passive] and tables[weapon.passive].index.id
+        local stack_list = stack_id and (settings.stacks[stack_id] or {})
+        if stack_list then bottom = bottom - (36 + 34 * (#stack_list + 2)) end
         local pitch = math.floor((bottom - y - sections * 24 - below) / math.max(1, #weapon.rows))
         local scrolling = pitch < 22
         if scrolling then
@@ -11787,6 +11953,29 @@ local function draw(width, height)
             button('scroll:up', 'Up', 790, bottom + 6, 80, 26, ui.scroll > 1)
             button('scroll:down', 'Down', 874, bottom + 6, 80, 26, ui.last_visible < #weapon.rows)
         end
+        if stack_list then
+            y = (scrolling and bottom + 36 or y) + 12
+            text('ALSO INCLUDES', x0, y + 4, 15, MUTED)
+            text('Every armor with this passive gets their effects too (set on their own pages).',
+                 x0 + 150, y + 4, 14, MUTED, W - x0 - 170)
+            y = y + 26
+            -- its own effects: on (the rows above) or off (only the passives below apply)
+            local own = not settings.own_off[stack_id]
+            text('Own effects', x0, y + 6, 16, WHITE, 140)
+            text(own and 'Its stats above apply.' or 'Off: its stats above are left out; only the passives below apply.',
+                 x0 + 150, y + 7, 14, own and MUTED or WARN, 800 - x0 - 160)
+            button('stack_own:on', 'On', 800, y, 88, 28, true, own)
+            button('stack_own:off', 'Off', 896, y, 88, 28, true, not own)
+            y = y + 34
+            for _, id in ipairs(stack_list) do
+                local other = by_hash[string.format('FFFFFFFE%08X', id)]
+                text(other and other.name or ('Passive ' .. id), x0, y + 6, 16, WHITE, 420)
+                button('stack_open:' .. id, 'Open', 800, y, 88, 28, other ~= nil)
+                button('stack_del:' .. id, 'Remove', 896, y, 88, 28, true)
+                y = y + 34
+            end
+            button('stack_pick', '+ Add passive', x0, y, 188, 28, true)
+        end
     end
 
     -- footer, and the Settings button at the bottom right
@@ -11824,6 +12013,31 @@ local function draw(width, height)
     else
         text('PgUp/PgDn change weapon, Del resets, Ctrl+1-5 loads a weapon preset, Ctrl+Shift+1-5 saves one; ' .. #overrides ..
              ' value(s) changed.', 18, H - 34, 14, MUTED, W - 150)
+    end
+    -- the passives to stack on the chosen one: over its page, until one is chosen (Cancel / Esc: none)
+    if ui.stack_pick and ui.stack_pick == weapon and not ui.settings then
+        local target = tables[weapon.passive] and tables[weapon.passive].index.id
+        local taken = { [target or -1] = true }
+        for _, id in ipairs(settings.stacks[target] or {}) do taken[id] = true end
+        local choices = {}
+        for _, w in ipairs(weapons) do
+            local t = w.passive and tables[w.passive]
+            if t and not taken[t.index.id] then choices[#choices + 1] = { id = t.index.id, name = w.name } end
+        end
+        table.sort(choices, function(a, b) return a.name:lower() < b.name:lower() end)
+        local x, y, w, h = 350, 84, W - 360, H - 104 - 84 - 8   -- (above the presets row)
+        rect(x, y, w, h, color(8, 11, 15), 958)
+        outline(x, y, w, h, GOLD, 959)
+        region('stack_modal', x, y, w, h, false)
+        text('Add a passive to ' .. weapon.name, x + 16, y + 14, 20, GOLD, w - 32, false, 960)
+        text('Its effects are added to every armor with this passive.', x + 16, y + 44, 14, MUTED, w - 32, false, 960)
+        local cols, bw = 3, math.floor((w - 32 - 16) / 3)
+        for k, c in ipairs(choices) do
+            local col, row = (k - 1) % cols, math.floor((k - 1) / cols)
+            button('stack_add:' .. c.id, c.name, x + 16 + col * (bw + 8), y + 74 + row * 34, bw, 30, true, false, nil, 961)
+        end
+        if #choices == 0 then text('Every passive is in already.', x + 16, y + 80, 16, MUTED, w - 32, false, 960) end
+        button('stack_cancel', 'Cancel', x + w - 16 - 104, y + h - 16 - 30, 104, 30, true, false, nil, 961)
     end
     -- every entry a hovered 'shared with' list names, in columns, over the rows below it (above, near the bottom)
     if shared_overlay then
@@ -11890,6 +12104,8 @@ local function click(key)
         if name == 'bind' then ui.binding = not ui.binding or nil
         elseif name == 'changes' then settings.set_changes(value == 'on')
         elseif name == 'block_input' or name == 'remember' then settings[name] = value == 'on'
+        elseif name == 'updates' and (value == 'ask' or value == 'auto') then settings.updates = value
+        elseif name == 'update_channel' and (value == 'releases' or value == 'commits') then settings.update_channel = value
         elseif name == 'arc_mp' then settings.arc_mp, settings.arc.next_check = value == 'on', 0
         elseif name == 'vehicles' then
             MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
@@ -11944,6 +12160,30 @@ local function click(key)
         elseif n and arg == 'save' then presets.confirm('save', n)
         elseif n and arg == 'delete' then presets.confirm('delete', n)
         elseif n and arg == 'rename' then presets.start_rename(n) end
+    elseif kind == 'stack_pick' and weapon then ui.stack_pick = weapon
+    elseif kind == 'stack_cancel' then ui.stack_pick = nil
+    elseif kind == 'stack_own' and weapon and weapon.passive and tables[weapon.passive] then
+        local id = tables[weapon.passive].index.id
+        if (arg == 'off') ~= (settings.own_off[id] == true) then
+            settings.own_off[id] = arg == 'off' or nil
+            state.writes = state.writes + 1   -- (the host: changed since the last install)
+            mark_config_dirty()
+            log('passive own effects: ' .. weapon.name .. ' ' .. arg)
+        end
+    elseif (kind == 'stack_add' or kind == 'stack_del') and weapon and weapon.passive and tables[weapon.passive] then
+        local target, id = tables[weapon.passive].index.id, tonumber(arg)
+        local list, kept = settings.stacks[target] or {}, {}
+        for _, other in ipairs(list) do if other ~= id then kept[#kept + 1] = other end end
+        if kind == 'stack_add' and id ~= target then kept[#kept + 1] = id end
+        settings.stacks[target] = #kept > 0 and kept or nil
+        ui.stack_pick = nil
+        state.writes = state.writes + 1   -- (the host: changed since the last install)
+        mark_config_dirty()
+        local other = by_hash[string.format('FFFFFFFE%08X', id)]
+        log('passive stack: ' .. weapon.name .. (kind == 'stack_add' and ' + ' or ' - ') .. (other and other.name or id))
+    elseif kind == 'stack_open' then
+        local other = by_hash[string.format('FFFFFFFE%08X', tonumber(arg) or 0)]
+        if other then select_weapon(other) end
     elseif kind == 'scroll' and weapon then
         local page = math.max(1, (ui.last_visible or ui.scroll) - ui.scroll)
         ui.scroll = math.max(1, math.min(#weapon.rows, ui.scroll + (arg == 'down' and page or -page)))
@@ -12040,6 +12280,10 @@ local function keyboard(now)
     end
     if ui.settings then
         if pressed('Escape', now) then ui.settings = false end
+        return
+    end
+    if ui.stack_pick then   -- the passive picker is open: Esc closes it
+        if pressed('Escape', now) then ui.stack_pick = nil end
         return
     end
     if pressed('PageDown', now) or pressed('PageUp', now) then

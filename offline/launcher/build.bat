@@ -6,4 +6,5 @@ if not defined LJ set LJ=%~dp0..\..\..\buildtools\src\LuaJIT\src
 cd /d "%~dp0"
 rc /nologo /fo launcher.res launcher.rc
 cl /nologo /O2 /W3 /MD /I"%LJ%" launcher.c /Fo:launcher.obj /link /SUBSYSTEM:WINDOWS "%LJ%\lua51.lib" user32.lib launcher.res /OUT:"SHODAN Stat Editor Offline.exe"
-cl /nologo /O2 /W3 /MT /LD hashsolve.c /Fo:hashsolve.obj /link /OUT:shodan_hash.dll
+rem shodan_hash.dll: the hash search (hashsolve.c) and the updater's downloads (fetch.c)
+cl /nologo /O2 /W3 /MT /LD hashsolve.c fetch.c /link winhttp.lib /OUT:shodan_hash.dll
