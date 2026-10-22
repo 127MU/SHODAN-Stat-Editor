@@ -643,6 +643,7 @@ MOD.langs = {
       ['Arc chains use the game\'s values while other players are in your game (see Settings).'] = '对局中有其他玩家时，电弧连锁使用游戏原值（详见设置）。',
       ['Arc damage taken'] = '受到的电弧伤害',
       ['Arc splits'] = '电弧分裂',
+      ['Arming distance (m)'] = '起爆距离(米)',
       ['Arming time (s)'] = '布防时间(秒)',
       ['Armor'] = '护甲',
       ['Armor pen. (direct)'] = '穿甲(直射)',
@@ -683,6 +684,9 @@ MOD.langs = {
       ['Belt-Fed Grenade Launcher'] = '弹链式榴弹发射器',
       ['Bingus Shared Loader by CowboyBingus'] = 'Bingus 共享加载器 · CowboyBingus',
       ['Blast'] = '爆炸',
+      ['Blast angle (deg)'] = '爆炸角(度)',
+      ['Blast delay (s)'] = '爆炸延迟(秒)',
+      ['Blast proximity (m)'] = '爆炸接近度(米)',
       ['Blast radius'] = '爆炸半径',
       ['Blitzer'] = '雷霆',
       ['Block game input while open'] = '打开时屏蔽游戏输入',
@@ -719,7 +723,9 @@ MOD.langs = {
       ['CQC-72 Entrenchment Tool'] = 'CQC-72 堑壕工具',
       ['CQC-73 Entrenchment Tool'] = 'CQC-73 堑壕工具',
       ['CQC-9 Defoliation Tool'] = 'CQC-9 除叶工具',
+      ['Calibre (mm)'] = '口径(毫米)',
       ['Caltrops'] = '铁蒺藜',
+      ['Camera shake radius (m)'] = '镜头震动半径(米)',
       ['Cancel'] = '取消',
       ['Censor'] = '审查官',
       ['Chain length'] = '连锁长度',
@@ -751,6 +757,7 @@ MOD.langs = {
       ['Concussive Padding (Grenadier)'] = '防震内衬（掷弹兵型）',
       ['Concussive Padding (Hazmat)'] = '防震内衬（防化型）',
       ['Concussive Padding (Reinforced)'] = '防震内衬（强化型）',
+      ['Cone angle (deg)'] = '锥角(度)',
       ['Constitution'] = '宪法',
       ['Consumables'] = '消耗品',
       ['Contact Mine'] = '水雷',
@@ -849,10 +856,12 @@ MOD.langs = {
       ['Evictor'] = '驱逐者',
       ['Expendable Anti-Tank'] = '消耗性反坦克武器',
       ['Expendable Napalm'] = '消耗性凝固汽油弹',
+      ['Expiry explosion (id)'] = '到期爆炸 (ID)',
       ['Explodes after death (s)'] = '死亡后爆炸（秒）',
       ['Exploding Crossbow'] = '爆燃弩',
       ['Explosion'] = '爆炸',
       ['Explosion (expiry)'] = '爆炸（时效结束）',
+      ['Explosion id'] = '爆炸 ID',
       ['Explosive damage taken'] = '受到爆炸伤害',
       ['Extended Magazine'] = '加长弹匣',
       ['Extra Padding'] = '额外垫料',
@@ -981,6 +990,7 @@ MOD.langs = {
       ['Immolation'] = '焚身',
       ['Impact'] = '冲击弹',
       ['Impact damage taken'] = '受到冲击伤害',
+      ['Impact explosion (id)'] = '命中爆炸 (ID)',
       ['Incendiary'] = '燃烧弹',
       ['Incendiary Impact'] = '燃烧冲击弹',
       ['Incinerator FRV'] = '炽灼型快速侦察载具',
@@ -1061,6 +1071,7 @@ MOD.langs = {
       ['Liberator Concussive'] = '震荡“解放者”',
       ['Liberator Legacy'] = '“解放者”传承',
       ['Liberator Penetrator'] = '穿甲“解放者”',
+      ['Lifetime (s)'] = '存续时间(秒)',
       ['Limb health'] = '四肢生命值',
       ['Limb injury avoidance'] = '免疫肢体受伤',
       ['Load'] = '读取',
@@ -1103,6 +1114,7 @@ MOD.langs = {
       ['Magazines from supply'] = '补给弹匣',
       ['Main gun'] = '主炮',
       ['Marker radar scan every (s)'] = '标记雷达扫描间隔（秒）',
+      ['Mass (kg)'] = '质量(千克)',
       ['Max carried'] = '最大携带',
       ['Max flight time (s)'] = '最大飞行时间(秒)',
       ['Max spare heatsinks'] = '最多备用散热片',
@@ -1141,6 +1153,7 @@ MOD.langs = {
       ['Noise'] = '噪音',
       ['Normal projectile'] = '常规弹丸',
       ['Not offered by the game: a laser built on the Scythe. Settings: Unlock LAS-22 Shear.'] = '游戏本身未提供：基于“收割者”改造的激光武器。设置项：解锁 LAS-22 剪刀。',
+      ['Not used by any weapon or stratagem in this list.'] = '本列表中的武器与战备都没有用到它。',
       ['Nothing matches.'] = '没有匹配项。',
       ['Nothing to install: your values are the game\'s own.'] = '无需安装：你的数值与游戏原始数值相同。',
       ['Nova'] = '新星',
@@ -1236,6 +1249,7 @@ MOD.langs = {
       ['Primary'] = '主武器',
       ['Primary reload speed'] = '主武器装填速度',
       ['Projectile'] = '弹丸',
+      ['Projectile explosion id'] = '弹丸爆炸 ID',
       ['Projectile fired (id)'] = '发射的弹丸(编号)',
       ['Projectile swap'] = '弹种交换',
       ['Projectiles per shot'] = '每次射击弹丸数',
@@ -1266,6 +1280,7 @@ MOD.langs = {
       ['RS-422 Railgun'] = 'RS-422 磁轨炮',
       ['Rack'] = '挂架',
       ['Radar'] = '雷达',
+      ['Radius'] = '半径',
       ['Radius (m)'] = '半径(米)',
       ['Rail Cannon Round'] = '轨道炮弹',
       ['Railgun'] = '磁轨炮',
@@ -1289,6 +1304,7 @@ MOD.langs = {
       ['Recoil multiplier (horizontal)'] = '后坐倍率(水平)',
       ['Recoil multiplier (vertical)'] = '后坐倍率(垂直)',
       ['Recoilless Rifle'] = '无后坐力炮',
+      ['Records'] = '记录',
       ['Redeemer'] = '救世主',
       ['Reduced Signature'] = '隐迹潜踪',
       ['Refill starts after (s)'] = '开始恢复前延迟(秒)',
@@ -1308,6 +1324,7 @@ MOD.langs = {
       ['Reset all values'] = '重置全部数值',
       ['Reset helldiver'] = '重置潜兵',
       ['Reset passive'] = '重置被动',
+      ['Reset record'] = '重置记录',
       ['Reset weapon'] = '重置武器',
       ['Resets all values from the current preset to default.'] = '将当前预设的全部数值恢复为默认值。',
       ['Restore the game\'s files'] = '恢复游戏原始文件',
@@ -1404,6 +1421,7 @@ MOD.langs = {
       ['Settings'] = '设置',
       ['Settings are saved at once, in config.txt with your changes.'] = '设置会与你的修改一并即时保存到 config.txt。',
       ['Several vehicles of a kind'] = '同类载具数量',
+      ['Shape'] = '形状',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = '所有带此被动的护甲共用。倍率：1 = 不变。',
       ['Shear'] = '切变',
       ['Shells per salvo'] = '每次齐射弹数',
@@ -1419,6 +1437,7 @@ MOD.langs = {
       ['Shrapnel explosion'] = '破片爆炸',
       ['Shrapnel pieces'] = '破片数量',
       ['Shrapnel projectile'] = '破片弹丸',
+      ['Shrapnel projectile (id)'] = '破片弹丸 (ID)',
       ['Sickle'] = '镰刀',
       ['Siege-Ready'] = '蓄势出击',
       ['Sightliner'] = '视界者',
@@ -1609,6 +1628,9 @@ MOD.langs = {
       ['its own. - / + : fire another weapon\'s'] = '自身弹丸。- / +：改为发射其他武器的弹丸',
       ['loaded into an empty weapon, from your spare rounds'] = '装入空枪时，从备用弹药中补充',
       ['min charge'] = '最少充能',
+      ['no shrapnel'] = '无破片',
+      ['none (no explosion)'] = '无（不爆炸）',
+      ['none (no projectile)'] = '无（没有弹丸）',
       ['normal projectile'] = '常规弹丸',
       ['overcharge'] = '过充',
       ['panels, mines per panel: lower only (more than the default crashes the game)'] = '面板数、每面板地雷数：只能调低（高于默认值会让游戏崩溃）',
@@ -2632,6 +2654,21 @@ MOD.langs = {
       ['your changes are off: turn them on in settings to edit.'] = '你的改动当前处于关闭状态：请在设置里开启后再编辑。',
     },
     patterns = {
+      { '^(.-) SHRAPNEL$', '%1破片' },
+      { '^(.-) EXPLOSION ID$', '%1爆炸 ID' },
+      { '^projectile (%d+) %(not in this game build%)$', '弹丸 %1（本版本游戏里没有）' },
+      { '^explosion (%d+) %(not in this game build%)$', '爆炸 %1（本版本游戏里没有）' },
+      { '^No explosion (.+) in the game%.$', '游戏里没有编号为 %1 的爆炸。' },
+      { '^each piece is (.+)$', '每块破片为 %1' },
+      { '^sets off: (.+)$', '引发：%1' },
+      { '^Set off by: (.+)$', '引爆武器：%L1' },
+      { '^Fired by: (.+)$', '发射武器：%L1' },
+      { '^(%*? ?)Status #(%d+)$', '%1状态 #%2' },
+      { '^(%*? ?)Status #(%d+) · (.+)$', '%1状态 #%2 · %3' },
+      { '^(%*? ?)Explosion #(%d+)$', '%1爆炸 #%2' },
+      { '^(%*? ?)Explosion #(%d+) · (.+)$', '%1爆炸 #%2 · %3' },
+      { '^(%*? ?)Projectile #(%d+)$', '%1弹丸 #%2' },
+      { '^(%*? ?)Projectile #(%d+) · (.+)$', '%1弹丸 #%2 · %3' },
       { '^Your values are installed %((%d+) game files%)%. Close the game before installing%.$', '你的数值已安装（%1 个游戏文件）。安装前请先关闭游戏。' },
       { '^Installing: preparing (.+) %((%d+) of (%d+)%)%.%.%.$', '安装中：正在准备 %1（%2 / %3）...' },
       { '^Not installed: (.+) could not be prepared %((.+)%)%. Nothing was changed%.$', '未安装：无法准备 %1（%2）。未做任何更改。' },
@@ -3012,6 +3049,7 @@ MOD.langs = {
       ['Arc chains use the game\'s values while other players are in your game (see Settings).'] = '對局中有其他玩家時，電弧連鎖使用遊戲原值（詳見設定）。',
       ['Arc damage taken'] = '受到的電弧傷害',
       ['Arc splits'] = '電弧分裂',
+      ['Arming distance (m)'] = '起爆距離(米)',
       ['Arming time (s)'] = '佈防時間(秒)',
       ['Armor'] = '護甲',
       ['Armor pen. (direct)'] = '穿甲(直射)',
@@ -3052,6 +3090,9 @@ MOD.langs = {
       ['Belt-Fed Grenade Launcher'] = '彈鏈式榴彈發射器',
       ['Bingus Shared Loader by CowboyBingus'] = 'Bingus 共享載入器 · CowboyBingus',
       ['Blast'] = '爆炸',
+      ['Blast angle (deg)'] = '爆炸角(度)',
+      ['Blast delay (s)'] = '爆炸延遲(秒)',
+      ['Blast proximity (m)'] = '爆炸接近度(米)',
       ['Blast radius'] = '爆炸半徑',
       ['Blitzer'] = '閃擊者',
       ['Block game input while open'] = '開啟時遮蔽遊戲輸入',
@@ -3088,7 +3129,9 @@ MOD.langs = {
       ['CQC-72 Entrenchment Tool'] = 'CQC-72 挖掘工具',
       ['CQC-73 Entrenchment Tool'] = 'CQC-73 挖掘工具',
       ['CQC-9 Defoliation Tool'] = 'CQC-9 除草器',
+      ['Calibre (mm)'] = '口徑(毫米)',
       ['Caltrops'] = '蒺藜',
+      ['Camera shake radius (m)'] = '鏡頭震動半徑(米)',
       ['Cancel'] = '取消',
       ['Censor'] = '審查官',
       ['Chain length'] = '連鎖長度',
@@ -3120,6 +3163,7 @@ MOD.langs = {
       ['Concussive Padding (Grenadier)'] = '擲彈兵防震盪襯墊',
       ['Concussive Padding (Hazmat)'] = '危害物質防震盪襯墊',
       ['Concussive Padding (Reinforced)'] = '強化防震盪襯墊',
+      ['Cone angle (deg)'] = '錐角(度)',
       ['Constitution'] = '憲法',
       ['Consumables'] = '消耗品',
       ['Contact Mine'] = '水雷',
@@ -3218,10 +3262,12 @@ MOD.langs = {
       ['Evictor'] = '驅離者',
       ['Expendable Anti-Tank'] = '反坦克消耗品',
       ['Expendable Napalm'] = '消耗型凝固汽油彈',
+      ['Expiry explosion (id)'] = '到期爆炸 (ID)',
       ['Explodes after death (s)'] = '死亡後爆炸（秒）',
       ['Exploding Crossbow'] = '猛爆十字弓',
       ['Explosion'] = '爆炸',
       ['Explosion (expiry)'] = '爆炸（時效結束）',
+      ['Explosion id'] = '爆炸 ID',
       ['Explosive damage taken'] = '受到爆炸傷害',
       ['Extended Magazine'] = '擴充彈匣',
       ['Extra Padding'] = '額外填充',
@@ -3350,6 +3396,7 @@ MOD.langs = {
       ['Immolation'] = '焚毀',
       ['Impact'] = '衝擊彈',
       ['Impact damage taken'] = '受到衝擊傷害',
+      ['Impact explosion (id)'] = '命中爆炸 (ID)',
       ['Incendiary'] = '燃燒彈',
       ['Incendiary Impact'] = '衝擊燃燒彈',
       ['Incinerator FRV'] = '焚燒者FRV',
@@ -3430,6 +3477,7 @@ MOD.langs = {
       ['Liberator Concussive'] = '震盪解放者',
       ['Liberator Legacy'] = '解放者「榮光」',
       ['Liberator Penetrator'] = '穿甲解放者',
+      ['Lifetime (s)'] = '存續時間(秒)',
       ['Limb health'] = '四肢生命值',
       ['Limb injury avoidance'] = '免疫肢體受傷',
       ['Load'] = '讀取',
@@ -3472,6 +3520,7 @@ MOD.langs = {
       ['Magazines from supply'] = '補給彈匣',
       ['Main gun'] = '主炮',
       ['Marker radar scan every (s)'] = '標記雷達掃描間隔（秒）',
+      ['Mass (kg)'] = '質量(千克)',
       ['Max carried'] = '最大攜帶',
       ['Max flight time (s)'] = '最大飛行時間(秒)',
       ['Max spare heatsinks'] = '最多備用散熱片',
@@ -3510,6 +3559,7 @@ MOD.langs = {
       ['Noise'] = '噪音',
       ['Normal projectile'] = '常規射彈',
       ['Not offered by the game: a laser built on the Scythe. Settings: Unlock LAS-22 Shear.'] = '遊戲本身未提供：基於「收割者」改造的雷射武器。設定項：解鎖 LAS-22 剪刀。',
+      ['Not used by any weapon or stratagem in this list.'] = '本列表中的武器與戰備都沒有用到它。',
       ['Nothing matches.'] = '沒有符合項。',
       ['Nothing to install: your values are the game\'s own.'] = '無需安裝：你的數值與遊戲原始數值相同。',
       ['Nova'] = '新星',
@@ -3605,6 +3655,7 @@ MOD.langs = {
       ['Primary'] = '主武器',
       ['Primary reload speed'] = '主武器裝填速度',
       ['Projectile'] = '射彈',
+      ['Projectile explosion id'] = '射彈爆炸 ID',
       ['Projectile fired (id)'] = '發射的射彈(編號)',
       ['Projectile swap'] = '彈種交換',
       ['Projectiles per shot'] = '每次射擊射彈數',
@@ -3635,6 +3686,7 @@ MOD.langs = {
       ['RS-422 Railgun'] = 'RS-422 磁軌炮',
       ['Rack'] = '掛架',
       ['Radar'] = '雷達',
+      ['Radius'] = '半徑',
       ['Radius (m)'] = '半徑(米)',
       ['Rail Cannon Round'] = '軌道炮彈',
       ['Railgun'] = '磁軌炮',
@@ -3658,6 +3710,7 @@ MOD.langs = {
       ['Recoil multiplier (horizontal)'] = '後坐倍率(水平)',
       ['Recoil multiplier (vertical)'] = '後坐倍率(垂直)',
       ['Recoilless Rifle'] = '無後座力炮',
+      ['Records'] = '記錄',
       ['Redeemer'] = '救世主',
       ['Reduced Signature'] = '隱跡',
       ['Refill starts after (s)'] = '開始恢復前延遲(秒)',
@@ -3677,6 +3730,7 @@ MOD.langs = {
       ['Reset all values'] = '重置全部數值',
       ['Reset helldiver'] = '重置潛兵',
       ['Reset passive'] = '重置被動',
+      ['Reset record'] = '重置記錄',
       ['Reset weapon'] = '重置武器',
       ['Resets all values from the current preset to default.'] = '將當前預設的全部數值恢復為預設值。',
       ['Restore the game\'s files'] = '恢復遊戲原始檔案',
@@ -3773,6 +3827,7 @@ MOD.langs = {
       ['Settings'] = '設定',
       ['Settings are saved at once, in config.txt with your changes.'] = '設定會與你的修改一併即時儲存到 config.txt。',
       ['Several vehicles of a kind'] = '同類載具數量',
+      ['Shape'] = '形狀',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = '所有帶此被動的護甲共用。倍率：1 = 不變。',
       ['Shear'] = '雷射剪',
       ['Shells per salvo'] = '每次齊射彈數',
@@ -3788,6 +3843,7 @@ MOD.langs = {
       ['Shrapnel explosion'] = '破片爆炸',
       ['Shrapnel pieces'] = '破片數量',
       ['Shrapnel projectile'] = '破片射彈',
+      ['Shrapnel projectile (id)'] = '破片射彈 (ID)',
       ['Sickle'] = '鐮刀',
       ['Siege-Ready'] = '圍攻準備完畢',
       ['Sightliner'] = '視界者',
@@ -3978,6 +4034,9 @@ MOD.langs = {
       ['its own. - / + : fire another weapon\'s'] = '自身射彈。- / +：改為發射其他武器的射彈',
       ['loaded into an empty weapon, from your spare rounds'] = '裝入空槍時，從備用彈藥中補充',
       ['min charge'] = '最少充能',
+      ['no shrapnel'] = '無破片',
+      ['none (no explosion)'] = '無（不爆炸）',
+      ['none (no projectile)'] = '無（沒有射彈）',
       ['normal projectile'] = '常規射彈',
       ['overcharge'] = '過充',
       ['panels, mines per panel: lower only (more than the default crashes the game)'] = '面板數、每面板地雷數：只能調低（高於預設值會讓遊戲崩潰）',
@@ -5001,6 +5060,21 @@ MOD.langs = {
       ['your changes are off: turn them on in settings to edit.'] = '你的改動當前處於關閉狀態：請在設定裡開啟後再編輯。',
     },
     patterns = {
+      { '^(.-) SHRAPNEL$', '%1破片' },
+      { '^(.-) EXPLOSION ID$', '%1爆炸 ID' },
+      { '^projectile (%d+) %(not in this game build%)$', '射彈 %1（本版本遊戲裡沒有）' },
+      { '^explosion (%d+) %(not in this game build%)$', '爆炸 %1（本版本遊戲裡沒有）' },
+      { '^No explosion (.+) in the game%.$', '遊戲裡沒有編號為 %1 的爆炸。' },
+      { '^each piece is (.+)$', '每塊破片為 %1' },
+      { '^sets off: (.+)$', '引發：%1' },
+      { '^Set off by: (.+)$', '引爆武器：%L1' },
+      { '^Fired by: (.+)$', '發射武器：%L1' },
+      { '^(%*? ?)Status #(%d+)$', '%1狀態 #%2' },
+      { '^(%*? ?)Status #(%d+) · (.+)$', '%1狀態 #%2 · %3' },
+      { '^(%*? ?)Explosion #(%d+)$', '%1爆炸 #%2' },
+      { '^(%*? ?)Explosion #(%d+) · (.+)$', '%1爆炸 #%2 · %3' },
+      { '^(%*? ?)Projectile #(%d+)$', '%1射彈 #%2' },
+      { '^(%*? ?)Projectile #(%d+) · (.+)$', '%1射彈 #%2 · %3' },
       { '^Your values are installed %((%d+) game files%)%. Close the game before installing%.$', '你的數值已安裝（%1 個遊戲檔案）。安裝前請先關閉遊戲。' },
       { '^Installing: preparing (.+) %((%d+) of (%d+)%)%.%.%.$', '安裝中：正在準備 %1（%2 / %3）...' },
       { '^Not installed: (.+) could not be prepared %((.+)%)%. Nothing was changed%.$', '未安裝：無法準備 %1（%2）。未做任何更改。' },
@@ -5381,6 +5455,7 @@ MOD.langs = {
       ['Arc chains use the game\'s values while other players are in your game (see Settings).'] = 'Пока в вашей игре есть другие игроки, цепи дуги используют значения игры (см. Настройки).',
       ['Arc damage taken'] = 'Получаемый урон от дуги',
       ['Arc splits'] = 'Разветвления дуги',
+      ['Arming distance (m)'] = 'Дистанция взведения (м)',
       ['Arming time (s)'] = 'Время взведения (с)',
       ['Armor'] = 'Броня',
       ['Armor pen. (direct)'] = 'Пробив. брони (прямо)',
@@ -5421,6 +5496,9 @@ MOD.langs = {
       ['Belt-Fed Grenade Launcher'] = 'Ленточный гранатомет',
       ['Bingus Shared Loader by CowboyBingus'] = 'Bingus Shared Loader от CowboyBingus',
       ['Blast'] = 'Взрыв',
+      ['Blast angle (deg)'] = 'Угол взрыва (град)',
+      ['Blast delay (s)'] = 'Задержка взрыва (с)',
+      ['Blast proximity (m)'] = 'Дистанция подрыва (м)',
       ['Blast radius'] = 'Радиус взрыва',
       ['Blitzer'] = '«Налетчик»',
       ['Block game input while open'] = 'Блокировать ввод в игре',
@@ -5457,7 +5535,9 @@ MOD.langs = {
       ['CQC-72 Entrenchment Tool'] = 'CQC-72 Орудие окапывания',
       ['CQC-73 Entrenchment Tool'] = 'CQC-73 Орудие окапывания',
       ['CQC-9 Defoliation Tool'] = 'CQC-9 Дефолиатор',
+      ['Calibre (mm)'] = 'Калибр (мм)',
       ['Caltrops'] = 'Проволочные силки',
+      ['Camera shake radius (m)'] = 'Радиус тряски камеры (м)',
       ['Cancel'] = 'Отмена',
       ['Censor'] = 'Цензор',
       ['Chain length'] = 'Длина цепи',
@@ -5489,6 +5569,7 @@ MOD.langs = {
       ['Concussive Padding (Grenadier)'] = 'Противовзрывная подкладка, гренадер',
       ['Concussive Padding (Hazmat)'] = 'Противовзрывная подкладка, химзащита',
       ['Concussive Padding (Reinforced)'] = 'Противовзрывная подкладка, усиленная',
+      ['Cone angle (deg)'] = 'Угол конуса (град)',
       ['Constitution'] = '«Конституция»',
       ['Consumables'] = 'Расходники',
       ['Contact Mine'] = 'Контактная мина',
@@ -5587,10 +5668,12 @@ MOD.langs = {
       ['Evictor'] = 'Вытеснитель',
       ['Expendable Anti-Tank'] = '«Одноразовый бронебой»',
       ['Expendable Napalm'] = 'Одноразовый напалм',
+      ['Expiry explosion (id)'] = 'Взрыв по истечении (ID)',
       ['Explodes after death (s)'] = 'Взрывается после гибели (с)',
       ['Exploding Crossbow'] = '«Взрывной арбалет»',
       ['Explosion'] = 'Взрыв',
       ['Explosion (expiry)'] = 'Взрыв (по истечении)',
+      ['Explosion id'] = 'ID взрыва',
       ['Explosive damage taken'] = 'Получаемый урон от взрывов',
       ['Extended Magazine'] = 'Увеличенный магазин',
       ['Extra Padding'] = 'Экстра-уплотнение',
@@ -5719,6 +5802,7 @@ MOD.langs = {
       ['Immolation'] = 'Испепелитель',
       ['Impact'] = '«Ударная»',
       ['Impact damage taken'] = 'Получаемый урон от ударов',
+      ['Impact explosion (id)'] = 'Взрыв при попадании (ID)',
       ['Incendiary'] = '«Зажигательная»',
       ['Incendiary Impact'] = 'Зажигательная ударная',
       ['Incinerator FRV'] = 'Огнеметная МТР',
@@ -5799,6 +5883,7 @@ MOD.langs = {
       ['Liberator Concussive'] = '«Сотрясающий освободитель»',
       ['Liberator Legacy'] = '«Классический освободитель»',
       ['Liberator Penetrator'] = '«Пробойный освободитель»',
+      ['Lifetime (s)'] = 'Время жизни (с)',
       ['Limb health'] = 'Здоровье конечностей',
       ['Limb injury avoidance'] = 'Защита конечностей от ранений',
       ['Load'] = 'Загрузить',
@@ -5841,6 +5926,7 @@ MOD.langs = {
       ['Magazines from supply'] = 'Магазины из снабжения',
       ['Main gun'] = 'Основное орудие',
       ['Marker radar scan every (s)'] = 'Радарное сканирование меток каждые (с)',
+      ['Mass (kg)'] = 'Масса (кг)',
       ['Max carried'] = 'Макс. при себе',
       ['Max flight time (s)'] = 'Макс. время полета (с)',
       ['Max spare heatsinks'] = 'Макс. запасных радиаторов',
@@ -5879,6 +5965,7 @@ MOD.langs = {
       ['Noise'] = 'Шум',
       ['Normal projectile'] = 'Обычный снаряд',
       ['Not offered by the game: a laser built on the Scythe. Settings: Unlock LAS-22 Shear.'] = 'Игра его не предлагает: лазер на основе «Косы». Настройки: разблокировать LAS-22 Ножницы.',
+      ['Not used by any weapon or stratagem in this list.'] = 'Ни одно оружие или стратагема в этом списке его не использует.',
       ['Nothing matches.'] = 'Ничего не найдено.',
       ['Nothing to install: your values are the game\'s own.'] = 'Устанавливать нечего: ваши значения совпадают с игровыми.',
       ['Nova'] = '«Нова»',
@@ -5974,6 +6061,7 @@ MOD.langs = {
       ['Primary'] = 'Основное',
       ['Primary reload speed'] = 'Перезарядка осн. оружия',
       ['Projectile'] = 'Снаряд',
+      ['Projectile explosion id'] = 'Взрыв снаряда: ID',
       ['Projectile fired (id)'] = 'Выпускаемый снаряд (id)',
       ['Projectile swap'] = 'Замена снаряда',
       ['Projectiles per shot'] = 'Снарядов за выстрел',
@@ -6004,6 +6092,7 @@ MOD.langs = {
       ['RS-422 Railgun'] = 'RS-422 «Рельсотрон»',
       ['Rack'] = 'Стойка',
       ['Radar'] = 'Радар',
+      ['Radius'] = 'Радиус',
       ['Radius (m)'] = 'Радиус (м)',
       ['Rail Cannon Round'] = 'Выстрел рельсотрона',
       ['Railgun'] = '«Рельсотрон»',
@@ -6027,6 +6116,7 @@ MOD.langs = {
       ['Recoil multiplier (horizontal)'] = 'Множитель отдачи (по горизонтали)',
       ['Recoil multiplier (vertical)'] = 'Множитель отдачи (по вертикали)',
       ['Recoilless Rifle'] = '«Безоткатная винтовка»',
+      ['Records'] = 'Записи',
       ['Redeemer'] = '«Избавитель»',
       ['Reduced Signature'] = 'Уменьшенный след',
       ['Refill starts after (s)'] = 'Восстановление начинается через (с)',
@@ -6046,6 +6136,7 @@ MOD.langs = {
       ['Reset all values'] = 'Сбросить все значения',
       ['Reset helldiver'] = 'Сбросить десантника',
       ['Reset passive'] = 'Сброс эффекта',
+      ['Reset record'] = 'Сбросить запись',
       ['Reset weapon'] = 'Сброс оружия',
       ['Resets all values from the current preset to default.'] = 'Сбрасывает все значения текущего пресета к значениям по умолчанию.',
       ['Restore the game\'s files'] = 'Вернуть файлы игры',
@@ -6142,6 +6233,7 @@ MOD.langs = {
       ['Settings'] = 'Настройки',
       ['Settings are saved at once, in config.txt with your changes.'] = 'Настройки сохраняются сразу, в config.txt вместе с вашими изменениями.',
       ['Several vehicles of a kind'] = 'Несколько машин одного вида',
+      ['Shape'] = 'Форма',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = 'Общее для всей брони с этим эффектом. Множители: 1 = без изменений.',
       ['Shear'] = 'Ножницы',
       ['Shells per salvo'] = 'Снарядов в залпе',
@@ -6157,6 +6249,7 @@ MOD.langs = {
       ['Shrapnel explosion'] = 'Взрыв осколков',
       ['Shrapnel pieces'] = 'Число осколков',
       ['Shrapnel projectile'] = 'Снаряд осколков',
+      ['Shrapnel projectile (id)'] = 'Снаряд осколков (ID)',
       ['Sickle'] = '«Серп»',
       ['Siege-Ready'] = 'К осаде готов',
       ['Sightliner'] = '«Целенаводчик»',
@@ -6347,6 +6440,9 @@ MOD.langs = {
       ['its own. - / + : fire another weapon\'s'] = 'свой. - / + : стрелять снарядом другого оружия',
       ['loaded into an empty weapon, from your spare rounds'] = 'заряжается в пустое оружие из запасных патронов',
       ['min charge'] = 'мин. заряд',
+      ['no shrapnel'] = 'без осколков',
+      ['none (no explosion)'] = 'нет (без взрыва)',
+      ['none (no projectile)'] = 'нет (без снаряда)',
       ['normal projectile'] = 'обычный снаряд',
       ['overcharge'] = 'перезаряд',
       ['panels, mines per panel: lower only (more than the default crashes the game)'] = 'секции, мины на секцию: только уменьшать (больше значения по умолчанию — вылет игры)',
@@ -6941,6 +7037,21 @@ MOD.langs = {
       ['warrant'] = 'Ордер',
     },
     patterns = {
+      { '^(.-) SHRAPNEL$', '%1: ОСКОЛКИ' },
+      { '^(.-) EXPLOSION ID$', '%1: ID ВЗРЫВА' },
+      { '^projectile (%d+) %(not in this game build%)$', 'снаряд %1 (нет в этой сборке игры)' },
+      { '^explosion (%d+) %(not in this game build%)$', 'взрыв %1 (нет в этой сборке игры)' },
+      { '^No explosion (.+) in the game%.$', 'В игре нет взрыва %1.' },
+      { '^each piece is (.+)$', 'каждый осколок: %1' },
+      { '^sets off: (.+)$', 'вызывает: %1' },
+      { '^Set off by: (.+)$', 'Срабатывает от: %L1' },
+      { '^Fired by: (.+)$', 'Стреляет: %L1' },
+      { '^(%*? ?)Status #(%d+)$', '%1Статус #%2' },
+      { '^(%*? ?)Status #(%d+) · (.+)$', '%1Статус #%2 · %3' },
+      { '^(%*? ?)Explosion #(%d+)$', '%1Взрыв #%2' },
+      { '^(%*? ?)Explosion #(%d+) · (.+)$', '%1Взрыв #%2 · %3' },
+      { '^(%*? ?)Projectile #(%d+)$', '%1Снаряд #%2' },
+      { '^(%*? ?)Projectile #(%d+) · (.+)$', '%1Снаряд #%2 · %3' },
       { '^Your values are installed %((%d+) game files%)%. Close the game before installing%.$', 'Ваши значения установлены (файлов игры: %1). Перед установкой закрывайте игру.' },
       { '^Installing: preparing (.+) %((%d+) of (%d+)%)%.%.%.$', 'Установка: подготовка %1 (%2 из %3)...' },
       { '^Not installed: (.+) could not be prepared %((.+)%)%. Nothing was changed%.$', 'Не установлено: не удалось подготовить %1 (%2). Ничего не изменено.' },
@@ -9158,6 +9269,28 @@ local function resolve_gun(weapon, key)
         proj('pen_slowdown', 'Penetration slowdown', 64, 100, 0.05, 0.25)
         local impact = read_field(field_at(T_PROJECTILE, p + 144, 'u32', 100000))
         local expiry = read_field(field_at(T_PROJECTILE, p + 156, 'u32', 100000))
+        -- the explosions it sets off, as choices (+144 on impact, +156 on expiry; 0: none), and its fuse: above 0
+        -- it goes off this close to a target (+148, a flak fuse) and this long after the hit (+152). The
+        -- explosion rows below stay the game's own explosion's: another one's are on the Records tab.
+        local idsec = section .. ' explosion id'
+        local function blast_id(id, label, offset)
+            local row = add_row(weapon, idsec, idp .. id, label, 'u32', { part(idp .. id, T_PROJECTILE, p + offset, 'u32', 100000) },
+                                0, 100000, 1, 10)
+            row.choice = 'explosion'
+            return row
+        end
+        local impact_row = impact and blast_id('impact_explosion', 'Impact explosion (id)', 144)
+        if impact_row then
+            impact_row.note = function() return 'sets off: ' .. MOD.records.label(T_EXPLOSION, read_field(impact_row.parts[1].field)) end
+        end
+        if impact and impact > 0 then
+            for _, f in ipairs({ { 'fuse_proximity', 'Blast proximity (m)', 148, 200, 0.1, 1 },
+                                 { 'fuse_delay', 'Blast delay (s)', 152, 30, 0.05, 0.5 } }) do
+                add_row(weapon, idsec, idp .. f[1], f[2], 'f32', { part(idp .. f[1], T_PROJECTILE, p + f[3], 'f32', 100000) },
+                        0, f[4], f[5], f[6])
+            end
+        end
+        if expiry then blast_id('expiry_explosion', 'Expiry explosion (id)', 156) end
         local first = #blasts
         if impact and impact > 0 then blasts[#blasts + 1] = { id = impact, prefix = idp .. 'blast', section = xsection, damage = true } end
         if expiry and expiry > 0 and expiry ~= impact then
@@ -9190,6 +9323,10 @@ local function resolve_gun(weapon, key)
                     local rid = blast.prefix .. '_' .. r[1]
                     add_row(weapon, blast.section, rid, r[2], 'f32', { part(rid, T_EXPLOSION, xrow + r[3], 'f32', 100000) }, 0, 200, 0.1, 1)
                 end
+                -- the shrapnel it throws: the projectile every piece is (+84, a choice: its own flight, damage and
+                -- explosion) and how many (+80)
+                MOD.records.shrapnel_rows(weapon, blast.section == 'Explosion' and 'Shrapnel' or (blast.section .. ' shrapnel'),
+                                          blast.prefix .. '_shrapnel', xrow)
                 -- the arc it makes (explosion +120 arc type -> arc row: +8 range, +28 chain length, +32 chain
                 -- split, +36 damage row), as a throwable's: the GL-52 De-Escalator's grenade
                 local arc = tables[TYPES.arc] and tables[TYPES.arc].index[read_field(field_at(T_EXPLOSION, xrow + 120, 'u32', 100000)) or -1]
@@ -10676,6 +10813,215 @@ KINDS[T_PROJECTILE].step = function(id, n)
     return list[math.max(1, math.min(#list, at + n))].id
 end
 
+-- Records (CarbonAnime, PR #58): the projectile, explosion and status records themselves, by id. Their names: a
+-- projectile's the game's name of its round (MOD.round_names), else the first weapon that fires it; an explosion's
+-- the first weapon that sets it off, else the round that does; a status's its own (Burning, Gas, stuns).
+MOD.records = { pages = {}, list = nil, cache = nil, KINDS = { T_PROJECTILE, T_EXPLOSION, T_STATUS },
+                WORD = { [T_PROJECTILE] = 'Projectile', [T_EXPLOSION] = 'Explosion', [T_STATUS] = 'Status' },
+                PREFIX = { [T_PROJECTILE] = 'F1', [T_EXPLOSION] = 'F2', [T_STATUS] = 'F3' } }
+function MOD.records.ids(kind)
+    local ids = {}
+    for id in pairs(tables[kind] and tables[kind].index or {}) do
+        if type(id) == 'number' and id > 0 then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+    return ids
+end
+-- Who uses each record: shots (projectile id -> weapon names), blasts (explosion id -> weapon names), from the
+-- weapons' rows (the record a row's field is in) and own shots; rounds (explosion id -> the name of the first named
+-- round that sets it off). Built once per resolve.
+function MOD.records.users()
+    if MOD.records.cache then return MOD.records.cache end
+    local shots, blasts, rounds = {}, {}, {}
+    local function add(map, id, name)
+        if not id or id <= 0 then return end
+        local list = map[id] or {}
+        map[id] = list
+        for _, n in ipairs(list) do if n == name then return end end
+        list[#list + 1] = name
+    end
+    local function locate(kind)
+        local spots, stride = {}, KINDS[kind].stride
+        for _, id in ipairs(MOD.records.ids(kind)) do spots[#spots + 1] = { at = tables[kind].index[id], id = id } end
+        table.sort(spots, function(a, b) return a.at < b.at end)
+        return function(offset)
+            local lo, hi = 1, #spots
+            while lo <= hi do
+                local mid = math.floor((lo + hi) / 2)
+                local spot = spots[mid]
+                if offset < spot.at then hi = mid - 1
+                elseif offset >= spot.at + stride then lo = mid + 1
+                else return spot.id end
+            end
+        end
+    end
+    local shot_at, blast_at = locate(T_PROJECTILE), locate(T_EXPLOSION)
+    for _, w in ipairs(weapons) do
+        if #w.rows > 0 and not w.name:match('^%(') then   -- not the '(Not Used)' dummies
+            for _, shot in ipairs(w.own_shots or {}) do add(shots, shot.id, w.name) end
+            for _, row in ipairs(w.rows) do
+                for _, q in ipairs(row.parts) do
+                    if q.field.kind == T_PROJECTILE then add(shots, shot_at(q.field.offset), w.name)
+                    elseif q.field.kind == T_EXPLOSION then add(blasts, blast_at(q.field.offset), w.name) end
+                end
+            end
+        end
+    end
+    for _, id in ipairs(MOD.records.ids(T_PROJECTILE)) do
+        local name, at = MOD.round_names and MOD.round_names[id], tables[T_PROJECTILE].index[id]
+        for _, off in ipairs(name and { 144, 156 } or {}) do
+            local x = read_field(field_at(T_PROJECTILE, at + off, 'u32', 100000))
+            if x and x > 0 and not rounds[x] then rounds[x] = name end
+        end
+    end
+    MOD.records.cache = { shots = shots, blasts = blasts, rounds = rounds }
+    return MOD.records.cache
+end
+-- A record's name (English), or nil.
+function MOD.records.name(kind, id)
+    local u = MOD.records.users()
+    if kind == T_PROJECTILE then return MOD.round_names and MOD.round_names[id] or (u.shots[id] or {})[1]
+    elseif kind == T_EXPLOSION then return (u.blasts[id] or {})[1] or u.rounds[id] end
+    return KINDS[T_STATUS].names[id] or KINDS[T_STATUS].stuns[id]
+end
+-- A choice's label in a note: '#12 · 10g Sabot' (the name in the panel's language), 'none (no explosion)'.
+function MOD.records.label(kind, id)
+    local what = kind == T_EXPLOSION and 'explosion' or 'projectile'
+    if not id or id <= 0 then return 'none (no ' .. what .. ')' end
+    if not (tables[kind] and tables[kind].index[id]) then return what .. ' ' .. id .. ' (not in this game build)' end
+    local name = MOD.records.name(kind, id)
+    return '#' .. id .. (name and (' · ' .. (state.tr and state.tr(name) or name)) or '')
+end
+-- The id `n` on from `id` among none (0) and every record of the kind (from either end when `id` is not one).
+function MOD.records.step(kind, id, n)
+    local list = MOD.records.ids(kind)
+    table.insert(list, 1, 0)
+    local at = nil
+    for k, x in ipairs(list) do if x == id then at = k end end
+    at = at or (n > 0 and 0 or #list + 1)
+    return list[math.max(1, math.min(#list, at + n))]
+end
+-- An explosion's shrapnel rows (explosion row `xrow`, ids `pre` ..): the projectile every piece is, then how many.
+function MOD.records.shrapnel_rows(entry, section, pre, xrow)
+    local piece = add_row(entry, section, pre .. '_projectile', 'Shrapnel projectile (id)', 'u32',
+                          { part(pre .. '_projectile', T_EXPLOSION, xrow + 84, 'u32', 100000) }, 0, 100000, 1, 10)
+    piece.choice = 'shrapnel'
+    piece.note = function()
+        local id = read_field(piece.parts[1].field)
+        return (id or 0) > 0 and ('each piece is ' .. MOD.records.label(T_PROJECTILE, id)) or 'no shrapnel'
+    end
+    add_row(entry, section, pre .. '_count', 'Shrapnel pieces', 'u32', { part(pre .. '_count', T_EXPLOSION, xrow + 80, 'u32', 10000) },
+            0, 500, 1, 5)
+end
+-- A record page's rows (page.kind, page.id).
+function MOD.records.rows(page)
+    local kind, at = page.kind, tables[page.kind] and tables[page.kind].index[page.id]
+    page.rows, page.by_id = {}, {}
+    if not at then return end
+    local function num(section, id, label, off, storage, max, small, big)
+        add_row(page, section, id, label, storage, { part(id, kind, at + off, storage, 100000) }, 0, max, small, big)
+    end
+    local function hurt(off, section, what, count)
+        local d = read_field(field_at(kind, at + off, 'u32', 100000))
+        local drow = d and d > 0 and tables[T_DAMAGE] and tables[T_DAMAGE].index[d]
+        if not drow then return end
+        damage_rows(page, section, '', drow, what, count)
+        if count == nil then status_rows(page, section, '', drow, what == 'Explosion' and 'blast' or 'hit') end
+    end
+    if kind == T_PROJECTILE then
+        for _, r in ipairs({ { 'calibre', 'Calibre (mm)', 24, 'f32', 1000, 0.1, 1 }, { 'pellets', 'Projectiles per shot', 28, 'u32', 200, 1, 5 },
+                             { 'velocity', 'Velocity (m/s)', 32, 'f32', 100000, 10, 100 }, { 'mass', 'Mass (kg)', 36, 'f32', 10000, 0.1, 1 },
+                             { 'drag', 'Drag factor', 40, 'f32', 100, 0.05, 0.5 }, { 'gravity', 'Gravity factor', 44, 'f32', 100, 0.05, 0.5 },
+                             { 'lifetime', 'Lifetime (s)', 56, 'f32', 1000, 0.1, 1 },
+                             { 'pen_slowdown', 'Penetration slowdown', 64, 'f32', 100, 0.05, 0.25 } }) do
+            num('Projectile', r[1], r[2], r[3], r[4], r[5], r[6], r[7])
+        end
+        hurt(60, 'Damage')
+        local impact = add_row(page, 'Explosion id', 'impact_explosion', 'Impact explosion (id)', 'u32',
+                               { part('impact_explosion', kind, at + 144, 'u32', 100000) }, 0, 100000, 1, 10)
+        impact.choice = 'explosion'
+        impact.note = function()
+            return 'sets off: ' .. MOD.records.label(T_EXPLOSION, read_field(impact.parts[1].field))
+        end
+        num('Explosion id', 'fuse_proximity', 'Blast proximity (m)', 148, 'f32', 200, 0.1, 1)
+        num('Explosion id', 'fuse_delay', 'Blast delay (s)', 152, 'f32', 30, 0.05, 0.5)
+        local expiry = add_row(page, 'Explosion id', 'expiry_explosion', 'Expiry explosion (id)', 'u32',
+                               { part('expiry_explosion', kind, at + 156, 'u32', 100000) }, 0, 100000, 1, 10)
+        expiry.choice = 'explosion'
+        num('Explosion id', 'arming', 'Arming distance (m)', 160, 'f32', 200, 0.1, 1)
+        num('Explosion id', 'blast_angle', 'Blast angle (deg)', 136, 'f32', 180, 1, 10)
+    elseif kind == T_EXPLOSION then
+        hurt(4, 'Explosion', 'Explosion')
+        for _, r in ipairs({ { 'inner', 'Inner radius (m)', 16 }, { 'outer', 'Outer radius (m)', 20 },
+                             { 'shockwave', 'Shockwave radius (m)', 24 } }) do
+            num('Radius', r[1], r[2], r[3], 'f32', 200, 0.1, 1)
+        end
+        num('Shape', 'cone', 'Cone angle (deg)', 28, 'f32', 360, 1, 10)
+        num('Shape', 'shake', 'Camera shake radius (m)', 32, 'f32', 200, 0.1, 1)
+        MOD.records.shrapnel_rows(page, 'Shrapnel', 'shrapnel', at)
+    else
+        local name = MOD.records.name(kind, page.id) or 'Status'
+        hurt(44, name, name, 6)   -- no forces: a status has none
+        num(name, 'duration', name .. ' duration (s)', 40, 'f32', 600, 0.5, 5)
+    end
+end
+-- A record page's title and note: 'Projectile #12 · 10g Sabot', 'Fired by: ...'.
+function MOD.records.title(page)
+    local name = MOD.records.name(page.kind, page.id)
+    page.name = MOD.records.WORD[page.kind] .. ' #' .. page.id .. (name and (' · ' .. name) or '')
+    local u = MOD.records.users()
+    local users = page.kind == T_PROJECTILE and u.shots[page.id] or page.kind == T_EXPLOSION and u.blasts[page.id]
+    if page.kind == T_STATUS then page.note = ''
+    elseif not users then page.note = 'Not used by any weapon or stratagem in this list.'
+    else
+        page.note = (page.kind == T_PROJECTILE and 'Fired by: ' or 'Set off by: ') .. table.concat(users, ', ', 1, math.min(3, #users)) ..
+                    (#users > 3 and (', +' .. (#users - 3)) or '')
+    end
+end
+-- The page of a record (built on first use; hash: 'F1' projectile / 'F2' explosion / 'F3' status + 14 hex digits).
+function MOD.records.page(kind, id)
+    local hash = string.format('%s%014X', MOD.records.PREFIX[kind], id)
+    local page = MOD.records.pages[hash]
+    if page then return page end
+    if not (tables[kind] and tables[kind].index[id]) then return nil end
+    page = { slot = 'Records', hash = hash, kind = kind, id = id, record = true }
+    MOD.records.rows(page)
+    MOD.records.title(page)
+    MOD.records.pages[hash] = page
+    return page
+end
+function MOD.records.find(hash)
+    if type(hash) ~= 'string' or #hash ~= 16 then return nil end
+    local mark, digits = hash:match('^(F[123])(%x+)$')
+    if not mark then return nil end
+    for kind, prefix in pairs(MOD.records.PREFIX) do
+        if prefix == mark then return MOD.records.page(kind, tonumber(digits, 16)) end
+    end
+end
+-- Every record page, projectiles, explosions then statuses, by id (the Records tab; built when first opened).
+function MOD.records.all()
+    if MOD.records.list then return MOD.records.list end
+    local list = {}
+    for _, kind in ipairs(MOD.records.KINDS) do
+        for _, id in ipairs(MOD.records.ids(kind)) do
+            local page = MOD.records.page(kind, id)
+            if page and #page.rows > 0 then list[#list + 1] = page end
+        end
+    end
+    MOD.records.list = list
+    return list
+end
+-- After every resolve: who uses what again, and the pages built so far read again (a rescan moves the tables).
+function MOD.records.refresh()
+    MOD.records.cache, MOD.records.list = nil, nil
+    for _, page in pairs(MOD.records.pages) do
+        MOD.records.rows(page)
+        MOD.records.title(page)
+    end
+end
+-- a record page's values saved in config.txt or a preset: its page, built when first named
+setmetatable(by_hash, { __index = function(_, hash) return MOD.records.find(hash) end })
+
 -- ProjectileWeaponComponent +40 is a full 64-bit entity reference. Keep both
 -- halves together through read/write/reset/presets; a Lua number cannot hold the hash.
 -- Use the grenade entity and native release/activation lifecycle. Special grenade
@@ -10721,6 +11067,7 @@ local function resolve_some(progress, deadline)
     end
     if progress.next <= #weapons then return false end
     KINDS[T_PROJECTILE].list_choices()
+    MOD.records.refresh()
     local usable, strats = 0, 0
     state.attachments, state.throwables, state.passives, state.vehicles = 0, 0, 0, 0
     for _, weapon in ipairs(weapons) do
@@ -10742,7 +11089,7 @@ local function shared_with(weapon, row)
     local names, seen = {}, { [weapon] = true }
     for _, p in ipairs(row.parts) do
         for _, other in ipairs(p.field.users) do
-            if not seen[other] then seen[other] = true; names[#names + 1] = other.name end
+            if not seen[other] and (weapon.record or not other.record) then seen[other] = true; names[#names + 1] = other.name end
         end
     end
     return names
@@ -11508,17 +11855,28 @@ local ui = { open = false, measured = {}, measures = 0, tab = 'Primary', page = 
 
 -- the status line, for code above the panel's
 function MOD.notify(text, seconds) ui.message = { text = text, till = api.now() + (seconds or 4) } end
-local TABS = { 'Primary', 'Secondary', 'Support', 'Throwables', 'Stratagems', 'Mechas', 'Attachments', 'Armors', 'Presets' }
+local TABS = { 'Primary', 'Secondary', 'Support', 'Throwables', 'Stratagems', 'Mechas', 'Attachments', 'Armors', 'Records',
+               'Presets' }
 local LIST_ROWS = 27
 local W, H = 1000, 980       -- panel size in its own units
 
 -- The weapons (or stratagems) of a tab; tab '?search': those of every tab whose name holds every
--- word of the search (any case).
+-- word of the search (any case). The Records tab: its records, and searching there searches them.
 local function weapons_in(tab)
     local list, words = {}, nil
     if tab == '?search' then
         words = {}
         for word in ui.search.text:lower():gmatch('%S+') do words[#words + 1] = word end
+    end
+    if tab == 'Records' or words and ui.tab == 'Records' then
+        for _, page in ipairs(MOD.records.all()) do
+            local text, all = (page.name .. ' ' .. page.note):lower(), true
+            for _, word in ipairs(words or {}) do
+                if not text:find(word, 1, true) then all = false; break end
+            end
+            if all then list[#list + 1] = page end
+        end
+        return list
     end
     for _, weapon in ipairs(weapons) do
         if #weapon.rows > 0 then
@@ -11712,6 +12070,25 @@ local function change(row, delta_sign, big, exact)
                 set_override(weapon, p, unless_default(target, default_of(p.field)))
             end
             if not ok then ui.message = { text = why, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'explosion' or row.choice == 'shrapnel' then
+            -- an explosion id, or the projectile shrapnel pieces are: none (0) or any record of this build
+            local kind = row.choice == 'explosion' and T_EXPLOSION or T_PROJECTILE
+            local target = exact and math.floor(exact + 0.5) or MOD.records.step(kind, current, delta_sign * (big and 10 or 1))
+            if target ~= 0 and not (tables[kind] and tables[kind].index[target]) then
+                ui.message = { text = (kind == T_EXPLOSION and 'No explosion ' or 'No projectile ') .. tostring(target) .. ' in the game.',
+                               till = api.now() + 4 }
+                return
+            end
+            if target == current then return end
+            for _, p in ipairs(row.parts) do
+                local d = default_of(p.field)
+                local ok, why = write_field(p.field, target)
+                if ok then set_override(weapon, p, unless_default(target, d))
+                else log('write refused: ' .. weapon.name .. ' ' .. p.id .. ': ' .. why) end
+            end
             ui.version = ui.version + 1
             return
         end
@@ -12318,13 +12695,22 @@ local function draw(width, height)
         return regions
     end
 
-    local tab_x = 16
-    for _, tab in ipairs(TABS) do
-        local w = #tab * 8 + 20     -- each tab as wide as its name
-        button('tab:' .. tab, tab, tab_x, 52, w, 32, true, ui.tab == tab)
-        tab_x = tab_x + w + 5
+    -- the tabs, each as wide as its (translated) name, the row shrunk to end before the reset button
+    do
+        local widths, total = {}, 0
+        for i, tab in ipairs(TABS) do
+            widths[i] = math.max(#tab * 7 + 8, width(tab, 16) + 18)
+            total = total + widths[i]
+        end
+        local room = W - 16 - 124 - 16 - 4 * (#TABS - 1)
+        local fit, tab_x = math.min(1, room / total), 16
+        for i, tab in ipairs(TABS) do
+            local w = math.floor(widths[i] * fit + 0.5)
+            button('tab:' .. tab, tab, tab_x, 52, w, 32, true, ui.tab == tab)
+            tab_x = tab_x + w + 4
+        end
     end
-    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.player and 'Reset helldiver') or 'Reset weapon', W - 16 - 124, 52, 124, 32, ui.weapon ~= nil and modified(ui.weapon))
+    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or 'Reset weapon', W - 16 - 124, 52, 124, 32, ui.weapon ~= nil and modified(ui.weapon))
 
     -- a list's scroll bar (the weapon list, or the full presets): a thin track between the list and the
     -- line that parts the panel's halves, shown when the list is longer than LIST_ROWS
@@ -13058,7 +13444,11 @@ local function keyboard(now)
     end
     if pressed('PageDown', now) or pressed('PageUp', now) then
         local all = {}
-        for _, tab in ipairs(TABS) do for _, w in ipairs(weapons_in(tab)) do all[#all + 1] = w end end
+        for _, tab in ipairs(TABS) do
+            if (tab == 'Records') == (weapon ~= nil and weapon.record == true) then
+                for _, w in ipairs(weapons_in(tab)) do all[#all + 1] = w end
+            end
+        end
         local at = 0
         for n, w in ipairs(all) do if w == weapon then at = n end end
         local forward = held.PageDown ~= nil
