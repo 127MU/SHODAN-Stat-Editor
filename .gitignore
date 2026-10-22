@@ -1,0 +1,9 @@
+# SHODAN Stat Editor Offline build output
+offline/runtime/
+offline/release/
+offline/launcher/*.exe
+offline/launcher/*.dll
+offline/launcher/*.obj
+offline/launcher/*.lib
+offline/launcher/*.exp
+offline/launcher/*.res
