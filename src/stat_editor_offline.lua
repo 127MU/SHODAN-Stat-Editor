@@ -1511,6 +1511,7 @@ MOD.langs = {
       ['THROWABLE'] = '投掷物',
       ['TM-1 Lure Mine'] = 'TM-1 诱饵地雷',
       ['TX-41 Sterilizer'] = 'TX-41 灭菌器',
+      ['Tabs shown'] = '显示的标签页',
       ['Talon'] = '猛爪',
       ['Target search interval, max (s)'] = '索敌间隔，最大（秒）',
       ['Target search interval, min (s)'] = '索敌间隔，最小（秒）',
@@ -3917,6 +3918,7 @@ MOD.langs = {
       ['THROWABLE'] = '投擲物',
       ['TM-1 Lure Mine'] = 'TM-1 誘餌地雷',
       ['TX-41 Sterilizer'] = 'TX-41 滅菌者',
+      ['Tabs shown'] = '顯示的標籤頁',
       ['Talon'] = '利爪',
       ['Target search interval, max (s)'] = '索敵間隔，最大（秒）',
       ['Target search interval, min (s)'] = '索敵間隔，最小（秒）',
@@ -6323,6 +6325,7 @@ MOD.langs = {
       ['THROWABLE'] = 'МЕТАТЕЛЬНОЕ',
       ['TM-1 Lure Mine'] = 'TM-1 Мина-приманка',
       ['TX-41 Sterilizer'] = 'TX-41 Стерилизатор',
+      ['Tabs shown'] = 'Показывать вкладки',
       ['Talon'] = 'Коготь',
       ['Target search interval, max (s)'] = 'Интервал поиска цели, макс. (с)',
       ['Target search interval, min (s)'] = 'Интервал поиска цели, мин. (с)',
@@ -10901,6 +10904,16 @@ function MOD.records.step(kind, id, n)
     at = at or (n > 0 and 0 or #list + 1)
     return list[math.max(1, math.min(#list, at + n))]
 end
+-- A weapon page's explosion id sections ('Projectile explosion id', ...) last, below its projectile swap.
+function MOD.records.ids_last(weapon)
+    local rows, last = {}, {}
+    for _, row in ipairs(weapon.rows) do
+        local list = row.section:find(' explosion id$') and last or rows
+        list[#list + 1] = row
+    end
+    for _, row in ipairs(last) do rows[#rows + 1] = row end
+    weapon.rows = rows
+end
 -- An explosion's shrapnel rows (explosion row `xrow`, ids `pre` ..): the projectile every piece is, then how many.
 function MOD.records.shrapnel_rows(entry, section, pre, xrow)
     local piece = add_row(entry, section, pre .. '_projectile', 'Shrapnel projectile (id)', 'u32',
@@ -11062,6 +11075,7 @@ local function resolve_some(progress, deadline)
     end
     while progress.next <= #weapons do
         resolve(weapons[progress.next])
+        MOD.records.ids_last(weapons[progress.next])
         progress.next = progress.next + 1
         if api.now() >= deadline then break end
     end
@@ -11135,7 +11149,7 @@ local config_dirty_at = nil
 -- or the id of a translation: fixed by the build (a language's release, MOD.lang), not a choice; offline (every
 -- language built in) a choice, saved as 'lang'.
 local settings = { changes = true, block_input = true, size = 80, side = 'right', opacity = 90,
-                   remember = true, arc_mp = true, updates = 'ask', update_channel = 'releases', stacks = {}, own_off = {}, lang = MOD.lang or MOD.offline and rawget(_G, 'SHODAN_OFFLINE_LANG') or 'en',
+                   remember = true, arc_mp = true, updates = 'ask', update_channel = 'releases', stacks = {}, own_off = {}, hidden = {}, lang = MOD.lang or MOD.offline and rawget(_G, 'SHODAN_OFFLINE_LANG') or 'en',
                    last_tab = nil, last_weapon = nil,
                    GITHUB = 'https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor',
                    RANGE = { size = { 50, 100 }, opacity = { 10, 100 } } }
@@ -11285,6 +11299,11 @@ local function save_config()
     end
     lines[#lines + 1] = 'unlock_unused ' .. onoff(settings.unlock_any())
     lines[#lines + 1] = 'several_vehicles ' .. onoff(MOD.vehicles.on)
+    -- hide_tabs <tab>,<tab>...: the tabs Settings > Tabs shown turned off
+    local hidden = {}
+    for tab in pairs(settings.hidden) do hidden[#hidden + 1] = tab end
+    table.sort(hidden)
+    if #hidden > 0 then lines[#lines + 1] = 'hide_tabs ' .. table.concat(hidden, ',') end
     if settings.remember and settings.last_tab then lines[#lines + 1] = 'last_tab ' .. settings.last_tab end
     if settings.remember and settings.last_weapon then lines[#lines + 1] = 'last_weapon ' .. settings.last_weapon end
     for _, o in ipairs(overrides) do
@@ -11348,6 +11367,9 @@ local function load_config()
             known = true                     -- (each language has its own release)
         elseif name == 'last_tab' then
             settings.last_tab = value
+            known = true
+        elseif name == 'hide_tabs' then
+            for tab in value:gmatch('[^,%s]+') do settings.hidden[tab] = true end
             known = true
         elseif name == 'last_weapon' and value:find('^%x+$') and #value == 16 then
             settings.last_weapon = value:upper()
@@ -11855,8 +11877,13 @@ local ui = { open = false, measured = {}, measures = 0, tab = 'Primary', page = 
 
 -- the status line, for code above the panel's
 function MOD.notify(text, seconds) ui.message = { text = text, till = api.now() + (seconds or 4) } end
-local TABS = { 'Primary', 'Secondary', 'Support', 'Throwables', 'Stratagems', 'Mechas', 'Attachments', 'Armors', 'Records',
-               'Presets' }
+local TABS = { 'Primary', 'Secondary', 'Support', 'Throwables', 'Stratagems', 'Mechas', 'Attachments', 'Armors', 'Records' }
+-- the tabs Settings > Tabs shown leaves on
+function settings.shown_tabs()
+    local list = {}
+    for _, tab in ipairs(TABS) do if not settings.hidden[tab] then list[#list + 1] = tab end end
+    return list
+end
 local LIST_ROWS = 27
 local W, H = 1000, 980       -- panel size in its own units
 
@@ -11879,7 +11906,7 @@ local function weapons_in(tab)
         return list
     end
     for _, weapon in ipairs(weapons) do
-        if #weapon.rows > 0 then
+        if #weapon.rows > 0 and not settings.hidden[weapon.slot] then
             if words then
                 local name, all = weapon.name:lower(), true
                 for _, word in ipairs(words) do
@@ -12697,14 +12724,14 @@ local function draw(width, height)
 
     -- the tabs, each as wide as its (translated) name, the row shrunk to end before the reset button
     do
-        local widths, total = {}, 0
-        for i, tab in ipairs(TABS) do
+        local tabs, widths, total = settings.shown_tabs(), {}, 0
+        for i, tab in ipairs(tabs) do
             widths[i] = math.max(#tab * 7 + 8, width(tab, 16) + 18)
             total = total + widths[i]
         end
-        local room = W - 16 - 124 - 16 - 4 * (#TABS - 1)
+        local room = W - 16 - 124 - 16 - 4 * (#tabs - 1)
         local fit, tab_x = math.min(1, room / total), 16
-        for i, tab in ipairs(TABS) do
+        for i, tab in ipairs(tabs) do
             local w = math.floor(widths[i] * fit + 0.5)
             button('tab:' .. tab, tab, tab_x, 52, w, 32, true, ui.tab == tab)
             tab_x = tab_x + w + 4
@@ -12950,6 +12977,16 @@ local function draw(width, height)
              x0 + 16, y + 12, 14, warn and WARN or MUTED, W - x0 - 40)
         y = y + 32
         end
+        -- the tabs: each on / off, wrapped under the label (one stays on)
+        text('Tabs shown', x0, y + 6, 16, WHITE, 270)
+        local tx = 640
+        for _, tab in ipairs(TABS) do
+            local w = math.max(#tab * 7 + 8, width(tab, 15) + 18)
+            if tx + w > W - 16 then tx, y = 640, y + 34 end
+            button('set:tab:' .. tab, tab, tx, y, w, 28, true, not settings.hidden[tab])
+            tx = tx + w + 4
+        end
+        y = y + 42
         local sure_reset = ui.confirm and ui.confirm.kind == 'reset_all'
         button('reset_all', sure_reset and 'Sure?' or 'Reset all values', x0, y, 188, 28, #overrides > 0, sure_reset)
         text('Resets all values from the current preset to default.', x0 + 16, y + 30, 14, MUTED, W - x0 - 40)
@@ -13136,39 +13173,40 @@ local function draw(width, height)
 
     -- footer, and the Settings button at the bottom right
     rect(16, H - 64, W - 32, 1, color(70, 82, 94), 951)
+    button('presets', 'Presets', W - 16 - 104 - 8 - 104, H - 54, 104, 34, true, ui.tab == 'Presets' and not ui.settings)
     button('settings', ui.settings and 'Back' or 'Settings', W - 16 - 104, H - 54, 104, 34, true, ui.settings)
     if ui.binding then
         text('Press the key that should open and close the panel: F1-F12, Insert, Home, End, Pause or Scroll Lock. Esc cancels.',
-             18, H - 56, 14, MUTED, W - 150)
+             18, H - 56, 14, MUTED, W - 260)
     elseif ui.settings then
-        text('Settings are saved at once, in config.txt with your changes.', 18, H - 56, 14, MUTED, W - 150)
+        text('Settings are saved at once, in config.txt with your changes.', 18, H - 56, 14, MUTED, W - 260)
     elseif ui.editing then
         text('Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.',
-             18, H - 56, 14, MUTED, W - 150)
+             18, H - 56, 14, MUTED, W - 260)
     elseif ui.value and ui.value.setting then
         local r = settings.RANGE[ui.value.setting]
-        text(string.format('Type the percent (%d-%d): Enter sets it, Esc cancels.', r[1], r[2]), 18, H - 56, 14, MUTED, W - 150)
+        text(string.format('Type the percent (%d-%d): Enter sets it, Esc cancels.', r[1], r[2]), 18, H - 56, 14, MUTED, W - 260)
     elseif ui.value then
         text('Type the value: Enter sets it, Esc cancels. Values out of range are set to the nearest allowed one.',
-             18, H - 56, 14, MUTED, W - 150)
+             18, H - 56, 14, MUTED, W - 260)
     elseif ui.search.active and not presets_tab then
         text('Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.',
-             18, H - 56, 14, MUTED, W - 150)
+             18, H - 56, 14, MUTED, W - 260)
     elseif presets_tab then
         text('Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.',
-             18, H - 56, 14, MUTED, W - 150)
+             18, H - 56, 14, MUTED, W - 260)
     else
         text('Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,',
-             18, H - 56, 14, MUTED, W - 150)
+             18, H - 56, 14, MUTED, W - 260)
     end
     if ui.message then
-        text(ui.message.text, 18, H - 34, 14, GOOD, W - 150)
+        text(ui.message.text, 18, H - 34, 14, GOOD, W - 260)
     elseif presets_tab then
         text('Overwriting and deleting ask twice. Changes apply at once and are saved; ' .. #overrides ..
-             ' value(s) changed.', 18, H - 34, 14, MUTED, W - 150)
+             ' value(s) changed.', 18, H - 34, 14, MUTED, W - 260)
     else
         text('PgUp/PgDn change weapon, Del resets, Ctrl+1-5 loads a weapon preset, Ctrl+Shift+1-5 saves one; ' .. #overrides ..
-             ' value(s) changed.', 18, H - 34, 14, MUTED, W - 150)
+             ' value(s) changed.', 18, H - 34, 14, MUTED, W - 260)
     end
     -- the passives to stack on the chosen one: over its page, until one is chosen (Cancel / Esc: none)
     if ui.stack_pick and ui.stack_pick == weapon and not ui.settings then
@@ -13253,6 +13291,10 @@ local function click(key)
         end
     elseif kind == 'close' then ui.close_request = true   -- closed by tick, once this frame is done
     elseif kind == 'settings' then ui.settings = not ui.settings
+    elseif kind == 'presets' then   -- Presets, or back to the tab before them
+        if ui.tab == 'Presets' and not ui.settings then ui.tab = ui.before_presets or settings.shown_tabs()[1] or 'Primary'
+        elseif ui.tab ~= 'Presets' then ui.before_presets, ui.tab = ui.tab, 'Presets' end
+        ui.page, ui.search, ui.settings = 1, { text = '', active = false }, false
     elseif kind == 'value' and (arg == 'size' or arg == 'opacity') then
         if not ui.value then ui.value = { n = arg, setting = arg, text = tostring(settings[arg]), fresh = true } end
     elseif kind == 'set' then
@@ -13274,6 +13316,12 @@ local function click(key)
             settings.set_percent(name, value == 'up' and math.floor(v / 5) * 5 + 5 or math.ceil(v / 5) * 5 - 5)
         elseif name == 'size' or name == 'opacity' then settings.set_percent(name, tonumber(value) or settings[name])
         elseif name == 'side' then settings.side = value
+        elseif name == 'tab' then
+            local on = 0
+            for _, tab in ipairs(TABS) do if not settings.hidden[tab] then on = on + 1 end end
+            if settings.hidden[value] then settings.hidden[value] = nil
+            elseif on > 1 then settings.hidden[value] = true end
+            if settings.hidden[ui.tab] then ui.tab, ui.page = settings.shown_tabs()[1], 1 end
         elseif name == 'lang' and (value == 'en' or settings.LANGS[value]) then settings.lang = value end
         if name ~= 'bind' then mark_config_dirty(); ui.version = ui.version + 1 end
     elseif kind == 'link' then
@@ -13444,7 +13492,7 @@ local function keyboard(now)
     end
     if pressed('PageDown', now) or pressed('PageUp', now) then
         local all = {}
-        for _, tab in ipairs(TABS) do
+        for _, tab in ipairs(settings.shown_tabs()) do
             if (tab == 'Records') == (weapon ~= nil and weapon.record == true) then
                 for _, w in ipairs(weapons_in(tab)) do all[#all + 1] = w end
             end
@@ -13970,11 +14018,12 @@ local function open_panel(open)
         if not ui.restored and state.phase == 'ready' then
             ui.restored = true
             local last = settings.remember and settings.last_weapon and by_hash[settings.last_weapon]
-            if last and #last.rows > 0 then
+            if last and #last.rows > 0 and not settings.hidden[last.slot] then
                 select_weapon(last)
             elseif settings.remember and settings.last_tab then
-                for _, t in ipairs(TABS) do if t == settings.last_tab then ui.tab = t end end
+                for _, t in ipairs(settings.shown_tabs()) do if t == settings.last_tab then ui.tab = t end end
             end
+            if settings.hidden[ui.tab] then ui.tab = settings.shown_tabs()[1] end
         end
         if not ui.weapon then
             local list = weapons_in(ui.tab)
