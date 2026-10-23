@@ -10097,6 +10097,15 @@ KINDS[TYPES.vehicle].rows = function(entry, key, twins)
     end
     add_row(entry, 'Vehicle', 'health', 'Health', 'u32', parts('health', 0, 'u32', 10000000), 0, 1000000, 50, 500)
     add_row(entry, 'Vehicle', 'armor', 'Armor', 'u32', parts('armor', 280, 'u32', 100), 0, 10, 1, 1)
+    -- regeneration (issue #73, tested in game by its reporter): health per second +4 and its rate in the
+    -- regeneration phase +20, written together; it starts this long after the last damage +12 (all 0 on
+    -- vehicles). Damaged parts heal; a destroyed one (a wheel) stays destroyed: that state is not in the file
+    local regen_parts = parts('regen', 4, 'f32', 1000000)
+    for _, p in ipairs(parts('regen_phase', 20, 'f32', 1000000)) do regen_parts[#regen_parts + 1] = p end
+    local regen = add_row(entry, 'Vehicle', 'regen', 'Regeneration (health/s)', 'f32', regen_parts, 0, 100000, 5, 50)
+    regen.note = 'damaged parts heal; destroyed parts stay destroyed'
+    add_row(entry, 'Vehicle', 'regen_delay', 'Regeneration delay after damage (s)', 'f32',
+            parts('regen_delay', 12, 'f32', 3600), 0, 600, 0.1, 1)
     local n = 0
     for z = 0, 37 do
         local base = 520 + z * 552
