@@ -37,6 +37,7 @@ def main():
     allowed=set()
     def copy(source,relative):
         dest=release/relative
+        dest.parent.mkdir(parents=True,exist_ok=True)
         if not dest.exists() or dest.read_bytes()!=source.read_bytes():shutil.copy2(source,dest)
         allowed.add(relative)
     launcher=ROOT/'offline/launcher/SHODAN Official Editor.exe'
@@ -46,15 +47,17 @@ def main():
     for name in ('libsodium.dll','lua51.dll'):copy(base/name,name)
     copy(ROOT/'offline/launcher/shodan_hash.dll','shodan_hash.dll')
     for name in MODULES:copy(ROOT/('src/stat_editor.lua' if name=='stat_editor' else 'offline/'+name+'.lua'),'app/'+name+'.lua')
-    for name in ('LICENSE','README_LAB_zh.md'):copy(ROOT/name,name)
+    for name in ('LICENSE','README.md'):copy(ROOT/name,name)
+    for name in ('LuaJIT.txt','libsodium.txt'):copy(ROOT/'offline/licenses'/name,'licenses/'+name)
     manifest={'version':VERSION,'core_version':CORE_VERSION,'core_commit':CORE_COMMIT,'launcher':'official-3.2.0-custom-icon','write_flow':'official-3.2.0','source':'https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor','game_writes_during_tests':False,'files':{}}
     for relative in sorted(allowed):manifest['files'][relative]=hashlib.sha256((release/relative).read_bytes()).hexdigest()
     (release/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf8');allowed.add('manifest.json')
     target=out/('SHODAN_'+VERSION+'_Windows.zip');pack(release,target,allowed)
-    # Corresponding native source, without MCP, browser or unrelated workbench code.
+    # Corresponding native source, without browser or unrelated workbench code.
     source=out/('SHODAN_'+VERSION+'_Source.zip')
-    source_files=[ROOT/'src/stat_editor.lua',ROOT/'LICENSE',ROOT/'README_LAB_zh.md',ROOT/'CHANGELOG_LAB.md',ROOT/'tools/package_lab.py']
+    source_files=[ROOT/'src/stat_editor.lua',ROOT/'LICENSE',ROOT/'README.md',ROOT/'tools/package_lab.py']
     source_files+=list((ROOT/'offline').glob('*.lua'))
+    source_files+=list((ROOT/'offline/licenses').glob('*.txt'))
     for pattern in ('*.c','*.h','*.def','*.cmd','*.rc','*.bat','*.ico'):
         source_files += [p for p in (ROOT/'offline/launcher').glob(pattern) if 'workbench' not in p.name.lower()]
     source_files += [p for p in (ROOT/'tests').glob('*.py') if p.name in ('test_armory_lua.py','test_native_input.py')]

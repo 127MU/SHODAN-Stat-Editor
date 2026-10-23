@@ -63,9 +63,8 @@ jobs:
           SSEO_CHANNEL: dev
           SSEO_COMMIT: ${{ github.sha }}
         run: |
-          $name = "SHODAN-Stat-Editor-Offline-dev-" + $env:SSEO_COMMIT.Substring(0, 12)
           python tools/package_lab.py --base offline/runtime
-          if ($LASTEXITCODE -ne 0) { throw "package.py failed" }
+          if ($LASTEXITCODE -ne 0) { throw "package_lab.py failed" }
           "ZIP=dist/SHODAN_3.2.0_Windows.zip" >> $env:GITHUB_ENV
 
       - name: Keep the zip (ci/* branches)

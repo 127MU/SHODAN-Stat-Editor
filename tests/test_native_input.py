@@ -41,7 +41,7 @@ class PackageTests(unittest.TestCase):
   with zipfile.ZipFile(path) as z:
    names=z.namelist();self.assertEqual(sum(n.endswith('.exe') for n in names),1)
    self.assertFalse(any(n.endswith('/game folder.txt') for n in names))
-   self.assertFalse(any('/mcp/' in n or '/python/' in n or n.endswith('.bmp') or 'Workbench' in n for n in names))
+   self.assertFalse(any('/python/' in n or n.endswith('.bmp') or 'Workbench' in n for n in names))
    prefix='SHODAN_'+VERSION+'/';manifest=json.loads(z.read(prefix+'manifest.json'))
    self.assertEqual(manifest['core_commit'],'c5d837150ea9ba48c631a5f69932439177fd3b21')
    for name,digest in manifest['files'].items():self.assertEqual(hashlib.sha256(z.read(prefix+name)).hexdigest(),digest)
