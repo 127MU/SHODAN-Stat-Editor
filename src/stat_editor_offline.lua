@@ -10392,6 +10392,76 @@ KINDS[TYPES.minefield].rows = function(entry, key)
     return true
 end
 
+-- Extra stratagem (issue #64): StratagemInfo +200 additional_stratagem, a stratagem type (+0) given along when
+-- this one is in your loadout (the Eagles' is Eagle Rearm, so they are offered as extras only). The choices:
+-- the stratagems you can bring, by name; 0: none. A choice that leads back to the stratagem is refused.
+MOD.extra = { FAMILIES = { support = true, backpack = true, sentry = true, emplacements = true, orbital = true,
+                           vehicles = true, eagle = true } }
+function MOD.extra.choices()
+    if MOD.extra.list then return MOD.extra.list, MOD.extra.by_type end
+    local list, by_type, names = {}, {}, {}
+    for _, w in ipairs(weapons) do
+        local def, family = w.stratagem and w.stratagem.def, w.stratagem and w.stratagem.family
+        if not w.stratagem and w.sentry_defs and w.sentry_defs[1] then def, family = w.sentry_defs[1], 'sentry' end
+        local t = def and MOD.extra.FAMILIES[family] and not w.name:find('^%(Not Used%)') and not names[w.name] and peek4(def.at)
+        if t and t > 0 and not by_type[t] then
+            names[w.name] = true   -- (one of two stratagems with a name: the listed one, first)
+            w.extra_id = t         -- (shown after its name in the list, for typing a choice in)
+            by_type[t] = { type = t, name = w.name, def = def, family = family }
+            list[#list + 1] = by_type[t]
+        end
+    end
+    table.sort(list, function(a, b) return a.name:lower() < b.name:lower() end)
+    for n, c in ipairs(list) do c.n = n end
+    MOD.extra.list, MOD.extra.by_type = list, by_type
+    return list, by_type
+end
+-- the next / previous choice by name for `def` (n steps; 0 sits before the first), skipping what it can't have
+-- (itself, a loop); nil: none that way
+function MOD.extra.step(def, current, n)
+    local list, by_type = MOD.extra.choices()
+    local at = current ~= 0 and by_type[current] and by_type[current].n or 0
+    local to = math.max(0, math.min(#list, at + n))
+    local dir = n > 0 and 1 or -1
+    while to > 0 and to <= #list and MOD.extra.refused(def, list[to].type) do to = to + dir end
+    if to > #list then return nil end
+    return to <= 0 and 0 or list[to].type
+end
+-- why `target` can't be `def`'s extra (itself, or a chain of extras back to it), or nil
+function MOD.extra.refused(def, target)
+    local _, by_type = MOD.extra.choices()
+    if target == 0 then return nil end
+    if not by_type[target] then return 'No stratagem ' .. tostring(target) .. ' to choose.' end
+    local own = peek4(def.at)
+    -- (itself included: the game follows extras with no end, and crashes as the mission starts; tested)
+    local t = target
+    for _ = 1, 64 do
+        if t == own then return 'That would make a loop of extra stratagems.' end
+        local c = by_type[t]
+        t = c and peek4(c.def.at + 200) or 0
+        if not t or t == 0 then return nil end
+    end
+    return 'That would make a loop of extra stratagems.'
+end
+function MOD.extra.row(entry, def)
+    local row = add_row(entry, 'Extra stratagem', 'extra', 'Extra stratagem (choice)', 'u32',
+                        { part('extra', def.kind, def.off + 200, 'u32', 100000) }, 0, 100000, 1, 10)
+    row.choice = 'stratagem'
+    row.def = def
+    -- the row shows the chosen stratagem's name (its number, shown in the list, is the value, for typing)
+    row.label_of = function()
+        local t = read_field(row.parts[1].field) or 0
+        local _, by_type = MOD.extra.choices()
+        if t == 0 then return 'None' end
+        return by_type[t] and by_type[t].name or ('Stratagem ' .. t)
+    end
+    row.note = 'also in your loadout when you bring this one'
+    row.after = { '- / + steps through the stratagems by name (-- / ++: 10 at a time).',
+                  "Or type the number shown after a stratagem's name in the list; 0 = none.",
+                  "It doesn't take a loadout slot, but the HUD's stratagem list can fill up." }
+    row.after_h = #row.after * 16 + 6
+end
+
 local function resolve_stratagem(entry)
     local s = entry.stratagem
     local def = s.def
@@ -10402,6 +10472,7 @@ local function resolve_stratagem(entry)
             add_row(entry, 'Stratagem', 'uses', s.family == 'eagle' and 'Uses per rearm' or 'Uses per mission', 'u32',
                     { part('uses', def.kind, def.off + 80, 'u32', 999) }, 0, 999, 1, 5)
         end
+        if s.family ~= 'eagle' and MOD.extra.FAMILIES[s.family] then MOD.extra.row(entry, def) end
     end
     if s.family == 'eagle' and s.rearm then
         add_row(entry, 'Stratagem', 'rearm', 'Eagle rearm time (s)', 'f32',
@@ -10698,6 +10769,7 @@ local function resolve(weapon)
             parts[k] = part(k == 1 and 'cooldown' or 'cooldown' .. k, def.kind, def.off + 104, 'f32', 100000)
         end
         if parts[1] then add_row(weapon, 'Stratagem', 'cooldown', 'Cooldown (s)', 'f32', parts, 0, 10000, 1, 10) end
+        if weapon.sentry_defs[1] then MOD.extra.row(weapon, weapon.sentry_defs[1]) end
         unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
     end
     resolve_gun(weapon, weapon.key)
@@ -12117,6 +12189,18 @@ local function change(row, delta_sign, big, exact)
             ui.version = ui.version + 1
             return
         end
+        if row.choice == 'stratagem' then
+            local target = exact and math.floor(exact + 0.5) or MOD.extra.step(row.def, current, delta_sign * (big and 10 or 1))
+            if target == nil or target == current then return end
+            local why = MOD.extra.refused(row.def, target)
+            if why then ui.message = { text = why, till = api.now() + 4 }; return end
+            local p = row.parts[1]
+            local ok, err = write_field(p.field, target)
+            if ok then set_override(weapon, p, unless_default(target, default_of(p.field)))
+            else ui.message = { text = err, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
         if row.choice == 'explosion' or row.choice == 'shrapnel' then
             -- an explosion id, or the projectile shrapnel pieces are: none (0) or any record of this build
             local kind = row.choice == 'explosion' and T_EXPLOSION or T_PROJECTILE
@@ -12868,7 +12952,10 @@ local function draw(width, height)
         if selected then rect(16, y, 318, 25, color(90, 74, 8), 951)
         elseif ui.hover == key then rect(16, y, 318, 25, color(40, 52, 64), 951) end
         local changed = modified(weapon)
-        text((changed and '* ' or '') .. weapon.name, 24, y + 4, 16, changed and GOLD or WHITE, searching and 226 or 302)
+        -- a stratagem: its number as an extra stratagem after its name
+        if (weapon.stratagem or weapon.sentry_defs) and not MOD.extra.list then MOD.extra.choices() end
+        local id = weapon.extra_id and ' (' .. weapon.extra_id .. ')' or ''
+        text((changed and '* ' or '') .. settings.tr(weapon.name) .. id, 24, y + 4, 16, changed and GOLD or WHITE, searching and 226 or 302)
         region(key, 16, y, 318, 25)
     end
     local py = 96 + LIST_ROWS * 26 + 8
@@ -13108,7 +13195,9 @@ local function draw(width, height)
                 local focus = n == ui.row
                 local bh = pitch - 3
                 if focus then rect(x0 - 6, y - 1, W - x0 - 10, pitch - 1, color(30, 38, 48), 951) end
-                text(row.label, x0, y + bh / 2 - 8, 16, focus and GOLD or WHITE, 236)
+                local label = row.label
+                if row.label_of then label = row.label_of() end
+                text(label, x0, y + bh / 2 - 8, 16, focus and GOLD or WHITE, 236)
                 text(changed and ('was ' .. fmt(default, row.storage)) or '', 690, y + bh / 2 - 7, 14, DIM, 90, true)
                 local typing = ui.value and ui.value.n == n and ui.value.weapon == weapon
                 if typing or (ui.hover == 'value:' .. n and value ~= nil) then
