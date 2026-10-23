@@ -502,6 +502,8 @@ MOD.langs = {
       ['20mm HVAP Rounds'] = '20mm高速穿甲弹',
       ['23mm HE Cannon'] = '23mm高爆炮弹',
       ['30mm APHE Cannon'] = '30mm穿甲高爆炮弹',
+      ['360 fires from any side; with a blast proximity above 0 the round becomes a proximity fuse (measured: 360 and 6 m on the crossbow).'] = '360 表示任意方向都会触发；配合大于 0 的爆炸接近度就是近炸引信（实测：360 + 6 米，弩箭）。',
+      ['360 with a proximity above 0: a proximity fuse, off from any side.'] = '360 配大于 0 的接近度：近炸引信，任意方向都会起爆。',
       ['380mm HE Cannon Round'] = '380mm高爆炮弹',
       ['40-K Meltagun'] = '40-K 热熔枪',
       ['40mm APHE Cannon'] = '40mm穿甲高爆炮弹',
@@ -1782,6 +1784,7 @@ MOD.langs = {
       ['normal projectile'] = '常规弹丸',
       ['not a finite number'] = '不是有限数值',
       ['nothing to vary for the hash (edit a value with decimals in this file)'] = '没有可用于校正校验值的数据（请修改此文件中的一个小数值）',
+      ['only works with the blast angle at 360, and the radius has to be larger than one step of the round: keep it above about speed / frame rate.'] = '只在爆炸角为 360 时生效；半径要大于射弹每帧的位移，建议大于「初速/游戏帧率」。',
       ['overcharge'] = '过充',
       ['panels, mines per panel: lower only (more than the default crashes the game)'] = '布雷批次数、每批地雷数：只能调低（高于默认值会使游戏崩溃）',
       ['read-back check failed'] = '写入后读回校验失败',
@@ -3285,6 +3288,8 @@ MOD.langs = {
       ['20mm HVAP Rounds'] = '20mm高速穿甲彈',
       ['23mm HE Cannon'] = '23mm高爆炮彈',
       ['30mm APHE Cannon'] = '30mm穿甲高爆炮彈',
+      ['360 fires from any side; with a blast proximity above 0 the round becomes a proximity fuse (measured: 360 and 6 m on the crossbow).'] = '360 表示任意方向都會觸發；配合大於 0 的爆炸接近度就是近炸引信（實測：360 + 6 米，弩箭）。',
+      ['360 with a proximity above 0: a proximity fuse, off from any side.'] = '360 配大於 0 的接近度：近炸引信，任意方向都會起爆。',
       ['380mm HE Cannon Round'] = '380mm高爆炮彈',
       ['40-K Meltagun'] = '40-K 熱熔槍',
       ['40mm APHE Cannon'] = '40mm穿甲高爆炮彈',
@@ -4565,6 +4570,7 @@ MOD.langs = {
       ['normal projectile'] = '常規射彈',
       ['not a finite number'] = '不是有限數值',
       ['nothing to vary for the hash (edit a value with decimals in this file)'] = '沒有可用於校正校驗值的資料（請修改此檔案中的一個小數值）',
+      ['only works with the blast angle at 360, and the radius has to be larger than one step of the round: keep it above about speed / frame rate.'] = '只在爆炸角為 360 時生效；半徑要大於射彈每幀的位移，建議大於「初速/遊戲幀率」。',
       ['overcharge'] = '過充',
       ['panels, mines per panel: lower only (more than the default crashes the game)'] = '佈雷批次數、每批地雷數：只能調低（高於預設值會使遊戲崩潰）',
       ['read-back check failed'] = '寫入後讀回校驗失敗',
@@ -6065,6 +6071,8 @@ MOD.langs = {
       ['20mm HVAP Rounds'] = 'Бронебойные подкалиберные боеприпасы 20 мм',
       ['23mm HE Cannon'] = 'ОФ пушка 23 мм',
       ['30mm APHE Cannon'] = 'Бронебойно-фугасная пушка 30 мм',
+      ['360 fires from any side; with a blast proximity above 0 the round becomes a proximity fuse (measured: 360 and 6 m on the crossbow).'] = '360 — срабатывает с любой стороны; вместе с дистанцией подрыва больше 0 это радиовзрыватель (проверено: 360 и 6 м на арбалете).',
+      ['360 with a proximity above 0: a proximity fuse, off from any side.'] = '360 при дистанции подрыва больше 0: радиовзрыватель, срабатывает с любой стороны.',
       ['380mm HE Cannon Round'] = 'ОФ-артиллерийский выстрел 380 мм',
       ['40-K Meltagun'] = '40-K Плавкопушка',
       ['40mm APHE Cannon'] = 'Бронебойно-фугасная пушка 40 мм',
@@ -7206,6 +7214,7 @@ MOD.langs = {
       ['none (no explosion)'] = 'нет (без взрыва)',
       ['none (no projectile)'] = 'нет (без снаряда)',
       ['normal projectile'] = 'обычный снаряд',
+      ['only works with the blast angle at 360, and the radius has to be larger than one step of the round: keep it above about speed / frame rate.'] = 'работает только при угле взрыва 360; радиус должен быть больше шага снаряда за кадр — держите его выше скорости / частоты кадров.',
       ['overcharge'] = 'перезаряд',
       ['panels, mines per panel: lower only (more than the default crashes the game)'] = 'секции, мины на секцию: только уменьшать (больше значения по умолчанию — вылет игры)',
       ['shared with'] = 'общее с',
@@ -10109,9 +10118,14 @@ local function resolve_gun(weapon, key)
         if impact and impact > 0 then
             for _, f in ipairs({ { 'fuse_proximity', 'Blast proximity (m)', 148, 200, 0.1, 1 },
                                  { 'fuse_delay', 'Blast delay (s)', 152, 30, 0.05, 0.5 } }) do
-                add_row(weapon, idsec, idp .. f[1], f[2], 'f32', { part(idp .. f[1], T_PROJECTILE, p + f[3], 'f32', 100000) },
-                        0, f[4], f[5], f[6])
+                local row = add_row(weapon, idsec, idp .. f[1], f[2], 'f32', { part(idp .. f[1], T_PROJECTILE, p + f[3], 'f32', 100000) },
+                                    0, f[4], f[5], f[6])
+                if f[1] == 'fuse_proximity' then row.note = MOD.records.NOTES.proximity end
             end
+            -- the blast angle (+136): 80 or 90 on most rounds, 360 on the airburst ones (RL-77, the large plasma bolt)
+            local angle = add_row(weapon, idsec, idp .. 'blast_angle', 'Blast angle (deg)', 'f32',
+                                  { part(idp .. 'blast_angle', T_PROJECTILE, p + 136, 'f32', 100000) }, 0, 360, 1, 10)
+            angle.note = MOD.records.NOTES.weapon_angle
         end
         if expiry then blast_id('expiry_explosion', 'Expiry explosion (id)', 156) end
         local first = #blasts
@@ -11889,6 +11903,13 @@ end
 MOD.records = { pages = {}, list = nil, cache = nil, KINDS = { T_PROJECTILE, T_EXPLOSION, T_STATUS },
                 WORD = { [T_PROJECTILE] = 'Projectile', [T_EXPLOSION] = 'Explosion', [T_STATUS] = 'Status' },
                 PREFIX = { [T_PROJECTILE] = 'F1', [T_EXPLOSION] = 'F2', [T_STATUS] = 'F3' } }
+-- the fuse rows' notes (PR #80 by CarbonAnime): a blast proximity works only with the blast angle (+136) at 360
+-- (tested in game: the crossbow at 80 and 6 m does not burst in flight, the GL-21 at 360 and 6 m does), and a radius
+-- smaller than one step of the round is stepped over
+MOD.records.NOTES = {
+    angle = '360 fires from any side; with a blast proximity above 0 the round becomes a proximity fuse (measured: 360 and 6 m on the crossbow).',
+    proximity = 'only works with the blast angle at 360, and the radius has to be larger than one step of the round: keep it above about speed / frame rate.',
+    weapon_angle = '360 with a proximity above 0: a proximity fuse, off from any side.' }
 function MOD.records.ids(kind)
     local ids = {}
     for id in pairs(tables[kind] and tables[kind].index or {}) do
@@ -12000,7 +12021,7 @@ function MOD.records.rows(page)
     page.rows, page.by_id = {}, {}
     if not at then return end
     local function num(section, id, label, off, storage, max, small, big)
-        add_row(page, section, id, label, storage, { part(id, kind, at + off, storage, 100000) }, 0, max, small, big)
+        return add_row(page, section, id, label, storage, { part(id, kind, at + off, storage, 100000) }, 0, max, small, big)
     end
     local function hurt(off, section, what, count)
         local d = read_field(field_at(kind, at + off, 'u32', 100000))
@@ -12024,13 +12045,13 @@ function MOD.records.rows(page)
         impact.note = function()
             return 'sets off: ' .. MOD.records.label(T_EXPLOSION, read_field(impact.parts[1].field))
         end
-        num('Explosion id', 'fuse_proximity', 'Blast proximity (m)', 148, 'f32', 200, 0.1, 1)
+        num('Explosion id', 'fuse_proximity', 'Blast proximity (m)', 148, 'f32', 200, 0.1, 1).note = MOD.records.NOTES.proximity
         num('Explosion id', 'fuse_delay', 'Blast delay (s)', 152, 'f32', 30, 0.05, 0.5)
         local expiry = add_row(page, 'Explosion id', 'expiry_explosion', 'Expiry explosion (id)', 'u32',
                                { part('expiry_explosion', kind, at + 156, 'u32', 100000) }, 0, 100000, 1, 10)
         expiry.choice = 'explosion'
         num('Explosion id', 'arming', 'Arming distance (m)', 160, 'f32', 200, 0.1, 1)
-        num('Explosion id', 'blast_angle', 'Blast angle (deg)', 136, 'f32', 180, 1, 10)
+        num('Explosion id', 'blast_angle', 'Blast angle (deg)', 136, 'f32', 360, 1, 10).note = MOD.records.NOTES.angle
     elseif kind == T_EXPLOSION then
         hurt(4, 'Explosion', 'Explosion')
         for _, r in ipairs({ { 'inner', 'Inner radius (m)', 16 }, { 'outer', 'Outer radius (m)', 20 },
