@@ -9897,13 +9897,38 @@ end
 -- Settings switches that change a field in many rows (off by default; off puts the game's values back):
 --   bounce: stratagem balls stick on more surfaces: StratagemInfo +368 bit 0x02 cleared on every stratagem
 --     that has it
+--   foliage: player rockets, launcher rounds and stratagem ordnance fly through tree canopies and bushes:
+--     ProjectileInfo +248 raycast template 0 (damage) -> 3 (damage without foliage, what plasma bolts use) on
+--     the impact-exploding player projectiles, by type and name hash (+8); game build 26088801 (build
+--     25480438: template +244, no foliage 2)
 -- `original`: by row, the value the game had (kept across rescans).
 MOD.tweaks = {
     bounce = { on = false, original = {}, rows = {} },
+    foliage = { on = false, original = {}, rows = {}, NO_FOLIAGE = 3, TARGETS = {
+        [6] = 0x84F1CDC4, [11] = 0xF73287FE, [12] = 0x6B55E559, [14] = 0xF516C1C8, [17] = 0xA1701744,
+        [18] = 0xFD691A89, [27] = 0xF796A3E6, [30] = 0xE3FF617D, [32] = 0x0B3CE509, [37] = 0xCB119C6D,
+        [41] = 0x8800F269, [44] = 0x6D4E9963, [67] = 0xD0E7BB89, [69] = 0x84135F91, [72] = 0x91C46E0F,
+        [73] = 0x02694B60, [74] = 0xA1701744, [76] = 0x7E66B2AD, [77] = 0xA1701744, [79] = 0xA1701744,
+        [80] = 0x72EDB2F8, [82] = 0x12416AAE, [84] = 0x8E7C4D62, [86] = 0x12416AAE, [87] = 0xF62F1CD1,
+        [92] = 0xDB3C0FF3, [94] = 0x5D4CBC38, [95] = 0x12416AAE, [98] = 0x844732B0, [101] = 0xD84656B7,
+        [102] = 0x12416AAE, [112] = 0x0B3CE509, [117] = 0x122274B8, [118] = 0x0DF27E48, [122] = 0x943BD4B3,
+        [129] = 0x9D946B50, [130] = 0x49B9185E, [132] = 0x5E95C9E2, [133] = 0x72EDB2F8, [134] = 0x0B3CE509,
+        [139] = 0xF516C1C8, [143] = 0xEDD7AD4C, [147] = 0x780FF8A9, [148] = 0x8E7C4D62, [153] = 0x045580C1,
+        [154] = 0x9D946B50, [155] = 0x8C935D03, [160] = 0x4211411F, [163] = 0x9A056E06, [164] = 0x6BD146D6,
+        [173] = 0x5E95C9E2, [178] = 0xF3B7C565, [186] = 0xE441DAF0, [191] = 0x6B55E559, [194] = 0x00000000,
+        [197] = 0xF516C1C8, [200] = 0xC4AE97A6, [205] = 0x203BCD08, [206] = 0x00000000, [209] = 0x8800F269,
+        [211] = 0x89C98FA5, [213] = 0x72EDB2F8, [217] = 0x17D7C9B0, [219] = 0x12416AAE, [223] = 0xAE182F69,
+        [227] = 0x74AD0033, [229] = 0xE4F875DB, [235] = 0x345DDEE2, [237] = 0x72EDB2F8, [238] = 0xF516C1C8,
+        [242] = 0xF516C1C8, [243] = 0xE6C09ED9, [249] = 0x65466EE5, [251] = 0x00000000, [253] = 0xAFD4B511,
+        [265] = 0x1666BC52, [267] = 0xF62F1CD1, [270] = 0x12416AAE, [276] = 0xAA1001AC, [285] = 0x61BA34A9,
+        [289] = 0x74AD0033, [298] = 0x0651CEF6, [299] = 0xA2CD0019, [302] = 0x61BA34A9, [303] = 0xBFCC6788,
+        [309] = 0x573CAE11, [317] = 0x74AD0033, [318] = 0x3D489B66, [325] = 0x573CAE11, [327] = 0x14AAD316,
+        [335] = 0xCB392DF4, [341] = 0xA31CB0BA, [343] = 0x8A2E7689, [344] = 0x1E12F273, [346] = 0x91C46E0F,
+        [351] = 0x9FBB83F9, [354] = 0xD45518B3, [355] = 0x07734A24 } },
 }
 -- the rows each switch changes: { kind, off (the field's offset in the table), want (on), size }
 function MOD.tweaks.collect(defs)
-    local B = MOD.tweaks.bounce
+    local B, F = MOD.tweaks.bounce, MOD.tweaks.foliage
     B.rows = {}
     for id, def in pairs(defs) do
         local b = api.read(def.at + 368, 1)
@@ -9913,11 +9938,23 @@ function MOD.tweaks.collect(defs)
             B.rows[#B.rows + 1] = { kind = def.kind, off = def.off + 368, size = 1, game = flags, want = flags - 2 }
         end
     end
-    log(string.format('switches: stratagem bounce %d stratagems', #B.rows))
+    F.rows = {}
+    local pt = tables[T_PROJECTILE]
+    for ptype, name in pairs(F.TARGETS) do
+        local off = pt and pt.index[ptype]
+        local at = off and pt.copies[1] + HEADER_BYTES + off
+        local template = at and (F.original[ptype] or peek4(at + 248))
+        if at and peek4(at + 8) == name and template == 0 then
+            F.original[ptype] = template
+            F.rows[#F.rows + 1] = { kind = T_PROJECTILE, off = off + 248, size = 4, game = 0, want = F.NO_FOLIAGE }
+        end
+    end
+    log(string.format('switches: stratagem bounce %d stratagems, foliage pass-through %d of %d projectiles',
+        #B.rows, #F.rows, (function() local n = 0 for _ in pairs(F.TARGETS) do n = n + 1 end return n end)()))
     MOD.tweaks.apply()
 end
 function MOD.tweaks.apply()
-    for _, name in ipairs({ 'bounce' }) do
+    for _, name in ipairs({ 'bounce', 'foliage' }) do
         local T = MOD.tweaks[name]
         for _, r in ipairs(T.rows) do
             local value = T.on and r.want or r.game
@@ -11502,6 +11539,7 @@ local function save_config()
     lines[#lines + 1] = 'unlock_unused ' .. onoff(settings.unlock_any())
     lines[#lines + 1] = 'several_vehicles ' .. onoff(MOD.vehicles.on)
     lines[#lines + 1] = 'stratagem_bounce ' .. onoff(MOD.tweaks.bounce.on)
+    lines[#lines + 1] = 'foliage_pass_through ' .. onoff(MOD.tweaks.foliage.on)
     -- hide_tabs <tab>,<tab>...: the tabs Settings > Tabs shown turned off
     local hidden = {}
     for tab in pairs(settings.hidden) do hidden[#hidden + 1] = tab end
@@ -11580,8 +11618,8 @@ local function load_config()
         elseif name == 'several_vehicles' then
             MOD.vehicles.on = value ~= 'off'; MOD.vehicles.apply()
             known = true
-        elseif name == 'stratagem_bounce' then
-            MOD.tweaks.bounce.on = value == 'on'; MOD.tweaks.apply()
+        elseif name == 'stratagem_bounce' or name == 'foliage_pass_through' then
+            MOD.tweaks[name == 'stratagem_bounce' and 'bounce' or 'foliage'].on = value == 'on'; MOD.tweaks.apply()
             known = true
         elseif name == 'unlock_unused' then
             settings.unlock_all(value == 'on')
@@ -13206,6 +13244,10 @@ local function draw(width, height)
         choice('Better stratagem bounce', 'bounce', ONOFF, onoff(MOD.tweaks.bounce.on))
         text('On: stratagem balls stick on more surfaces instead of bouncing off.', x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
         y = y + 14
+        choice('Foliage pass-through', 'foliage', ONOFF, onoff(MOD.tweaks.foliage.on))
+        text('On: your rockets, launcher rounds and stratagem ordnance fly through tree canopies and bushes.',
+             x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
+        y = y + 14
         if not MOD.offline then   -- (the game's item list exists only while it runs)
         choice('Unlock unused items', 'unlock_all', ONOFF, onoff(settings.unlock_any()))
         local names = {}
@@ -13571,7 +13613,7 @@ local function click(key)
         elseif name == 'arc_mp' then settings.arc_mp, settings.arc.next_check = value == 'on', 0
         elseif name == 'vehicles' then
             MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
-        elseif name == 'bounce' then
+        elseif name == 'bounce' or name == 'foliage' then
             MOD.tweaks[name].on = value == 'on'; MOD.tweaks.apply()
         elseif name == 'unlock_all' then
             settings.unlock_all(value == 'on'); settings.unlock.next_check = 0
