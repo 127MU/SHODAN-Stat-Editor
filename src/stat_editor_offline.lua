@@ -8105,7 +8105,8 @@ local KINDS = {
     -- explosions: melee weapons whose strike explodes, by entity -> explosion id (the Breaching
     -- Hammer's; no settings table links it, the game sets it off from the strike itself)
     [T_MELEE] = { name = 'melee weapon', stride = 192, keyed = true, explosions = { ['5F3EC9BDA2BD8553'] = 19 } },
-    -- names: the status effects that deal damage, by type (the game's debug names Fire, Gas)
+    -- names: the status effects that deal damage, by type (the game's debug names Fire, Gas); game build 26088801
+    -- (2026-10-22) put a new status at 32, the ones from there on moved up one
     [T_STATUS] = { name = 'status effect', stride = 160, tail = true,   -- 152 before game build 25988413
                    names = { [5] = 'Burning', [33] = 'Heavy burning', [43] = 'Gas', [44] = 'Gas' },
                    -- stuns deal no damage (no damage row of their own); the Illuminate one (42) no weapon applies
@@ -8717,8 +8718,10 @@ KINDS[TYPES.items].find = function(id)
 end
 
 -- Game build 25988413 (2026-10-20) renumbered the components (weapon 236 -> 239, heat 266 -> 269, reload
--- 113 -> 114) and moved the weapon's stat bonuses 8 bytes on (its records grew): `words` names them as before.
-KINDS[TYPES.items].RENUMBERED = { [239] = 236, [269] = 266, [114] = 113, [324] = 321, [236] = false, [266] = false, [113] = false, [321] = false }   -- + [324] = 321, [321] = false: see above
+-- 113 -> 114, projectile 321 -> 324) and moved the weapon's stat bonuses 8 bytes on (its records grew): `words`
+-- names them as before.
+KINDS[TYPES.items].RENUMBERED = { [239] = 236, [269] = 266, [114] = 113, [324] = 321,
+                                  [236] = false, [266] = false, [113] = false, [321] = false }
 KINDS[TYPES.items].words = function(t, r)
     local deltas, at, out = tables[TYPES.deltas], KINDS[TYPES.deltas].layout, {}
     local renumbered = KINDS[T_WEAPON].stride == 1240 and KINDS[TYPES.items].RENUMBERED
