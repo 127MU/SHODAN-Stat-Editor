@@ -181,6 +181,24 @@ end
 -- stacks: target passive id -> { source passive id, ... }; own_off: passive id -> true: its own modifiers left out
 -- (only the stacked ones; none: the passive does nothing). Adds to / changes `changes` (from M.diff) in place.
 local PASSIVE = 0x63CE0FEB
+-- `add`'s modifiers appended to `mods`, but for the ids `mods` has already: the game applies an id once (Engineering
+-- Kit + Integrated Explosives: +2 grenades, not +4), and the armory's preview of a passive holding an id twice crashes
+-- the game (issue #66). The ids left out go to `dropped`.
+local function append_mods(mods, add, dropped)
+    local have, out = {}, { mods }
+    for o = 1, #mods, 16 do have[mods:sub(o, o + 3)] = true end
+    for o = 1, #add, 16 do
+        local key = add:sub(o, o + 3)
+        if have[key] then
+            local b1, b2, b3, b4 = key:byte(1, 4)
+            dropped[#dropped + 1] = string.format('%08X', ((b4 * 256 + b3) * 256 + b2) * 256 + b1)
+        else
+            have[key], out[#out + 1] = true, add:sub(o, o + 15)
+        end
+    end
+    return table.concat(out)
+end
+
 function M.stack(changes, stacks, log, own_off)
     log, stacks, own_off = log or function() end, stacks or {}, own_off or {}
     local any = next(own_off) ~= nil
@@ -225,8 +243,13 @@ function M.stack(changes, stacks, log, own_off)
         if own and own_off[id] then mods, stats = '', '' end
         for _, s in ipairs(own and list or {}) do
             if s ~= id and blocks[s] then
-                mods, stats = mods .. blocks[s].mods, stats .. blocks[s].stats
+                local dropped = {}
+                mods, stats = append_mods(mods, blocks[s].mods, dropped), stats .. blocks[s].stats
                 names[#names + 1] = tostring(s)
+                if #dropped > 0 then
+                    log('passive ' .. s .. ' (stacked on ' .. id .. '): modifier ' .. table.concat(dropped, ', ') ..
+                        ' left out, passive ' .. id .. ' has it already')
+                end
             elseif s ~= id then
                 log('passive ' .. s .. ' (stacked on ' .. id .. ') is not in this game\'s file: left out')
             end
