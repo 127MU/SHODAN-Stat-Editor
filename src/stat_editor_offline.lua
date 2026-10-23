@@ -9894,6 +9894,43 @@ function MOD.vehicles.apply()
     end
 end
 
+-- Settings switches that change a field in many rows (off by default; off puts the game's values back):
+--   bounce: stratagem balls stick on more surfaces: StratagemInfo +368 bit 0x02 cleared on every stratagem
+--     that has it
+-- `original`: by row, the value the game had (kept across rescans).
+MOD.tweaks = {
+    bounce = { on = false, original = {}, rows = {} },
+}
+-- the rows each switch changes: { kind, off (the field's offset in the table), want (on), size }
+function MOD.tweaks.collect(defs)
+    local B = MOD.tweaks.bounce
+    B.rows = {}
+    for id, def in pairs(defs) do
+        local b = api.read(def.at + 368, 1)
+        local flags = B.original[id] or (b and b:byte())
+        if flags and math.floor(flags / 2) % 2 == 1 then
+            B.original[id] = flags
+            B.rows[#B.rows + 1] = { kind = def.kind, off = def.off + 368, size = 1, game = flags, want = flags - 2 }
+        end
+    end
+    log(string.format('switches: stratagem bounce %d stratagems', #B.rows))
+    MOD.tweaks.apply()
+end
+function MOD.tweaks.apply()
+    for _, name in ipairs({ 'bounce' }) do
+        local T = MOD.tweaks[name]
+        for _, r in ipairs(T.rows) do
+            local value = T.on and r.want or r.game
+            local bytes = r.size == 1 and string.char(value) or u32_bytes(value)
+            local t = tables[r.kind]
+            for _, copy in ipairs(t and t.copies or {}) do
+                local at = copy + HEADER_BYTES + r.off
+                if api.read(at, r.size) ~= bytes then api.write(at, bytes) end
+            end
+        end
+    end
+end
+
 local function build_stratagems()
     for k = #weapons, 1, -1 do
         if weapons[k].stratagem or weapons[k].mounted then by_hash[weapons[k].hash] = nil; table.remove(weapons, k) end
@@ -9937,6 +9974,7 @@ local function build_stratagems()
         end
     end
     MOD.vehicles.collect(defs)
+    MOD.tweaks.collect(defs)
     local list, known = {}, {}
     local function add(id, name, family, payloads, nodes, def)
         local keys = {}
@@ -11463,6 +11501,7 @@ local function save_config()
     end
     lines[#lines + 1] = 'unlock_unused ' .. onoff(settings.unlock_any())
     lines[#lines + 1] = 'several_vehicles ' .. onoff(MOD.vehicles.on)
+    lines[#lines + 1] = 'stratagem_bounce ' .. onoff(MOD.tweaks.bounce.on)
     -- hide_tabs <tab>,<tab>...: the tabs Settings > Tabs shown turned off
     local hidden = {}
     for tab in pairs(settings.hidden) do hidden[#hidden + 1] = tab end
@@ -11540,6 +11579,9 @@ local function load_config()
             known = true
         elseif name == 'several_vehicles' then
             MOD.vehicles.on = value ~= 'off'; MOD.vehicles.apply()
+            known = true
+        elseif name == 'stratagem_bounce' then
+            MOD.tweaks.bounce.on = value == 'on'; MOD.tweaks.apply()
             known = true
         elseif name == 'unlock_unused' then
             settings.unlock_all(value == 'on')
@@ -13161,6 +13203,9 @@ local function draw(width, height)
         choice('Several vehicles of a kind', 'vehicles', ONOFF, onoff(MOD.vehicles.on))
         text('On: a loadout can take more than one exosuit, FRV or tank.', x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
         y = y + 14
+        choice('Better stratagem bounce', 'bounce', ONOFF, onoff(MOD.tweaks.bounce.on))
+        text('On: stratagem balls stick on more surfaces instead of bouncing off.', x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
+        y = y + 14
         if not MOD.offline then   -- (the game's item list exists only while it runs)
         choice('Unlock unused items', 'unlock_all', ONOFF, onoff(settings.unlock_any()))
         local names = {}
@@ -13526,6 +13571,8 @@ local function click(key)
         elseif name == 'arc_mp' then settings.arc_mp, settings.arc.next_check = value == 'on', 0
         elseif name == 'vehicles' then
             MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
+        elseif name == 'bounce' then
+            MOD.tweaks[name].on = value == 'on'; MOD.tweaks.apply()
         elseif name == 'unlock_all' then
             settings.unlock_all(value == 'on'); settings.unlock.next_check = 0
         elseif name:find('^unlock_') then
