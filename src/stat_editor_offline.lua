@@ -9083,7 +9083,41 @@ end
 -- The status effects damage row `drow` applies that deal damage (fire from flamers, incendiary rounds
 -- and grenades, gas) or stun: how much each hit applies (`per`: 'hit', 'blast'), then the status's damage
 -- row (none for a stun) and duration (every source of that status shares them). Ids: `prefix` .. 'status<type>_' .. stat.
+-- The status effects a hit can be given (issue #24): the ones player weapons already apply, by this build's type
+-- number (StatusEffectSettings rows, told apart by their durations), with a usual strength (written when an empty
+-- slot gets one). DamageInfo +44 + 8n: 4 slots of { type u32, strength f32 }, packed from the first.
+MOD.status = { choices = {
+    { 5, 'Burning', 3 }, { 33, 'Heavy burning', 50 }, { 6, 'Fire panic', 3 }, { 68, 'Flamethrower slow', 1 },
+    { 38, 'Stun (small)', 10 }, { 39, 'Stun (medium)', 50 }, { 40, 'Stun (large)', 25 },
+    { 43, 'Gas', 100 }, { 45, 'Gas confusion', 100 }, { 44, 'Gas (Sterilizer)', 1 }, { 46, 'Gas confusion (Sterilizer)', 1 },
+}, by = {} }
+for n, c in ipairs(MOD.status.choices) do MOD.status.by[c[1]] = { n = n, type = c[1], name = c[2], strength = c[3] } end
+function MOD.status.name(kind)
+    if kind == 0 then return 'none' end
+    return MOD.status.by[kind] and MOD.status.by[kind].name or KINDS[T_STATUS].stuns[kind] or ('status ' .. kind)
+end
+-- the next / previous choice (n steps; 0: none, before the first)
+function MOD.status.step(current, n)
+    local at = MOD.status.by[current] and MOD.status.by[current].n or 0
+    local to = math.max(0, math.min(#MOD.status.choices, at + n))
+    return to == 0 and 0 or MOD.status.choices[to][1]
+end
+-- why slot `row.slot` of `row.drow` can't take `target` (a gap in the slots, a status not offered), or nil
+function MOD.status.refused(row, target)
+    if target ~= 0 and not MOD.status.by[target] and target ~= default_of(row.parts[1].field) then
+        return 'Status effect ' .. tostring(target) .. ' is not one player weapons apply.'
+    end
+    local function at(i) return i >= 0 and i <= 3 and read_field(field_at(T_DAMAGE, row.drow + 44 + i * 8, 'u32', 100000)) or 0 end
+    if target ~= 0 and row.slot > 0 and at(row.slot - 1) == 0 then
+        return 'Give status effect ' .. row.slot .. ' first (the game reads them in order).'
+    end
+    if target == 0 and at(row.slot + 1) ~= 0 then
+        return 'Clear status effect ' .. (row.slot + 2) .. ' first (the game reads them in order).'
+    end
+end
+
 local function status_rows(entry, section, prefix, drow, per)
+    local strength_of = {}   -- slot -> its named strength row
     for i = 0, 3 do
         local kind = read_field(field_at(T_DAMAGE, drow + 44 + i * 8, 'u32', 100000))
         if not kind or kind == 0 then break end
@@ -9093,14 +9127,31 @@ local function status_rows(entry, section, prefix, drow, per)
         local stun = srow and not qrow and KINDS[T_STATUS].stuns[kind]
         if qrow or stun then
             local name, key = stun or KINDS[T_STATUS].names[kind] or ('Status ' .. kind), prefix .. 'status' .. kind
-            add_row(entry, section, key .. '_strength', name .. ' applied per ' .. per, 'f32',
-                    { part(key .. '_strength', T_DAMAGE, drow + 48 + i * 8, 'f32', 100000) }, 0, 1000, 0.1, 1)
+            strength_of[i] = add_row(entry, section, key .. '_strength', name .. ' applied per ' .. per, 'f32',
+                                     { part(key .. '_strength', T_DAMAGE, drow + 48 + i * 8, 'f32', 100000) }, 0, 1000, 0.1, 1)
             local first = qrow and damage_rows(entry, name, key .. '_', qrow, name, 6)   -- no forces: a status has none
             local duration = add_row(entry, name, key .. '_duration', name .. ' duration (s)', 'f32',
                                      { part(key .. '_duration', T_STATUS, srow + 40, 'f32', 100000) }, 0, 600, 0.5, 5)
             local by = qrow and '(other weapons, strikes, hazards, enemies)' or '(other weapons, grenades, strikes)'
             ;(first or duration).note = 'every ' .. name:lower() .. ' source shares ' .. (qrow and 'these ' or 'this ') .. by
         end
+    end
+    -- which status each slot applies: the used ones and the next empty one
+    local used = 0
+    for i = 0, 3 do
+        local f = field_at(T_DAMAGE, drow + 44 + i * 8, 'u32', 100000)
+        if (default_of(f) or 0) ~= 0 or (read_field(f) or 0) ~= 0 then used = i + 1 end
+    end
+    local own = section == 'Damage' and 'Status effects' or ('Status effects (' .. section .. ')')
+    for i = 0, math.min(3, used) do
+        local id = prefix .. 'slot' .. (i + 1)
+        local row = add_row(entry, own, id, 'Status effect ' .. (i + 1) .. ' (choice)', 'u32',
+                            { part(id, T_DAMAGE, drow + 44 + i * 8, 'u32', 100000) }, 0, 100000, 1, 1)
+        row.choice, row.drow, row.slot = 'status', drow, i
+        row.label_of = function() return 'Applies: ' .. MOD.status.name(read_field(row.parts[1].field) or 0) end
+        if i == 0 then row.note = 'what each hit applies; the slots go in order' end
+        row.strength = strength_of[i] or add_row(entry, own, id .. '_strength', 'Status effect ' .. (i + 1) .. ' strength per ' .. per,
+                                                 'f32', { part(id .. '_strength', T_DAMAGE, drow + 48 + i * 8, 'f32', 100000) }, 0, 1000, 0.1, 1)
     end
 end
 
@@ -12197,6 +12248,26 @@ local function change(row, delta_sign, big, exact)
             local p = row.parts[1]
             local ok, err = write_field(p.field, target)
             if ok then set_override(weapon, p, unless_default(target, default_of(p.field)))
+            else ui.message = { text = err, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'status' then
+            local target = exact and math.floor(exact + 0.5) or MOD.status.step(current, delta_sign * (big and 10 or 1))
+            if target == current then return end
+            local why = MOD.status.refused(row, target)
+            if why then ui.message = { text = why, till = api.now() + 4 }; return end
+            local p = row.parts[1]
+            local ok, err = write_field(p.field, target)
+            if ok then
+                set_override(weapon, p, unless_default(target, default_of(p.field)))
+                -- a status with no strength does nothing: it gets the usual one
+                local sp = row.strength and row.strength.parts[1]
+                if target ~= 0 and sp and (read_field(sp.field) or 0) == 0 and MOD.status.by[target] then
+                    if write_field(sp.field, MOD.status.by[target].strength) then
+                        set_override(weapon, sp, unless_default(MOD.status.by[target].strength, default_of(sp.field)))
+                    end
+                end
             else ui.message = { text = err, till = api.now() + 4 } end
             ui.version = ui.version + 1
             return
