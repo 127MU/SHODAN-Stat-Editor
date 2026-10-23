@@ -198,6 +198,44 @@ local function save_list(list)
     return write(LIST, table.concat(lines, '\n') .. (#lines > 0 and '\n' or ''))
 end
 
+-- Compatibility with this terminal's earlier backup index. Game writing itself
+-- remains the official 3.2.0 implementation below.
+function M.migrate_compat_backups(game)
+    local text=read(M.home..'/backup-index.txt') or ''
+    local installed=load_list();local migrated=0
+    M.compat_originals={};M.compat_warnings={}
+    for line in text:gmatch('[^\r\n]+') do
+        local name,relative=line:match('^(generated_[%w_]+%.dl_bin) (backups/[%w_%-]+%.dl_bin)$')
+        local current=name and read(game..'/'..name)
+        if name and current and installed[name] and installed[name][hash_of(current)] then
+            local data=read(M.home..'/'..relative)
+            local expected=relative:match('^backups/(%x+)_')
+            if not data or not expected or hash_of(data):lower()~=expected:lower() then
+                return nil,'旧版备份缺失或校验失败：'..relative
+            end
+            local target=M.originals_dir..'/'..name;local old=read(target)
+            local canonical=name=='generated_customization_passive_bonuses.dl_bin' and require('armor_baseline').is_clean(old)
+            if old~=data and not canonical then
+                if old then
+                    mkdirs(M.home..'/backups')
+                    local history=M.home..'/backups/migrated_'..hash_of(old)..'_'..name
+                    if read(history)~=old then
+                        local saved,why=write(history,old)
+                        if not saved then return nil,'无法保留旧备份：'..tostring(why) end
+                    end
+                end
+                mkdirs(M.originals_dir)
+                local saved,why=write(target,data)
+                if not saved then
+                    M.compat_originals[name]=data
+                    M.compat_warnings[#M.compat_warnings+1]='无法迁移到官方备份位置：'..tostring(why)
+                else migrated=migrated+1 end
+            end
+        end
+    end
+    return migrated
+end
+
 -- ---------------------------------------------------------------- the originals
 -- name -> sealed original for every generated_*.dl_bin, and which of them are ours now (written by an install).
 -- A game file that is not ours is the original, and replaces a kept one that differs (the game was updated).

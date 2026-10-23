@@ -8,3 +8,8 @@ offline/launcher/*.lib
 offline/launcher/*.exp
 offline/launcher/*.res
 __pycache__/
+
+# Custom editor local outputs
+dist/
+__pycache__/
+*.pyc

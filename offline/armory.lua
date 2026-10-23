@@ -63,6 +63,24 @@ function M.group(id)
     return p
 end
 
+-- The game owns the catalog. Older labels enrich it but never limit it.
+function M.refresh(ids)
+    local list, seen = {}, {}
+    M.available = {}
+    for _, id in ipairs(ids or {}) do
+        if id > 0 and not seen[id] then
+            seen[id], M.available[id] = true, true
+            local c = BY_ID[id] or { id = id, name = 'Passive #' .. id,
+                zh = '被动 #' .. id, armors = '', effects = {} }
+            BY_ID[id], BY_RAW[c.zh], BY_NAME[norm(c.name)] = c, id, id
+            list[#list + 1] = c
+        end
+    end
+    table.sort(list, function(a,b) return a.id < b.id end)
+    DATA.list, M.list, M.groups = list, list, { EVERY }
+    for _, c in ipairs(list) do M.groups[#M.groups + 1] = c.id end
+end
+
 local function group_name(id)
     if id == EVERY then return '所有护甲  Every armor' end
     local c = BY_ID[id]
@@ -83,7 +101,7 @@ function M.count()
         local p = M.profiles[id]
         if p then
             local n = chosen(p)
-            if n > 0 or p.own == false then
+            if n > 0 or p.own == false or p.configured then
                 groups = groups + 1
                 rows = rows + n
             end
@@ -120,7 +138,7 @@ function M.parse(text)
                 if name then
                     local id = M.find(name)
                     if id then
-                        prof = { enabled = {}, own = true, conflicts = 'stack' }
+                        prof = { enabled = {}, own = true, conflicts = 'stack', configured = true }
                         profiles[id] = prof
                     else
                         notes[#notes + 1] = '未知护甲组 [' .. head .. ']，已跳过'
@@ -133,7 +151,7 @@ function M.parse(text)
                     if lk == 'conflicts' then
                         prof.conflicts = val:lower() == 'strongest' and 'strongest' or 'stack'
                     elseif lk == 'own_passive' or lk == 'own' then
-                        prof.own = not (FALSE_WORDS[val:lower()] or val:lower() == 'off')
+                        prof.own = FALSE_WORDS[val:lower()] == nil
                     elseif lk == 'raw' or lk == 'raw_stats' or lk == 'swap' or lk == 'weight'
                         or lk == 'base' or lk == 'retire' or lk == 'hotkey' or lk == 'swap_hotkey'
                         or lk == 'panel_scale' or lk == 'name' then
@@ -145,7 +163,7 @@ function M.parse(text)
                         local lv = val:lower()
                         if id then
                             if TRUE_WORDS[lv] then prof.enabled[id] = true
-                            elseif FALSE_WORDS[lv] or lv == '' then prof.enabled[id] = nil end
+                            elseif FALSE_WORDS[lv] ~= nil or lv == '' then prof.enabled[id] = nil end
                         end
                     end
                 end
@@ -167,7 +185,7 @@ function M.serialize()
         local p = M.profiles[id]
         if p then
             local n = chosen(p)
-            if n > 0 or p.own == false then
+            if n > 0 or p.own == false or p.configured then
                 out[#out + 1] = ''
                 out[#out + 1] = '[profile: ' .. (id == EVERY and 'Every armor' or BY_ID[id].name) .. ']'
                 out[#out + 1] = 'conflicts = ' .. (p.conflicts == 'strongest' and 'strongest' or 'stack')
@@ -199,12 +217,14 @@ function M.load(path)
 end
 
 function M.save()
-    if not M.path then return end
+    if not M.path then return false end
     local f = io.open(M.path, 'wb')
-    if not f then return end
-    f:write(M.serialize())
+    if not f then return false end
+    local ok = f:write(M.serialize())
     f:close()
+    if not ok then return false end
     M.dirty = false
+    return true
 end
 
 -- 第一次使用且没有自己的设置文件时, 试着接住模组留下的选择
@@ -243,11 +263,48 @@ function M.init(game, settings_path)
     end
 end
 
+function M.import_v54()
+    if not M.game then return nil, 'game folder unavailable' end
+    local function read(name)
+        local f = io.open(M.game .. '/' .. name, 'rb')
+        if not f then return nil end
+        local text = f:read('*a'); f:close()
+        return (text or ''):gsub('\r\n', '\n')
+    end
+    local text = read('ArmoryForge-Multi.pending') or read('ArmoryForge-Multi.state')
+    if not text then return nil, 'No ArmoryForge-Multi.state found' end
+    local level, ids = text:match('^AF3\n(%d+)\n([0-9,]*)')
+    if not ids then ids = text:match('^AF2\n([0-9,]*)'); level = '0' end
+    if not ids then return nil, 'Unsupported Forge state format' end
+    local p = { enabled = {}, own = not ((read('ArmoryForge-Multi.keep_original') or '1'):match('^%s*0')),
+        conflicts = 'stack', configured = true }
+    local count, missing = 0, {}
+    for raw in ids:gmatch('%d+') do
+        local id = tonumber(raw)
+        if M.available and M.available[id] then
+            if not p.enabled[id] then p.enabled[id], count = true, count + 1 end
+        else missing[#missing + 1] = raw end
+    end
+    -- Validate value overrides before replacing the current selection.
+    local n, why = 0, nil
+    if M.import_values then
+        n, why = M.import_values(read('ArmoryForge-Multi.values'))
+        if not n then return nil, why end
+    end
+    M.profiles[EVERY], M.imported, M.dirty = p, 'Forge v5.4', true
+    M.save()
+    M.log('Forge import: passives=' .. count .. ' values=' .. n .. ' missing=' .. table.concat(missing, ','))
+    local note = 'Imported ' .. count .. ' passives / ' .. n .. ' values'
+    if #missing > 0 then note = note .. '; unavailable IDs: ' .. table.concat(missing, ',') end
+    if tonumber(level) ~= 0 and tonumber(level) ~= 1 then note = note .. '; baked preset #' .. level .. ' not imported; AFV1 overrides only' end
+    return true, note
+end
+
 -- 本页的选择 -> hostdata.M.stack 的三张表: stacks (护甲家族 id -> 要叠的被动 id), own_off
 -- (家族 id -> true: 只留叠上来的, 原生被动关掉), policy (家族 id -> 'stack' | 'strongest')。
 -- SHODAN 自己的护甲被动页 (state.stacks / state.own_off) 是底, 两边都开时取并集; 具体家族有设置就用它,
 -- 否则用「所有护甲」(999)。ids: 这个游戏文件里真实存在的被动 id。
-local function active(p) return p ~= nil and (chosen(p) > 0 or p.own == false) end
+local function active(p) return p ~= nil and (chosen(p) > 0 or p.own == false or p.configured) end
 
 function M.selection(player_stacks, player_off, ids)
     local stacks, own, policy = {}, {}, {}
@@ -261,7 +318,8 @@ function M.selection(player_stacks, player_off, ids)
         local list, seen = stacks[id] or {}, {}
         for _, s in ipairs(list) do seen[s] = true end
         for src, on in pairs(p.enabled) do
-            if on and BY_ID[src] and src ~= id and not seen[src] then seen[src] = true; list[#list + 1] = src end
+            if on and BY_ID[src] and (not M.available or M.available[src])
+                and (src ~= id or p.own == false) and not seen[src] then seen[src] = true; list[#list + 1] = src end
         end
         table.sort(list)
         stacks[id] = list
@@ -280,13 +338,13 @@ function M.selection(player_stacks, player_off, ids)
 end
 
 ------------------------------------------------------------------ the page
-local VK = { up = 0x26, down = 0x28, left = 0x25, right = 0x27, space = 0x20, enter = 0x0D,
+local VK = { up = 0x26, down = 0x28, left = 0x25, right = 0x27, space = 0x20, enter = 0x0D, f6 = 0x75,
              pgup = 0x21, pgdn = 0x22, home = 0x24, end_ = 0x23, esc = 0x1B, f3 = 0x72, f4 = 0x73 }
 
 local C = {
-    back = { 255, 12, 15, 19 },
-    sel = { 255, 34, 56, 78 }, gold = { 255, 255, 213, 0 }, white = { 255, 238, 242, 246 },
-    muted = { 255, 153, 171, 184 }, good = { 255, 120, 220, 140 }, warn = { 255, 255, 150, 60 },
+    back = { 255, 237, 242, 234 },
+    sel = { 255, 215, 237, 224 }, gold = { 255, 31, 133, 102 }, white = { 255, 23, 37, 33 },
+    muted = { 255, 97, 112, 107 }, good = { 255, 31, 133, 102 }, warn = { 255, 160, 91, 36 },
 }
 
 M.open = false
@@ -313,7 +371,7 @@ local function rows()
         local on = p.enabled[c.id] and true or false
         out[#out + 1] = {
             kind = 'passive', id = c.id, label = '#' .. c.id .. '  ' .. c.zh, extra = c.name,
-            value = c.id == gid and '本组自身' or (on and '[x]' or '[ ]'), on = on, self_group = c.id == gid,
+            value = c.id == gid and p.own and '本组自身' or (on and '[x]' or '[ ]'), on = on, self_group = c.id == gid and p.own,
         }
     end
     return out
@@ -323,6 +381,7 @@ local function act(dir)
     local list = rows()
     local r = list[ui.row]
     if not r then return end
+    if r.kind ~= 'group' then local _, p = current(); p.configured = true end
     if r.kind == 'group' then
         ui.group = ((ui.group - 1 + dir) % #M.groups) + 1
         ui.row, ui.scroll = 1, 1
@@ -338,13 +397,13 @@ local function act(dir)
         local gid, p = current()
         local all, n = true, 0
         for _, c in ipairs(DATA.list) do
-            if c.id ~= gid then
+            if c.id ~= gid or p.own == false then
                 n = n + 1
                 if not p.enabled[c.id] then all = false end
             end
         end
         p.enabled = {}
-        if not all then for _, c in ipairs(DATA.list) do if c.id ~= gid then p.enabled[c.id] = true end end end
+        if not all then for _, c in ipairs(DATA.list) do if c.id ~= gid or p.own == false then p.enabled[c.id] = true end end end
         M.dirty = true
         say(all and '本组已清空' or ('本组已全选 ' .. n .. ' 条'))
     elseif r.kind == 'passive' then
@@ -413,13 +472,14 @@ function M.frame(shim)
         while fit > 9 * s and shim.text_width(line, fit) > shim.w - 80 * s do fit = fit - 0.5 end
         shim.text(line, 40 * s, shim.h - 76 * s, fit, C.muted)
     end
-    shim.text('↑↓ 选择    ←→ 切换开关/换组    空格 切换    F3 / F4 上/下一组    PgUp/PgDn 快速移动    F5 / ESC 返回',
+    shim.text('↑↓ 选择   ←→ / 空格 切换   F3/F4 换组   F6 导入 v5.4   F5 / ESC 返回',
         40 * s, shim.h - 42 * s, 15 * s, C.muted)
     if ui.message and os.clock() < ui.message.till then
         shim.text(ui.message.text, 40 * s, shim.h - 106 * s, 15 * s, C.warn)
     end
 
     if pressed(shim, 'esc') then M.close()
+    elseif pressed(shim, 'f6') then local ok, why = M.import_v54(); say(why or (ok and 'Imported' or 'Import failed'))
     elseif pressed(shim, 'f3') then ui.group = ((ui.group - 2) % #M.groups) + 1; ui.row, ui.scroll = 1, 1
     elseif pressed(shim, 'f4') then ui.group = (ui.group % #M.groups) + 1; ui.row, ui.scroll = 1, 1
     elseif pressed(shim, 'up') then ui.row = math.max(1, ui.row - 1)

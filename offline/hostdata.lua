@@ -61,15 +61,12 @@ local function place(name, cipher)
     return p, n
 end
 
--- a file's plain text to build on: another mod's version loses only its hash correction (the game checks the
--- hash, so a mod's file carries one too), this editor's own goes in its place
 local function open_base(cipher)
-    local p, n = G.open_sealed(cipher)
-    if p then G.clear_correction(p, n) end
-    return p, n
+    local p,n=G.open_sealed(cipher)
+    if p then G.clear_correction(p,n) end
+    return p,n
 end
-
-M.modded = {}   -- name -> true: a file another mod changed (built on, its changes kept)
+M.modded={}
 
 -- folder: data/game; originals: name -> sealed original (from the backups, else the game folder)
 function M.load(folder, originals)
@@ -85,8 +82,17 @@ function M.load(folder, originals)
                 problems[#problems + 1] = name .. ': not the version this game expects'
                 ffi.C.VirtualFree(p, 0, MEM_RELEASE)
             else
-                if G.clear_correction(p, n) then M.modded[name] = true end
-                M.files[name] = { name = name, p = p, n = n, hash = hash, cipher = cipher, fields = {} }
+                local valid = true
+                for _, header in ipairs(G.headers(p, n)) do
+                    if header.at + 24 + header.size > n then valid = false; break end
+                end
+                if valid then
+                    if G.clear_correction(p,n) then M.modded[name]=true end
+                    M.files[name] = { name = name, p = p, n = n, hash = hash, cipher = cipher, fields = {} }
+                else
+                    problems[#problems + 1] = name .. ': invalid table boundary'
+                    ffi.C.VirtualFree(p, 0, MEM_RELEASE)
+                end
             end
         end
     end
@@ -272,6 +278,7 @@ end
 -- (only the stacked ones; none: the passive does nothing); policy: passive id -> 'stack' | 'strongest' (one value
 -- per effect, the strongest, as the Armory Forge mod does). Adds to / changes `changes` (from M.diff) in place.
 local PASSIVE = 0x63CE0FEB
+
 -- a 32-bit word and a float32 read out of a byte string (Lua 5.1 has no string.unpack)
 local u32buf = ffi.new('uint32_t[1]')
 local f32buf = ffi.cast('float *', u32buf)
@@ -284,15 +291,15 @@ local function f32s(b, at)
     return f32buf[0]
 end
 
--- the rows of a record's arrays: { id, type, value, bytes, hex } (16-byte modifiers: id, type, value, text;
+-- the rows of a record's arrays: { key, type, value, bytes } (16-byte modifiers: id, type, value, text;
 -- 12-byte weapon stat modifiers: id, a float, the value)
 local function split_rows(s, width)
     local out = {}
     for at = 1, #s - width + 1, width do
         local b = s:sub(at, at + width - 1)
-        local b1, b2, b3, b4 = b:byte(1, 4)
-        out[#out + 1] = { id = b:sub(1, 4), type = width == 16 and u32s(b, 5) or 2, value = f32s(b, 9),
-                          bytes = b, hex = string.format('%08X', ((b4 * 256 + b3) * 256 + b2) * 256 + b1) }
+        out[#out + 1] = { key = b:sub(1, 4),
+                          type = width == 16 and u32s(b, 5) or 2,
+                          value = f32s(b, 9), bytes = b }
     end
     return out
 end
@@ -306,67 +313,53 @@ local function strength(typ, v)
     return math.abs(v)
 end
 
--- one effect may arrive from several passives, and the game applies an id once (Engineering Kit + Integrated
--- Explosives: +2 grenades, not +4); the armory's preview of a passive holding an id twice crashes the game
--- (issue #66). So one row per id survives: 'stack' keeps the first of differing values (the passive's own rows
--- come first), 'strongest' the strongest of them (as the Armory Forge mod does). The rows left out go to `dropped`.
+-- one effect may arrive from several passives: an identical value is written once; 'strongest' keeps only the
+-- strongest of them
 local function collapse(rows, policy)
     local order, groups = {}, {}
     for _, r in ipairs(rows) do
-        local g = groups[r.id]
-        if not g then g = {}; groups[r.id] = g; order[#order + 1] = r.id end
+        local g = groups[r.key]
+        if not g then g = {}; groups[r.key] = g; order[#order + 1] = r.key end
         local dup = false
         for _, u in ipairs(g) do if u.value == r.value then dup = true; break end end
         if not dup then g[#g + 1] = r end
     end
-    local out, dropped = {}, {}
-    for _, id in ipairs(order) do
-        local g = groups[id]
-        local keep = g[1]
-        if policy == 'strongest' then
+    local out = {}
+    for _, key in ipairs(order) do
+        local g = groups[key]
+        if #g > 1 and policy == 'strongest' then
+            local best = g[1]
             for i = 2, #g do
-                if strength(g[i].type, g[i].value) > strength(keep.type, keep.value) then keep = g[i] end
+                if strength(g[i].type, g[i].value) > strength(best.type, best.value) then best = g[i] end
             end
+            g = { best }
         end
-        for _, r in ipairs(g) do if r ~= keep then dropped[#dropped + 1] = r.hex end end
-        out[#out + 1] = keep
-    end
-    return out, dropped
-end
-
--- the record's own rows, then the stacked ones: an id already there is written once; a copied modifier's
--- description id points into the other passive's text, so it is cleared (the effect stays)
-local function append_unique(existing, rows, width)
-    local seen, out = {}, {}
-    for at = 1, #existing - width + 1, width do
-        local b = existing:sub(at, at + width - 1)
-        seen[b:sub(1, 4)] = true
-        out[#out + 1] = b
-    end
-    for _, r in ipairs(rows) do
-        local b = width == 16 and r.bytes:sub(1, 12) .. '\0\0\0\0' or r.bytes
-        if not seen[b:sub(1, 4)] then seen[b:sub(1, 4)] = true; out[#out + 1] = b end
+        if #g>1 then g={g[1]} end
+        for _, r in ipairs(g) do out[#out + 1] = r.bytes end
     end
     return table.concat(out)
 end
 
--- The armory's preview of a passive lists at most 3 described modifiers (no native passive has more; a 4th crashes
--- the game, issue #74): past the 3rd, a modifier keeps its effect but loses its description id (+12). The ids
--- that lose it go to `hidden`.
-local MAX_DESCRIBED = 3
-local function cap_descriptions(mods, hidden)
-    local out, shown = {}, 0
-    for o = 1, #mods, 16 do
-        local m = mods:sub(o, o + 15)
-        if m:sub(13, 16) ~= '\0\0\0\0' then
-            shown = shown + 1
-            if shown > MAX_DESCRIBED then
-                local b1, b2, b3, b4 = m:byte(1, 4)
-                hidden[#hidden + 1] = string.format('%08X', ((b4 * 256 + b3) * 256 + b2) * 256 + b1)
-                m = m:sub(1, 12) .. '\0\0\0\0'
-            end
+-- the record's own rows, then the stacked ones: a row already there (same effect and value) is written once
+local function append_unique(existing,extra,width)
+    local seen,out={},{}
+    for _,source in ipairs({existing,extra}) do
+        for at=1,#source-width+1,width do
+            local row=source:sub(at,at+width-1);local key=row:sub(1,4)
+            if not seen[key] then seen[key]=true;out[#out+1]=row end
         end
-        out[#out + 1] = m
+    end
+    return table.concat(out)
+end
+local function cap_descriptions(mods)
+    local out,shown={},0
+    for at=1,#mods,16 do
+        local row=mods:sub(at,at+15)
+        if row:sub(13,16)~='\0\0\0\0' then
+            shown=shown+1
+            if shown>3 then row=row:sub(1,12)..'\0\0\0\0' end
+        end
+        out[#out+1]=row
     end
     return table.concat(out)
 end
@@ -415,7 +408,7 @@ function M.stack(changes, stacks, log, own_off, policy)
         if own and not own_off[id] then mods, stats = own.mods, own.stats end
         local add_m, add_s = {}, {}
         for _, s in ipairs(own and list or {}) do
-            if s ~= id and blocks[s] then
+            if (s ~= id or own_off[id]) and blocks[s] then
                 for _, r in ipairs(split_rows(blocks[s].mods, 16)) do add_m[#add_m + 1] = r end
                 for _, r in ipairs(split_rows(blocks[s].stats, 12)) do add_s[#add_s + 1] = r end
                 names[#names + 1] = tostring(s)
@@ -423,27 +416,17 @@ function M.stack(changes, stacks, log, own_off, policy)
                 log('passive ' .. s .. ' (stacked on ' .. id .. ') is not in this game file: left out')
             end
         end
-        local pol = policy[id] or 'stack'
-        local rows_m, dropped_m = collapse(add_m, pol)
-        local rows_s, dropped_s = collapse(add_s, pol)
-        mods, stats = append_unique(mods, rows_m, 16), append_unique(stats, rows_s, 12)
-        if #dropped_m > 0 then
-            log('passive ' .. id .. ': modifier ' .. table.concat(dropped_m, ', ') .. ' left out, it is applied once (' ..
-                pol .. ')')
+        local pol=policy[id] or 'stack'
+        if pol=='strongest' then
+            local own_m=split_rows(mods,16);for _,row in ipairs(add_m) do own_m[#own_m+1]=row end
+            local own_s=split_rows(stats,12);for _,row in ipairs(add_s) do own_s[#own_s+1]=row end
+            mods,stats=collapse(own_m,pol),collapse(own_s,pol)
+        else
+            mods=append_unique(mods,collapse(add_m,pol),16)
+            stats=append_unique(stats,collapse(add_s,pol),12)
         end
-        if #dropped_s > 0 then
-            log('passive ' .. id .. ': weapon stat modifier ' .. table.concat(dropped_s, ', ') .. ' left out, it is' ..
-                ' applied once (' .. pol .. ')')
-        end
+        if #names>0 then mods=cap_descriptions(mods) end
         local block_end = k < #hs and hs[k + 1].at or n
-        if #names > 0 then
-            local hidden = {}
-            mods = cap_descriptions(mods, hidden)
-            if #hidden > 0 then
-                log('passive ' .. id .. ': modifier ' .. table.concat(hidden, ', ') .. ' not described in the armory' ..
-                    ' (it lists ' .. MAX_DESCRIBED .. ' at most), still applied')
-            end
-        end
         if #names > 0 or (own and own_off[id]) then
             local head = ffi.new('uint8_t[80]')
             ffi.copy(head, p + h.at, 80)
@@ -491,12 +474,151 @@ function M.passives()
 end
 
 -- seal one changed file: { name, sealed } or nil, why
+-- Typed values used by the integrated armor editor. Keys include the effect identity,
+-- operation and duplicate ordinal, so persisted edits do not target a shifted row.
+do
+    local DATA = require('armory_data')
+    local labels, editable, groups = {}, {}, {}
+    for _, passive in ipairs(DATA.list) do
+        editable[passive.id] = {};groups[passive.id]={}
+        for _, effect in ipairs(passive.effects or {}) do
+            local identity=(effect.kind == 'stat' and 12 or 16)..':'..effect.a..':'..effect.b
+            labels[identity] = effect.label
+            -- Each passive exposes only its own named effects from the supplied catalog.
+            if not effect.label:find('不明',1,true) and not effect.label:find('标记',1,true) then
+                editable[passive.id][identity] = effect.label
+                if effect.group then groups[passive.id][identity]={name=effect.group,canonical=effect.canonical} end
+            end
+        end
+    end
+    local defaults
+    local function read_values(p,n,relocated)
+        local out = {}
+        for _, header in ipairs(G.headers(p,n)) do
+            if header.type == PASSIVE and header.size >= 56 then
+                local base=header.at+24
+                local id=u32(p,base)
+                if id~=0 then
+                    out[id]={}
+                    local occurrences={}
+                    for _, spec in ipairs({{16,16,24},{12,32,40}}) do
+                        local width,po,co=unpack(spec)
+                        local count=u32(p,base+co)
+                        assert(count<=4096,'too many passive modifiers')
+                        local pointer=ffi.cast(u64p,p+base+po)[0]
+                        local start=relocated and tonumber(pointer-addr(p)) or base+tonumber(pointer)
+                        if count>0 then
+                            assert(start>=base+56 and start+count*width<=base+header.size,'invalid passive array bounds')
+                            for i=0,count-1 do
+                                local at=start+i*width;local effect=u32(p,at);local op=width==16 and u32(p,at+4) or 0
+                                local identity=width..':'..effect..':'..op
+                                occurrences[identity]=(occurrences[identity] or 0)+1
+                                local key=id..':'..identity..':'..occurrences[identity]
+                                out[id][#out[id]+1]={key=key,label=labels[identity] or string.format('效果 %08X / 类型 %d',effect,op),
+                                    value=tonumber(ffi.cast('float *',p+at+8)[0]),at=at+8}
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return out
+    end
+    function M.armor_values(id)
+        local file=M.files['generated_customization_passive_bonuses.dl_bin']
+        assert(file,'passive data unavailable')
+        if not defaults then
+            local original,n=assert(G.open_sealed(file.cipher))
+            defaults={}
+            for _, rows in pairs(read_values(original,n,false)) do for _, row in ipairs(rows) do defaults[row.key]=row.value end end
+            G.free(original)
+        end
+        local rows=read_values(file.p,file.n,true)[id] or {}
+        local allowed=editable[id] or {}
+        local filtered,linked={},{}
+        for _, row in ipairs(rows) do
+            local identity,ordinal=row.key:match('^%d+:(%d+:%d+:%d+):(%d+)$')
+            -- Stacked copies and unrelated modifiers are not additional editable fields.
+            if allowed[identity] and ordinal=='1' then
+                row.default=defaults[row.key];row.label=allowed[identity]
+                local group=groups[id] and groups[id][identity]
+                if group and linked[group.name] then
+                    local target=linked[group.name];target.ats[#target.ats+1]=row.at
+                    if group.canonical then target.key,target.at,target.value,target.default=row.key,row.at,row.value,row.default end
+                else
+                    row.ats={row.at};filtered[#filtered+1]=row
+                    if group then linked[group.name]=row end
+                end
+            end
+        end
+        return filtered
+    end
+    function M.set_armor_value(id,key,value)
+        value=tonumber(value)
+        if not value or value~=value or math.abs(value)==math.huge then return nil,'请输入有效的有限数值' end
+        local rounded=tonumber(ffi.new('float[1]',value)[0])
+        if rounded~=rounded or math.abs(rounded)==math.huge then return nil,'数值超出浮点数范围' end
+        for _, row in ipairs(M.armor_values(id)) do
+            if row.key==key then
+                local file=M.files['generated_customization_passive_bonuses.dl_bin']
+                for _,at in ipairs(row.ats or {row.at}) do ffi.cast('float *',file.p+at)[0]=rounded end
+                return rounded
+            end
+        end
+        return nil,'当前版本不存在此被动效果'
+    end
+end
+
+function M.import_forge_values(text)
+    if text == nil then return 0 end
+    text = text:gsub('\r\n', '\n')
+    if not text:match('^AFV1\n') then return nil, 'Unsupported AFV1 format' end
+    local file = M.files.generated_customization_passive_bonuses
+    file = M.files['generated_customization_passive_bonuses.dl_bin'] or file
+    if not file then return nil, 'Passive data unavailable' end
+    local blocks = {}
+    for _, h in ipairs(G.headers(file.p, file.n)) do
+        if h.type == PASSIVE and h.size >= 56 then blocks[u32(file.p,h.at+24)] = h end
+    end
+    local plan = {}
+    for line in (text .. '\n'):gmatch('([^\n]*)\n') do
+        if line ~= '' and line ~= 'AFV1' then
+            local id, row, raw = line:match('^(%d+):(%d+):([%-%+%d%.eE]+)$')
+            id, row = tonumber(id), tonumber(row)
+            local value = tonumber(raw)
+            if not id or not row or not value or value ~= value or math.abs(value) == math.huge then return nil, 'Invalid AFV1 row' end
+            local h = blocks[id]
+            if not h then return nil, 'Unknown passive ' .. id end
+            local base = h.at+24
+            if row < 1 or row > u32(file.p,base+24) then return nil, 'Modifier row out of range' end
+            -- Stored pointers are relocated by M.load; only this verified allocation is allowed.
+            local pointer = ffi.cast(u64p,file.p+base+16)[0]
+            local offset = tonumber(pointer - addr(file.p)) + (row-1)*16 + 8
+            if offset < base+56 or offset+4 > base+h.size then return nil, 'Modifier pointer out of bounds' end
+            local rounded = ffi.new('float[1]',value)[0]
+            if rounded ~= rounded or math.abs(tonumber(rounded)) == math.huge then return nil, 'Value overflows float32' end
+            plan[#plan+1] = { at=offset, value=value }
+        end
+    end
+    for _, p in ipairs(plan) do ffi.cast('float *',file.p+p.at)[0] = p.value end
+    return #plan
+end
+
 function M.build(change, log)
     log = log or function() end
     -- a one-table file whose changes hold no float to vary (whole numbers, zeros): nothing in it may vary for the
     -- hash correction, so its table grows by 16 zero bytes after everything it holds (the game reads only what
     -- its offsets name; grown tables load, as stacked passives do), and those vary instead
     local hs = G.headers(change.plain, change.n)
+    -- Input may be a hash-validated file already prepared by another editor.
+    -- Discard only its old correction in this private output buffer, before solving
+    -- the target hash again. Preserve flags, sizes, payload and the loaded baseline.
+    for _,header in ipairs(hs) do
+        if header.at+24+header.size>change.n or change.plain[header.at+16]~=1 then
+            G.free(change.plain);return nil,'invalid output block header'
+        end
+        ffi.fill(change.plain+header.at+17,7,0)
+    end
     if #change.floats == 0 and #hs == 1 and hs[1].at + 24 + hs[1].size == change.n then
         local n = change.n
         local salt = n + (8 - n % 8) % 8                -- a word of its own (the native search needs the words whole)

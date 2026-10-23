@@ -148,5 +148,12 @@ return {
       { key = "ergonomics", kind = "row", label = "人机工效", a = 3368859386, b = 1, def = 20 },
       { key = "stat_support_reload", kind = "stat", label = "支援武器装填速度（武器属性）", a = 14, b = 0, def = 1.3 },
     } },
+    -- Synced from the original editor's Stationary Shroud labels and JOINED mapping.
+    { id = 42, name = "Stationary Shroud", zh = "静止隐匿", armors = "", effects = {
+      { key = "aiming_sway", kind = "row", label = "瞄准晃动", a = 857952561, b = 2, group = "aiming_sway", canonical = true },
+      { key = "aiming_sway_2", kind = "row", label = "瞄准晃动", a = 4038526241, b = 2, group = "aiming_sway" },
+      { key = "aiming_sway_3", kind = "row", label = "瞄准晃动", a = 267716843, b = 2, group = "aiming_sway" },
+      { key = "stationary_concealment", kind = "row", label = "静止蹲伏或卧倒时的隐蔽", a = 2003472895, b = 0 },
+    } },
   },
 }

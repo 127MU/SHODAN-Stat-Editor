@@ -10543,8 +10543,7 @@ end
 
 -- Extra stratagem (issue #64): StratagemInfo +200 additional_stratagem, a stratagem type (+0) given along when
 -- this one is in your loadout (the Eagles' is Eagle Rearm, so they are offered as extras only). The choices:
--- every stratagem the game has (mission and President's reward ones too: the Dark Fluid and Medic backpacks
--- work, tested), by name; 0: none. A choice that leads back to the stratagem is refused.
+-- the stratagems you can bring, by name; 0: none. A choice that leads back to the stratagem is refused.
 MOD.extra = { FAMILIES = { support = true, backpack = true, sentry = true, emplacements = true, orbital = true,
                            vehicles = true, eagle = true } }
 function MOD.extra.choices()
@@ -10553,13 +10552,11 @@ function MOD.extra.choices()
     for _, w in ipairs(weapons) do
         local def, family = w.stratagem and w.stratagem.def, w.stratagem and w.stratagem.family
         if not w.stratagem and w.sentry_defs and w.sentry_defs[1] then def, family = w.sentry_defs[1], 'sentry' end
-        local t = def and peek4(def.at)
+        local t = def and MOD.extra.FAMILIES[family] and not w.name:find('^%(Not Used%)') and not names[w.name] and peek4(def.at)
         if t and t > 0 and not by_type[t] then
-            -- (a second stratagem with a name, e.g. the President's reward Health Pack Rack: its family after it)
-            local name = names[w.name] and (w.name .. ' (' .. family:sub(1, 1):upper() .. family:sub(2) .. ')') or w.name
-            names[w.name] = true
+            names[w.name] = true   -- (one of two stratagems with a name: the listed one, first)
             w.extra_id = t         -- (shown after its name in the list, for typing a choice in)
-            by_type[t] = { type = t, name = name, def = def, family = family }
+            by_type[t] = { type = t, name = w.name, def = def, family = family }
             list[#list + 1] = by_type[t]
         end
     end
@@ -10608,8 +10605,7 @@ function MOD.extra.row(entry, def)
         return by_type[t] and by_type[t].name or ('Stratagem ' .. t)
     end
     row.note = 'also in your loadout when you bring this one'
-    row.after = { '- / + steps through the stratagems by name (-- / ++: 10 at a time).',
-                  "Or type the number shown after a stratagem's name in the list; 0 = none.",
+    row.after = { '点击「选择配备」按名称选择；选择「无」取消附加配备。',
                   "It doesn't take a loadout slot, but the HUD's stratagem list can fill up." }
     row.after_h = #row.after * 16 + 6
 end
@@ -11022,7 +11018,7 @@ KINDS[T_PROJECTILE].swap_row = function(weapon, sources, shots, fire, extra)
         row.note = function(others)
             local spec, now, own = KINDS[T_PROJECTILE], read_field(row_parts[1].field), default_of(row_parts[1].field)
             local shot = spec.by_id and spec.by_id[now]
-            local text = now == own and "its own. - / + : fire another weapon's"
+            local text = now == own and '点击「选择子弹」可按中文名称直接更换'
                          or ('fires: ' .. (shot and shot.label or ('projectile ' .. tostring(now))) .. '. The rows above stay its own')
             if #others > 0 then text = text .. '; ammo type shared with ' .. table.concat(others, ', ', 1, math.min(2, #others)) end
             return text
@@ -11471,6 +11467,8 @@ do
         state.own_off = function() return settings.own_off end -- passive id -> true: its own effects left out
     end
     function settings.tr(v)
+        local extra=MOD.offline and rawget(_G,'SHODAN_OFFLINE_ZH')
+        if extra and settings.lang=='zh-Hans' then local t=extra.translate(v);if t then return t end end
         if settings.lang == 'en' or not LANG[settings.lang] then return v end
         local cache = tr_cache[settings.lang]
         if not cache or tr_count > 5000 then cache, tr_count = {}, 0; tr_cache = { [settings.lang] = cache } end
@@ -12002,7 +12000,7 @@ local function rescan()
     KINDS[TYPES.destruction].found, KINDS[TYPES.destruction].told = {}, nil
     state.tables = 0
     set_status('searching', 'a table moved; scanning again')
-    if hub then hub.wake() end
+    if state.load_offline_tables then state.load_offline_tables() elseif hub then hub.wake() end
 end
 
 -- ---------------------------------------------------------------- windows input
@@ -12154,7 +12152,8 @@ function settings.shown_tabs()
     for _, tab in ipairs(TABS) do if not settings.hidden[tab] then list[#list + 1] = tab end end
     return list
 end
-local list_rows = 27        -- rows the weapon list shows (offline: as many as fit in the window)
+local LIST_ROWS = MOD.offline and 29 or 27
+MOD.LIST_TOP = MOD.offline and 56 or 96
 local W, H = 1000, 980       -- panel size in its own units
 
 -- The weapons (or stratagems) of a tab; tab '?search': those of every tab whose name holds every
@@ -12167,7 +12166,7 @@ local function weapons_in(tab)
     end
     if tab == 'Records' or words and ui.tab == 'Records' then
         for _, page in ipairs(MOD.records.all()) do
-            local text, all = (page.name .. ' ' .. page.note .. ' ' .. settings.tr(page.name)):lower(), true
+            local text, all = (page.name .. ' ' .. page.note .. ' ' .. settings.tr(page.name) .. ' ' .. settings.tr(page.note)):lower(), true
             for _, word in ipairs(words or {}) do
                 if not text:find(word, 1, true) then all = false; break end
             end
@@ -12178,8 +12177,7 @@ local function weapons_in(tab)
     for _, weapon in ipairs(weapons) do
         if #weapon.rows > 0 and not settings.hidden[weapon.slot] then
             if words then
-                -- the panel shows this name translated, so searching in the game's language finds it
-                local name, all = (weapon.name .. ' ' .. settings.tr(weapon.name)):lower(), true
+                local name, all = (weapon.name..' '..settings.tr(weapon.name)):lower(), true
                 for _, word in ipairs(words) do
                     if not name:find(word, 1, true) then all = false; break end
                 end
@@ -12331,8 +12329,9 @@ local function select_weapon(weapon)
         ui.tab = weapon.slot
         local list = weapons_in(ui.search.text ~= '' and '?search' or ui.tab)
         for n, w in ipairs(list) do
-            if w == weapon and n < ui.page then ui.page = n
-            elseif w == weapon and n >= ui.page + list_rows then ui.page = n - list_rows + 1 end
+            if MOD.offline and w==weapon then ui.page=math.floor((n-1)/LIST_ROWS)*LIST_ROWS+1
+            elseif w == weapon and n < ui.page then ui.page = n
+            elseif w == weapon and n >= ui.page + LIST_ROWS then ui.page = n - LIST_ROWS + 1 end
         end
     end
 end
@@ -12489,7 +12488,9 @@ local function finish_value(keep)
     end
     local row = edit and keep and edit.weapon == ui.weapon and ui.weapon.rows[edit.n]
     local typed = row and tonumber((edit.text:gsub(',', '.')))
-    if not typed then return end
+    if not typed or typed~=typed or math.abs(typed)==math.huge then
+        ui.message={text='请输入有效的有限数值',till=api.now()+4};ui.version=ui.version+1;return
+    end
     local rounded = row.storage == 'u32' and math.floor(typed + 0.5) or typed
     local target = math.max(row.min, math.min(row.max, rounded))
     change(row, 0, false, target)
@@ -12499,6 +12500,63 @@ local function finish_value(keep)
         if row.limit and rounded > row.max then text = row.limit .. ' Set to ' .. fmt(target, row.storage) .. '.' end
         ui.message = { text = text, till = api.now() + 4 }
     end
+end
+
+-- A name-first ammunition picker. IDs remain identifiers, never sequential UI indices.
+MOD.ammo = {}
+function MOD.ammo.open(n)
+    local weapon = ui.weapon
+    local row = weapon and weapon.rows[tonumber(n)]
+    if not row or not row.choice or row.choice == 'grenade' then return false end
+    local kind=row.choice=='explosion' and T_EXPLOSION or T_PROJECTILE
+    local choices,title={},nil
+    if row.choice=='status' then
+        kind='status';title='选择状态效果'
+        choices[1]={id=0,name='无',raw='none'}
+        for _,item in ipairs(MOD.status.choices) do choices[#choices+1]={id=item[1],name=settings.tr(item[2]),raw=item[2]} end
+    elseif row.choice=='stratagem' then
+        kind='stratagem';title='选择附加战略配备'
+        choices[1]={id=0,name='无',raw='none'}
+        for _,item in ipairs(MOD.extra.choices()) do
+            if not MOD.extra.refused(row.def,item.type) then choices[#choices+1]={id=item.type,name=settings.tr(item.name),raw=item.name} end
+        end
+    else
+        if row.choice=='explosion' or row.choice=='shrapnel' then choices[1]={id=0,name='无',raw='none'} end
+        for _,id in ipairs(MOD.records.ids(kind)) do
+            local raw=MOD.records.name(kind,id)
+            local shot=kind==T_PROJECTILE and KINDS[T_PROJECTILE].by_id and KINDS[T_PROJECTILE].by_id[id]
+            raw=raw or (shot and shot.label)
+            choices[#choices+1]={id=id,name=raw and settings.tr(raw) or ('未命名弹丸 #'..id),raw=raw or ''}
+        end
+    end
+    ui.ammo={weapon=weapon,row=row,n=tonumber(n),kind=kind,title=title,choices=choices,query='',page=1,typing=true}
+    ui.value, ui.search.active = nil, false
+    ui.version=ui.version+1
+    return true
+end
+function MOD.ammo.rows()
+    local picker=ui.ammo
+    local out={}
+    if not picker then return out end
+    local q=picker.query:lower()
+    for _, item in ipairs(picker.choices) do
+        if q=='' or (item.name..' '..item.raw..' '..item.id):lower():find(q,1,true) then out[#out+1]=item end
+    end
+    return out
+end
+function MOD.ammo.choose(id)
+    local picker=ui.ammo
+    if not picker or ui.weapon~=picker.weapon then return false end
+    for _, item in ipairs(picker.choices) do
+        if item.id==tonumber(id) then
+            local why=picker.kind=='status' and MOD.status.refused(picker.row,item.id) or picker.kind=='stratagem' and MOD.extra.refused(picker.row.def,item.id)
+            if why then ui.message={text=why,till=api.now()+4};ui.version=ui.version+1;return false end
+            change(picker.row,0,false,item.id)
+            ui.ammo=nil;ui.version=ui.version+1
+            return true
+        end
+    end
+    return false
 end
 
 local function reset_row(weapon, row)
@@ -12813,7 +12871,7 @@ do
         ui.fslot = n
         for k, m in ipairs(full_order()) do
             if m == n and k < ui.fpage then ui.fpage = k
-            elseif m == n and k >= ui.fpage + list_rows then ui.fpage = k - list_rows + 1 end
+            elseif m == n and k >= ui.fpage + LIST_ROWS then ui.fpage = k - LIST_ROWS + 1 end
         end
     end
 
@@ -12927,26 +12985,20 @@ end
 
 -- Draws the whole panel into a fresh screen gui. Coordinates are 1080p units from the panel's
 -- top left; the gui itself counts pixels from the bottom left.
+function MOD.scroll_end(rows,pitch,space)
+    local first,used=#rows,24
+    for n=#rows,1,-1 do
+        local extra=pitch+(rows[n].after_h or 0)
+        if n<#rows and rows[n].section~=rows[n+1].section then extra=extra+24 end
+        if used+extra>space then break end
+        used=used+extra;first=n
+    end
+    return math.max(1,first)
+end
 local function draw(width, height)
     local Gui, Vector3, Vector2, Color = sr.Gui, sr.Vector3, sr.Vector2, sr.Color
-    local s = height / 1080 * (MOD.offline and 100 or settings.size) / 100   -- panel units -> 1080p units
-    local ox, oy, frame_h = nil, nil, H
-    if MOD.offline then
-        -- The window is the panel: the box keeps the same gap from the window's edges as the fixed-size
-        -- panel did (30 units at 1080p), and stops that far above the host's bar.
-        local margin = 30
-        local band = math.max(0.55, height / 1080) * 1032   -- the bar's top edge, in window pixels
-        local room = math.max(320, band - 2 * margin)
-        W = math.max(600, (width - 2 * margin) / s)
-        H, frame_h, ox, oy = room / s, room / s, margin, margin
-    else
-        ox, oy = settings.side == 'left' and 30 * s or width - (W + 30) * s, (height - H * s) / 2
-    end
-    -- columns and rows of the box: the list takes about a third, the stats the rest
-    local list_w = MOD.offline and math.floor(math.min(math.max(260, W * 0.30), 520)) or 318
-    local split_x, right_x = 16 + list_w + 9, 16 + list_w + 22
-    -- rows that leave room under them for the pager and the search box (40 + 40) and the bottom strip (70)
-    list_rows = MOD.offline and math.min(60, math.max(8, math.floor((H - 96 - 108 - 70) / 26))) or 27
+    local s = height / 1080 * (MOD.offline and 100 or settings.size) / 100   -- panel units -> 1080p units (offline: the window is the panel's)
+    local ox, oy = settings.side == 'left' and 30 * s or width - (W + 30) * s, (height - H * s) / 2
     local gui = ui.gui
     local regions = {}
     local shared_overlay = nil   -- set while the cursor is on a cut-short 'shared with' list
@@ -12962,8 +13014,8 @@ local function draw(width, height)
         end
         return nil
     end
-    local GOLD, WHITE, MUTED, DIM = color(255, 213, 0), color(238, 242, 246), color(153, 171, 184), color(95, 108, 120)
-    local WARN, GOOD = color(255, 150, 60), color(120, 220, 140)
+    local GOLD, WHITE, MUTED, DIM = color(31, 133, 102), color(23, 37, 33), color(97, 112, 107), color(125, 141, 131)
+    local WARN, GOOD = color(160, 91, 36), color(31, 133, 102)
 
     local function rect(x, y, w, h, c, z)
         step('Gui.rect')
@@ -13016,18 +13068,18 @@ local function draw(width, height)
     -- z: over an overlay (its buttons at z, z + 1, z + 2)
     local function button(key, label, x, y, w, h, enabled, active, ink, z)
         local hovered = ui.hover == key and enabled ~= false
-        local fill = active and color(90, 74, 8) or hovered and color(52, 66, 80) or color(28, 34, 42)
+        local fill = active and color(203, 231, 210) or hovered and color(213, 233, 218) or color(247, 250, 245)
         rect(x, y, w, h, fill, z or 951)
-        outline(x, y, w, h, enabled == false and DIM or (active or hovered) and GOLD or color(70, 82, 94), z and z + 1)
+        outline(x, y, w, h, enabled == false and DIM or (active or hovered) and GOLD or color(183, 199, 188), z and z + 1)
         text(label, x + 8, y + (h - 16) / 2, 16, enabled == false and DIM or ink or WHITE, w - 12, false, z and z + 2)
         region(key, x, y, w, h, enabled)
     end
 
     -- frame
-    rect(0, 0, W, frame_h, color(8, 11, 15, math.floor(255 * settings.opacity / 100 + 0.5)), 950)
-    outline(0, 0, W, frame_h, GOLD)
-    region('panel', 0, 0, W, frame_h, false)
-    if not MOD.offline then text('SHODAN STAT EDITOR', 18, 12, 24, GOLD) end   -- (offline the host titles the window)
+    rect(0, 0, W, H, color(250, 252, 247, math.floor(255 * settings.opacity / 100 + 0.5)), 950)
+    outline(0, 0, W, H, GOLD)
+    region('panel', 0, 0, W, H, false)
+    if not MOD.offline then text('SHODAN / 数据编辑终端', 18, 12, 24, GOLD) end
     if not MOD.offline then   -- (offline the panel is the window)
         text(hotkey_name .. ' to open/close', W - 56, 16, 15, MUTED, nil, true)
         button('close', 'X', W - 16 - 30, 10, 30, 30, true)
@@ -13054,56 +13106,58 @@ local function draw(width, height)
         local fit, tab_x = math.min(1, room / total), 16
         for i, tab in ipairs(tabs) do
             local w = math.floor(widths[i] * fit + 0.5)
-            button('tab:' .. tab, tab, tab_x, 52, w, 32, true, ui.tab == tab)
+            button('tab:' .. tab, tab, tab_x, MOD.LIST_TOP-44, w, 32, true, ui.tab == tab)
             tab_x = tab_x + w + 4
         end
     end
-    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or 'Reset weapon', W - 16 - 124, 52, 124, 32, ui.weapon ~= nil and modified(ui.weapon))
+    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or 'Reset weapon', W - 16 - 124, MOD.LIST_TOP-44, 124, 32, ui.weapon ~= nil and modified(ui.weapon))
 
     -- a list's scroll bar (the weapon list, or the full presets): a thin track between the list and the
-    -- line that parts the panel's halves, shown when the list is longer than list_rows
-    ui.lbar, ui.split_gx = nil, ox + split_x * s
+    -- line that parts the panel's halves, shown when the list is longer than LIST_ROWS
+    ui.lbar, ui.split_gx = nil, ox + 343 * s
     local function list_bar(id, total)
-        if total <= list_rows then return end
-        local top, len, span = 96, list_rows * 26 - 1, total - list_rows
-        local th = math.max(24, len * list_rows / total)
+        if MOD.offline then return end
+        if total <= LIST_ROWS then return end
+        local top, len, span = MOD.LIST_TOP, LIST_ROWS * 26 - 1, total - LIST_ROWS
+        local th = math.max(24, len * LIST_ROWS / total)
         local ty = top + (len - th) * math.min(1, (ui[id] - 1) / span)
-        rect(336, top, 5, len, color(28, 34, 42), 951)
+        rect(336, top, 5, len, color(247, 250, 245), 951)
         local hot = (ui.drag and ui.drag.bar == 'lbar') or ui.hover == 'lbar:thumb'
-        rect(336, ty, 5, th, hot and GOLD or color(110, 124, 138), 952)
+        rect(336, ty, 5, th, hot and GOLD or color(117, 148, 132), 952)
         region('lbar:track', 335, top, 8, len)
         region('lbar:thumb', 335, ty, 8, th)
         ui.lbar = { id = id, top = height - oy - top * s, bottom = height - oy - (top + len) * s,
-                    thumb_top = height - oy - ty * s, thumb = th * s, span = span, page = list_rows }
+                    thumb_top = height - oy - ty * s, thumb = th * s, span = span, page = LIST_ROWS }
     end
 
     local presets_tab = ui.tab == 'Presets'
     if presets_tab then
         -- full presets: the list holds them by name, the right side the chosen one
         local order, chosen = presets.full_order(), presets.chosen()
-        local last_top = math.max(1, #order - list_rows + 1)
+        local last_top = MOD.offline and (math.max(0,math.ceil(#order/LIST_ROWS)-1)*LIST_ROWS+1) or math.max(1,#order-LIST_ROWS+1)
+        if MOD.offline then ui.fpage=math.floor((ui.fpage-1)/LIST_ROWS)*LIST_ROWS+1 end
         ui.fpage = math.max(1, math.min(ui.fpage, last_top))
-        for k = 1, list_rows do
+        for k = 1, LIST_ROWS do
             local n = order[ui.fpage + k - 1]
             if not n then break end
-            local y, key, preset = 96 + (k - 1) * 26, 'fslot:' .. n, presets.full[n]
-            if n == chosen then rect(16, y, 318, 25, color(90, 74, 8), 951)
-            elseif ui.hover == key then rect(16, y, 318, 25, color(40, 52, 64), 951) end
+            local y, key, preset = MOD.LIST_TOP + (k - 1) * 26, 'fslot:' .. n, presets.full[n]
+            if n == chosen then rect(16, y, 318, 25, color(203, 231, 210), 951)
+            elseif ui.hover == key then rect(16, y, 318, 25, color(225, 238, 226), 951) end
             text(preset.name, 24, y + 4, 16, n == chosen and GOLD or WHITE, 214)
             text(#preset.values .. ' value(s)', 326, y + 5, 14, MUTED, 86, true)
-            region(key, 16, y, list_w, 25)
+            region(key, 16, y, 318, 25)
         end
         if #order == 0 then text('No presets yet.', 24, 100, 16, MUTED) end
-        local py = 96 + list_rows * 26 + 8
+        local py = MOD.LIST_TOP + LIST_ROWS * 26 + 8
         button('fpage:prev', '<', 16, py, 40, 30, ui.fpage > 1)
-        text((#order > list_rows and (ui.fpage .. '-' .. math.min(#order, ui.fpage + list_rows - 1) .. ' of ') or '') ..
+        text((#order > LIST_ROWS and (ui.fpage .. '-' .. math.min(#order, ui.fpage + LIST_ROWS - 1) .. ' of ') or '') ..
              #order .. ' (max ' .. presets.full_count .. ')', 70, py + 7, 16, MUTED, 214)
         button('fpage:next', '>', 294, py, 40, 30, ui.fpage < last_top)
         list_bar('fpage', #order)
         button('fpreset:new', '+ New preset from current changes', 16, py + 40, 318, 30, #order < presets.full_count)
-        rect(split_x, 96, 2, H - 96 - 70, color(70, 82, 94), 951)
+        rect(343, MOD.LIST_TOP, 2, H - MOD.LIST_TOP - 70, color(183, 199, 188), 951)
 
-        local x0, preset = right_x, chosen and presets.full[chosen]
+        local x0, preset = 356, chosen and presets.full[chosen]
         if ui.settings then
             -- the Settings page, drawn below
         elseif not preset then
@@ -13113,7 +13167,7 @@ local function draw(width, height)
         else
             local e = ui.editing
             if e and e.n == chosen then
-                rect(x0 - 4, 88, 420, 34, color(20, 26, 34), 951)
+                rect(x0 - 4, 88, 420, 34, color(241, 246, 239), 951)
                 outline(x0 - 4, 88, 420, 34, GOLD)
                 text(e.text .. '_', x0 + 4, 94, 20, e.fresh and MUTED or WHITE, 404)
                 button('name:ok', 'OK', x0 + 426, 88, 70, 34, true)
@@ -13160,52 +13214,55 @@ local function draw(width, height)
     -- weapon list
     local searching = ui.search.text ~= '' or ui.search.active
     local list = presets_tab and {} or weapons_in(ui.search.text ~= '' and '?search' or ui.tab)
-    local last_top = math.max(1, #list - list_rows + 1)
+    local last_top = MOD.offline and (math.max(0,math.ceil(#list/LIST_ROWS)-1)*LIST_ROWS+1) or math.max(1,#list-LIST_ROWS+1)
+    if MOD.offline then ui.page=math.floor((ui.page-1)/LIST_ROWS)*LIST_ROWS+1 end
     ui.page = math.max(1, math.min(ui.page, last_top))
-    for k = 1, list_rows do
+    for k = 1, LIST_ROWS do
         local weapon = list[ui.page + k - 1]
         if not weapon then break end
-        local y = 96 + (k - 1) * 26
+        local y = MOD.LIST_TOP + (k - 1) * 26
         local key = 'weapon:' .. weapon.hash
-        if searching then text(weapon.slot, 16 + list_w - 10, y + 5, 13, DIM, 80, true) end
+        if searching then text(weapon.slot, 326, y + 5, 13, DIM, 80, true) end
         local selected = weapon == ui.weapon
-        if selected then rect(16, y, list_w, 25, color(90, 74, 8), 951)
-        elseif ui.hover == key then rect(16, y, list_w, 25, color(40, 52, 64), 951) end
+        if selected then rect(16, y, 318, 25, color(203, 231, 210), 951)
+        elseif ui.hover == key then rect(16, y, 318, 25, color(225, 238, 226), 951) end
         local changed = modified(weapon)
         -- a stratagem: its number as an extra stratagem after its name
         if (weapon.stratagem or weapon.sentry_defs) and not MOD.extra.list then MOD.extra.choices() end
         local id = weapon.extra_id and ' (' .. weapon.extra_id .. ')' or ''
-        text((changed and '* ' or '') .. settings.tr(weapon.name) .. id, 24, y + 4, 16, changed and GOLD or WHITE,
-             searching and list_w - 92 or list_w - 16)
-        region(key, 16, y, list_w, 25)
+        text((changed and '* ' or '') .. settings.tr(weapon.name) .. id, 24, y + 4, 16, changed and GOLD or WHITE, searching and 226 or 302)
+        region(key, 16, y, 318, 25)
     end
-    local py = 96 + list_rows * 26 + 8
+    local py = MOD.LIST_TOP + LIST_ROWS * 26 + 8
     if not presets_tab then
         if ui.search.text ~= '' and #list == 0 then text('Nothing matches.', 24, 100, 16, MUTED) end
         button('page:prev', '<', 16, py, 40, 30, ui.page > 1)
         list_bar('page', #list)
-        text((#list > list_rows and (ui.page .. '-' .. math.min(#list, ui.page + list_rows - 1) .. ' of ') or '') ..
+        if MOD.offline then
+            text('第 '..(math.floor((ui.page-1)/LIST_ROWS)+1)..' / '..math.max(1,math.ceil(#list/LIST_ROWS))..' 页 · '..#list..' 项',70,py+7,15,MUTED,214)
+        else
+        text((#list > LIST_ROWS and (ui.page .. '-' .. math.min(#list, ui.page + LIST_ROWS - 1) .. ' of ') or '') ..
              #list .. (ui.search.text ~= '' and ' found' or ' listed'),
-             70, py + 7, 16, MUTED, list_w - 104)
-        button('page:next', '>', 16 + list_w - 40, py, 40, 30, ui.page < last_top)
+             70, py + 7, 16, MUTED, 214)
+        end
+        button('page:next', '>', 294, py, 40, 30, ui.page < last_top)
         -- search box: click it (or Ctrl+F) and type; the list shows what matches, from every tab
         local sy, active = py + 40, ui.search.active
-        local sb_w = list_w - 44
-        rect(16, sy, sb_w, 30, active and color(20, 26, 34) or color(28, 34, 42), 951)
-        outline(16, sy, sb_w, 30, active and GOLD or (ui.hover == 'search' and GOLD or color(70, 82, 94)))
+        rect(16, sy, 274, 30, active and color(241, 246, 239) or color(247, 250, 245), 951)
+        outline(16, sy, 274, 30, active and GOLD or (ui.hover == 'search' and GOLD or color(183, 199, 188)))
         if ui.search.text == '' and not active then
-            text('Search weapons and stratagems', 24, sy + 7, 15, DIM, sb_w - 16)
+            text('Search weapons and stratagems', 24, sy + 7, 15, DIM, 258)
         else
-            text(ui.search.text .. (active and '_' or ''), 24, sy + 6, 16, WHITE, sb_w - 16)
+            text(ui.search.text .. (active and '_' or ''), 24, sy + 6, 16, WHITE, 258)
         end
-        region('search', 16, sy, sb_w, 30)
-        button('search:clear', 'X', 16 + sb_w + 6, sy, 38, 30, ui.search.text ~= '')
-        rect(split_x, 96, 2, H - 96 - 70, color(70, 82, 94), 951)
+        region('search', 16, sy, 274, 30)
+        button('search:clear', 'X', 296, sy, 38, 30, ui.search.text ~= '')
+        rect(343, MOD.LIST_TOP, 2, H - MOD.LIST_TOP - 70, color(183, 199, 188), 951)
     end
 
     -- stats of the selected weapon
     local weapon = ui.weapon
-    local x0 = right_x
+    local x0 = 356
     if ui.settings then
         text('Settings', x0, 94, 22, GOLD)
         local y = 132
@@ -13243,7 +13300,7 @@ local function draw(width, height)
             button('set:' .. key .. ':down', '<', 640, y, 36, 28, settings[key] > r[1])
             local typing = ui.value and ui.value.setting == key
             if typing or ui.hover == 'value:' .. key then
-                rect(680, y, 80, 28, typing and color(20, 26, 34) or color(40, 52, 64), 951)
+                rect(680, y, 80, 28, typing and color(241, 246, 239) or color(225, 238, 226), 951)
                 outline(680, y, 80, 28, GOLD)
             end
             text(typing and (ui.value.text .. '_') or (settings[key] .. '%'), 754, y + 6, 17, WHITE, 70, true)
@@ -13318,7 +13375,7 @@ local function draw(width, height)
         text('Resets all values from the current preset to default.', x0 + 16, y + 30, 14, MUTED, W - x0 - 40)
         y = y + 50
         y = y + 16
-        rect(x0, y, W - x0 - 16, 1, color(70, 82, 94), 951)
+        rect(x0, y, W - x0 - 16, 1, color(183, 199, 188), 951)
         y = y + 14
         text(MOD.title .. ' v' .. MOD.version, x0, y, 18, GOLD)
         text('Made by SHODAN', x0, y + 30, 16, WHITE)
@@ -13341,11 +13398,17 @@ local function draw(width, height)
     elseif not weapon then
         text('Choose a weapon on the left.', x0, 100, 18, MUTED)
     else
-        text(weapon.name, x0, 94, 22, GOLD, W - x0 - 20)
-        local y, section = 126, nil
-        if weapon.note ~= '' then
-            text(weapon.note, x0, 122, 14, WARN, W - x0 - 20)
-            y = 144
+        text(weapon.name, x0, MOD.LIST_TOP-2, 22, GOLD, W - x0 - 200)
+        if weapon.swaps and weapon.swaps[1] then
+            for n,row in ipairs(weapon.rows) do
+                if row==weapon.swaps[1] then button('ammo:'..n,'更换子弹',818,MOD.LIST_TOP-6,166,30,true);break end
+            end
+        end
+        local y, section = MOD.LIST_TOP+30, nil
+        if weapon.note ~= '' or weapon.swaps and weapon.swaps[1] then
+            local note=weapon.swaps and weapon.swaps[1] and ('当前子弹：'..MOD.records.label(T_PROJECTILE,row_value(weapon.swaps[1]))) or weapon.note
+            text(note, x0, MOD.LIST_TOP+26, 14, MUTED, W - x0 - 20)
+            y = MOD.LIST_TOP+48
         end
         -- rows get closer together when there are too many to fit at full spacing; past 22 units
         -- apart the list scrolls (Up/Down follow the chosen row; buttons below page through it)
@@ -13374,13 +13437,12 @@ local function draw(width, height)
         local scrolling = pitch < 22
         if scrolling then
             pitch, bottom = 24, bottom - 36
-            ui.scroll = math.max(1, math.min(ui.scroll, #weapon.rows))
+            ui.last_page=MOD.scroll_end(weapon.rows,pitch,bottom-y)
+            ui.scroll=math.max(1,math.min(ui.scroll,ui.last_page))
         else
             pitch, ui.scroll = math.min(26, pitch), 1
         end
         ui.last_visible = #weapon.rows
-        -- a window wider than the design's 1000 units: the value box and its buttons follow the right edge
-        local shift = math.max(0, W - 1000)
         local top = y
         for n, row in ipairs(weapon.rows) do
             if n >= ui.scroll then
@@ -13418,33 +13480,29 @@ local function draw(width, height)
                 local changed = value ~= nil and default ~= nil and math.abs(value - default) > 1e-4
                 local focus = n == ui.row
                 local bh = pitch - 3
-                if focus then rect(x0 - 6, y - 1, W - x0 - 10, pitch - 1, color(30, 38, 48), 951) end
-                local label = row.label
-                if row.label_of then label = row.label_of() end
-                text(label, x0, y + bh / 2 - 8, 16, focus and GOLD or WHITE, 236)
+                if focus then rect(x0-6,y-1,W-x0-10,pitch-1,color(230,240,229),951) end
+                local label=row.label_of and row.label_of() or row.label
+                text(label,x0,y+bh/2-8,16,focus and GOLD or WHITE,174)
                 if row.tip then
-                    text('(?)', x0 + math.min(width(label, 16), 236) + 6, y + bh / 2 - 7, 14, DIM)
-                    if ui.hover == 'row:' .. n then tip_overlay = { lines = row.tip, x = x0, y = y + bh + 2 } end
+                    text('(?)',x0+math.min(width(label,16),174)+6,y+bh/2-7,13,DIM)
+                    if ui.hover=='row:'..n then tip_overlay={lines=row.tip,x=x0,y=y+bh+2} end
                 end
-                text(changed and ('was ' .. fmt(default, row.storage)) or '', 690 + shift, y + bh / 2 - 7, 14, DIM, 90, true)
+                text(changed and ('was '..fmt(default,row.storage)) or '',644,y+bh/2-7,13,DIM,80,true)
                 local typing = ui.value and ui.value.n == n and ui.value.weapon == weapon
-                if typing or (ui.hover == 'value:' .. n and value ~= nil) then
-                    rect(696 + shift, y, 88, bh, typing and color(20, 26, 34) or color(40, 52, 64), 951)
-                    outline(696 + shift, y, 88, bh, GOLD)
-                end
-                if typing then
-                    text(ui.value.text .. '_', 780 + shift, y + bh / 2 - 8, 17, WHITE, 84, true)
-                else
-                    text(fmt(value, row.storage), 780 + shift, y + bh / 2 - 8, 17, changed and GOLD or WHITE, 84, true)
-                end
                 local ok = value ~= nil
-                button('dec_big:' .. n, '--', 790 + shift, y, 40, bh, ok)
-                button('dec:' .. n, '-', 834 + shift, y, 36, bh, ok)
-                button('inc:' .. n, '+', 874 + shift, y, 36, bh, ok)
-                button('inc_big:' .. n, '++', 914 + shift, y, 40, bh, ok)
-                button('reset:' .. n, 'R', 958 + shift, y, 26, bh, changed)
-                region('row:' .. n, x0 - 6, y - 1, W - x0 - 10, pitch - 1)
-                region('value:' .. n, 696 + shift, y, 88, bh, ok)
+                local choice = row.choice and row.choice ~= 'grenade'
+                rect(654,y,146,bh,typing and color(225,238,226) or color(255,255,255),951)
+                outline(654,y,146,bh,typing and GOLD or color(183,199,188))
+                text(typing and (ui.value.text..'_') or fmt(value,row.storage),790,y+bh/2-8,17,changed and GOLD or WHITE,132,true)
+                if typing then
+                    button('value_apply','确定',808,y,78,bh,true,true)
+                    button('value_cancel','取消',892,y,92,bh,true)
+                else
+                    button((choice and 'ammo:' or 'value:')..n,choice and (row.choice=='status' and '选择效果' or row.choice=='stratagem' and '选择配备' or '选择子弹') or '输入数值',808,y,100,bh,ok)
+                    button('reset:'..n,'恢复',914,y,70,bh,changed)
+                end
+                region('row:'..n,x0-6,y-1,292,pitch-1)
+                region('value:'..n,654,y,146,bh,ok)
                 y = y + pitch
                 for k, line in ipairs(row.after or {}) do text(line, x0, y + 2 + (k - 1) * 16, 14, MUTED, W - x0 - 20) end
                 y = y + (row.after_h or 0)
@@ -13458,20 +13516,15 @@ local function draw(width, height)
             local shown = math.max(1, ui.last_visible - ui.scroll + 1)
             -- the furthest scroll: the first row of the last page, counted from the end (a page's section
             -- headers take room, so the page in view says nothing about how many rows the last one holds)
-            local last_page, changes, under = total, 0, weapon.rows[total].after_h or 0
-            for n = total - 1, 1, -1 do
-                if weapon.rows[n + 1].section ~= weapon.rows[n].section then changes = changes + 1 end
-                under = under + (weapon.rows[n].after_h or 0)
-                if (total - n + 1) * pitch + 24 * (1 + changes) + under > len then break end
-                last_page = n
-            end
+            local last_page=MOD.scroll_end(weapon.rows,pitch,len)
+            ui.last_page=last_page
             local span = math.max(1, last_page - 1)
             ui.last_page = last_page
             local th = math.max(24, math.min(len, len * shown / total))
             local ty = top + (len - th) * math.min(1, (ui.scroll - 1) / span)
-            rect(989, top, 5, len, color(28, 34, 42), 951)
+            rect(989, top, 5, len, color(247, 250, 245), 951)
             local hot = (ui.drag and ui.drag.bar == 'sbar') or ui.hover == 'sbar:thumb'
-            rect(989, ty, 5, th, hot and GOLD or color(110, 124, 138), 952)
+            rect(989, ty, 5, th, hot and GOLD or color(117, 148, 132), 952)
             region('sbar:track', 986, top, 12, len)
             region('sbar:thumb', 986, ty, 12, th)
             ui.sbar = { id = 'scroll', top = height - oy - top * s, bottom = height - oy - (top + len) * s,
@@ -13506,7 +13559,7 @@ local function draw(width, height)
     end
 
     -- footer, and the Settings button at the bottom right
-    rect(16, H - 64, W - 32, 1, color(70, 82, 94), 951)
+    rect(16, H - 64, W - 32, 1, color(183, 199, 188), 951)
     button('presets', 'Presets', W - 16 - 104 - 8 - 104, H - 54, 104, 34, true, ui.tab == 'Presets' and not ui.settings)
     button('settings', ui.settings and 'Back' or 'Settings', W - 16 - 104, H - 54, 104, 34, true, ui.settings)
     if ui.binding then
@@ -13524,7 +13577,7 @@ local function draw(width, height)
         text('Type the value: Enter sets it, Esc cancels. Values out of range are set to the nearest allowed one.',
              18, H - 56, 14, MUTED, W - 260)
     elseif ui.search.active and not presets_tab then
-        text('Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.',
+        text(MOD.offline and '输入名称或型号搜索，支持中文输入和 Ctrl+V 粘贴；回车保留结果，Esc 清空。' or 'Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.',
              18, H - 56, 14, MUTED, W - 260)
     elseif presets_tab then
         text('Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.',
@@ -13554,7 +13607,7 @@ local function draw(width, height)
         end
         table.sort(choices, function(a, b) return a.name:lower() < b.name:lower() end)
         local x, y, w, h = 350, 84, W - 360, H - 104 - 84 - 8   -- (above the presets row)
-        rect(x, y, w, h, color(8, 11, 15), 958)
+        rect(x, y, w, h, color(250, 252, 247), 958)
         outline(x, y, w, h, GOLD, 959)
         region('stack_modal', x, y, w, h, false)
         text('Add a passive to ' .. weapon.name, x + 16, y + 14, 20, GOLD, w - 32, false, 960)
@@ -13575,7 +13628,7 @@ local function draw(width, height)
         local x = math.max(16, math.min(tip_overlay.x, W - 16 - w))
         local y = tip_overlay.y
         if y + h > H - 70 then y = math.max(56, tip_overlay.y - 30 - h) end
-        rect(x, y, w, h, color(8, 11, 15), 958)
+        rect(x, y, w, h, color(242,250,243), 958)
         rect(x, y, w, 2, GOLD, 959); rect(x, y + h - 2, w, 2, GOLD, 959)
         rect(x, y, 2, h, GOLD, 959); rect(x + w - 2, y, 2, h, GOLD, 959)
         for k, line in ipairs(tip_overlay.lines) do text(line, x + 12, y + 8 + (k - 1) * 18, 15, WHITE, w - 24, false, 960) end
@@ -13594,7 +13647,7 @@ local function draw(width, height)
         local x = math.max(16, math.min(shared_overlay.x, W - 16 - w))
         local y = shared_overlay.y
         if y + h > H - 70 then y = math.max(56, shared_overlay.y - 24 - h - 4) end
-        rect(x, y, w, h, color(8, 11, 15), 958)
+        rect(x, y, w, h, color(250, 252, 247), 958)
         rect(x, y, w, 2, GOLD, 959); rect(x, y + h - 2, w, 2, GOLD, 959)
         rect(x, y, 2, h, GOLD, 959); rect(x + w - 2, y, 2, h, GOLD, 959)
         text('Also changes (' .. #names .. '):', x + 12, y + 10, 15, MUTED, w - 24, false, 960)
@@ -13606,6 +13659,31 @@ local function draw(width, height)
             text('+' .. (#names - shown) .. ' more', x + 12 + (cols - 1) * col_w, y + 36 + (rows - 1) * pitch, 15, DIM,
                  col_w - 12, false, 960)
         end
+    end
+    if ui.ammo then
+        local picker=ui.ammo
+        rect(0,0,W,H,color(30,60,43,100),970)
+        region('ammo_mask',0,0,W,H,false)
+        local x,y,w,h=108,92,784,768
+        rect(x,y,w,h,color(248,252,246),971);outline(x,y,w,h,GOLD,972)
+        text(picker.title or (picker.kind==T_EXPLOSION and '选择爆炸效果' or '选择要发射的子弹'),x+22,y+18,23,GOLD,w-150,false,974)
+        button('ammo_close','关闭',x+w-106,y+14,84,32,true,false,nil,975)
+        text('点选名称即可设置；写入游戏后生效。ID 仅用于核对。',x+22,y+54,15,MUTED,w-44,false,974)
+        button('ammo_search',picker.query~='' and (picker.query..'_') or '搜索名称 / 型号 / ID',x+22,y+84,w-144,36,true,true,nil,975)
+        button('ammo_clear','清空',x+w-112,y+84,90,36,true,false,nil,975)
+        local list=MOD.ammo.rows();local pages=math.max(1,math.ceil(#list/14))
+        picker.page=math.max(1,math.min(picker.page,pages))
+        local first=(picker.page-1)*14+1
+        for i=first,math.min(#list,first+13) do
+            local item=list[i];local yy=y+132+(i-first)*38
+            local current=row_value(picker.row)==item.id
+            button('ammo_pick:'..item.id,item.name,x+22,yy,w-44,34,true,current,nil,975)
+            text('ID '..item.id,x+w-34,yy+10,12,MUTED,100,true,978)
+        end
+        if #list==0 then text('未找到匹配的子弹，请换一个名称或型号。',x+24,y+156,17,MUTED,w-48,false,978) end
+        text('共 '..#list..' 种 · 第 '..picker.page..' / '..pages..' 页',x+24,y+h-50,15,MUTED,370,false,978)
+        button('ammo_page:prev','上一页',x+w-252,y+h-62,108,36,picker.page>1,false,nil,975)
+        button('ammo_page:next','下一页',x+w-136,y+h-62,114,36,picker.page<pages,false,nil,975)
     end
     return regions
 end
@@ -13625,13 +13703,27 @@ local function click(key)
     if not key then return end
     local weapon = ui.weapon
     local kind, arg = key:match('^([%w_]+):?(.*)$')
+    if ui.ammo then
+        if kind=='ammo_close' then ui.ammo=nil
+        elseif kind=='ammo_pick' then MOD.ammo.choose(tonumber(arg))
+        elseif kind=='ammo_clear' then ui.ammo.query='';ui.ammo.page=1
+        elseif kind=='ammo_page' then ui.ammo.page=math.max(1,ui.ammo.page+(arg=='next' and 1 or -1)) end
+        ui.version=ui.version+1;return
+    end
+    if kind=='ammo' then if ui.value then finish_value(true) end;MOD.ammo.open(tonumber(arg));return end
+    if kind=='value_apply' then finish_value(true);return end
+    if kind=='value_cancel' then finish_value(false);ui.version=ui.version+1;return end
+
     -- clicking anything else while naming keeps the name typed so far
     if ui.editing and kind ~= 'name' then presets.finish_rename(true) end
     if ui.search.active and kind ~= 'search' then ui.search.active = false end
     if ui.value and key ~= 'value:' .. ui.value.n then finish_value(true) end
     if kind ~= 'set' then ui.binding = nil end
+    if kind=='tab' or kind=='weapon' then local animate=rawget(_G,'SHODAN_OFFLINE_TRANSITION');if animate then animate() end end
+    if kind == 'tab' and arg == 'Armors' and MOD.offline and type(state.open_armor)=='function' then state.open_armor();return end
     if kind == 'tab' then
         ui.tab, ui.page, ui.search, ui.settings = arg, 1, { text = '', active = false }, false
+        if MOD.offline then local first=weapons_in(arg)[1];if first then select_weapon(first) end end
         if settings.remember and state.phase == 'ready' and settings.last_tab ~= arg then
             settings.last_tab = arg
             mark_config_dirty()
@@ -13687,7 +13779,7 @@ local function click(key)
         if arg == 'clear' then ui.search, ui.page = { text = '', active = false }, 1
         else ui.search.active = true end
     elseif kind == 'weapon' then select_weapon(by_hash[arg])
-    elseif kind == 'page' then ui.page = math.max(1, ui.page + (arg == 'next' and list_rows or -list_rows))
+    elseif kind == 'page' then ui.page = math.max(1, ui.page + (arg == 'next' and LIST_ROWS or -LIST_ROWS))
     elseif kind == 'reset_all' then
         if not (ui.confirm and ui.confirm.kind == 'reset_all') then
             ui.confirm = { kind = 'reset_all', till = api.now() + 3 }
@@ -13702,7 +13794,7 @@ local function click(key)
         elseif arg == 'load' then presets.load_weapon_preset(weapon, ui.wslot)
         elseif arg == 'clear' then presets.clear_weapon_preset(weapon, ui.wslot) end
     elseif kind == 'fslot' then ui.fslot = tonumber(arg)
-    elseif kind == 'fpage' then ui.fpage = math.max(1, ui.fpage + (arg == 'next' and list_rows or -list_rows))
+    elseif kind == 'fpage' then ui.fpage = math.max(1, ui.fpage + (arg == 'next' and LIST_ROWS or -LIST_ROWS))
     elseif kind == 'name' then presets.finish_rename(arg == 'ok')
     elseif kind == 'fpreset' then
         local n = presets.chosen()
@@ -13763,33 +13855,59 @@ local function pressed(name, now)
     return false
 end
 
--- Characters typed into the window, when the host can hand them over. The offline build's window reads
--- WM_CHAR, so every character the keyboard or an input method makes arrives here; the game's engine has no
--- such call, and there the keys themselves are read instead (TEXT_KEYS below).
-
--- the UTF-8 characters of text, one at a time
-local function chars(text)
-    local out = {}
-    for c in text:gmatch('[%z\1-\127\194-\244][\128-\191]*') do out[#out + 1] = c end
-    return out
+local function native_text_events(events)
+    for _,event in ipairs(events) do
+        local target=ui.ammo or ui.value or ui.search.active and ui.search
+        local field=ui.ammo and 'query' or 'text'
+        if target then
+            if event.kind=='enter' then
+                if ui.ammo then local rows=MOD.ammo.rows();if #rows==1 then MOD.ammo.choose(rows[1].id) end
+                elseif ui.value then finish_value(true)
+                else ui.search.active=false end
+            elseif event.kind=='backspace' then
+                target[field]=target.fresh and '' or target[field]:gsub('[%z\1-\127\194-\244][\128-\191]*$','')
+                target.fresh=false
+            elseif event.kind=='text' then
+                local text=event.text
+                if ui.value then text=text:gsub('[^%d%.,%-%+eE]','') end
+                if text~='' then
+                    if target.fresh then target[field]='';target.fresh=false end
+                    if #(target[field] or '')+#text<=240 then target[field]=(target[field] or '')..text end
+                end
+            end
+            if ui.ammo then ui.ammo.page=1 else ui.page=1 end
+            ui.version=ui.version+1
+        elseif ui.editing then
+            if event.kind=='text' then presets.type_char(event.text)
+            elseif event.kind=='backspace' then presets.type_char(false)
+            elseif event.kind=='enter' then presets.finish_rename(true) end
+        end
+    end
 end
-
--- The characters typed since the last frame, or nil when the host cannot hand any over (the game's engine:
--- there the keys themselves are read, below). Empty (never nil) when nothing was typed this frame.
-local function typed_chars()
-    local app = sr and sr.Application
-    if type(app) ~= 'table' then return nil end
-    local call = rawget(app, 'typed_text')
-    if type(call) ~= 'function' then return nil end
-    local ok, text = pcall(call)
-    if not ok or type(text) ~= 'string' then return {} end
-    return chars(text)
-end
-
 local function keyboard(now)
+    local reader=MOD.offline and rawget(_G,'SHODAN_OFFLINE_TEXT')
+    local native_text=type(reader)=='function'
+    if native_text then native_text_events(reader()) end
     local weapon = ui.weapon
-    local typed = typed_chars()   -- drained every frame, so a stray character never lands in a later field
-    local poll = typed == nil     -- no characters to hand over (the game's engine): the keys are read instead
+    if ui.ammo then
+        local picker=ui.ammo
+        local before=picker.query..'|'..picker.page
+        if pressed('Escape',now) then ui.ammo=nil;ui.version=ui.version+1;return end
+        if not native_text and pressed('Backspace',now) then picker.query=picker.query:gsub('[%z\1-\127\194-\244][\128-\191]*$','');picker.page=1 end
+        if pressed('PageDown',now) then picker.page=picker.page+1 end
+        if pressed('PageUp',now) then picker.page=math.max(1,picker.page-1) end
+        if pressed('Enter',now) then
+            local rows=MOD.ammo.rows()
+            if tonumber(picker.query) then MOD.ammo.choose(tonumber(picker.query))
+            elseif #rows==1 then MOD.ammo.choose(rows[1].id) end
+            ui.version=ui.version+1;return
+        end
+        for _,vk in ipairs(native_text and {} or TEXT_KEYS) do
+            if pressed('T'..vk,now) then local c=key_char(vk);if c and #picker.query+#c<=80 then picker.query=picker.query..c;picker.page=1 end end
+        end
+        if before~=picker.query..'|'..picker.page then ui.version=ui.version+1 end;return
+    end
+
     if ui.binding then
         if pressed('Escape', now) then ui.binding = nil; return end
         for _, name in ipairs({ 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
@@ -13807,64 +13925,47 @@ local function keyboard(now)
     if ui.editing then
         if pressed('Escape', now) then presets.finish_rename(false); return end
         if pressed('Enter', now) then presets.finish_rename(true); return end
-        if pressed('Backspace', now) then presets.type_char(false) end
-        if poll then
-            for _, vk in ipairs(TEXT_KEYS) do
-                if pressed('T' .. vk, now) then
-                    local c = key_char(vk)
-                    if c then presets.type_char(c) end
-                end
+        if not native_text and pressed('Backspace', now) then presets.type_char(false) end
+        for _, vk in ipairs(native_text and {} or TEXT_KEYS) do
+            if pressed('T' .. vk, now) then
+                local c = key_char(vk)
+                if c then presets.type_char(c) end
             end
-        end
-        for _, c in ipairs(typed or {}) do
-            if c ~= '#' then presets.type_char(c) end   -- '#' starts a comment in the preset files
         end
         return
     end
     if ui.value then
         local edit = ui.value
-        local function add(c)
-            if edit.fresh then edit.text, edit.fresh = '', false end
-            if #edit.text < 16 then edit.text = edit.text .. c end
-        end
         if pressed('Escape', now) then finish_value(false); return end
         if pressed('Enter', now) then finish_value(true); return end
-        if pressed('Backspace', now) then
+        if not native_text and pressed('Backspace', now) then
             edit.text = edit.fresh and '' or edit.text:sub(1, -2)
             edit.fresh = false
         end
-        if poll then
-            for _, vk in ipairs(TEXT_KEYS) do
-                if pressed('T' .. vk, now) then
-                    local c = key_char(vk)
-                    if c and c:find('^[%d%.,%-]$') then add(c) end
+        for _, vk in ipairs(native_text and {} or TEXT_KEYS) do
+            if pressed('T' .. vk, now) then
+                local c = key_char(vk)
+                if c and c:find('^[%d%.,%-%+eE]$') then
+                    if edit.fresh then edit.text, edit.fresh = '', false end
+                    if #edit.text < 16 then edit.text = edit.text .. c end
                 end
             end
-        end
-        for _, c in ipairs(typed or {}) do
-            if c:find('^[%d%.,%-]$') then add(c) end
         end
         return
     end
     if ui.search.active then
         local search = ui.search
-        local function add(c)
-            if #search.text + #c <= 40 then search.text, ui.page = search.text .. c, 1 end
-        end
         if pressed('Escape', now) then ui.search, ui.page = { text = '', active = false }, 1; return end
         if pressed('Enter', now) then search.active = false; return end
-        if pressed('Backspace', now) then
+        if not native_text and pressed('Backspace', now) then
             search.text, ui.page = search.text:gsub('[%z\1-\127\194-\244][\128-\191]*$', ''), 1
         end
-        if poll then
-            for _, vk in ipairs(TEXT_KEYS) do
-                if pressed('T' .. vk, now) then
-                    local c = key_char(vk)
-                    if c then add(c) end
-                end
+        for _, vk in ipairs(native_text and {} or TEXT_KEYS) do
+            if pressed('T' .. vk, now) then
+                local c = key_char(vk)
+                if c and #search.text + #c <= 40 then search.text, ui.page = search.text .. c, 1 end
             end
         end
-        for _, c in ipairs(typed or {}) do add(c) end
         return
     end
     if ui.tab ~= 'Presets' and key_down(VK.Ctrl) and pressed('T70', now) then     -- Ctrl+F
@@ -13954,6 +14055,7 @@ local cursor = { taken = false }
 function ui.scroll_press(key, gy)
     local name = key:sub(1, 1) == 'l' and 'lbar' or 'sbar'
     local b = ui[name]
+    if MOD.offline and name=='lbar' then return end
     if not b then return end
     if key:find(':thumb$') then ui.drag = { bar = name, from = gy, value = ui[b.id] }
     elseif name == 'sbar' then click(gy > b.thumb_top and 'scroll:up' or 'scroll:down')
@@ -13962,6 +14064,7 @@ end
 
 function ui.scroll_drag(gy)
     local d = ui.drag
+    if MOD.offline and d and d.bar=='lbar' then ui.drag=nil;return end
     local b = d and ui[d.bar]
     local per = b and (b.top - b.bottom - b.thumb) / b.span
     if not per or per <= 0 then return end
@@ -13969,15 +14072,26 @@ function ui.scroll_drag(gy)
 end
 
 function ui.wheel_scroll(notches)
-    local left = ui.cursor_gx and ui.split_gx and ui.cursor_gx < ui.split_gx
-    local b = left and ui.lbar or (not left and ui.weapon and ui.sbar)
-    if b then ui[b.id] = math.max(1, math.min(b.span + 1, ui[b.id] - notches * 3)) end
+    if ui.ammo then
+        local pages=math.max(1,math.ceil(#MOD.ammo.rows()/14))
+        ui.ammo.page=math.max(1,math.min(pages,ui.ammo.page-(notches>0 and 1 or -1)));ui.version=ui.version+1;return
+    end
+    local left=ui.cursor_gx and ui.split_gx and ui.cursor_gx<ui.split_gx
+    if MOD.offline and (not ui.cursor_gx or left or ui.settings or ui.tab=='Presets') then return end
+    local b=left and ui.lbar or (not left and ui.weapon and ui.sbar)
+    if b then
+        ui.wheel_rest=(ui.wheel_rest or 0)+notches
+        local steps=ui.wheel_rest>=0 and math.floor(ui.wheel_rest) or math.ceil(ui.wheel_rest)
+        ui.wheel_rest=ui.wheel_rest-steps
+        ui[b.id]=math.max(1,math.min(b.span+1,ui[b.id]-steps*3))
+    end
 end
 
 local mouse_was_down, armed = nil, nil
 
 -- Hover and clicks (press and release on the same control), in gui pixels from the bottom left.
 local function mouse(window)
+    ui.cursor_gx=nil
     if user.GetCursorPos(ffi.cast('void *', point)) == 0
        or user.ScreenToClient(window, ffi.cast('void *', point)) == 0
        or user.GetClientRect(window, ffi.cast('void *', rect)) == 0 then return end
@@ -14305,15 +14419,15 @@ end
 local function panel_frame(now)
     local window = focused_window()
     pcall(keep_cursor)
-    if not settings.block_input then
+    if MOD.offline or not settings.block_input then
         if cursor.raw.saved or cursor.raw.keys_on then pcall(cursor.give_input) end
     elseif window and not key_down(VK[hotkey_name] or VK.F8) then
         local ok, why = pcall(cursor.hold_input, window, now)
         if not ok then log('input: ' .. tostring(why)); cursor.raw.failed = true end
     end
     -- the mouse wheel scrolls the list or the stats (the half the cursor is over), 3 rows a notch
-    local ok, notches = pcall(cursor.wheel)
-    if ok and notches ~= 0 and not ui.value then ui.wheel_scroll(notches) end
+    local offline_wheel=MOD.offline and rawget(_G,'SHODAN_OFFLINE_WHEEL')
+    local ok, notches = pcall(offline_wheel or cursor.wheel)
     local main = sr.Application.main_world()
     local worlds = sr.Application.worlds() or {}
     if not same_worlds(worlds, ui.worlds) or main ~= ui.main then
@@ -14355,6 +14469,7 @@ local function panel_frame(now)
         end
     end
     if not ui.hover and not ui.drag then mouse_was_down, armed = nil, nil end
+    if window and ok and notches~=0 and not ui.value then ui.wheel_scroll(notches) end
     if window then keyboard(now) end
 
     -- redraw when anything shown changed
@@ -15573,13 +15688,130 @@ if not BUS then
 end
 BUS.jobs[MOD.global] = tick
 
-local own = api.address_of(NEEDLE)
-local skip_low = (own or LUA_HEAP_LIMIT) < LUA_HEAP_LIMIT
-hub = rawget(_G, HUB_NAME)
-if type(hub) ~= 'table' or hub.version ~= HUB_VERSION then
-    hub = new_hub(api, skip_low)
-    rawset(_G, HUB_NAME, hub)
-    BUS.jobs[HUB_NAME] = hub.tick
+local offline_tables = MOD.offline and rawget(_G, 'SHODAN_OFFLINE_TABLES')
+if type(offline_tables) == 'function' then
+    function state.load_offline_tables()
+        local loaded = 0
+        for _, block in ipairs(offline_tables()) do
+            if wants(block.type, block.address) then
+                local blob = api.read(block.address + HEADER_BYTES, block.size)
+                assert(blob and #blob == block.size, 'offline table could not be read: ' .. tostring(block.file))
+                handle_table(block.address, block.type, block.size, blob)
+                loaded = loaded + 1
+            end
+        end
+        assert(loaded > 0, 'no supported offline data tables were loaded')
+        log('offline: registered ' .. loaded .. ' known file tables directly')
+        become_ready(true)
+    end
+    state.load_offline_tables()
+else
+    local own = api.address_of(NEEDLE)
+    local skip_low = (own or LUA_HEAP_LIMIT) < LUA_HEAP_LIMIT
+    hub = rawget(_G, HUB_NAME)
+    if type(hub) ~= 'table' or hub.version ~= HUB_VERSION then
+        hub = new_hub(api, skip_low)
+        rawset(_G, HUB_NAME, hub)
+        BUS.jobs[HUB_NAME] = hub.tick
+    end
+    hub.register({ name = MOD.title, searching = searching, wants = wants, handle = handle_table,
+                   after_pass = after_pass })
 end
-hub.register({ name = MOD.title, searching = searching, wants = wants, handle = handle_table,
-               after_pass = after_pass })
+
+if MOD.offline then
+    state.desktop_commit=function()
+        if ui.value then
+            local value=tonumber((ui.value.text:gsub(',','.')))
+            if not value or value~=value or math.abs(value)==math.huge then return false end
+            finish_value(true)
+        end
+        return true
+    end
+    state.desktop_effects=function() return ui.regions,ui.hover,ui.tab,false end
+    state.desktop_tabs=function() return settings.shown_tabs() end
+    state.desktop_navigate=function(tab)
+        click('tab:'..tab);ui.signature=nil
+        local animate=rawget(_G,'SHODAN_OFFLINE_TRANSITION');if animate then animate() end
+    end
+end
+
+if MOD.offline and os.getenv('SHODAN_QA_OUTPUT') then
+    state.qa_ui = {
+        list_rows=function() return LIST_ROWS end,
+        left_state=function()
+            local list=weapons_in(ui.search.text~='' and '?search' or ui.tab)
+            return ui.page,#list,ui.lbar~=nil,ui.tab
+        end,
+        left_wheel=function(notches)
+            local old=ui.cursor_gx;ui.cursor_gx=(ui.split_gx or 400)-20;ui.wheel_scroll(notches);ui.cursor_gx=old
+        end,
+        page_next=function() click('page:next') end,
+        page_prev=function() click('page:prev') end,
+        no_feature_shortcuts=function()
+            for _,region in ipairs(ui.regions) do if region.key:find('^feature:') then return false end end
+            return true
+        end,
+        open_status_popup=function()
+            for _,weapon in ipairs(weapons) do
+                for n,row in ipairs(weapon.rows) do
+                    if row.choice=='status' then select_weapon(weapon);return MOD.ammo.open(n) end
+                end
+            end
+            return false
+        end,
+        close_popup=function() ui.ammo=nil;ui.version=ui.version+1 end,
+        upstream_features=function()
+            local counts={status=0,extra=0,regen=0,callin=0,eagle=0}
+            for _,weapon in ipairs(weapons) do
+                for _,row in ipairs(weapon.rows) do
+                    if row.choice=='status' then counts.status=counts.status+1 end
+                    if row.choice=='stratagem' then counts.extra=counts.extra+1 end
+                    if row.id=='regen' then counts.regen=counts.regen+1 end
+                    if row.id=='callin' then counts.callin=counts.callin+1 end
+                    if row.id=='eagle_approach' then counts.eagle=counts.eagle+1 end
+                end
+            end
+            return counts
+        end,
+        test_choice=function(kind)
+            local saved=ui.weapon
+            for _,weapon in ipairs(weapons) do
+                for n,row in ipairs(weapon.rows) do
+                    if row.choice==kind then
+                        select_weapon(weapon)
+                        local old=row_value(row);local strength=row.strength and row_value(row.strength)
+                        assert(MOD.ammo.open(n))
+                        local selected
+                        for _,item in ipairs(MOD.ammo.rows()) do
+                            local refused=kind=='status' and MOD.status.refused(row,item.id) or kind=='stratagem' and MOD.extra.refused(row.def,item.id)
+                            if item.id~=old and not refused then selected=item.id;break end
+                        end
+                        if selected then
+                            assert(MOD.ammo.choose(selected));assert(row_value(row)==selected)
+                            change(row,0,false,old)
+                            if row.strength then change(row.strength,0,false,strength) end
+                            ui.ammo=nil;select_weapon(saved);return true
+                        end
+                        ui.ammo=nil
+                    end
+                end
+            end
+            select_weapon(saved);return false
+        end,
+        text_events=native_text_events,
+        search_open=function() click('search') end,
+        search_state=function() return ui.search.text,ui.search.active,#weapons_in('?search') end,
+        search_clear=function() click('search:clear') end,
+        navigate=function(tab) click('tab:'..tab) end,
+        ammo_open=function() for n,row in ipairs(ui.weapon and ui.weapon.rows or {}) do if row.choice==true then return MOD.ammo.open(n) end end end,
+        ammo_rows=MOD.ammo.rows,
+        ammo_current=function() return ui.weapon.swaps and row_value(ui.weapon.swaps[1]) end,
+        ammo_query=function(text) if ui.ammo then ui.ammo.query=text;ui.ammo.page=1;ui.version=ui.version+1 end;return MOD.ammo.rows() end,
+        ammo_choose=MOD.ammo.choose,
+        value_current=function(n) return row_value(ui.weapon.rows[n]) end,
+        value=function(n,value) local row=ui.weapon.rows[n];change(row,0,false,value);return row_value(row) end,
+        current=function() return ui.weapon end,
+        select=function(hash) select_weapon(by_hash[hash]) end,
+        redraw=function() ui.signature=nil;panel_frame(api.now()) end,
+    }
+end
