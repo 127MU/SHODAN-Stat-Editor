@@ -8181,9 +8181,10 @@ KINDS[TYPES.mine_spawner] = { name = 'mine spawner', stride = 32, keyed = true }
 -- walking speed (the Walking Barrage)
 KINDS[TYPES.bombard] = { name = 'bombardment', stride = 192, keyed = true }
 -- Eagles (EagleComponentData): +16 payload (2 strafe, 4 rocket pods, 5 bombs), +20 drop pattern (fixes the
--- bomb count; not offered), +40 fire duration (guns, rockets), +44 time between bombs, +108 run length (m)
+-- bomb count; not offered), +40 fire duration (guns, rockets), +44 time between bombs, +52 / +56 the shortest /
+-- longest distance the jet starts its approach from (m), +76 its speed until it has fired (m/s), +108 run length (m)
 KINDS[TYPES.eagle] = { name = 'eagle', stride = 152, keyed = true,
-                       layouts = { { stride = 336, offsets = { [40] = 52, [44] = 56, [108] = 124 } } } }
+                       layouts = { { stride = 336, offsets = { [40] = 52, [44] = 56, [52] = 64, [56] = 68, [76] = 92, [108] = 124 } } } }
 -- Seeking missiles (SeekingMissileComponentData; the MS-11 Solo Silo's missile): +12 guidance on after (s),
 -- +28 guidance lost past this angle (deg), +56 / +60 movement / warhead on after (s; the silo's -1: by
 -- its script, not offered), +64 max lifetime (s),
@@ -10513,6 +10514,19 @@ function MOD.extra.row(entry, def)
     row.after_h = #row.after * 16 + 6
 end
 
+-- Call-in (issue #43), StratagemInfo +84 spawn_time: the beacon's countdown before the delivery is sent (every
+-- stratagem; ship upgrades take some off). The hellpod's fall (4.75 s), a Pelican's flight and an Eagle's are the
+-- game's own; +96 extra_travel_time and +100 (vehicles 10.5) change neither (tested in game). With every ship
+-- upgrade: the 380mm's countdown edit applies, the EAT's and the MG sentry's are skipped (tested).
+function MOD.callin_rows(entry, defs)
+    local parts = {}
+    for k, def in ipairs(defs) do parts[k] = part(k == 1 and 'callin' or 'callin' .. k, def.kind, def.off + 84, 'f32', 100000) end
+    local row = add_row(entry, 'Stratagem', 'callin', 'Countdown before delivery (s)', 'f32', parts, 0, 60, 0.5, 5)
+    row.tip = { "The beacon's countdown before the delivery is sent.",
+                "A hellpod lands this many seconds plus its 4.75 s fall after the beacon, so 0 is the fastest it gets.",
+                'Ship upgrades that make support weapons and sentries launch at once skip it (tested).' }
+end
+
 local function resolve_stratagem(entry)
     local s = entry.stratagem
     local def = s.def
@@ -10523,6 +10537,7 @@ local function resolve_stratagem(entry)
             add_row(entry, 'Stratagem', 'uses', s.family == 'eagle' and 'Uses per rearm' or 'Uses per mission', 'u32',
                     { part('uses', def.kind, def.off + 80, 'u32', 999) }, 0, 999, 1, 5)
         end
+        if s.family ~= 'eagle' then MOD.callin_rows(entry, { def }) end
         if s.family ~= 'eagle' and MOD.extra.FAMILIES[s.family] then MOD.extra.row(entry, def) end
     end
     if s.family == 'eagle' and s.rearm then
@@ -10548,10 +10563,15 @@ local function resolve_stratagem(entry)
         local eagle = tables[TYPES.eagle] and tables[TYPES.eagle].index[key]
         if eagle then
             local moved = KINDS[TYPES.eagle].offsets or {}
-            local function e(id, label, offset, min, max, small, big)
-                offset = moved[offset] or offset
-                add_row(entry, 'Eagle', id, label, 'f32', { part(id, TYPES.eagle, eagle + offset, 'f32', 100000) }, min, max, small, big)
+            local function e(id, label, offset, min, max, small, big, also)
+                local parts = { part(id, TYPES.eagle, eagle + (moved[offset] or offset), 'f32', 100000) }
+                if also then parts[2] = part(id .. '_2', TYPES.eagle, eagle + (moved[also] or also), 'f32', 100000) end
+                return add_row(entry, 'Eagle', id, label, 'f32', parts, min, max, small, big)
             end
+            local approach = e('eagle_approach', 'Approach distance (m)', 52, 0, 10000, 10, 100, 56)
+            approach.tip = { 'How far away the jet starts its run. With its speed, it sets how long the Eagle takes to arrive.',
+                             "The beacon's timer still counts down the usual time (tested)." }
+            e('eagle_speed', 'Speed until it has fired (m/s)', 76, 0, 5000, 10, 50)
             local payload = read_field(field_at(TYPES.eagle, eagle + 16, 'u32', 100))
             if payload == 5 then e('eagle_bomb_gap', 'Time between bombs (s)', 44, 0, 10, 0.05, 0.25)
             else e('eagle_fire_time', 'Fire duration (s)', 40, 0, 30, 0.1, 0.5) end
@@ -10820,6 +10840,7 @@ local function resolve(weapon)
             parts[k] = part(k == 1 and 'cooldown' or 'cooldown' .. k, def.kind, def.off + 104, 'f32', 100000)
         end
         if parts[1] then add_row(weapon, 'Stratagem', 'cooldown', 'Cooldown (s)', 'f32', parts, 0, 10000, 1, 10) end
+        if weapon.sentry_defs[1] then MOD.callin_rows(weapon, weapon.sentry_defs) end
         if weapon.sentry_defs[1] then MOD.extra.row(weapon, weapon.sentry_defs[1]) end
         unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
     end
@@ -12802,6 +12823,7 @@ local function draw(width, height)
     local gui = ui.gui
     local regions = {}
     local shared_overlay = nil   -- set while the cursor is on a cut-short 'shared with' list
+    local tip_overlay = nil      -- set while the cursor is on a row with a tip (row.tip: its lines)
     local ink_font, ink_material = font.font, font.material
 
     local function color(r, g, b, a) return Color(a or 255, r, g, b) end
@@ -13269,6 +13291,10 @@ local function draw(width, height)
                 local label = row.label
                 if row.label_of then label = row.label_of() end
                 text(label, x0, y + bh / 2 - 8, 16, focus and GOLD or WHITE, 236)
+                if row.tip then
+                    text('(?)', x0 + math.min(width(label, 16), 236) + 6, y + bh / 2 - 7, 14, DIM)
+                    if ui.hover == 'row:' .. n then tip_overlay = { lines = row.tip, x = x0, y = y + bh + 2 } end
+                end
                 text(changed and ('was ' .. fmt(default, row.storage)) or '', 690, y + bh / 2 - 7, 14, DIM, 90, true)
                 local typing = ui.value and ui.value.n == n and ui.value.weapon == weapon
                 if typing or (ui.hover == 'value:' .. n and value ~= nil) then
@@ -13409,6 +13435,19 @@ local function draw(width, height)
         end
         if #choices == 0 then text('Every passive is in already.', x + 16, y + 80, 16, MUTED, w - 32, false, 960) end
         button('stack_cancel', 'Cancel', x + w - 16 - 104, y + h - 16 - 30, 104, 30, true, false, nil, 961)
+    end
+    -- a hovered row's tip, under it (above it near the bottom)
+    if tip_overlay then
+        local w, h = 0, #tip_overlay.lines * 18 + 16
+        for _, line in ipairs(tip_overlay.lines) do w = math.max(w, width(line, 15)) end
+        w = math.min(w + 24, W - 32)
+        local x = math.max(16, math.min(tip_overlay.x, W - 16 - w))
+        local y = tip_overlay.y
+        if y + h > H - 70 then y = math.max(56, tip_overlay.y - 30 - h) end
+        rect(x, y, w, h, color(8, 11, 15), 958)
+        rect(x, y, w, 2, GOLD, 959); rect(x, y + h - 2, w, 2, GOLD, 959)
+        rect(x, y, 2, h, GOLD, 959); rect(x + w - 2, y, 2, h, GOLD, 959)
+        for k, line in ipairs(tip_overlay.lines) do text(line, x + 12, y + 8 + (k - 1) * 18, 15, WHITE, w - 24, false, 960) end
     end
     -- every entry a hovered 'shared with' list names, in columns, over the rows below it (above, near the bottom)
     if shared_overlay then
