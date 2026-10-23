@@ -818,6 +818,7 @@ MOD.langs = {
       ['Demolition force'] = '破坏力',
       ['Deployer'] = '部署舱',
       ['Desert Stormer'] = '沙漠突击者',
+      ['Deviation'] = '偏移幅度',
       ['Diligence'] = '勤勉',
       ['Diligence Counter Sniper'] = '反狙击“勤勉”',
       ['Direct hit'] = '直击',
@@ -1736,6 +1737,7 @@ MOD.langs = {
       ['Warp pack'] = '传送背包',
       ['Warrant'] = '法令',
       ['Weapon stats'] = '武器数值',
+      ['Weaves'] = '蛇形飞行',
       ['Wind-down time (s)'] = '转管减速时间（秒）',
       ['Wind-down time, released (s)'] = '松开扳机后减速时间（秒）',
       ['Wind-up'] = '转管加速',
@@ -3604,6 +3606,7 @@ MOD.langs = {
       ['Demolition force'] = '破壞力',
       ['Deployer'] = '部署艙',
       ['Desert Stormer'] = '沙塵暴之王',
+      ['Deviation'] = '偏移幅度',
       ['Diligence'] = '勤勉',
       ['Diligence Counter Sniper'] = '反狙擊勤勉',
       ['Direct hit'] = '直擊',
@@ -4522,6 +4525,7 @@ MOD.langs = {
       ['Warp pack'] = '傳送背包',
       ['Warrant'] = '搜查令',
       ['Weapon stats'] = '武器數值',
+      ['Weaves'] = '蛇形飛行',
       ['Wind-down time (s)'] = '轉管減速時間（秒）',
       ['Wind-down time, released (s)'] = '鬆開扳機後減速時間（秒）',
       ['Wind-up'] = '轉管加速',
@@ -6369,6 +6373,7 @@ MOD.langs = {
       ['Demolition force'] = 'Сила разрушения',
       ['Deployer'] = 'Установщик',
       ['Desert Stormer'] = 'Пустынный штурмовик',
+      ['Deviation'] = 'Отклонение',
       ['Diligence'] = '«Рвение»',
       ['Diligence Counter Sniper'] = '«Рвение антиснайпер»',
       ['Direct hit'] = 'Прямое попадание',
@@ -7196,6 +7201,7 @@ MOD.langs = {
       ['Warp pack'] = 'Варп-ранец',
       ['Warrant'] = 'Ордер',
       ['Weapon stats'] = 'Характеристики оружия',
+      ['Weaves'] = 'Петляет',
       ['Wind-down time (s)'] = 'Время замедления (с)',
       ['Wind-down time, released (s)'] = 'Время замедления после отпускания (с)',
       ['Wind-up'] = 'Раскрутка',
@@ -11642,6 +11648,21 @@ KINDS[TYPES.seeking].flight = function(weapon, seek, steered)
         if steered ~= false or not r[7] then
             add_row(weapon, 'Missile flight', id, r[2], 'f32', { part(id, TYPES.seeking, seek + r[3], 'f32', 1000000) }, 0, r[4], r[5], r[6])
         end
+    end
+    -- a missile that weaves (+180 on: the W.A.S.P., P-33): how far, +192 / +196 and the vectors +200 / +212
+    -- (55, (20, 40, 20) / (30, 50, 30) for the W.A.S.P.), scaled together; off: it flies its line. Not
+    -- +184 / +188 (-75 / 75 for the W.A.S.P.): no visible change in game (the Warrant has them all 0)
+    -- (the game's values: the rows stay when switched off)
+    if default_of(field_at(TYPES.seeking, seek + 180, 'flag', 1)) == 1
+       and (default_of(field_at(TYPES.seeking, seek + 196, 'f32', 1000000)) or 0) > 0 then
+        add_row(weapon, 'Missile flight', 'missile_weave', 'Weaves', 'flag',
+                { part('missile_weave', TYPES.seeking, seek + 180, 'flag', 1) }, 0, 1, 1, 1)
+        local parts = { part('missile_deviation', TYPES.seeking, seek + 196, 'f32', 1000000) }
+        for k, off in ipairs({ 192, 200, 204, 208, 212, 216, 220 }) do
+            parts[#parts + 1] = part('missile_deviation_' .. k, TYPES.seeking, seek + off, 'f32', 1000000)
+        end
+        local row = add_row(weapon, 'Missile flight', 'missile_deviation', 'Deviation', 'f32', parts, 0.1, 1000, 1, 5)
+        row.lead = true   -- the others scale with it
     end
 end
 
