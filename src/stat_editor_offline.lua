@@ -10446,7 +10446,8 @@ end
 
 -- Extra stratagem (issue #64): StratagemInfo +200 additional_stratagem, a stratagem type (+0) given along when
 -- this one is in your loadout (the Eagles' is Eagle Rearm, so they are offered as extras only). The choices:
--- the stratagems you can bring, by name; 0: none. A choice that leads back to the stratagem is refused.
+-- every stratagem the game has (mission and President's reward ones too: the Dark Fluid and Medic backpacks
+-- work, tested), by name; 0: none. A choice that leads back to the stratagem is refused.
 MOD.extra = { FAMILIES = { support = true, backpack = true, sentry = true, emplacements = true, orbital = true,
                            vehicles = true, eagle = true } }
 function MOD.extra.choices()
@@ -10455,11 +10456,13 @@ function MOD.extra.choices()
     for _, w in ipairs(weapons) do
         local def, family = w.stratagem and w.stratagem.def, w.stratagem and w.stratagem.family
         if not w.stratagem and w.sentry_defs and w.sentry_defs[1] then def, family = w.sentry_defs[1], 'sentry' end
-        local t = def and MOD.extra.FAMILIES[family] and not w.name:find('^%(Not Used%)') and not names[w.name] and peek4(def.at)
+        local t = def and peek4(def.at)
         if t and t > 0 and not by_type[t] then
-            names[w.name] = true   -- (one of two stratagems with a name: the listed one, first)
+            -- (a second stratagem with a name, e.g. the President's reward Health Pack Rack: its family after it)
+            local name = names[w.name] and (w.name .. ' (' .. family:sub(1, 1):upper() .. family:sub(2) .. ')') or w.name
+            names[w.name] = true
             w.extra_id = t         -- (shown after its name in the list, for typing a choice in)
-            by_type[t] = { type = t, name = w.name, def = def, family = family }
+            by_type[t] = { type = t, name = name, def = def, family = family }
             list[#list + 1] = by_type[t]
         end
     end
