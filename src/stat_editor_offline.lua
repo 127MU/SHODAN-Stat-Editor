@@ -10583,8 +10583,10 @@ local function resolve_throwable(entry, placed)
     local mode = read_field(field_at(TYPES.explosive, ex, 'u32', 100000))
     local fuse = read_field(field_at(TYPES.explosive, ex + 12, 'f32', 100000))
     local has = id and id > 0 and tables[T_EXPLOSION] and tables[T_EXPLOSION].index[id]
-    if has and (mode == 0 or mode == 3) and fuse and fuse > 0 then
-        add_row(entry, 'Throwable', 'fuse', 'Fuse time (s)', 'f32', { part('fuse', TYPES.explosive, ex + 12, 'f32', 100000) }, 0, 60, 0.1, 1)
+    -- (on an impact throwable, mode 2, +12 is the earliest it goes off: the Urchin, the G-31 Arc)
+    if has and (mode == 0 or mode == 2 or mode == 3) and fuse and fuse > 0 then
+        local row = add_row(entry, 'Throwable', 'fuse', 'Fuse time (s)', 'f32', { part('fuse', TYPES.explosive, ex + 12, 'f32', 100000) }, 0, 60, 0.1, 1)
+        if mode == 2 then row.note = 'goes off on impact, but not before this' end
     end
     -- a burning throwable (the Thermite): once the fuse is out, a timed status effect (+252: its effects
     -- from +256, lifetime +292) burns, then it explodes; it is removed +16 after going off (the burn +
