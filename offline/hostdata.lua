@@ -61,6 +61,16 @@ local function place(name, cipher)
     return p, n
 end
 
+-- a file's plain text to build on: another mod's version loses only its hash correction (the game checks the
+-- hash, so a mod's file carries one too), this editor's own goes in its place
+local function open_base(cipher)
+    local p, n = G.open_sealed(cipher)
+    if p then G.clear_correction(p, n) end
+    return p, n
+end
+
+M.modded = {}   -- name -> true: a file another mod changed (built on, its changes kept)
+
 -- folder: data/game; originals: name -> sealed original (from the backups, else the game folder)
 function M.load(folder, originals)
     local dll = assert(read(folder .. '/game.dll'), 'game.dll not found in ' .. folder)
@@ -74,10 +84,8 @@ function M.load(folder, originals)
             if not G.game_dll_has(dll, hash) then
                 problems[#problems + 1] = name .. ': not the version this game expects'
                 ffi.C.VirtualFree(p, 0, MEM_RELEASE)
-            elseif #G.headers(p, n) > 0 and not G.pristine(p, n) then
-                problems[#problems + 1] = name .. ': changed by another tool'
-                ffi.C.VirtualFree(p, 0, MEM_RELEASE)
             else
+                if G.clear_correction(p, n) then M.modded[name] = true end
                 M.files[name] = { name = name, p = p, n = n, hash = hash, cipher = cipher, fields = {} }
             end
         end
@@ -134,7 +142,7 @@ end
 -- the plain text to install for a file (a new buffer) and the offsets of changed f32-looking words, or nil when
 -- nothing changed. Resolved fields keep their stored bytes.
 local function changes(f)
-    local orig, n = G.open_sealed(f.cipher)
+    local orig, n = open_base(f.cipher)
     local changed, words = 0, {}
     local a, b = ffi.cast('uint64_t *', f.p), ffi.cast('uint64_t *', orig)
     for w = 0, math.floor(n / 8) - 1 do
@@ -213,7 +221,7 @@ function M.stack(changes, stacks, log, own_off)
     local c
     for _, x in ipairs(changes) do if x.name == f.name then c = x end end
     if not c then
-        local plain, n = G.open_sealed(f.cipher)
+        local plain, n = open_base(f.cipher)
         if not plain then return nil, f.name .. ': ' .. tostring(n) end
         c = { name = f.name, plain = plain, n = n, bytes = 0, floats = {}, hash = f.hash }
         changes[#changes + 1] = c
