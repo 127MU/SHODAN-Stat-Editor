@@ -145,7 +145,7 @@ files are back: start SSEO and press Install again.
 **Updates.** From v3.1.0 SSEO asks GitHub for its latest release at start. When there is a newer
 one, **Update to v…** appears at the top right: one click downloads it, swaps the new files in
 and restarts. Your values, presets and the game's originals stay as they are. (v3.0.0 has no
-updater: download v3.1.0 once by hand.)
+updater: download the latest release once by hand.)
 
 Windows SmartScreen or an antivirus may warn about the program the first time (it is not signed).
 
