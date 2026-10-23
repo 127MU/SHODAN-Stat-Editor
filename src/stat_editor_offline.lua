@@ -96,6 +96,7 @@ MOD.item_names = {
 }
 -- reload times (s) of the weapons whose reload record says 0 (play the animation at its own length), by hash
 MOD.reload_seconds = {
+    ['006E44327BB953FE'] = 2.75,
     ['02CD7321CD8445F5'] = 2.5,
     ['05D8D8C073B9D502'] = 2.5,
     ['0F83639AB8C86165'] = 3.5,
@@ -114,24 +115,38 @@ MOD.reload_seconds = {
     ['84354339522C932D'] = 3.0,
     ['8645F167B3C813A2'] = 2.25,
     ['88F61AFFF48AC8A4'] = 4.0,
+    ['90DDC374F4E3D756'] = 3.6,
     ['94BD931B5FB4EE95'] = 3.55,
     ['A6A735ACCB4A327F'] = 5.9,
     ['A8A91EB54892B6B2'] = 3.75,
     ['A955C4EA6F6D4203'] = 3.33,
     ['AA69A60D74A3EC54'] = 1.9,
     ['B6AFF2195568767F'] = 4.67,
+    ['B9C209B4F99B5335'] = 2.5,
     ['BC29613666DF696B'] = 3.0,
+    ['C780BCD79547DA0F'] = 3.3,
     ['CC786F6491FE7E65'] = 4.9,
     ['CDF28BE026BB7D84'] = 4.2,
     ['CE063AA33D95A812'] = 3.33,
     ['CF8934FF6567A42D'] = 2.0,
     ['DBB6C961C59FADC1'] = 2.45,
+    ['DCD1C835407EF7BA'] = 4.0,
+    ['E6D932BE83729076'] = 6.4,
     ['E8D5F49AD7780E54'] = 5.15,
     ['E91F569C2AD8AF01'] = 2.68,
     ['EEA5E3CEF1E12C14'] = 2.5,
     ['F49227A0630A3F7F'] = 3.33,
     ['F992CE97577C8A7F'] = 3.58,
     ['FB3A19078694708A'] = 2.5,
+}
+-- round-at-a-time weapons: seconds of full reload per 1 of the reload record, by hash
+MOD.reload_scale = {
+    ['006E44327BB953FE'] = 1.4604,
+    ['90DDC374F4E3D756'] = 2.4275,
+    ['B9C209B4F99B5335'] = 1.6667,
+    ['C780BCD79547DA0F'] = 1.0704,
+    ['DCD1C835407EF7BA'] = 2.6972,
+    ['E6D932BE83729076'] = 2.3997,
 }
 -- the game's names of the projectile records (rounds), by record id
 MOD.round_names = {
@@ -10419,6 +10434,8 @@ local function resolve_gun(weapon, key)
             local r = row('Ammo', 'reload_time', (rt > 0 or known) and 'Reload time (s)' or 'Reload time (s; 0 = animation length)',
                           'f32', rf, 0, 60, 0.1, 0.5)
             if r and known then r.zero = known end
+            -- a weapon loading a round at a time: the value scales each round, shown as the full reload
+            if r and not item and MOD.reload_scale[weapon.hash] then r.scale = MOD.reload_scale[weapon.hash] end
         end
         -- +1: you can move while reloading; off on the weapons that hold you still (the Autocannon, MG-43...):
         -- a row there only (not on vehicle guns: you are not walking)
@@ -12267,7 +12284,7 @@ local function row_value(row, default)
         sum = sum + v
     end
     if row.zero and sum == 0 then return row.zero end   -- 0 stands for that (a reload played as animated)
-    return sum / #row.parts
+    return sum / #row.parts * (row.scale or 1)
 end
 
 -- ---------------------------------------------------------------- config
@@ -13325,7 +13342,8 @@ local function change(row, delta_sign, big, exact)
         local new = target
         if row.span then new = row.span() / target - (row.rate_plus or 0)
         elseif #row.parts > 1 then new = (current > 0) and v * target / current or target
-        elseif row.zero and math.abs(target - row.zero) < 1e-4 and defaults[p.field.key] == 0 then new = 0 end
+        elseif row.zero and math.abs(target - row.zero) < 1e-4 and defaults[p.field.key] == 0 then new = 0
+        elseif row.scale then new = target / row.scale end
         local ok, why = write_field(p.field, new)
         local d = defaults[p.field.key]
         if ok then
