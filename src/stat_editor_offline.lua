@@ -651,6 +651,9 @@ MOD.langs = {
       ['Arc chains use the game\'s values while other players are in your game (see Settings).'] = '对局中有其他玩家时，电弧连锁使用游戏原值（详见设置）。',
       ['Arc damage taken'] = '受到的电弧伤害',
       ['Arc splits'] = '电弧分裂',
+      ['Arm armor'] = '机臂护甲',
+      ['Arm durability'] = '机臂耐久',
+      ['Arm health'] = '机臂生命值',
       ['Arming distance (m)'] = '解除保险距离（米）',
       ['Arming time (s)'] = '解除保险时间（秒）',
       ['Armor'] = '护甲',
@@ -1304,6 +1307,7 @@ MOD.langs = {
       ['Peak Physique'] = '健壮体格',
       ['Pen.'] = '穿甲',
       ['Penetration slowdown'] = '穿透后速度衰减',
+      ['Physical shield'] = '实体护盾',
       ['Pineapple'] = '菠萝',
       ['Plasma Pistol. Canister Extended'] = '等离子手枪：扩容弹药罐',
       ['Plasma Pistol. Canister Pistol'] = '等离子手枪：标准弹药罐',
@@ -1513,8 +1517,11 @@ MOD.langs = {
       ['Shield'] = '盾雷',
       ['Shield Generator Pack'] = '防护罩生成包',
       ['Shield Generator Relay'] = '防护罩生成中继器',
+      ['Shield arm zone armor'] = '护盾臂部位护甲',
       ['Shield capacity'] = '护盾容量',
       ['Shield emitter'] = '护盾发生器',
+      ['Shield plate armor'] = '护盾板护甲',
+      ['Shield plate health'] = '护盾板生命值',
       ['Ship upgrades that make support weapons and sentries launch at once skip it (tested).'] = '让支援武器和哨戒炮立即发射的舰船升级会跳过此倒计时（已由作者测试）。',
       ['Shockwave radius (m)'] = '冲击波半径(米)',
       ['Short Magazine'] = '短弹匣',
@@ -3427,6 +3434,9 @@ MOD.langs = {
       ['Arc chains use the game\'s values while other players are in your game (see Settings).'] = '對局中有其他玩家時，電弧連鎖使用遊戲原值（詳見設定）。',
       ['Arc damage taken'] = '受到的電弧傷害',
       ['Arc splits'] = '電弧分裂',
+      ['Arm armor'] = '機臂護甲',
+      ['Arm durability'] = '機臂耐久',
+      ['Arm health'] = '機臂生命值',
       ['Arming distance (m)'] = '解除保險距離（米）',
       ['Arming time (s)'] = '解除保險時間（秒）',
       ['Armor'] = '護甲',
@@ -4080,6 +4090,7 @@ MOD.langs = {
       ['Peak Physique'] = '巔峰體態',
       ['Pen.'] = '穿甲',
       ['Penetration slowdown'] = '穿透後速度衰減',
+      ['Physical shield'] = '實體護盾',
       ['Pineapple'] = '鳳梨',
       ['Plasma Pistol. Canister Extended'] = '等離子手槍：擴容彈藥罐',
       ['Plasma Pistol. Canister Pistol'] = '等離子手槍：標準彈藥罐',
@@ -4289,8 +4300,11 @@ MOD.langs = {
       ['Shield'] = '防護罩',
       ['Shield Generator Pack'] = '防護罩生成背包',
       ['Shield Generator Relay'] = '防護罩生成中繼器',
+      ['Shield arm zone armor'] = '護盾臂部位護甲',
       ['Shield capacity'] = '護盾容量',
       ['Shield emitter'] = '護盾發生器',
+      ['Shield plate armor'] = '護盾板護甲',
+      ['Shield plate health'] = '護盾板生命值',
       ['Ship upgrades that make support weapons and sentries launch at once skip it (tested).'] = '讓支援武器和哨戒炮立即發射的艦船升級會跳過此倒計時（已由作者測試）。',
       ['Shockwave radius (m)'] = '衝擊波半徑(米)',
       ['Short Magazine'] = '短型彈匣',
@@ -6195,6 +6209,9 @@ MOD.langs = {
       ['Arc chains use the game\'s values while other players are in your game (see Settings).'] = 'Пока в вашей игре есть другие игроки, цепи дуги используют значения игры (см. Настройки).',
       ['Arc damage taken'] = 'Получаемый урон от дуги',
       ['Arc splits'] = 'Разветвления дуги',
+      ['Arm armor'] = 'Броня руки',
+      ['Arm durability'] = 'Прочность руки',
+      ['Arm health'] = 'Здоровье руки',
       ['Arming distance (m)'] = 'Дистанция взведения (м)',
       ['Arming time (s)'] = 'Время взведения (с)',
       ['Armor'] = 'Броня',
@@ -6789,6 +6806,7 @@ MOD.langs = {
       ['Peak Physique'] = 'Пик формы',
       ['Pen.'] = 'Проб.',
       ['Penetration slowdown'] = 'Замедление при пробитии',
+      ['Physical shield'] = 'Физический щит',
       ['Pineapple'] = 'Лимонка',
       ['Plasma Pistol. Canister Extended'] = 'Плазменный пистолет. Увеличенный баллон',
       ['Plasma Pistol. Canister Pistol'] = 'Плазменный пистолет. Стандартный баллон',
@@ -6979,8 +6997,11 @@ MOD.langs = {
       ['Shells per salvo'] = 'Снарядов в залпе',
       ['Shield'] = 'Щит',
       ['Shield Generator Pack'] = '«Генератор щита»',
+      ['Shield arm zone armor'] = 'Броня зоны руки со щитом',
       ['Shield capacity'] = 'Емкость щита',
       ['Shield emitter'] = 'Излучатель щита',
+      ['Shield plate armor'] = 'Броня щита',
+      ['Shield plate health'] = 'Здоровье щита',
       ['Shockwave radius (m)'] = 'Радиус ударной волны (м)',
       ['Short Magazine'] = 'Короткий магазин',
       ['Shrapnel'] = 'Шрапнель',
@@ -9749,6 +9770,9 @@ KINDS[TYPES.avatar].resolve = function(entry)
     local h = ht and ht.index[entry.key]
     if h then
         add_row(entry, 'Health', 'health', 'Health', 'u32', { part('health', TYPES.health, h, 'u32', 10000000) }, 1, 100000, 5, 25)
+        -- Native Helldiver HealthComponentData regeneration field (+4).
+        add_row(entry, 'Health', 'health_regen', 'Regeneration (health/s)', 'f32',
+                { part('health_regen', TYPES.health, h + 4, 'f32', 1000000) }, 0, 100, 1, 5)
         local top = ht.copies[1] + HEADER_BYTES
         for z = 0, 37 do
             local base = h + 520 + z * 552
@@ -10948,6 +10972,9 @@ end
 -- default zone's), then each damageable zone (38 of 552 bytes from +520; +96 name, 0: unused; +216 armor,
 -- +232 health, -1: none). Zones are named from MOD.vehicle_parts (by the name's hash), else numbered.
 -- twins: the same vehicle's other entities (the GATER's two), written along.
+-- Validated EXO weapon-arm health components; other vehicle mounts are left alone.
+MOD.exo_mounted = { ['EXO-45 Patriot Exosuit'] = true, ['EXO-49 Emancipator Exosuit'] = true,
+                    ['EXO-51 Lumberer Exosuit'] = true, ['EXO-55 Breakthrough Exosuit'] = true }
 KINDS[TYPES.vehicle].rows = function(entry, key, twins)
     local t = tables[TYPES.health]
     local at = t and t.index[key]
@@ -10967,6 +10994,31 @@ KINDS[TYPES.vehicle].rows = function(entry, key, twins)
     -- vehicles). Damaged parts heal; a destroyed one (a wheel) stays destroyed: that state is not in the file
     local regen_parts = parts('regen', 4, 'f32', 1000000)
     for _, p in ipairs(parts('regen_phase', 20, 'f32', 1000000)) do regen_parts[#regen_parts + 1] = p end
+    -- Share this vehicle's regeneration slider with its physical left/right arm
+    -- health components. Destroyed parts and shield-plate zones may not restore.
+    if MOD.exo_mounted[entry.name] then
+        local mt = tables[TYPES.mount]
+        local mounts = mt and mt.index[key]
+        local seen = {}
+        for m = 0, mounts and 4 or -1 do
+            local mbase = mt.copies[1] + HEADER_BYTES + mounts + m * 24
+            local label = peek4(mbase + 16)
+            if label == 0x7BDEC47B or label == 0x47775624 then
+                local lo, hi = peek4(mbase), peek4(mbase + 4)
+                local mountkey = lo and hi and hash_key(string.format('%08X%08X', hi, lo))
+                local arm = mountkey and t.index[mountkey]
+                if arm and arm ~= at and not seen[arm] then
+                    local hp = default_of(field_at(TYPES.health, arm, 'u32', 10000000))
+                    local armor = default_of(field_at(TYPES.health, arm + 280, 'u32', 100))
+                    if hp and hp > 0 and hp <= 1000000 and armor and armor <= 10 then
+                        seen[arm] = true
+                        regen_parts[#regen_parts + 1] = part('regen_arm_' .. m, TYPES.health, arm + 4, 'f32', 1000000)
+                        regen_parts[#regen_parts + 1] = part('regen_arm_phase_' .. m, TYPES.health, arm + 20, 'f32', 1000000)
+                    end
+                end
+            end
+        end
+    end
     local regen = add_row(entry, 'Vehicle', 'regen', 'Regeneration (health/s)', 'f32', regen_parts, 0, 100000, 5, 50)
     regen.note = 'damaged parts heal; destroyed parts stay destroyed'
     add_row(entry, 'Vehicle', 'regen_delay', 'Regeneration delay after damage (s)', 'f32',
@@ -10996,7 +11048,7 @@ KINDS[TYPES.vehicle].TITLES = {
     ['Bastion(tank)'] = 'TD-220 Bastion MK XVI', ['Storm(tank)'] = 'TD-110 Maelstrom',
     ['Fast Recon Vehicle (FRV)'] = 'M-102 Gunner FRV', ['Fast Recon Vehicle (Ramming Flamethrower)'] = 'M-104 Incinerator FRV',
     ['Fast Recon Vehicle (Resupply Auto Turret)'] = 'M-103 Supply FRV', ['Combat Walker Lumberer'] = 'EXO-51 Lumberer Exosuit',
-    ['Combat Walker Breakthrough'] = 'EXO-55 Breakthrough Exosuit', ['Combat Walker Emancipator'] = 'EXO-49 Emancipator Exosuit',
+    ['Combat Walker Breakthrough'] = 'EXO-55 Breakthrough Exosuit', ['Combat Walker Breacher'] = 'EXO-55 Breakthrough Exosuit', ['Combat Walker Emancipator'] = 'EXO-49 Emancipator Exosuit',
     ['Combat Walker Patriot'] = 'EXO-45 Patriot Exosuit' }
 KINDS[TYPES.vehicle].ENTITIES = { ['79E4B3D2DA5E45E3'] = 'EXO-45 Patriot Exosuit', ['C2D449ECF7FACAB1'] = 'EXO-49 Emancipator Exosuit' }
 -- vehicles no stratagem calls in (mission vehicles): { name, short name (its weapons'), its entities } (the GATER: two
@@ -11659,6 +11711,44 @@ local function resolve(weapon)
         if weapon.sentry_defs[1] then MOD.callin_rows(weapon, weapon.sentry_defs) end
         if weapon.sentry_defs[1] then MOD.extra.row(weapon, weapon.sentry_defs[1]) end
         unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
+    end
+    -- Separate EXO mounted-arm durability and the Breakthrough physical shield.
+    local exo, arm_name = weapon.name:match('^(EXO%-%d%d .+): (.+)$')
+    if weapon.mounted and MOD.exo_mounted[exo] and (arm_name == 'Left arm' or arm_name == 'Right arm') then
+        local ht = tables[TYPES.health]
+        local at = ht and ht.index[weapon.key]
+        if at then
+            local hp = default_of(field_at(TYPES.health, at, 'u32', 10000000))
+            local armor = default_of(field_at(TYPES.health, at + 280, 'u32', 100))
+            if hp and hp > 0 and hp <= 1000000 and armor and armor <= 10 then
+                -- the arm's own zone (+520) takes the hits: with health of its own (-1: none, the arm's) it leads,
+                -- the arm's values follow (the Patriot's arm went at its zone's 800 with the arm's at 5000, in game)
+                local health_parts = { part('arm_health', TYPES.health, at, 'u32', 10000000) }
+                local armor_parts = { part('arm_armor', TYPES.health, at + 280, 'u32', 100) }
+                local zone_hp = default_of(field_at(TYPES.health, at + 520 + 232, 'u32', 10000000))
+                if zone_hp and zone_hp > 0 then
+                    table.insert(health_parts, 1, part('arm_zone_health', TYPES.health, at + 520 + 232, 'u32', 10000000))
+                    table.insert(armor_parts, 1, part('arm_zone_armor', TYPES.health, at + 520 + 216, 'u32', 100))
+                end
+                local hp_row = add_row(weapon, 'Arm durability', 'arm_health', 'Arm health', 'u32', health_parts, 1, 1000000, 50, 500)
+                local armor_row = add_row(weapon, 'Arm durability', 'arm_armor', 'Arm armor', 'u32', armor_parts, 0, 10, 1, 1)
+                hp_row.lead, armor_row.lead = true, true
+                if exo == 'EXO-55 Breakthrough Exosuit' and arm_name == 'Left arm' then
+                    local shield_arm_armor = default_of(field_at(TYPES.health, at + 520 + 216, 'u32', 100))
+                    local plate_hp = default_of(field_at(TYPES.health, at + 520 + 552 + 232, 'u32', 10000000))
+                    local plate_armor = default_of(field_at(TYPES.health, at + 520 + 552 + 216, 'u32', 100))
+                    if shield_arm_armor and shield_arm_armor <= 10 and plate_hp and plate_hp > 0
+                       and plate_hp <= 1000000 and plate_armor and plate_armor <= 10 then
+                        add_row(weapon, 'Physical shield', 'shield_arm_armor', 'Shield arm zone armor', 'u32',
+                                { part('shield_arm_armor', TYPES.health, at + 520 + 216, 'u32', 100) }, 0, 10, 1, 1)
+                        add_row(weapon, 'Physical shield', 'shield_plate_health', 'Shield plate health', 'u32',
+                                { part('shield_plate_health', TYPES.health, at + 520 + 552 + 232, 'u32', 10000000) }, 1, 1000000, 250, 1000)
+                        add_row(weapon, 'Physical shield', 'shield_plate_armor', 'Shield plate armor', 'u32',
+                                { part('shield_plate_armor', TYPES.health, at + 520 + 552 + 216, 'u32', 100) }, 0, 10, 1, 1)
+                    end
+                end
+            end
+        end
     end
     resolve_gun(weapon, weapon.key)
 end
