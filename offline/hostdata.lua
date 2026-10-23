@@ -207,6 +207,27 @@ local function append_mods(mods, add, dropped)
     return table.concat(out)
 end
 
+-- The armory's preview of a passive lists at most 3 described modifiers (no native passive has more; a 4th crashes
+-- the game, issue #74): past the 3rd, a modifier keeps its effect but loses its description id (+12). The ids
+-- that lose it go to `hidden`.
+local MAX_DESCRIBED = 3
+local function cap_descriptions(mods, hidden)
+    local out, shown = {}, 0
+    for o = 1, #mods, 16 do
+        local m = mods:sub(o, o + 15)
+        if m:sub(13, 16) ~= '\0\0\0\0' then
+            shown = shown + 1
+            if shown > MAX_DESCRIBED then
+                local b1, b2, b3, b4 = m:byte(1, 4)
+                hidden[#hidden + 1] = string.format('%08X', ((b4 * 256 + b3) * 256 + b2) * 256 + b1)
+                m = m:sub(1, 12) .. '\0\0\0\0'
+            end
+        end
+        out[#out + 1] = m
+    end
+    return table.concat(out)
+end
+
 function M.stack(changes, stacks, log, own_off)
     log, stacks, own_off = log or function() end, stacks or {}, own_off or {}
     local any = next(own_off) ~= nil
@@ -263,6 +284,14 @@ function M.stack(changes, stacks, log, own_off)
             end
         end
         local block_end = k < #hs and hs[k + 1].at or n
+        if #names > 0 then
+            local hidden = {}
+            mods = cap_descriptions(mods, hidden)
+            if #hidden > 0 then
+                log('passive ' .. id .. ': modifier ' .. table.concat(hidden, ', ') .. ' not described in the armory' ..
+                    ' (it lists ' .. MAX_DESCRIBED .. ' at most), still applied')
+            end
+        end
         if #names > 0 or (own and own_off[id]) then
             local head = ffi.new('uint8_t[80]')
             ffi.copy(head, p + h.at, 80)
