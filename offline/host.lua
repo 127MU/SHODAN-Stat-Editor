@@ -25,6 +25,7 @@ local function log(text)
 end
 
 local BACK = { 255, 12, 15, 19 }
+local RED = { 255, 255, 72, 60 }   -- the Enemy Editor's (editor.lua's red)
 local GOLD, WHITE, MUTED, WARN, GOOD = { 255, 255, 213, 0 }, { 255, 238, 242, 246 }, { 255, 153, 171, 184 },
                                         { 255, 255, 150, 60 }, { 255, 120, 220, 140 }
 
@@ -135,6 +136,16 @@ local function main()
             bar.buttons[3] = { key = 'update', label = 'Update to ' .. bar.release.label, x0 = x1 - 170 * s, x1 = x1,
                                y0 = 9 * s, y1 = 41 * s, gold = true }   -- top right, in the tagline's place
         end
+        -- the titles (paint_bar): Stat Editor, then Enemy Editor once the editor offers the switch
+        local x = 30 * s
+        bar.titles = {}
+        for _, t in ipairs({ { 'title_stat', 'SHODAN Stat Editor', GOLD }, { 'title_enemy', 'SHODAN Enemy Editor', RED } }) do
+            if t[1] == 'title_stat' or type(state.switch_editor) == 'function' then
+                local w = shim.text_width(t[2], 22 * s, true) + 24 * s   -- a box: 12 px each side of the text
+                bar.titles[#bar.titles + 1] = { key = t[1], label = t[2], color = t[3], x0 = x, x1 = x + w, y0 = 6 * s, y1 = 42 * s }
+                x = x + w + 12 * s
+            end
+        end
         bar.s, bar.h = s, shim.h
     end
     layout()
@@ -157,9 +168,34 @@ local function main()
         local s = bar.s
         shim.fill(0, 1032 * s, shim.w, shim.h, BACK)
         shim.fill(0, 0, shim.w, 46 * s, BACK)
-        shim.text('SHODAN Stat Editor', 30 * s, 32 * s, 24 * s, GOLD, true)
+        -- the two editors' titles, as buttons: the one shown bright in a box of its colour, the other dimmed
+        -- (brighter under the mouse); a click swaps
+        local enemy = type(state.enemy_on) == 'function' and state.enemy_on()
+        local function toward_back(c, k)
+            return { 255, math.floor(BACK[2] + (c[2] - BACK[2]) * k), math.floor(BACK[3] + (c[3] - BACK[3]) * k),
+                     math.floor(BACK[4] + (c[4] - BACK[4]) * k) }
+        end
+        for _, t in ipairs(bar.titles) do
+            local on = (t.key == 'title_enemy') == (enemy and true or false)
+            local hovered = bar.hover == t.key and not on
+            local c = on and t.color or toward_back(t.color, hovered and 0.65 or 0.4)
+            local fill = on and toward_back(t.color, 0.3) or hovered and { 255, 40, 48, 58 } or { 255, 24, 29, 36 }
+            local edge = on and t.color or hovered and toward_back(t.color, 0.8) or { 255, 70, 82, 94 }
+            local e = math.max(1, math.floor(2 * s + 0.5))
+            shim.fill(t.x0, t.y0, t.x1, t.y1, fill)
+            shim.fill(t.x0, t.y0, t.x1, t.y0 + e, edge); shim.fill(t.x0, t.y1 - e, t.x1, t.y1, edge)
+            shim.fill(t.x0, t.y0, t.x0 + e, t.y1, edge); shim.fill(t.x1 - e, t.y0, t.x1, t.y1, edge)
+            shim.flush()
+            shim.text(t.label, t.x0 + 12 * s, (t.y0 + t.y1) / 2 + 22 * s * 0.35, 22 * s, c, true)
+        end
         local t = tr('OFFLINE  -  edits the game\'s files; they apply when the game starts')
-        if not bar.release then shim.text(t, shim.w - 30 * s - shim.text_width(t, 15 * s), 31 * s, 15 * s, MUTED) end
+        if not bar.release then
+            -- smaller where it would run into the titles (a longer translation)
+            local last = bar.titles[#bar.titles]
+            local room, size = shim.w - 30 * s - (last and last.x1 + 16 * s or 0), 15 * s
+            while size > 10 * s and shim.text_width(t, size) > room do size = size - 0.5 * s end
+            shim.text(t, shim.w - 30 * s - shim.text_width(t, size), 31 * s, size, MUTED)
+        end
         for _, b in ipairs(bar.buttons) do
             local hovered = bar.hover == b.key and not bar.busy
             shim.fill(b.x0, b.y0, b.x1, b.y1, hovered and { 255, 52, 66, 80 } or { 255, 28, 34, 42 })
@@ -359,13 +395,19 @@ local function main()
         for _, b in ipairs(bar.buttons) do
             if x and x >= b.x0 and x < b.x1 and y >= b.y0 and y < b.y1 then hover = b.key end
         end
+        if #bar.titles > 1 then
+            for _, b in ipairs(bar.titles) do
+                if x and x >= b.x0 and x < b.x1 and y >= b.y0 and y < b.y1 then hover = b.key end
+            end
+        end
         bar.hover = hover
         local down = shim.focused() and shim.key_down(0x01)
         if down and not was_down then armed = hover end
         if not down and was_down and armed and armed == hover and state.phase == 'ready' then
             bar.message = nil
             if hover == 'install' then install() elseif hover == 'restore' then restore()
-            elseif hover == 'update' and update_program() then break end
+            elseif hover == 'update' and update_program() then break
+            elseif hover == 'title_stat' or hover == 'title_enemy' then state.switch_editor(hover == 'title_enemy') end
             armed = nil
         end
         was_down = down
