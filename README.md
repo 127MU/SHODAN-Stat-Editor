@@ -98,7 +98,7 @@ hit is an ability, not a weapon stat, so it has no damage to change.
 
 | Attachment | Stats |
 |---|---|
-| Optics, underbarrels, muzzles (weapons' own Custom muzzle brakes included), shotgun chokes | Ergonomics bonus, and where the attachment has them: sway, recoil, climb and spread multipliers |
+| Optics, underbarrels, muzzles (weapons' own Custom muzzle brakes included), shotgun chokes | Ergonomics bonus, and where the attachment has them: sway, recoil, climb and spread multipliers; an optic's zoom levels and zeroing distances |
 | Ammunition types (alternate loads included), by their names in game | Recoil and spread multipliers |
 
 An attachment's values apply to every weapon fitted with it (an ammunition type's, to every

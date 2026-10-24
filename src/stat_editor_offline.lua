@@ -1734,6 +1734,7 @@ MOD.langs = {
       ['On'] = '开',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = '开启：单次配装可携带多台 外骨骼装甲、FRV 或坦克。',
       ['On: in your armory / stratagem list.'] = '开启：出现在你的军械库 / 战略配备列表中。',
+      ['On: sniper rifles show a crosshair when you aim in third person.'] = '开启：以第三人称瞄准时，狙击步枪显示准星。',
       ['On: your '] = '开启：你的',
       ['On: your arc chain length / split apply with other players too (arcs can stay on screen).'] = '开启：你的电弧连锁长度 / 分裂对其他玩家同样生效（电弧可留在屏幕上）。',
       ['One True Flag'] = '唯一真旗',
@@ -2075,6 +2076,7 @@ MOD.langs = {
       ['Save current changes here'] = '在此保存当前修改',
       ['Scavenger'] = '食腐虫',
       ['Scavenger acid burst'] = '清道夫酸液爆裂',
+      ['Scope'] = '瞄准镜',
       ['Scorcher'] = '焦土',
       ['Scout'] = '侦察',
       ['Scout Raider'] = '侦查奇袭者',
@@ -2159,6 +2161,7 @@ MOD.langs = {
       ['Smokescreen'] = '烟幕',
       ['Sniper Scope 10x'] = '10倍狙击瞄准镜',
       ['Sniper Scope 10x Helghast'] = '10倍狙击瞄准镜',
+      ['Sniper crosshair in third person'] = '第三人称狙击步枪准星',
       ['Solo Silo'] = '单兵导弹发射井',
       ['Sos Beacon'] = '求救信标',
       ['Spawner death'] = '刷怪点毁灭',
@@ -3835,6 +3838,8 @@ MOD.langs = {
       ['your changes are off: turn them on in settings to edit.'] = '你的改动当前处于关闭状态：请在设置里开启后再编辑。',
     },
     patterns = {
+      { '^Zoom level (%d) %(x%)$', '放大倍率 %1 级（x）' },
+      { '^Zeroing distance (%d) %(m%)$', '归零距离 %1（米）' },
       { '^BODY PART (%d+)$', '身体部位 %1' },
       { '^Attack: (.+)$', '攻击：%1' },
       { '^Body part (%d+)$', '身体部位 %1' },
@@ -5183,6 +5188,7 @@ MOD.langs = {
       ['On'] = '開',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = '開啟：單次配裝可攜帶多台 外骨骼裝甲、FRV 或坦克。',
       ['On: in your armory / stratagem list.'] = '開啟：出現在你的軍械庫 / 戰略配備列表中。',
+      ['On: sniper rifles show a crosshair when you aim in third person.'] = '開啟：以第三人稱瞄準時，狙擊步槍顯示準星。',
       ['On: your '] = '開啟：你的',
       ['On: your arc chain length / split apply with other players too (arcs can stay on screen).'] = '開啟：你的電弧連鎖長度 / 分裂對其他玩家同樣生效（電弧可留在螢幕上）。',
       ['One True Flag'] = '唯一真旗',
@@ -5524,6 +5530,7 @@ MOD.langs = {
       ['Save current changes here'] = '在此儲存當前修改',
       ['Scavenger'] = '清掃蟲',
       ['Scavenger acid burst'] = '清道夫酸液爆裂',
+      ['Scope'] = '瞄準鏡',
       ['Scorcher'] = '焦土',
       ['Scout'] = '偵察兵',
       ['Scout Raider'] = '偵查襲擊者',
@@ -5608,6 +5615,7 @@ MOD.langs = {
       ['Smokescreen'] = '煙幕',
       ['Sniper Scope 10x'] = '10倍狙擊鏡',
       ['Sniper Scope 10x Helghast'] = '10倍狙擊鏡',
+      ['Sniper crosshair in third person'] = '第三人稱狙擊步槍準星',
       ['Solo Silo'] = '單發導彈筒',
       ['Sos Beacon'] = '求救信標',
       ['Spawner death'] = '刷怪點毀滅',
@@ -7284,6 +7292,8 @@ MOD.langs = {
       ['your changes are off: turn them on in settings to edit.'] = '你的改動當前處於關閉狀態：請在設定裡開啟後再編輯。',
     },
     patterns = {
+      { '^Zoom level (%d) %(x%)$', '放大倍率 %1 級（x）' },
+      { '^Zeroing distance (%d) %(m%)$', '歸零距離 %1（米）' },
       { '^BODY PART (%d+)$', '身體部位 %1' },
       { '^Attack: (.+)$', '攻擊：%1' },
       { '^Body part (%d+)$', '身體部位 %1' },
@@ -8570,6 +8580,7 @@ MOD.langs = {
       ['On'] = 'Вкл',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = 'Вкл: в снаряжение можно взять больше одного экзокостюма, МТР или танка.',
       ['On: in your armory / stratagem list.'] = 'Вкл: в вашем арсенале / списке стратагем.',
+      ['On: sniper rifles show a crosshair when you aim in third person.'] = 'Вкл.: снайперские винтовки показывают прицел при прицеливании от третьего лица.',
       ['On: your '] = 'Вкл: ваши ',
       ['On: your arc chain length / split apply with other players too (arcs can stay on screen).'] = 'Вкл: ваши длина и разветвление цепи дуги действуют и с другими игроками (дуги могут оставаться на экране).',
       ['One True Flag'] = 'Один истинный флаг',
@@ -8894,6 +8905,7 @@ MOD.langs = {
       ['Save current changes here'] = 'Сохранить изменения сюда',
       ['Scavenger'] = 'Мусорщик',
       ['Scavenger acid burst'] = 'Кислотный выплеск падальщика',
+      ['Scope'] = 'Прицел',
       ['Scorcher'] = '«Поджигатель»',
       ['Scout'] = 'Разведчик',
       ['Scout Raider'] = 'Налетчик-разведчик',
@@ -8970,6 +8982,7 @@ MOD.langs = {
       ['Smokescreen'] = 'Дымовая завеса',
       ['Sniper Scope 10x'] = 'Снайперский прицел (10х)',
       ['Sniper Scope 10x Helghast'] = 'Снайперский прицел (10х)',
+      ['Sniper crosshair in third person'] = 'Прицел снайперских винтовок от третьего лица',
       ['Solo Silo'] = 'Одиночная пусковая шахта',
       ['Spawner death'] = 'Гибель источника врагов',
       ['Spawning'] = 'Появление врагов',
@@ -9993,6 +10006,8 @@ MOD.langs = {
       ['xenobite ardent'] = 'Ксенобит-приверженец',
     },
     patterns = {
+      { '^Zoom level (%d) %(x%)$', 'Увеличение, уровень %1 (x)' },
+      { '^Zeroing distance (%d) %(m%)$', 'Пристрелка, дистанция %1 (м)' },
       { '^PgUp/PgDn change weapon, Del resets, Ctrl%+1%-5 loads a weapon preset, Ctrl%+Shift%+1%-5 saves one; (%d+) value%(s%) changed%.$', 'PgUp/PgDn — листать, Del — сброс, Ctrl(+Shift)+1-5 — пресеты; изменено значений: %1.' },
       { '^BODY PART (%d+)$', 'Часть тела %1' },
       { '^Attack: (.+)$', 'Атака: %1' },
@@ -11712,7 +11727,9 @@ KINDS[TYPES.items].words = function(t, r)
                 local offset, size, data = peek4(d + at[3] + x * 12), peek4(d + at[3] + x * 12 + 4), peek4(d + at[3] + x * 12 + 8)
                 if renumbered and comp == 236 and offset >= 488 then offset = offset - 8 end
                 for w = 0, size - 4, 4 do
-                    if (comp ~= 236 or (offset + w >= 956 and offset + w < 1020)) and (comp ~= 113 or offset + w == 56) then
+                    local o = offset + w   -- the weapon's: stat bonuses (+956), and an optic's zoom (+116) and zeroing (+340)
+                    if (comp ~= 236 or (o >= 956 and o < 1020) or (o >= 116 and o <= 124) or (o >= 340 and o <= 348))
+                       and (comp ~= 113 or o == 56) then
                         out[comp .. ':' .. (offset + w)] = at[4] + data + w
                     end
                 end
@@ -11896,9 +11913,13 @@ KINDS[TYPES.items].build = function()
         for _, r in ipairs(t.order) do
             local lo, hi, n = peek4(top + r + 48), peek4(top + r + 52), peek4(top + r + 56)
             local slot = lo and hi and n and n > 0 and n < 8 and peek4(lo + hi * 4294967296)
-            local mods = kinds[slot] and spec.mods(spec.words(t, r))
+            local words = kinds[slot] and spec.words(t, r)
+            local mods = words and spec.mods(words)
             local any = false
             for _, m in ipairs(spec.MODS) do any = any or (mods and mods[m[1]] ~= nil) end
+            -- an optic's zoom levels and zeroing distances (the weapon's +116 / +340, three each)
+            local scope = slot == 2 and words and (words['236:116'] or words['236:340']) and words
+            any = any or scope ~= nil and scope ~= false
             local id = peek4(top + r + 8)
             local hash = any and string.format('FFFFFFFF%08X', id)
             local own = t.names[r]:find('custom') and owner[id]
@@ -11913,7 +11934,7 @@ KINDS[TYPES.items].build = function()
                                     note = own and ('Muzzle. Only the ' .. own .. ' comes with it.')
                                            or slot >= 6 and (kinds[slot] .. '. Its modifiers apply to every weapon loaded with it.')
                                            or (kinds[slot] .. '. Its modifiers apply to every weapon fitted with it.'),
-                                    attachment = { mods = mods, order = slot == 2 and 1 or slot == 1 and 2 or slot == 4 and 3 or 4 } }
+                                    attachment = { mods = mods, scope = scope or nil, order = slot == 2 and 1 or slot == 1 and 2 or slot == 4 and 3 or 4 } }
                 by_hash[hash] = list[#list]
             end
         end
@@ -14792,6 +14813,15 @@ local function resolve(weapon)
     if weapon.stratagem then resolve_stratagem(weapon); return end
     if weapon.attachment then
         KINDS[TYPES.items].mod_rows(weapon, 'Attachment', '', weapon.attachment.mods)
+        local scope = weapon.attachment.scope   -- zoom: 1 = normal view, 2 = half the field of view; zeroing in m
+        for k = 1, 3 do
+            local z = scope and scope['236:' .. (112 + k * 4)]
+            if z then add_row(weapon, 'Scope', 'zoom' .. k, 'Zoom level ' .. k .. ' (x)', 'f32', { { id = 'zoom' .. k, field = field_at(TYPES.deltas, z, 'f32', 1000) } }, 0.1, 100, 0.1, 1) end
+        end
+        for k = 1, 3 do
+            local z = scope and scope['236:' .. (336 + k * 4)]
+            if z then add_row(weapon, 'Scope', 'zero' .. k, 'Zeroing distance ' .. k .. ' (m)', 'f32', { { id = 'zero' .. k, field = field_at(TYPES.deltas, z, 'f32', 100000) } }, 0, 5000, 5, 50) end
+        end
         return
     end
     -- sentries and emplacements (listed as weapons on the Stratagems tab): their body, then their gun
