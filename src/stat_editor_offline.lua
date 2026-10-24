@@ -12901,6 +12901,8 @@ end
 -- Settings switches that change a field in many rows (off by default; off puts the game's values back):
 --   bounce: stratagem balls stick on more surfaces: StratagemInfo +368 bit 0x02 cleared on every stratagem
 --     that has it
+--   reticle: sniper rifles show a crosshair in third person: WeaponData crosshair type (+404; +400 before game
+--     build 25988413) 3 (the sniper rifles': none in third person) -> 0 (default), as the HD2 Equipment mod does
 --   foliage: player rockets, launcher rounds and stratagem ordnance fly through tree canopies and bushes:
 --     ProjectileInfo +248 raycast template 0 (damage) -> 3 (damage without foliage, what plasma bolts use) on
 --     the impact-exploding player projectiles, by type and name hash (+8); game build 26088801 (build
@@ -12908,6 +12910,7 @@ end
 -- `original`: by row, the value the game had (kept across rescans).
 MOD.tweaks = {
     bounce = { on = false, original = {}, rows = {} },
+    reticle = { on = false, original = {}, rows = {} },
     foliage = { on = false, original = {}, rows = {}, NO_FOLIAGE = 3, TARGETS = {
         [6] = 0x84F1CDC4, [11] = 0xF73287FE, [12] = 0x6B55E559, [14] = 0xF516C1C8, [17] = 0xA1701744,
         [18] = 0xFD691A89, [27] = 0xF796A3E6, [30] = 0xE3FF617D, [32] = 0x0B3CE509, [37] = 0xCB119C6D,
@@ -12942,6 +12945,16 @@ function MOD.tweaks.collect(defs)
             B.rows[#B.rows + 1] = { kind = def.kind, off = def.off + 368, size = 1, game = flags, want = flags - 2 }
         end
     end
+    local R, wt = MOD.tweaks.reticle, tables[T_WEAPON]
+    R.rows = {}
+    local xoff = KINDS[T_WEAPON].stride == 1240 and 404 or 400
+    for key, off in pairs(wt and wt.index or {}) do
+        local kind = R.original[key] or peek4(wt.copies[1] + HEADER_BYTES + off + xoff)
+        if kind == 3 then
+            R.original[key] = kind
+            R.rows[#R.rows + 1] = { kind = T_WEAPON, off = off + xoff, size = 4, game = 3, want = 0 }
+        end
+    end
     F.rows = {}
     local pt = tables[T_PROJECTILE]
     for ptype, name in pairs(F.TARGETS) do
@@ -12953,12 +12966,12 @@ function MOD.tweaks.collect(defs)
             F.rows[#F.rows + 1] = { kind = T_PROJECTILE, off = off + 248, size = 4, game = 0, want = F.NO_FOLIAGE }
         end
     end
-    log(string.format('switches: stratagem bounce %d stratagems, foliage pass-through %d of %d projectiles',
-        #B.rows, #F.rows, (function() local n = 0 for _ in pairs(F.TARGETS) do n = n + 1 end return n end)()))
+    log(string.format('switches: stratagem bounce %d stratagems, sniper crosshair %d weapons, foliage pass-through %d of %d projectiles',
+        #B.rows, #R.rows, #F.rows, (function() local n = 0 for _ in pairs(F.TARGETS) do n = n + 1 end return n end)()))
     MOD.tweaks.apply()
 end
 function MOD.tweaks.apply()
-    for _, name in ipairs({ 'bounce', 'foliage' }) do
+    for _, name in ipairs({ 'bounce', 'reticle', 'foliage' }) do
         local T = MOD.tweaks[name]
         for _, r in ipairs(T.rows) do
             local value = T.on and r.want or r.game
@@ -15538,6 +15551,7 @@ local function save_config()
     lines[#lines + 1] = 'several_vehicles ' .. onoff(MOD.vehicles.on)
     lines[#lines + 1] = 'stratagem_bounce ' .. onoff(MOD.tweaks.bounce.on)
     lines[#lines + 1] = 'foliage_pass_through ' .. onoff(MOD.tweaks.foliage.on)
+    lines[#lines + 1] = 'sniper_crosshair ' .. onoff(MOD.tweaks.reticle.on)
     -- hide_tabs <tab>,<tab>...: the tabs Settings > Tabs shown turned off
     local hidden = {}
     for tab in pairs(settings.hidden) do hidden[#hidden + 1] = tab end
@@ -15616,8 +15630,9 @@ local function load_config()
         elseif name == 'several_vehicles' then
             MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
             known = true
-        elseif name == 'stratagem_bounce' or name == 'foliage_pass_through' then
-            MOD.tweaks[name == 'stratagem_bounce' and 'bounce' or 'foliage'].on = value == 'on'; MOD.tweaks.apply()
+        elseif name == 'stratagem_bounce' or name == 'foliage_pass_through' or name == 'sniper_crosshair' then
+            MOD.tweaks[name == 'stratagem_bounce' and 'bounce' or name == 'sniper_crosshair' and 'reticle' or 'foliage'].on = value == 'on'
+            MOD.tweaks.apply()
             known = true
         elseif name == 'unlock_unused' then
             settings.unlock_all(value == 'on')
@@ -17606,6 +17621,9 @@ local function draw(width, height)
         text('On: your rockets, launcher rounds and stratagem ordnance fly through tree canopies and bushes.',
              x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
         y = y + 14
+        choice('Sniper crosshair in third person', 'reticle', ONOFF, onoff(MOD.tweaks.reticle.on))
+        text('On: sniper rifles show a crosshair when you aim in third person.', x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
+        y = y + 14
         if not MOD.offline then   -- (the game's item list exists only while it runs)
         choice('Unlock unused items', 'unlock_all', ONOFF, onoff(settings.unlock_any()))
         local names = {}
@@ -17997,7 +18015,7 @@ local function click(key)
         elseif name == 'arc_mp' then settings.arc_mp, settings.arc.next_check = value == 'on', 0
         elseif name == 'vehicles' then
             MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
-        elseif name == 'bounce' or name == 'foliage' then
+        elseif name == 'bounce' or name == 'foliage' or name == 'reticle' then
             MOD.tweaks[name].on = value == 'on'; MOD.tweaks.apply()
         elseif name == 'unlock_all' then
             settings.unlock_all(value == 'on'); settings.unlock.next_check = 0
