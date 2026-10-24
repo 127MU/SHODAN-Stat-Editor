@@ -1,7 +1,8 @@
 # SHODAN Stat Editor
 
 Change the stats of weapons, throwables, stratagems, mechas, boosters, attachments, armor passives and your
-helldiver in **Helldivers 2**, and transmog armor passives: stack any passives into one. **SHODAN Stat Editor
+helldiver in **Helldivers 2**, and transmog armor passives: stack any passives into one. The **Enemy Editor**
+changes every enemy and how they spawn, and keeps custom difficulties as presets. **SHODAN Stat Editor
 Offline** (SSEO) is a Windows program: pick a weapon, change its numbers, press **Install into the
 game**, and play. It writes your values into the game's own
 data files, so no mod loader is needed and the game does not have to run while you edit. Keep
@@ -139,6 +140,36 @@ players' lobbies.
 - The **Records** tab lists every projectile, explosion and status record of the game, named after
   the game's rounds and the weapons using them. The explosion rows on a weapon page stay its own
   explosion's: edit a newly chosen one here.
+
+## Enemy Editor
+
+Make your own difficulty. Click **SHODAN Enemy Editor** at the top left: the window turns red and
+edits the enemies instead; **SHODAN Stat Editor** switches back. One Install puts the changes of
+both editors in the game. Its tabs are Terminids, Automatons, Illuminate and Spawning.
+
+| Page | Stats |
+|---|---|
+| Every enemy | Health, armor, durable ratio, explosive damage taken, bleed-out health and regeneration; each body part's health and armor, and whether destroying it kills the enemy |
+| Behavior | Movement speed, size, sight range and cone, hearing, how long it keeps tracking you after losing sight, stagger resistance, stun and gas resistance, and the fire, acid, electric and gas damage it takes |
+| Attacks | Each melee attack's damage, armor penetration, stagger and push; the explosion it sets off when it dies |
+| Enemy weapons | Each gun listed under its enemy, stat for stat like a weapon: damage, armor penetration, explosion, projectile speed, fire rate, magazine and spread |
+| Shields and jamming | Shield capacity and recharge; the jamming radius of Stratagem Jammers, Command Bunkers and AA Emplacements; the scrambling radius of Cognitive Disruptors; the Leviathan's flight height |
+| All Terminids, All Automatons, All Illuminate | One row for the whole faction: health, armor, damage, movement speed, sight, stagger resistance, stun and gas resistance, fire damage taken |
+| Spawning | Per faction: reinforcement size and frequency, or none at all; the cap on enemies at once; patrol frequency and patrols at once; modifier patrols; outpost garrison size; Fabricator and bug hole output |
+| All factions | The lowest patrol and reinforcement rates the game allows, and SEAF reinforcement and wave cooldowns |
+
+**Custom difficulties.** The Enemy Editor's **Presets** hold only enemy and spawning values, apart
+from the Stat Editor's: loading a difficulty leaves your weapons as they are, and loading a weapon
+setup leaves the enemies. It comes with **Default** (the game's own values), **Horde**, **Glass
+Cannon** and **Elite**; change them, delete them or add your own. They are saved as
+`enemy_preset_01.txt` … next to config.txt, to share like full presets.
+
+- A faction row leaves alone every enemy you have changed by hand, so a difficulty can raise a
+  whole faction and still tune single enemies.
+- Some values are shared: a melee attack, gun or death explosion used by several enemies changes
+  for all of them.
+- Spawn values are multipliers of the game's own (1 is no change). A very high enemy cap can make
+  the game stutter or crash.
 
 ## Install
 
@@ -324,9 +355,11 @@ the result as the Development build pre-release.
 - **Bingus Shared Loader** by CowboyBingus, which runs the in-game version.
 - **[LuaJIT](https://luajit.org)** (MIT) and **[libsodium](https://libsodium.org)** (ISC), which SSEO
   ships: their licences are in the release's THIRD-PARTY-NOTICES.txt.
-- **HD2Runtime** by Skyeshade, whose weapon and stratagem catalogs name the weapons and map
-  every strike to its projectiles, blasts and damage, and whose research locates package loading
-  and the live entity and unit layouts that Grenade swap uses.
+- **HD2Runtime** by Skyeshade, whose weapon, stratagem and enemy catalogs name the weapons and
+  enemies and map every strike to its projectiles, blasts and damage, and whose research locates
+  package loading and the live entity and unit layouts that Grenade swap uses.
+- **Gameplay Reforged: Recovery Edition** by SweetSwallow and **Little Enemy Kontrol** by Nappleon,
+  whose enemy and spawn edits showed where those values live.
 - **[Filediver](https://github.com/xypwn/filediver)** and the **[helldivers.io](https://helldivers.io/)**
   data dump by shalzuth, for the game's data layouts and the armor passives.
 - The **[Helldivers 2 wiki](https://helldivers.wiki.gg/)**, whose passive descriptions name every
