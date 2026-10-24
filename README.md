@@ -203,7 +203,7 @@ The **Settings** button at the bottom right opens its options:
   this repository, before it is tested. It may break; switch back to Releases to get the next
   tested version.
 - **Tabs shown**: hide the tabs you do not use (their items leave the search too).
-- **Several vehicles of a kind**: on by default; a loadout can take more than one exosuit, FRV or tank.
+- **Several vehicles of a kind**: off by default; on, a loadout can take more than one exosuit, FRV or tank.
 - **Reset all values**: every change of the current setup back to the game's values (asks
   "Sure?" first; click again to confirm).
 

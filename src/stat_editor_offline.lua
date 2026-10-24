@@ -10740,7 +10740,7 @@ end
 -- carry its vehicle kind, 0x00100000 exosuit, 0x00200000 FRV, 0x00400000 tank, and the loadout takes one
 -- stratagem of each kind; on clears those bits (in memory), off puts them back. `original`: by stratagem
 -- id, the flags as the game had them (kept across rescans).
-MOD.vehicles = { on = true, original = {}, defs = {}, BITS = 1048576 }
+MOD.vehicles = { on = false, original = {}, defs = {}, BITS = 1048576 }
 function MOD.vehicles.collect(defs)
     local V = MOD.vehicles
     V.defs = {}
@@ -12828,7 +12828,7 @@ local function load_config()
             settings.last_weapon = value:upper()
             known = true
         elseif name == 'several_vehicles' then
-            MOD.vehicles.on = value ~= 'off'; MOD.vehicles.apply()
+            MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
             known = true
         elseif name == 'stratagem_bounce' or name == 'foliage_pass_through' then
             MOD.tweaks[name == 'stratagem_bounce' and 'bounce' or 'foliage'].on = value == 'on'; MOD.tweaks.apply()
