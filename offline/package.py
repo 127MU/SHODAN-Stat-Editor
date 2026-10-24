@@ -22,8 +22,10 @@ VERSION = re.search(r"version = '([\d.]+)'", open(PANEL, encoding='utf-8').read(
 readme = r"""SHODAN Stat Editor Offline v{version}  (SSEO)
 by SHODAN - https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor
 
-Change the stats of weapons, throwables, stratagems, vehicles, attachments and armor passives in Helldivers 2's
-own data files. No mod loader, and the game does not need to run: the changes apply when the game starts.
+Change the stats of weapons, throwables, stratagems, vehicles, boosters, attachments and armor passives in
+Helldivers 2's own data files. The Enemy Editor (click "SHODAN Enemy Editor" at the top left) changes every
+enemy, your SEAF allies and how they spawn, and keeps custom difficulties as presets. No mod loader, and the
+game does not need to run: the changes apply when the game starts.
 
 HOW TO USE
 1. Close Helldivers 2.
