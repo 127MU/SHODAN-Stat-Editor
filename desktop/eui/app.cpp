@@ -37,6 +37,7 @@
 namespace app {
 DslAppConfig& mutableConfig();
 namespace {
+void requestWindowClose(GLFWwindow* window){glfwSetWindowShouldClose(window,GLFW_TRUE);glfwPostEmptyEvent();}
 struct ManagedMod {std::filesystem::path path;std::string name,description;bool enabled=true;std::vector<shodan::ModOption> options;std::vector<int> choices;};
 struct ModImportResult {std::vector<ManagedMod> mods;std::vector<std::string> errors;};
 struct McpResult {Value value;bool updateMods=false;std::vector<ManagedMod> mods;};
@@ -1488,9 +1489,9 @@ void qaTick(eui::Ui& ui){
    }else if(step==30){if(!std::filesystem::exists(folder/"mcp-done.txt"))return;
     capture(folder/"mcp-settings.bmp");toggleMcp();if(m.mcp.enabled())throw std::runtime_error("MCP did not close");
     std::ofstream(folder/"report.txt")<<"Helldiver full-width category and original health, armor dropdown scrolling and final option, font slider at 22/24, small-window navigation, resize intermediate frames, native resize hit test, MCP enable/disable, enemy and booster categories, nine-arrow call-in modal, dark and light logo verified. No game writes.\n";
-    glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);
+    requestWindowClose(glfwGetCurrentContext());
    }++step;
-  }catch(const std::exception& e){capture(std::filesystem::u8path(target)/"failure.bmp");std::ofstream(std::filesystem::u8path(target)/"failure.txt")<<"MCP UI stage "<<step<<": "<<e.what();glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);}
+  }catch(const std::exception& e){capture(std::filesystem::u8path(target)/"failure.bmp");std::ofstream(std::filesystem::u8path(target)/"failure.txt")<<"MCP UI stage "<<step<<": "<<e.what();requestWindowClose(glfwGetCurrentContext());}
   return;
  }
  static int stage=0;static bool smoothStarted=false;
@@ -1769,13 +1770,13 @@ void qaTick(eui::Ui& ui){
    report<<"Search (model, English, initials, recent), preset roundtrip and preview verified; parameter and equipment list smooth scroll intermediate positions verified; armor modal validates, saves, closes and retains its page.\n";
 
    if(!samples.empty())report<<"UI composition median="<<samples[samples.size()/2]<<" ms, p95="<<samples[std::min(samples.size()-1,size_t(samples.size()*0.95))]<<" ms; frames="<<samples.size()<<"\n";
-   glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);
+   requestWindowClose(glfwGetCurrentContext());
   }
   ++stage;
  }catch(const std::exception& e){
   std::ofstream(std::filesystem::path(target)/"failure.txt")<<"stage "<<stage<<": "<<e.what();
   capture(std::filesystem::path(target)/"failure.bmp");
-  glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);
+  requestWindowClose(glfwGetCurrentContext());
  }
 }
 
@@ -1973,7 +1974,7 @@ void compose(eui::Ui& ui,const eui::Screen& screen){
   if(e.button==eui::PointerButton::Left){ReleaseCapture();SendMessageW(glfwGetWin32Window(window),WM_NCLBUTTONDOWN,HTCAPTION,0);}
  }).build();
  windowControl(ui,"window.minimize",0xF068,screen.width-116,[window]{glfwIconifyWindow(window);});
- windowControl(ui,"window.close",0xF00D,screen.width-64,[window]{glfwSetWindowShouldClose(window,GLFW_TRUE);});
+ windowControl(ui,"window.close",0xF00D,screen.width-64,[window]{requestWindowClose(window);});
  // Smoke mode keeps the normal startup path (no SHODAN_EUI_QA or backend test shortcuts).
  if(const char* folder=std::getenv("SHODAN_STARTUP_SMOKE")){
   static auto readyAt=std::chrono::steady_clock::time_point{};
@@ -1982,7 +1983,7 @@ void compose(eui::Ui& ui,const eui::Screen& screen){
    if(std::chrono::steady_clock::now()-readyAt>std::chrono::seconds(1)){
     const auto output=std::filesystem::u8path(folder);capture(output/"startup-ready.bmp");
     std::ofstream(output/"startup-report.txt")<<"normal startup, rendered equipment list, backend ready, visible="<<IsWindowVisible(glfwGetWin32Window(window))<<" minimized="<<IsIconic(glfwGetWin32Window(window))<<" game_writes=0\n";
-    glfwSetWindowShouldClose(window,GLFW_TRUE);
+    requestWindowClose(window);
    }else app::requestUpdate();
   }
  }

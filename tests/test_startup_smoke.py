@@ -18,6 +18,6 @@ def main():
  pixels=(out/'startup-ready.bmp').read_bytes();offset=struct.unpack_from('<I',pixels,10)[0]
  assert len(set(pixels[offset::19]))>20,'Rendered frame appears blank'
  logs='\n'.join(f.read_text(encoding='utf8',errors='replace') for f in (profile/'Logs').glob('startup*.log'))
- assert '[startup] Window visible=1' in logs and '[startup] Host model ready' in logs and '[startup] First UI composition' in logs,logs[-1000:]
+ assert '[startup] Window visible=1' in logs and '[startup] Host model ready' in logs and '[startup] First UI composition' in logs and '[startup] UI loop exited with code 0' in logs,logs[-1000:]
  print(json.dumps({'normal_startup':True,'visible_window':True,'rendered_frame':True,'startup_stage_logs':True,'game_writes':0}))
 if __name__=='__main__':main()

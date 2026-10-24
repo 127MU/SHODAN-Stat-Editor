@@ -33,7 +33,7 @@ int main(){
  glfwSetErrorCallback(onGraphicsError);
  std::string error;int code=1;
  std::fprintf(stderr,"[startup] Starting SHODAN graphics runtime\n");std::fflush(stderr);
- try{code=eui_app_run();if(code!=0)error="图形界面初始化失败。需要可用的 OpenGL 3.3 驱动。\n"+graphicsError;}
+ try{code=eui_app_run();std::fprintf(stderr,"[startup] UI loop exited with code %d\n",code);std::fflush(stderr);if(code!=0)error="图形界面初始化失败。需要可用的 OpenGL 3.3 驱动。\n"+graphicsError;}
  catch(const std::exception& e){error=e.what();}catch(...){error="界面发生未知启动错误。";}
  if(!error.empty()){
   std::fprintf(stderr,"Startup failure: %s\n",error.c_str());std::fflush(stderr);
