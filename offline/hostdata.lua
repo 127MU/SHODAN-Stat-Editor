@@ -37,7 +37,7 @@ local RELOC = {
     end,
     [0x30EB6399] = function(P, size, rel)                                                     -- stratagems
         rel(0)
-        for r = 0, u32(P, 8) - 1 do rel(16 + r * 400 + 16); rel(16 + r * 400 + 152) end
+        for r = 0, u32(P, 8) - 1 do rel(16 + r * 400 + 16); rel(16 + r * 400 + 64); rel(16 + r * 400 + 152) end
     end,
 }
 
@@ -69,7 +69,7 @@ end
 M.modded={}
 
 -- folder: data/game; originals: name -> sealed original (from the backups, else the game folder)
-function M.load(folder, originals)
+function M.load(folder, originals, baselines)
     local dll = assert(read(folder .. '/game.dll'), 'game.dll not found in ' .. folder)
     local problems = {}
     for name, cipher in pairs(originals) do
@@ -88,7 +88,8 @@ function M.load(folder, originals)
                 end
                 if valid then
                     if G.clear_correction(p,n) then M.modded[name]=true end
-                    M.files[name] = { name = name, p = p, n = n, hash = hash, cipher = cipher, fields = {} }
+                    M.files[name] = { name = name, p = p, n = n, hash = hash, cipher = cipher,
+                                      baseline = baselines and baselines[name] or cipher, fields = {} }
                 else
                     problems[#problems + 1] = name .. ': invalid table boundary'
                     ffi.C.VirtualFree(p, 0, MEM_RELEASE)
@@ -98,6 +99,56 @@ function M.load(folder, originals)
     end
     M.relocate()
     return problems
+end
+
+-- Translate a working-buffer address to its immutable, unrelocated original.
+-- Keeping the defaults separate lets installed values remain visible without
+-- turning those installed values into the target of a Reset operation.
+function M.original_bytes(address,size)
+    for _,file in pairs(M.files) do
+        local offset=address-tonumber(ffi.cast('uintptr_t',file.p))
+        if offset>=0 and offset+size<=file.n then
+            if file.original_unavailable then return nil end
+            if not file.original_p then
+                local p,n=G.open_sealed(file.baseline or file.cipher)
+                if not p then return nil end
+                local compatible=n==file.n
+                local working,original=G.headers(file.p,file.n),G.headers(p,n)
+                compatible=compatible and #working==#original
+                for k,h in ipairs(working) do
+                    local ref=original[k]
+                    if not ref or h.at~=ref.at or h.type~=ref.type or h.size~=ref.size then compatible=false;break end
+                end
+                if not compatible and #working==#original then
+                    -- Longer call-in codes grow a stratagem block's tail and
+                    -- shift later blocks. Match unchanged row identities first;
+                    -- defaults then use payload-relative positions, not old file offsets.
+                    local ranges={};local mapped=true
+                    for k,h in ipairs(working)do
+                        local ref=original[k]
+                        if h.type~=0x30EB6399 or ref.type~=h.type or h.size<ref.size then mapped=false;break end
+                        local live,base=h.at+24,ref.at+24
+                        local rows=u32(p,base+8)
+                        if rows~=u32(file.p,live+8) or 16+rows*400>math.min(h.size,ref.size) then mapped=false;break end
+                        for r=0,rows-1 do if u32(file.p,live+16+r*400)~=u32(p,base+16+r*400) then mapped=false;break end end
+                        if not mapped then break end
+                        ranges[#ranges+1]={at=live,finish=live+ref.size,original=base}
+                    end
+                    if mapped then compatible=true;file.original_ranges=ranges end
+                end
+                if not compatible then G.free(p);file.original_unavailable=true;return nil end
+                G.clear_correction(p,n);file.original_p,file.original_n=p,n
+            end
+            if file.original_ranges then
+                for _,range in ipairs(file.original_ranges)do
+                    if offset>=range.at and offset+size<=range.finish then return ffi.string(file.original_p+range.original+offset-range.at,size) end
+                end
+                return nil
+            end
+            if offset+size>file.original_n then return nil end
+            return ffi.string(file.original_p+offset,size)
+        end
+    end
 end
 
 function M.relocate()
@@ -215,13 +266,50 @@ end
 -- the plain text to install for a file (a new buffer) and the offsets of changed f32-looking words, or nil when
 -- nothing changed. Resolved fields keep their stored bytes.
 local function changes(f)
-    local orig, n = open_base(f.cipher)
+    -- The working snapshot may already be installed and modified. Comparing
+    -- against it makes an unchanged saved override disappear from the next
+    -- write plan, whose restore pass would then undo that installed file.
+    -- Defaults and the write plan must use the same immutable reference.
+    local orig, n = open_base(f.baseline or f.cipher)
+    assert(orig,n)
+    -- Header size/reserved words belong to the hash container, not parameters.
+    -- An installed one-table file may have a trailing hash-correction area;
+    -- rebuilding from the reference must not copy that enlarged size into the
+    -- shorter reference buffer. The builder adds fresh correction space later.
+    local container={}
+    local before,live=G.headers(orig,n),G.headers(f.p,f.n)
+    local function compatible(headers,length)
+        if length>f.n or #headers~=#live then return false end
+        for i,h in ipairs(headers)do
+            local other=live[i]
+            local padding=#headers==1 and other.size-h.size==f.n-length and f.n-length>=0 and f.n-length<=24
+            if h.at~=other.at or h.type~=other.type or (h.size~=other.size and not padding) then return false end
+        end
+        return true
+    end
+    local preserve_layout=false
+    if not compatible(before,n) then
+        -- A validated installed Mod can resize arrays or add blocks. Its byte
+        -- offsets no longer describe the canonical reference. Rebuild from the
+        -- unrelocated snapshot we actually loaded, preserving its extra data;
+        -- never apply a positional diff to an incompatible canonical buffer.
+        G.free(orig)
+        orig,n=open_base(f.cipher);assert(orig,n)
+        before=G.headers(orig,n)
+        if not compatible(before,n) then
+            G.free(orig);error('编辑期间数据表结构发生变化，请重新打开程序后重试')
+        end
+        preserve_layout=true
+    end
+    for _,h in ipairs(before)do
+        for k=h.at,h.at+23 do container[k]=true end
+    end
     local changed, words = 0, {}
     local a, b = ffi.cast('uint64_t *', f.p), ffi.cast('uint64_t *', orig)
     for w = 0, math.floor(n / 8) - 1 do
         if a[w] ~= b[w] then
             for k = w * 8, w * 8 + 7 do
-                if f.p[k] ~= orig[k] and not f.resolved[k] then
+                if f.p[k] ~= orig[k] and not f.resolved[k] and not container[k] then
                     orig[k] = f.p[k]
                     changed = changed + 1
                     words[k - k % 4] = true
@@ -230,9 +318,11 @@ local function changes(f)
         end
     end
     for k = n - n % 8, n - 1 do
-        if f.p[k] ~= orig[k] and not f.resolved[k] then orig[k] = f.p[k]; changed = changed + 1; words[k - k % 4] = true end
+        if f.p[k] ~= orig[k] and not f.resolved[k] and not container[k] then orig[k] = f.p[k]; changed = changed + 1; words[k - k % 4] = true end
     end
-    if changed == 0 then G.free(orig); return nil end
+    -- Keep this file in the plan even when its saved values were already
+    -- installed: the coordinator's restore pass must not replace its Mod layout.
+    if changed == 0 and not preserve_layout then G.free(orig); return nil end
     -- floats among the changed words (a salt for one-table files): a value with decimals between 1e-4 and 1e7
     local floats = {}
     for o in pairs(words) do
@@ -340,6 +430,27 @@ local function collapse(rows, policy)
     return table.concat(out)
 end
 
+-- The armory's preview of a passive lists at most 3 described modifiers (no native passive has more; a 4th crashes
+-- the game, issue #74): past the 3rd, a modifier keeps its effect but loses its description id (+12). The ids
+-- that lose it go to `hidden`.
+local MAX_DESCRIBED = 3
+local function cap_descriptions(mods, hidden)
+    local out, shown = {}, 0
+    for o = 1, #mods, 16 do
+        local m = mods:sub(o, o + 15)
+        if m:sub(13, 16) ~= '\0\0\0\0' then
+            shown = shown + 1
+            if shown > MAX_DESCRIBED then
+                local b1, b2, b3, b4 = m:byte(1, 4)
+                hidden[#hidden + 1] = string.format('%08X', ((b4 * 256 + b3) * 256 + b2) * 256 + b1)
+                m = m:sub(1, 12) .. '\0\0\0\0'
+            end
+        end
+        out[#out + 1] = m
+    end
+    return table.concat(out)
+end
+
 -- the record's own rows, then the stacked ones: a row already there (same effect and value) is written once
 local function append_unique(existing,extra,width)
     local seen,out={},{}
@@ -348,18 +459,6 @@ local function append_unique(existing,extra,width)
             local row=source:sub(at,at+width-1);local key=row:sub(1,4)
             if not seen[key] then seen[key]=true;out[#out+1]=row end
         end
-    end
-    return table.concat(out)
-end
-local function cap_descriptions(mods)
-    local out,shown={},0
-    for at=1,#mods,16 do
-        local row=mods:sub(at,at+15)
-        if row:sub(13,16)~='\0\0\0\0' then
-            shown=shown+1
-            if shown>3 then row=row:sub(1,12)..'\0\0\0\0' end
-        end
-        out[#out+1]=row
     end
     return table.concat(out)
 end
@@ -425,8 +524,15 @@ function M.stack(changes, stacks, log, own_off, policy)
             mods=append_unique(mods,collapse(add_m,pol),16)
             stats=append_unique(stats,collapse(add_s,pol),12)
         end
-        if #names>0 then mods=cap_descriptions(mods) end
         local block_end = k < #hs and hs[k + 1].at or n
+        if #names > 0 then
+            local hidden = {}
+            mods = cap_descriptions(mods, hidden)
+            if #hidden > 0 then
+                log('passive ' .. id .. ': modifier ' .. table.concat(hidden, ', ') .. ' not described in the armory' ..
+                    ' (it lists ' .. MAX_DESCRIBED .. ' at most), still applied')
+            end
+        end
         if #names > 0 or (own and own_off[id]) then
             local head = ffi.new('uint8_t[80]')
             ffi.copy(head, p + h.at, 80)
@@ -471,6 +577,97 @@ function M.passives()
     end
     table.sort(ids)
     return ids
+end
+
+-- ---------------------------------------------------------------- stratagem codes
+-- StratagemInfo (rows of 400 bytes, the stratagem type at +0) +64: its call-in code, the payload offset of a u32
+-- per arrow (1 up, 2 right, 3 down, 4 left), +72 the arrow count. A code no longer than the game's goes over its
+-- own; a longer one is appended to its table, which grows (by whole 16 bytes, so the tables after keep their
+-- alignment). codes: stratagem type -> { arrow, ... } (1 to 9: the game's code readers take 9 at most).
+-- Adds to / changes `changes` (from M.diff) in place.
+local STRATAGEM = 0x30EB6399
+function M.codes(changes, codes, log)
+    log, codes = log or function() end, codes or {}
+    if not next(codes) then return true end
+    local f
+    for _, file in pairs(M.files) do
+        for _, h in ipairs(G.headers(file.p, file.n)) do if h.type == STRATAGEM then f = file; break end end
+        if f then break end
+    end
+    if not f then return nil, 'the stratagem file is not loaded' end
+    local c
+    for _, x in ipairs(changes) do if x.name == f.name then c = x end end
+    if not c then
+        local plain, n = open_base(f.cipher)
+        if not plain then return nil, f.name .. ': ' .. tostring(n) end
+        c = { name = f.name, plain = plain, n = n, bytes = 0, floats = {}, hash = f.hash }
+        changes[#changes + 1] = c
+        table.sort(changes, function(x, y) return x.name < y.name end)
+    end
+    local p, n = c.plain, c.n
+    local hs = G.headers(p, n)
+    local out, grown, done = { ffi.string(p, hs[1].at) }, 0, 0
+    for k, h in ipairs(hs) do
+        local P = h.at + 24
+        local block_end = k < #hs and hs[k + 1].at or n
+        local extra = {}   -- longer codes, appended after the payload
+        if h.type == STRATAGEM and h.size >= 16 then
+            local rows = u32(p, P + 8)
+            for r = 0, rows - 1 do
+                local R = P + 16 + r * 400
+                local code = R + 400 <= P + h.size and codes[u32(p, R)]
+                local ok = type(code) == 'table' and #code >= 1 and #code <= 9
+                for _, a in ipairs(ok and code or {}) do ok = ok and (a == 1 or a == 2 or a == 3 or a == 4) end
+                if code and not ok then
+                    log('stratagem ' .. u32(p, R) .. ': code left as it is (1 to 9 arrows, 1-4 each)')
+                elseif code then
+                    local at, count = tonumber(ffi.cast(u64p, p + R + 64)[0]), u32(p, R + 72)
+                    if at < 16 + rows * 400 or at + count * 4 > h.size then
+                        log('stratagem ' .. u32(p, R) .. ': its code is not where it should be: left as it is')
+                    else
+                        if #code > count then   -- appended: 8-aligned, after the payload and earlier ones
+                            local size = h.size
+                            for _, s in ipairs(extra) do size = size + #s end
+                            local pad = (8 - size % 8) % 8
+                            extra[#extra + 1] = string.rep('\0', pad)
+                            at = size + pad
+                            ffi.cast(u64p, p + R + 64)[0] = at
+                            local arrows = {}
+                            for j, a in ipairs(code) do arrows[j] = string.char(a, 0, 0, 0) end
+                            extra[#extra + 1] = table.concat(arrows)
+                        else
+                            for j, a in ipairs(code) do ffi.cast('uint32_t *', p + P + at)[j - 1] = a end
+                        end
+                        ffi.cast('uint32_t *', p + R + 72)[0] = #code
+                        done = done + 1
+                        log(string.format('stratagem %d: code of %d arrows (was %d)%s', u32(p, R), #code, count,
+                            #code > count and ', appended to its table' or ''))
+                    end
+                end
+            end
+        end
+        if #extra > 0 then
+            local add = table.concat(extra)
+            add = add .. string.rep('\0', (16 - #add % 16) % 16)
+            local head = ffi.new('uint8_t[24]')
+            ffi.copy(head, p + h.at, 24)
+            ffi.cast('uint32_t *', head + 12)[0] = h.size + #add                                 -- block size
+            out[#out + 1] = ffi.string(head, 24) .. ffi.string(p + P, h.size) .. add
+            out[#out + 1] = ffi.string(p + P + h.size, block_end - P - h.size)                   -- any padding after
+            grown = grown + #add
+        else
+            out[#out + 1] = ffi.string(p + h.at, block_end - h.at)
+        end
+    end
+    c.bytes = c.bytes + done
+    if grown == 0 then return true end
+    local s = table.concat(out)
+    local bigger = G.alloc(#s)
+    ffi.copy(bigger, s, #s)
+    G.free(c.plain)
+    -- the edited floats moved: the other headers' reserved bytes salt the hash correction
+    c.plain, c.n, c.floats = bigger, #s, {}
+    return true
 end
 
 -- seal one changed file: { name, sealed } or nil, why

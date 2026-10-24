@@ -85,7 +85,7 @@ function M.parse(json, channel)
                 local commit = name:match('%-dev%-(%x+)%.zip$')
                 if commit then return { commit = commit:lower(), url = url, name = name, label = 'dev ' .. commit:sub(1, 7) } end
             elseif not name:match('%-zh%-Hans%.zip$') and not name:match('%-zh%-Hant%.zip$') and not name:match('%-ru%.zip$')
-                   and not name:match('%-dev%-') then
+                   and not name:match('%-dev%-') and not name:match('_Source%.zip$') then
                 local version = json:match('"tag_name"%s*:%s*"v?([%d%.]+)"')
                 if not version then return nil end
                 return { version = version, url = url, name = name, label = 'v' .. version }

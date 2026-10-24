@@ -111,7 +111,7 @@ function M.migrate()
 end
 
 -- ---------------------------------------------------------------- the game
-M.home = (env('LOCALAPPDATA') or '.') .. '/SHODAN/StatEditor'
+M.home = env('SHODAN_PROFILE') or ((env('LOCALAPPDATA') or '.') .. '/SHODAN/StatEditor')
 M.logs = M.home .. '/Logs'
 M.originals_dir = M.home .. '/originals'
 local LIST = M.home .. '/installed.txt'
@@ -237,9 +237,31 @@ function M.migrate_compat_backups(game)
 end
 
 -- ---------------------------------------------------------------- the originals
+-- Verified reference tables are only selected for the matching game build. Reading
+-- them does not replace backups or write to the game directory.
+function M.shipped_originals(dir,game)
+    local folder=dir and dir..'/originals'
+    local stamp=folder and read(folder..'/build.txt')
+    local expected=stamp and stamp:match('(%x+)')
+    local typelib=expected and read(game..'/dl_library.dl_typelib')
+    if not typelib or G.sha256_hex(typelib)~=expected then return nil end
+    local dll=read(game..'/game.dll');if not dll then return nil end
+    local out={}
+    for _,name in ipairs(M.list_files(folder,'*.dl_plain')) do
+        local plain=read(folder..'/'..name)
+        if plain then
+            local p=ffi.cast('const uint8_t *',plain)
+            if #G.headers(p,#plain)>0 and G.pristine(p,#plain) and G.game_dll_has(dll,G.murmur64(p,#plain)) then
+                out[(name:gsub('%.dl_plain$','.dl_bin'))]=G.seal_string(plain)
+            end
+        end
+    end
+    return next(out) and out or nil
+end
+
 -- name -> sealed original for every generated_*.dl_bin, and which of them are ours now (written by an install).
 -- A game file that is not ours is the original, and replaces a kept one that differs (the game was updated).
-function M.originals(game)
+function M.originals(game,shipped)
     local list, out, ours, problems = load_list(), {}, {}, {}
     local names = M.list_files(game, 'generated_*.dl_bin')
     local changed = false
@@ -247,7 +269,8 @@ function M.originals(game)
         local current = read(game .. '/' .. name)
         local kept = read(M.originals_dir .. '/' .. name)
         if current and list[name] and list[name][hash_of(current)] then
-            if kept then out[name], ours[name] = kept, true
+            if shipped and shipped[name] then out[name],ours[name]=shipped[name],true
+            elseif kept then out[name], ours[name] = kept, true
             else problems[#problems + 1] = name .. ': written by an earlier install, and its original is gone' end
         elseif current then
             out[name] = current
@@ -256,6 +279,9 @@ function M.originals(game)
         end
     end
     if changed then save_list(list) end
+    for name,cipher in pairs(shipped or {}) do
+        if out[name] or read(game..'/'..name) then out[name]=cipher end
+    end
     return out, ours, problems, #names
 end
 

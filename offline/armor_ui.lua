@@ -1,5 +1,6 @@
 -- Integrated mouse-driven armor selection and secondary value editor.
 local ffi=require('ffi')
+local L=require('layout')
 local M={plans={},on_change=function() end,navigate=function() end,tabs=function() return {} end,tr=function(x) return x end,transition=function() end}
 local ui={mode='main',target=999,page=1,scroll=1,was={},message='',regions={},edit=nil,target_menu=false}
 local C={back={255,237,242,234},panel={255,248,252,246},ink={255,23,46,35},muted={255,98,117,105},green={255,31,133,102},line={255,182,201,188},selected={255,217,238,223},white={255,255,255,255},warn={255,166,72,53}}
@@ -108,7 +109,7 @@ local function act(key)
     elseif kind=='all' then change_profile(function(p) p.enabled={};for _,passive in ipairs(M.AR.list) do p.enabled[passive.id]=true end end)
     elseif kind=='clear' then change_profile(function(p) p.enabled={} end)
     elseif kind=='page' then ui.page=math.max(1,ui.page+(arg=='next' and 1 or -1))
-    elseif kind=='valuespage' then if commit() then ui.scroll=math.max(1,ui.scroll+(arg=='next' and 14 or -14)) end
+    elseif kind=='valuespage' then if commit() then ui.scroll=math.max(1,ui.scroll+(arg=='next' and L.armor_value_rows or -L.armor_value_rows)) end
     elseif kind=='input' then
         if commit() then local row=ui.rows[tonumber(arg)];ui.edit={key=row.key,text=number(row.value),fresh=true} end
     elseif kind=='apply' then commit()
@@ -169,7 +170,11 @@ function M.frame(shim)
     local function fill(x,y,w,h,color) shim.fill(x*s,y*s,(x+w)*s,(y+h)*s,color) end
     local function txt(text,x,y,size,color,bold,limit)
         text=tostring(text);size=size or 16
-        if limit then while size>10 and shim.text_width(text,size*s)>limit*s do size=size-0.5 end end
+        if limit and shim.text_width(text,size*s)>limit*s then
+            repeat text=text:gsub('[\1-\127\194-\244][\128-\191]*$','')
+            until text=='' or shim.text_width(text..'…',size*s)<=limit*s
+            text=text..'…'
+        end
         shim.text(text,x*s,y*s,size*s,color or C.ink,bold)
     end
     local function button(key,label,x,y,w,h,active)
@@ -185,27 +190,28 @@ function M.frame(shim)
     fill(30,50,1,980,C.green);fill(width-31,50,1,980,C.green)
     local tabs=M.tabs();local widths,total={},0
     for i,tab in ipairs(tabs) do widths[i]=math.max(#tab*7+8,shim.text_width(M.tr(tab),16*s)/s+18);total=total+widths[i] end
-    local fit=math.min(1,(1000-16-124-16-4*(#tabs-1))/math.max(1,total));local tx=46
-    for i,tab in ipairs(tabs) do local w=math.floor(widths[i]*fit+0.5);button('tab:'..tab,M.tr(tab),tx,62,w,32,tab=='Armors');tx=tx+w+4 end
+    local tx=46;local nav_w=(width-92-8*(#tabs-1))/#tabs
+    for i,tab in ipairs(tabs) do button('tab:'..tab,M.tr(tab),tx,66,nav_w,L.nav_h,tab=='Armors');tx=tx+nav_w+8 end
     txt(ui.mode=='values' and ('被动数值 / '..name(ui.pid)) or '护甲与被动',46,130,22,C.green,true)
     if ui.mode=='values' then button('back','返回被动列表',width-192,108,146,34) end
     if ui.mode=='main' then
         local profile=M.AR.group(ui.target)
-        button('targets','应用护甲：'..name(ui.target),46,152,324,36,true)
-        button('own',(profile.own~=false and '[√] ' or '[  ] ')..'保留原生被动',386,152,220,36,profile.own~=false)
-        button('policy',profile.conflicts=='strongest' and '同类效果：保留最强' or '同类效果：叠加',622,152,width-668,36)
+        button('targets','应用护甲：'..name(ui.target),46,164,380,44,true)
+        button('own',(profile.own~=false and '[√] ' or '[  ] ')..'保留原生被动',442,164,280,44,profile.own~=false)
+        button('policy',profile.conflicts=='strongest' and '同类效果：保留最强' or '同类效果：叠加',738,164,width-784,44)
         local count=0;for _,v in pairs(profile.enabled) do if v then count=count+1 end end
-        txt('勾选需要叠加的被动；点击「修改数值」进入二级页面。',46,223,16,C.muted)
-        button('all','全选',width-224,202,82,32);button('clear','清空',width-132,202,86,32)
-        local percol=17;local pages=math.max(1,math.ceil(#M.AR.list/(percol*2)));ui.page=math.min(ui.page,pages)
+        txt('选择需要叠加的被动，数值修改在各被动的二级页面。',46,244,16,C.muted,false,width-360)
+        button('all','全选',width-254,226,96,40);button('clear','清空',width-146,226,100,40)
+        local percol=L.armor_rows;local pages=math.max(1,math.ceil(#M.AR.list/(percol*2)));ui.page=math.min(ui.page,pages)
         local cw=(width-110)/2;local first=(ui.page-1)*percol*2+1
         for i=first,math.min(#M.AR.list,first+percol*2-1) do
-            local item=M.AR.list[i];local n=i-first;local col=n%2;local row=math.floor(n/2);local x=46+col*(cw+18);local y=246+row*43
-            button('toggle:'..item.id,(profile.enabled[item.id] and '[√] ' or '[  ] ')..item.zh,x,y,cw-110,36,profile.enabled[item.id])
-            if #M.D.armor_values(item.id)>0 then button('edit:'..item.id,'修改数值',x+cw-104,y,104,36) end
+            local item=M.AR.list[i];local n=i-first;local col=n%2;local row=math.floor(n/2);local x=46+col*(cw+18);local y=282+row*L.armor_pitch
+            local editable=#M.D.armor_values(item.id)>0
+            button('toggle:'..item.id,(profile.enabled[item.id] and '[√] ' or '[  ] ')..item.zh,x,y,editable and cw-148 or cw,64,profile.enabled[item.id])
+            if editable then button('edit:'..item.id,'修改数值',x+cw-136,y+6,136,52) end
         end
-        txt('已选择 '..count..' / '..#M.AR.list..' 个被动',46,992,16,C.green,true)
-        if pages>1 then button('page:prev','上一页',width-270,938,104,36);button('page:next','下一页',width-156,938,110,36) end
+        txt('已选择 '..count..' / '..#M.AR.list..' 个被动',46,966,16,C.green,true)
+        if pages>1 then txt('第 '..ui.page..' / '..pages..' 页',width-430,970,15,C.muted);button('page:prev','上一页',width-294,944,116,40);button('page:next','下一页',width-166,944,120,40) end
         if ui.target_menu then
             fill(46,108,width-92,890,C.panel);ui.regions={}
             txt('选择要应用的护甲组',46,134,22,C.green,true)
@@ -217,18 +223,19 @@ function M.frame(shim)
         end
     else
         txt('仅列出此被动对应的可修改项。输入数值后按回车或点击「应用」。',46,170,16,C.muted)
-        local rows=ui.rows or {};ui.scroll=math.max(1,math.min(ui.scroll,math.max(1,#rows-13)))
-        for i=ui.scroll,math.min(#rows,ui.scroll+13) do
-            local row=rows[i];local y=194+(i-ui.scroll)*48;local editing=ui.edit and ui.edit.key==row.key
-            fill(46,y,width-92,42,(i-ui.scroll)%2==0 and C.panel or C.back)
-            txt(row.label,58,y+27,16,C.ink,false,width-490)
-            txt((M.D.armor_defaults_verified and '游戏原值 ' or '备份值 ')..display(row.default),width-448,y+27,12,C.muted,false,132)
-            button('input:'..i,editing and (ui.edit.text..'_') or display(row.value),width-302,y+3,132,36,editing)
-            button(editing and 'apply' or 'input:'..i,editing and '应用' or '输入',width-160,y+3,52,36,editing)
-            button('reset:'..i,'恢复',width-100,y+3,54,36)
+        local rows=ui.rows or {};ui.scroll=math.max(1,math.min(ui.scroll,math.max(1,#rows-L.armor_value_rows+1)))
+        txt('参数',58,224,14,C.muted);txt('原始值',width-600,224,14,C.muted);txt('当前值',width-418,224,14,C.muted);txt('操作',width-222,224,14,C.muted)
+        for i=ui.scroll,math.min(#rows,ui.scroll+L.armor_value_rows-1) do
+            local row=rows[i];local y=246+(i-ui.scroll)*L.armor_value_pitch;local editing=ui.edit and ui.edit.key==row.key
+            fill(46,y,width-92,56,(i-ui.scroll)%2==0 and C.panel or C.back)
+            txt(row.label,58,y+34,16,C.ink,false,width-680)
+            txt((M.D.armor_defaults_verified and '游戏原值 ' or '备份值 ')..display(row.default),width-600,y+34,14,C.muted,false,150)
+            button('input:'..i,editing and (ui.edit.text..'_') or display(row.value),width-418,y+6,180,44,editing)
+            button(editing and 'apply' or 'input:'..i,editing and '应用' or '输入',width-222,y+6,84,44,editing)
+            button('reset:'..i,'恢复原值',width-122,y+6,76,44)
         end
-        txt('第 '..ui.scroll..'—'..math.min(#rows,ui.scroll+13)..' 项 / 共 '..#rows..' 项',46,952,16,C.muted)
-        button('valuespage:prev','上一页',width-270,938,104,36);button('valuespage:next','下一页',width-156,938,110,36)
+        txt('第 '..ui.scroll..'—'..math.min(#rows,ui.scroll+L.armor_value_rows-1)..' 项 / 共 '..#rows..' 项',46,966,16,C.muted)
+        button('valuespage:prev','上一页',width-294,944,116,40);button('valuespage:next','下一页',width-166,944,120,40)
     end
     fill(46,1000,width-92,1,C.line)
     txt(ui.message~='' and ui.message or '配置自动保存；点击下方「写入游戏」使修改生效。',46,1020,13,ui.message~='' and C.green or C.muted,false,width-60)

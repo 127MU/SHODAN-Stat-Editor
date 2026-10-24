@@ -1,15 +1,13 @@
-# SHODAN Stat Editor Offline: the development build. Every push to main is built (LuaJIT at the commit the
-# releases use, libsodium's official build) and published as the "Development build" pre-release (tag: dev),
-# which SSEO follows with Settings > Update channel > Every commit. Pushes to ci/* branches only build (the zip
-# is kept as the run's artifact). Releases are not touched: the updater's Releases channel skips pre-releases.
-name: Development build
+# Build the current desktop UI. Stable releases are uploaded after native QA.
+name: Desktop build
 
 on:
   push:
     branches: [main, 'ci/**']
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: dev-build-${{ github.ref }}
@@ -57,32 +55,18 @@ jobs:
           if not exist "%GITHUB_WORKSPACE%\offline\launcher\SHODAN Stat Editor Offline.exe" exit /b 1
           if not exist "%GITHUB_WORKSPACE%\offline\launcher\shodan_hash.dll" exit /b 1
 
-      - name: Package
+      - name: Build current desktop
         shell: pwsh
-        env:
-          SSEO_CHANNEL: dev
-          SSEO_COMMIT: ${{ github.sha }}
         run: |
-          python tools/package_lab.py --base offline/runtime
-          if ($LASTEXITCODE -ne 0) { throw "package_lab.py failed" }
-          "ZIP=dist/SHODAN_3.2.0_Windows.zip" >> $env:GITHUB_ENV
+          cmake -S desktop/eui -B build/eui -A x64
+          if ($LASTEXITCODE -ne 0) { throw "CMake configure failed" }
+          cmake --build build/eui --config Release --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw "Desktop build failed" }
+          python tools/package_eui.py --build-dir build/eui --eui-root build/eui/_deps/eui-src --output-root dist/desktop
+          if ($LASTEXITCODE -ne 0) { throw "Desktop packaging failed" }
 
-      - name: Keep the zip (ci/* branches)
-        if: github.ref != 'refs/heads/main'
+      - name: Keep desktop packages
         uses: actions/upload-artifact@v4
         with:
-          name: development-build
-          path: ${{ env.ZIP }}
-
-      - name: Publish the Development build (main)
-        if: github.ref == 'refs/heads/main'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release delete dev --cleanup-tag --yes 2>$null
-          $global:LASTEXITCODE = 0
-          $notes = "The latest commit to main ($env:GITHUB_SHA), built automatically and not tested yet: it may break. " +
-                   "Tested versions are the releases. In SHODAN Stat Editor Offline, Settings > Update channel > " +
-                   "Every commit follows this build."
-          gh release create dev $env:ZIP --prerelease --target $env:GITHUB_SHA --title "Development build" --notes $notes
+          name: desktop-build
+          path: dist/desktop/*.zip

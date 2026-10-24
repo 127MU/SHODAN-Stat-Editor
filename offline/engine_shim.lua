@@ -90,13 +90,15 @@ function M.message_box(text, kind)   -- kind: 0x10 error, 0x30 warning, 0x40 inf
 end
 
 -- ---------------------------------------------------------------- the window and its back buffer
-local PANEL_W, PANEL_H = 1060, 1080   -- the panel (1000 wide) and its margins, in 1080p units
+local layout=require('layout')
+local PANEL_W, PANEL_H = layout.window_w,layout.window_h
 local STYLE = 0x00CA0000   -- WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX (no resizing)
 
 -- the client for a work area (left, top, right, bottom) and a frame `extra_h` tall: as tall as it allows (at most
 -- 1350 px), panel-shaped
 local function client_for(work, extra_h)
-    local ch = math.floor(math.min(work[3] - work[1] - extra_h, 1.25 * 1080) * 0.95)
+    local ch = math.floor(math.min(work[3]-work[1]-extra_h,1.25*1080,
+        (work[2]-work[0]-32)*PANEL_H/PANEL_W)*0.95)
     return math.floor(ch * PANEL_W / PANEL_H + 0.5), ch
 end
 
@@ -254,7 +256,7 @@ local fonts = {}
 local FACES = { ['zh-Hans'] = 'Microsoft YaHei UI', ['zh-Hant'] = 'Microsoft JhengHei UI' }
 M.lang = function() return 'en' end
 local function font_of(size, bold)
-    local h = math.max(6, math.floor(size + 0.5))
+    local h = math.max(12, math.floor(size + 0.5))
     local face = FACES[M.lang()] or 'Segoe UI'
     local key = face .. h .. (bold and 'b' or '')
     if not fonts[key] then

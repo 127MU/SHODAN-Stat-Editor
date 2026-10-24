@@ -9,6 +9,21 @@ except ImportError:
 
 @unittest.skipUnless(LuaRuntime,'LuaJIT runtime is optional for this test')
 class ArmoryTests(unittest.TestCase):
+    def test_installed_values_do_not_become_original_defaults(self):
+        lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
+        lua.execute(r'''local ffi=require('ffi')
+        local original=ffi.new('uint8_t[64]');local current=ffi.new('uint8_t[64]')
+        ffi.cast('float *',original+24)[0]=70;ffi.cast('float *',current+24)[0]=420
+        package.loaded.gamedata={open_sealed=function(s) assert(s=='vanilla');return original,64 end,headers=function() return {} end,
+          clear_correction=function() end}
+        local D=require('hostdata')
+        D.files.test={p=current,n=64,cipher='installed',baseline='vanilla'}
+        local address=tonumber(ffi.cast('uintptr_t',current+24))
+        local raw=assert(D.original_bytes(address,4));assert(ffi.cast('const float *',raw)[0]==70)
+        ffi.cast('float *',current+24)[0]=900
+        raw=assert(D.original_bytes(address,4));assert(ffi.cast('const float *',raw)[0]==70)
+        assert(D.original_bytes(address+100,4)==nil)
+        ''')
     def test_catalog_profiles_and_own_passive(self):
         lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
         lua.execute('''
@@ -67,7 +82,7 @@ class ArmoryTests(unittest.TestCase):
         local D=require('hostdata')
         D.files['generated_customization_passive_bonuses.dl_bin']={p=current,n=144,cipher='test'}
         local rows=D.armor_values(1)
-        assert(#rows==1 and rows[1].label=='护甲值')
+        assert(#rows==1 and rows[1].label=='护甲加成（内部单位）')
         assert(D.set_armor_value(1,'1:16:678818890:1:1',99)==nil)
         assert(ffi.cast('float *',current+104)[0]==2)
         assert(D.set_armor_value(1,rows[1].key,5)==5)

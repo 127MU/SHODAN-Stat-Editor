@@ -26,6 +26,50 @@ class NativeInputTests(unittest.TestCase):
    local mask=T.color({100,30,60,43},false);assert(mask[1]==100 and mask[2]==0 and mask[3]==0 and mask[4]==0)
    assert(T.color(c,false)==field);T.set('light');assert(T.color(c,false)==c)
   """)
+@unittest.skipUnless(LuaRuntime,'LuaJIT is needed')
+class LocalizationTests(unittest.TestCase):
+ def test_user_reference_and_nested_sections(self):
+  lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
+  lua.execute('''local R=require('zh_reference');local U=require('zh_ui')
+   assert(R.translate('AR-23 Liberator')=='AR-23 解放者')
+   assert(not R.translate('FAF-14 Spear'):find('模型'))
+   assert(U.translate('Anti-Tank Mine Deployer')=='反坦克地雷布设器')
+   assert(U.translate('Status effects (Arc)',function(s) return U.translate(s) or s end)=='状态效果（电弧）')
+   assert(U.translate('President rewards stratagem (PRESIDENT REWARDS. AMMO CACHE).')=='总统奖励战略配备。')
+   assert(U.early("Looking for Helldivers 2..."):find('正在查找'))
+  ''')
+ def test_parameter_coefficients_are_not_mislabelled(self):
+  lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
+  lua.execute('''local P=require('zh_params')
+   assert(P.translate('Fire damage taken')=='承受火焰伤害倍率')
+   assert(P.hint('Fire damage taken')[1]:find('75%%'))
+   assert(P.translate('Durable damage')=='耐久伤害')
+   assert(P.translate('Blast proximity (m)')=='近炸引信半径（米）')
+   assert(P.translate('Lifetime (s)')~=P.translate('Lifetime randomness (s)'))
+   assert(P.translate('Gas')=='毒气' and P.translate('Status damage')=='状态伤害')
+  ''')
+ def test_names_match_game_text(self):
+  lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
+  lua.execute('''local T=require('zh_game')
+   assert(T.translate('Dominator')=='主宰' and T.translate('Nova')=='新星')
+   local A=require('armory_data');local found
+   for _,p in ipairs(A.list) do if p.id==7 then found=p.zh end end
+   assert(found=='急救包')
+  ''')
+
+@unittest.skipUnless(LuaRuntime,'LuaJIT is needed')
+class ReleaseTests(unittest.TestCase):
+ def test_updater_skips_source_archive(self):
+  lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
+  lua.execute('''package.loaded.install={home='.'};local U=require('update')
+   local base='https://github.com/'..U.REPO..'/releases/download/v3.2.0/'
+   local source='{"tag_name":"v3.2.0","assets":[{"browser_download_url":"'..base..'SHODAN_3.2.0_Source.zip"}]}'
+   assert(U.parse(source,'releases')==nil)
+   local json=source:sub(1,-3)..',{"browser_download_url":"'..base..'SHODAN_3.2.0_Windows.zip"}]}'
+   local release=assert(U.parse(json,'releases'))
+   assert(release.version=='3.2.0' and release.name=='SHODAN_3.2.0_Windows.zip')
+  ''')
+
 class OfficialFlowTests(unittest.TestCase):
  def test_official_write_function_is_unchanged(self):
   text=(ROOT/'offline/install.lua').read_text(encoding='utf8')

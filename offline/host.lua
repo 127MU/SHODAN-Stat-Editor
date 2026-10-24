@@ -13,6 +13,16 @@ local I = require('install')
 local U = require('update')
 local AR = require('armory')
 local ARM = require('armor_ui')
+local EARLY=require('zh_ui').early
+local eui=rawget(_G,'SHODAN_EUI')
+if eui then
+    -- Data-only host: never creates a GDI window or handles desktop input.
+    shim.open=function() shim.w,shim.h=1400,1080 end
+    shim.pump=function() return true end
+    shim.set_title=function() end
+    shim.message_box=function(text) log_eui_warning=text;return 1 end
+    shim.transition=function() end
+end
 -- An opt-in render check for the packaged application; never writes game files.
 local qa_output = os.getenv('SHODAN_QA_OUTPUT')
 if qa_output then U.available = false end
@@ -29,9 +39,10 @@ local function log(text)
     if log_file then log_file:write(os.date('%H:%M:%S '), text, '\n'); log_file:flush() end
 end
 
-local BACK = { 255, 237, 242, 234 }
-local GOLD, WHITE, MUTED, WARN, GOOD = { 255, 31, 133, 102 }, { 255, 23, 37, 33 }, { 255, 97, 112, 107 },
-                                        { 255, 160, 91, 36 }, { 255, 31, 133, 102 }
+local BACK = { 255, 12, 15, 19 }
+local RED = { 255, 255, 72, 60 }   -- the Enemy Editor's (editor.lua's red)
+local GOLD, WHITE, MUTED, WARN, GOOD = { 255, 255, 213, 0 }, { 255, 238, 242, 246 }, { 255, 153, 171, 184 },
+                                        { 255, 255, 150, 60 }, { 255, 120, 220, 140 }
 
 local function centred(text, y, size, c)
     shim.text(text, (shim.w - shim.text_width(text, size)) / 2, y, size, c)
@@ -39,10 +50,12 @@ end
 
 -- a screen with a few lines of text (loading, problems)
 local function screen(lines)
+    if eui then return end
     shim.fill(0, 0, shim.w, shim.h, BACK)
     local s = shim.h / 1080
     local y = shim.h * 0.42
     for k, line in ipairs(lines) do
+        line=EARLY(line)
         local size = (k == 1 and 34 or 20) * s
         centred(line, y, size, k == 1 and GOLD or MUTED)
         y = y + size * 1.8
@@ -51,6 +64,8 @@ local function screen(lines)
 end
 
 local function fatal(text)
+    text=EARLY(text)
+    if eui then error(text) end
     log('stopped: ' .. text)
     if qa_output then local f=io.open(qa_output..'/failure.txt','wb');if f then f:write(text);f:close() end
     else shim.message_box(text, 0x10) end
@@ -74,7 +89,7 @@ local function main()
     local selected_theme=theme_file and theme_file:read('*a') or 'light'
     if theme_file then theme_file:close() end
     shim.set_theme(selected_theme:match('dark') and 'dark' or 'light')
-    shim.open('SHODAN 数值编辑器 3.2.0', saved_place())
+    shim.open('SHODAN 数值编辑器 4.0.0', saved_place())
     shim.pump()
     local migrated = I.migrate()
     if migrated then log('copied ' .. migrated .. ' files from the CowboyBingus folder') end
@@ -93,10 +108,16 @@ local function main()
     log('hash search: ' .. (G.native and 'native, every core' or 'Lua (shodan_hash.dll not found)'))
     screen({ 'SHODAN Stat Editor Offline', 'Reading the game\'s data files...' })
     shim.pump()
-    local originals, ours, problems, count = I.originals(game)
+    local shipped=I.shipped_originals(exe_dir,game)
+    local shipped_count=0;for _ in pairs(shipped or {}) do shipped_count=shipped_count+1 end
+    log('verified shipped originals: '..shipped_count)
+    local originals, ours, problems, count = I.originals(game,shipped)
     -- Validated legacy originals remain usable if copying into originals is denied.
     -- The official writer still requires a successful disk backup before game writes.
-    for name,data in pairs(I.compat_originals or {}) do originals[name]=data;ours[name]=true end
+    for name,data in pairs(I.compat_originals or {}) do
+        if not (shipped and shipped[name]) then originals[name]=data end
+        ours[name]=true
+    end
     for i=#problems,1,-1 do
         local name=problems[i]:match('^(generated_[%w_]+%.dl_bin):')
         if name and I.compat_originals[name] then table.remove(problems,i) end
@@ -109,7 +130,21 @@ local function main()
     if canonical then originals[armor_file]=canonical end
     D.armor_defaults_verified=verified
     if repaired then log('armor baseline: replaced modified backup in memory with verified vanilla table; legacy backup retained') end
-    for _, p in ipairs(D.load(game, originals)) do problems[#problems + 1] = p end
+    local managed_path=I.home..'/managed-files.txt'
+    local managed={}
+    for name in (I.read(managed_path) or ''):gmatch('[^\r\n]+') do managed[name]=true end
+    local managed_inputs={}
+    local mod_management_enabled=false
+    local working={};for name,data in pairs(originals) do working[name]=data end
+    -- The installed values stay visible; the immutable references supply defaults.
+    -- Armor stacking keeps its separately verified baseline.
+    if not qa_output or os.getenv('SHODAN_QA_INSTALLED')=='1' then
+        for name in pairs(shipped or {}) do
+            local current=I.read(game..'/'..name)
+            if current and not managed[name] then working[name]=current end
+        end
+    end
+    for _, p in ipairs(D.load(game, working, originals)) do problems[#problems + 1] = p end
     AR.refresh(D.passives())
     AR.import_values = D.import_forge_values
     AR.init(game, I.home .. '/armory.ini')
@@ -123,17 +158,23 @@ local function main()
               .. '\n\nVerify the game files in Steam and start again.')
     end
     if #problems > 0 then
-        shim.message_box('Some of the game\'s data files are not as this editor expects; their stats cannot be edited:\n\n'
+        shim.message_box(EARLY('Some of the game\'s data files are not as this editor expects; their stats cannot be edited:\n\n'
                          .. table.concat(problems, '\n', 1, math.min(#problems, 10))
-                         .. '\n\nIf another tool changed them, verify the game files in Steam.', 0x30)
+                         .. '\n\nIf another tool changed them, verify the game files in Steam.'), 0x30)
     end
 
     -- ------------------------------------------------------------ the editor
     screen({ 'SHODAN Stat Editor Offline', 'Finding the stats...' })
     rawset(_G, 'SHODAN_OFFLINE', true)
+    rawset(_G, 'SHODAN_OFFLINE_LAYOUT', require('layout'))
+    rawset(_G, 'SHODAN_OFFLINE_DEFAULT_READ', D.original_bytes)
     rawset(_G,'SHODAN_OFFLINE_TEXT',shim.take_text)
     rawset(_G,'SHODAN_OFFLINE_WHEEL',function() local value=shim.wheel or 0;shim.wheel=0;return value end)
     rawset(_G,'SHODAN_OFFLINE_ZH',require('zh_extra'))
+    rawset(_G,'SHODAN_OFFLINE_ZH_GAME',require('zh_game'))
+    rawset(_G,'SHODAN_OFFLINE_ZH_PARAMS',require('zh_params'))
+    rawset(_G,'SHODAN_OFFLINE_ZH_REFERENCE',require('zh_reference'))
+    rawset(_G,'SHODAN_OFFLINE_ZH_UI',require('zh_ui'))
     rawset(_G,'SHODAN_OFFLINE_TRANSITION',shim.transition)
     rawset(_G, 'SHODAN_OFFLINE_TABLES', function()
         local blocks = {}
@@ -170,25 +211,43 @@ local function main()
     ARM.tr=state.tr;ARM.transition=shim.transition
     state.open_armor = AR.show
     local build = U.build(here)   -- app/build.txt: version, commit, channel
-    shim.set_title('SHODAN 数值编辑器 3.2.0')
+    shim.set_title('SHODAN 数值编辑器 4.0.0')
     -- the host's own text in the panel's language, drawn with its font
-    local function tr(text) return type(state.tr) == 'function' and state.tr(text) or text end
+    local function tr(text)
+        if type(state.tr)~='function' then return text end
+        -- The armor summary is appended after the install sentence. Translate
+        -- the sentence on its own so the upstream end-anchored rule still matches.
+        local result,suffix
+        if type(text)=='string' then result,suffix=text:match('^(Installed %b().-values%.)(.*)$') end
+        if result then return state.tr(result)..suffix end
+        return state.tr(text)
+    end
     if type(state.lang) == 'function' then shim.lang = state.lang end
 
     -- ------------------------------------------------------------ the host's bar (below the panel)
     local bar = { hover = nil, message = nil, tone = MUTED, note = nil, busy = nil, base = nil, buttons = {} }
     local function layout()
         local s = shim.h / 1080
-        local y0, y1 = 1038 * s, 1072 * s
+        local y0, y1 = 1036 * s, 1076 * s
         bar.buttons = {
-            { key = 'install', label = '写入游戏', x0 = 30 * s, x1 = 290 * s, y0 = y0, y1 = y1 },
-            { key = 'restore', label = 'Restore the game\'s files', x0 = 302 * s, x1 = 562 * s, y0 = y0, y1 = y1 },
-            { key = 'theme', label = shim.theme=='dark' and '浅色模式' or '深色模式', x0 = 574 * s, x1 = 714 * s, y0 = y0, y1 = y1 },
+            { key = 'install', label = '写入游戏', x0 = 30 * s, x1 = 250 * s, y0 = y0, y1 = y1, primary=true },
+            { key = 'restore', label = 'Restore the game\'s files', x0 = 266 * s, x1 = 486 * s, y0 = y0, y1 = y1 },
+            { key = 'theme', label = shim.theme=='dark' and '浅色模式' or '深色模式', x0 = 502 * s, x1 = 638 * s, y0 = y0, y1 = y1 },
         }
         if bar.release then
             local x1 = shim.w - 30 * s
             bar.buttons[#bar.buttons + 1] = { key = 'update', label = 'Update to ' .. bar.release.label, x0 = x1 - 170 * s, x1 = x1,
                                y0 = 9 * s, y1 = 41 * s, gold = true }   -- top right, in the tagline's place
+        end
+        -- the titles (paint_bar): Stat Editor, then Enemy Editor once the editor offers the switch
+        local x = 30 * s
+        bar.titles = {}
+        for _, t in ipairs({ { 'title_stat', 'SHODAN Stat Editor', GOLD }, { 'title_enemy', 'SHODAN Enemy Editor', RED } }) do
+            if t[1] == 'title_stat' or type(state.switch_editor) == 'function' then
+                local w = shim.text_width(t[2], 22 * s, true) + 24 * s   -- a box: 12 px each side of the text
+                bar.titles[#bar.titles + 1] = { key = t[1], label = t[2], color = t[3], x0 = x, x1 = x + w, y0 = 6 * s, y1 = 42 * s }
+                x = x + w + 12 * s
+            end
         end
         bar.s, bar.h = s, shim.h
     end
@@ -220,13 +279,38 @@ local function main()
         local s = bar.s
         shim.fill(0, 1032 * s, shim.w, shim.h, BACK)
         shim.fill(0, 0, shim.w, 46 * s, BACK)
-        shim.text('SHODAN 数值编辑器', 30 * s, 32 * s, 24 * s, GOLD, true)
+        -- the two editors' titles, as buttons: the one shown bright in a box of its colour, the other dimmed
+        -- (brighter under the mouse); a click swaps
+        local enemy = type(state.enemy_on) == 'function' and state.enemy_on()
+        local function toward_back(c, k)
+            return { 255, math.floor(BACK[2] + (c[2] - BACK[2]) * k), math.floor(BACK[3] + (c[3] - BACK[3]) * k),
+                     math.floor(BACK[4] + (c[4] - BACK[4]) * k) }
+        end
+        for _, t in ipairs(bar.titles) do
+            local on = (t.key == 'title_enemy') == (enemy and true or false)
+            local hovered = bar.hover == t.key and not on
+            local c = on and t.color or toward_back(t.color, hovered and 0.65 or 0.4)
+            local fill = on and toward_back(t.color, 0.3) or hovered and { 255, 40, 48, 58 } or { 255, 24, 29, 36 }
+            local edge = on and t.color or hovered and toward_back(t.color, 0.8) or { 255, 70, 82, 94 }
+            local e = math.max(1, math.floor(2 * s + 0.5))
+            shim.fill(t.x0, t.y0, t.x1, t.y1, fill)
+            shim.fill(t.x0, t.y0, t.x1, t.y0 + e, edge); shim.fill(t.x0, t.y1 - e, t.x1, t.y1, edge)
+            shim.fill(t.x0, t.y0, t.x0 + e, t.y1, edge); shim.fill(t.x1 - e, t.y0, t.x1, t.y1, edge)
+            shim.flush()
+            shim.text(t.label, t.x0 + 12 * s, (t.y0 + t.y1) / 2 + 22 * s * 0.35, 22 * s, c, true)
+        end
         local t = tr('OFFLINE  -  edits the game\'s files; they apply when the game starts')
-        if not bar.release then shim.text(t, shim.w - 30 * s - shim.text_width(t, 15 * s), 31 * s, 15 * s, MUTED) end
+        if not bar.release then
+            -- smaller where it would run into the titles (a longer translation)
+            local last = bar.titles[#bar.titles]
+            local room, size = shim.w - 30 * s - (last and last.x1 + 16 * s or 0), 15 * s
+            while size > 10 * s and shim.text_width(t, size) > room do size = size - 0.5 * s end
+            shim.text(t, shim.w - 30 * s - shim.text_width(t, size), 31 * s, size, MUTED)
+        end
         for _, b in ipairs(bar.buttons) do
             local hovered = bar.hover == b.key and not bar.busy
             shim.fill(b.x0, b.y0, b.x1, b.y1, hovered and { 255, 213, 233, 218 } or { 255, 247, 250, 245 })
-            local edge = hovered and GOLD or { 255, 183, 199, 188 }
+            local edge = (hovered or b.primary) and GOLD or { 255, 183, 199, 188 }
             local e = math.max(1, math.floor(2 * s + 0.5))
             shim.fill(b.x0, b.y0, b.x1, b.y0 + e, edge); shim.fill(b.x0, b.y1 - e, b.x1, b.y1, edge)
             shim.fill(b.x0, b.y0, b.x0 + e, b.y1, edge); shim.fill(b.x1 - e, b.y0, b.x1, b.y1, edge)
@@ -234,13 +318,13 @@ local function main()
             local size, label = 16 * s, tr(b.label)
             while size > 10 * s and shim.text_width(label, size) > b.x1 - b.x0 - 12 * s do size = size - 0.5 end
             shim.text(label, (b.x0 + b.x1 - shim.text_width(label, size)) / 2, (b.y0 + b.y1) / 2 + size * 0.35, size,
-                      b.gold and GOLD or WHITE)
+                      (b.gold or b.primary) and GOLD or WHITE,b.primary)
         end
         local text, tone = status()
         text = tr(text)
         if bar.note then text = text .. ' ' .. tr(bar.note) end
         if not bar.busy and not bar.message then text = (bar.base and state.writes ~= bar.base) and '有未写入修改' or '编辑器已就绪' end
-        local x = 730 * s
+        local x = 662 * s
         local size = 14 * s
         local limit = shim.w - 30 * s - x
         while size > 9 * s and shim.text_width(text, size) > limit do size = size - 0.5 end
@@ -248,6 +332,7 @@ local function main()
     end
 
     local function paint()
+        if eui then return end
         if state.phase == 'ready' then
             if AR.is_open() then ARM.frame(shim) else shim.paint_guis(BACK) end
         else
@@ -266,11 +351,16 @@ local function main()
 
     local function busy(text)
         bar.busy = text
+        if eui and type(rawget(_G,'SHODAN_EUI_PROGRESS'))=='function' then
+            local done,total=text:match('%((%d+) of (%d+)%)')
+            SHODAN_EUI_PROGRESS(tr(text),tonumber(done) or 0,tonumber(total) or 0)
+        end
         paint()
         shim.pump()
     end
 
     -- ------------------------------------------------------------ install / restore
+    local write_succeeded=false
     local function install()
         if not ARM.flush() then say('请先修正护甲数值输入。',WARN);return end
         if state.desktop_commit and not state.desktop_commit() then say('请输入有效数值，再写入游戏。',WARN);return end
@@ -297,6 +387,23 @@ local function main()
             say('Not installed: the armor passives could not be stacked (' .. tostring(why_not) .. '). Nothing was changed.', WARN)
             return
         end
+        local coded
+        coded, why_not = D.codes(changes, state.codes and state.codes(), log)
+        if not coded then
+            for _, c in ipairs(changes) do G.free(c.plain) end
+            bar.busy = nil
+            log('install stopped: stratagem codes: ' .. tostring(why_not))
+            say('Not installed: the stratagem codes could not be set (' .. tostring(why_not) .. '). Nothing was changed.', WARN)
+            return
+        end
+        -- Stacking can add an armor file to the write plan even when none of
+        -- its scalar fields changed, so protect managed files after that step.
+        if not mod_management_enabled then
+            for _,c in ipairs(changes)do if managed[c.name]then
+                for _,prepared in ipairs(changes)do G.free(prepared.plain)end
+                bar.busy=nil;say('未写入：'..c.name..' 正由已安装的 Mod 使用。当前未开启 Mod 功能，为保留它的内容，请先开启 Mod 管理再修改此文件。',WARN);return
+            end end
+        end
         local writes, made, back, nudged = {}, 0, 0, 0
         for k, c in ipairs(changes) do
             busy(string.format('Installing: preparing %s (%d of %d)...', c.name, k, #changes))
@@ -311,15 +418,45 @@ local function main()
             writes[c.name], made = sealed, made + 1
             if c.borrowed and #c.borrowed > 0 then nudged = nudged + 1 end
         end
+        -- Always rebuild the enabled overlay against immutable originals. Never
+        -- merge a previous installation back into the next installation.
+        local next_managed={}
+        local ok_merge,merge_error=pcall(function()
+            for name,inputs in pairs(mod_management_enabled and managed_inputs or {}) do
+                local base,n=G.open_sealed(assert(originals[name],'没有可信原版：'..name))
+                assert(base,n);local baseline=ffi.string(base,n);G.free(base)
+                local all={};for _,input in ipairs(inputs) do all[#all+1]=input end
+                if writes[name] then all[#all+1]={label='编辑器当前修改',data=writes[name]} end
+                local merged=require('mod_merge').merge(baseline,all,'abort')
+                if merged.blocked then
+                    local first=merged.conflicts[1]
+                    error(name..'：'..merged.conflict_count..' 处冲突；'..first.before..' 与 '..first.after..'，偏移 '..first.offset)
+                end
+                writes[name]=merged.data;next_managed[name]=true
+            end
+        end)
+        if not ok_merge then bar.busy=nil;say('未写入：'..tostring(merge_error),WARN);return end
         for name, mine in pairs(ours) do
-            if mine and not writes[name] then writes[name], back = originals[name], back + 1 end
+            if mine and not writes[name] and (mod_management_enabled or not managed[name]) then writes[name], back = originals[name], back + 1 end
         end
+        if mod_management_enabled then for name in pairs(managed) do if not writes[name] then writes[name]=assert(originals[name]) end end end
         if not next(writes) then
             bar.busy, bar.base = nil, state.writes
+            write_succeeded=true
             say('Nothing to install: your values are the game\'s own.', GOOD)
             return
         end
+        made=0;for name,data in pairs(writes) do if data~=originals[name] then made=made+1 end end
         busy('Installing: writing the files...')
+        local pending={};for name in pairs(next_managed) do pending[name]=true end
+        for name in pairs(managed) do pending[name]=true end
+        if mod_management_enabled then
+        I.mkdirs(I.home)
+        local marker,marker_error=io.open(managed_path,'wb')
+        if not marker then bar.busy=nil;say('未写入：无法保存 Mod 安装记录：'..tostring(marker_error),WARN);return end
+        local marked={};for name in pairs(pending) do marked[#marked+1]=name end;table.sort(marked)
+        assert(marker:write(table.concat(marked,'\n')));assert(marker:close())
+        end
         local done, why = I.write_files(game, writes, originals)
         bar.busy = nil
         if not done then
@@ -328,6 +465,13 @@ local function main()
             return
         end
         for name, data in pairs(writes) do ours[name] = data ~= originals[name] end
+        write_succeeded=true
+        if mod_management_enabled then
+        managed=next_managed
+        local marker=io.open(managed_path,'wb');local names={}
+        for name in pairs(managed) do names[#names+1]=name end;table.sort(names)
+        if marker then marker:write(table.concat(names,'\n'));marker:close() end
+        end
         bar.base = state.writes
         local armor = AR.touches() and ('  ' .. AR.summary()) or ''
         log(string.format('installed: %d changed, %d back to the original, %d had a decimal value borrowed for the hash',
@@ -341,12 +485,14 @@ local function main()
     local function restore()
         if I.game_running() then say('Helldivers 2 is running: close it, then restore.', WARN); return end
         local writes = {}
-        for name, mine in pairs(ours) do if mine then writes[name] = originals[name] end end
-        if not next(writes) then say('The game\'s own files are already in place.', GOOD); return end
+        for name, mine in pairs(ours) do if mine and (mod_management_enabled or not managed[name]) then writes[name] = originals[name] end end
+        for name,data in pairs(shipped or {}) do if mod_management_enabled or not managed[name] then writes[name]=data end end
+        if not next(writes) then write_succeeded=true;say('The game\'s own files are already in place.', GOOD); return end
         busy('Restoring the game\'s files...')
         local done, why = I.write_files(game, writes, originals)
         bar.busy = nil
         if not done then say('Not restored: ' .. tostring(why), WARN); return end
+        write_succeeded=true
         for name in pairs(writes) do ours[name] = false end
         bar.base = nil
         log('restored the originals')
@@ -354,6 +500,7 @@ local function main()
     end
 
     local function dispatch(action)
+        write_succeeded=false
         bar.message,bar.note=nil,nil
         log('clicked: '..action)
         local ok,why=pcall(action=='install' and install or restore)
@@ -362,6 +509,105 @@ local function main()
         paint()
         if not qa_output and bar.message then shim.message_box(tr(bar.message),bar.tone==WARN and 0x30 or 0x40) end
         return bar.message
+    end
+
+    if eui then
+        local started=clock()
+        repeat update(0.05);assert(clock()-started<30,'读取数据超时') until state.phase=='ready'
+        -- Apply queued saved values before exposing the model.
+        for _=1,10 do update(0.05) end
+        bar.base=state.writes or 0
+        ARM.load_values()
+        local B=state.desktop
+        B.game=game;B.armor_list=AR.list;B.armor_groups=AR.groups
+        B.armor_rows=D.armor_values
+        B.armor_set=ARM.set_value
+        B.armor_profile=function(id) return AR.group(id) end
+        B.armor_update=function(target,id,enabled,own,policy)
+            local p=AR.group(target)
+            local old={enabled={},own=p.own,conflicts=p.conflicts,configured=p.configured}
+            for k,v in pairs(p.enabled) do old.enabled[k]=v end
+            if id then p.enabled[id]=enabled or nil end
+            if own~=nil then p.own=own end
+            if policy then p.conflicts=policy end
+            p.configured=true;AR.dirty=true
+            if AR.save()==false then AR.profiles[target]=old;error('护甲配置保存失败') end
+            state.writes=(state.writes or 0)+1;return true
+        end
+        B.install_preview=function()
+            local entries=B.pending_preview()
+            for _,a in ipairs(AR.list) do
+                for _,r in ipairs(D.armor_values(a.id)) do
+                    if r.value~=r.default then entries[#entries+1]={equipment=a.zh,parameter=r.label,
+                        before=tostring(r.default),after=tostring(r.value),file=AR.FILE} end
+                end
+            end
+            for id,p in pairs(AR.profiles) do
+                if p.configured then
+                    local enabled={};for _,a in ipairs(AR.list) do if p.enabled[a.id] then enabled[#enabled+1]=a.zh end end
+                    if #enabled>0 or p.own==false then
+                        entries[#entries+1]={equipment='护甲被动组合',parameter=id==999 and '所有护甲' or ('被动 #'..id),
+                            before='游戏原有被动',after=(p.own==false and '移除原生；' or '保留原生；')..table.concat(enabled,'、')..
+                                (p.conflicts=='strongest' and '；同类保留最强' or '；同类叠加'),file=AR.FILE}
+                    end
+                end
+            end
+            local changes,problems=D.diff()
+            local ok,why=pcall(function()
+                local stacks,off,policy=AR.selection(state.stacks and state.stacks() or {},state.own_off and state.own_off() or {},D.passives())
+                local stacked,reason=D.stack(changes,stacks,log,off,policy);assert(stacked,reason)
+                local coded,reason=D.codes(changes,state.codes and state.codes(),log);assert(coded,reason)
+            end)
+            local files={};for _,c in ipairs(changes) do files[#files+1]=c.name;G.free(c.plain) end
+            local errors={};for _,p in ipairs(problems) do errors[#errors+1]=p.name..': '..tostring(p.why) end
+            if not ok then errors[#errors+1]=tostring(why) end
+            for name,inputs in pairs(mod_management_enabled and managed_inputs or {}) do
+                local found=false;for _,f in ipairs(files) do if f==name then found=true end end
+                if not found then files[#files+1]=name end
+                for _,input in ipairs(inputs) do entries[#entries+1]={equipment=input.label,parameter='已开启 Mod',before='原版基准',after='合并后写入',file=name} end
+            end
+            for name in pairs(mod_management_enabled and managed or {}) do
+                local found=false;for _,f in ipairs(files) do if f==name then found=true end end
+                if not found then files[#files+1]=name end
+            end
+            table.sort(files)
+            if not mod_management_enabled then for _,name in ipairs(files)do if managed[name]then errors[#errors+1]=name..' 正由已安装的 Mod 使用；请开启 Mod 管理后再修改此文件。' end end end
+            return {name='写入游戏预览',entries=entries,files=files,problems=errors,count=#entries}
+        end
+        B.managed_mods=function(inputs)
+            local grouped={}
+            for _,entry in ipairs(inputs or {}) do
+                assert(type(entry.name)=='string' and originals[entry.name],'不支持或没有可信原版：'..tostring(entry.name))
+                assert(type(entry.data)=='string','Mod 数据无效')
+                grouped[entry.name]=grouped[entry.name] or {}
+                grouped[entry.name][#grouped[entry.name]+1]={label=entry.label,data=entry.data}
+            end
+            managed_inputs=grouped;return true
+        end
+        B.mod_management=function(enabled)
+            assert(type(enabled)=='boolean','Mod 管理开关必须为布尔值')
+            mod_management_enabled=enabled;return enabled
+        end
+        B.game_running=function() return I.game_running() end
+        B.write_succeeded=function() return write_succeeded end
+        B.install=function() return tr(dispatch('install')) end
+        B.restore=function() return tr(dispatch('restore')) end
+        B.merge_named=function(name,inputs)
+            local p,n=G.open_sealed(assert(originals[name],'没有可信原版：'..tostring(name)))
+            assert(p,n);local base=ffi.string(p,n);G.free(p)
+            local result=require('mod_merge').merge(base,inputs,'abort')
+            if result.blocked then
+                local first=result.conflicts[1]
+                error(name..'：'..result.conflict_count..' 处冲突；'..first.before..' 与 '..first.after..'，偏移 '..first.offset)
+            end
+            return result
+        end
+        B.merge_mods=function(base,inputs,policy)return require('mod_merge').merge(base,inputs,policy)end
+        B.tick=function() update(0.05) end
+        B.status=function() return {phase=state.phase,writes=state.writes or 0,dirty=bar.base~=state.writes,
+            weapons=state.weapons,stratagems=state.stratagems,vehicles=state.vehicles,
+            attachments=state.attachments,tables=state.tables,warning=log_eui_warning} end
+        return B
     end
 
     -- ------------------------------------------------------------ updates (update.lua)
@@ -462,6 +708,11 @@ local function main()
         for _, b in ipairs(bar.buttons) do
             if x and x >= b.x0 and x < b.x1 and y >= b.y0 and y < b.y1 then hover = b.key end
         end
+        if #bar.titles > 1 then
+            for _, b in ipairs(bar.titles) do
+                if x and x >= b.x0 and x < b.x1 and y >= b.y0 and y < b.y1 then hover = b.key end
+            end
+        end
         bar.hover = hover
         local down = shim.focused() and shim.key_down(0x01)
         if down and not was_down then armed = hover end
@@ -469,7 +720,8 @@ local function main()
             bar.message = nil
             if hover == 'install' or hover == 'restore' then dispatch(hover);painted=nil
             elseif hover == 'theme' then toggle_theme();painted=nil
-            elseif hover == 'update' and update_program() then break end
+            elseif hover == 'update' and update_program() then break
+            elseif hover == 'title_stat' or hover == 'title_enemy' then state.switch_editor(hover == 'title_enemy') end
             armed = nil
         end
         was_down = down
@@ -487,6 +739,23 @@ local function main()
                 paint()
                 shim.save_bmp(qa_output .. '/full-editor.bmp')
                 local qa = assert(state.qa_ui, 'UI test driver unavailable')
+                assert(qa.desktop_layout_regression(),'desktop layout regression failed')
+                local baseline_rows,baseline_resets,installed_values=qa.baseline_regression(os.getenv('SHODAN_QA_INSTALLED')=='1')
+                assert(baseline_rows>10000 and baseline_resets>20,'initial values regression did not cover the data pages')
+                log(string.format('initial values: %d rows checked, %d input/reset paths restored, %d installed values differ from originals',baseline_rows,baseline_resets,installed_values))
+                local inventory=assert(io.open(qa_output..'/parameter-labels.tsv','wb'))
+                for _,row in ipairs(qa.label_inventory()) do inventory:write(table.concat(row,'\t'),'\n') end
+                inventory:close()
+                local translations=assert(io.open(qa_output..'/translations.tsv','wb'))
+                local translated_items=qa.translation_inventory()
+                for _,row in ipairs(translated_items) do
+                    assert(row[2]~=row[3] or not row[2]:find('%a%a%a'),'untranslated '..row[1]..': '..row[2])
+                    for k,v in ipairs(row) do row[k]=tostring(v):gsub('[\r\n\t]',' ') end
+                    translations:write(table.concat(row,'\t'),'\n')
+                end
+                translations:close()
+                local records,reloads=qa.release_regression();assert(records==2 and reloads>=1,'3.2.3 release regression failed')
+                assert(state.tr('Durable damage')=='耐久伤害' and state.tr('Blast proximity (m)')=='近炸引信半径（米）','parameter terminology mismatch')
                 local saved_weapon=qa.current()
                 for _,tab in ipairs({'Primary','Stratagems','Records'}) do
                     qa.navigate(tab);qa.redraw()
@@ -569,6 +838,7 @@ local function main()
                 qa.value(1, original)
                 shim.transition()
                 for frame=1,4 do shim.capture_path=qa_output..'/motion-'..frame..'.bmp';paint();shim.sleep(90) end
+                qa.select('80F1A156D9FA1E36') -- JAR-5: verify the reported weapon, independent of the last selected tab.
                 local old_ammo = qa.ammo_current()
                 assert(qa.ammo_open(), 'ammo picker did not open')
                 local choices = qa.ammo_rows()
@@ -663,7 +933,7 @@ local function main()
                 assert(refused==modified and not changed and not verified,'unknown version baseline was replaced')
                 local stationary=D.armor_values(42);assert(#stationary==2,'Stationary Shroud fields missing')
                 local sway
-                for _,row in ipairs(stationary) do if row.label=='瞄准晃动' then sway=row end end
+                for _,row in ipairs(stationary) do if row.label=='瞄准晃动倍率' then sway=row end end
                 assert(sway and #sway.ats==3,'Stationary Shroud sway fields are not linked')
                 assert(ARM.set_value(42,sway.key,sway.value+0.1)~=nil)
                 for _,at in ipairs(sway.ats) do assert(math.abs(tonumber(ffi.cast('float *',D.files[AR.FILE].p+at)[0])-sway.value-0.1)<1e-5) end
@@ -673,10 +943,11 @@ local function main()
                 AR.close()
                 local file = assert(io.open(qa_output .. '/report.json', 'wb'))
                 local values = {}
+                values[#values+1]=string.format('"translation_items":%d,"baseline_rows":%d,"reset_paths":%d,"installed_value_differences":%d,"verified_originals":%d',#translated_items,baseline_rows,baseline_resets,installed_values,shipped_count)
                 for _, key in ipairs({ 'weapons', 'stratagems', 'vehicles', 'attachments', 'throwables', 'passives', 'tables', 'ui_errors' }) do
                     values[#values+1] = string.format('"%s":%d', key, tonumber(state[key]) or 0)
                 end
-                file:write('{"phase":"ready","language":"', state.lang(), '","draw_items":', tostring(shim.draw_items or 0), ',"armor_choices":',tostring(#AR.list),',"ammo_choices":',tostring(#choices),',"unicode_search":true,"install_feedback":true,"custom_input":true,"ammo_selection":true,"armor_value_edit":true,"armor_write_preflight":true,"backup_migration":true,"migration_fallback":true,"core_320_features":true,"theme_switch":true,"fixed_left_pages":true,"no_redundant_shortcuts":true,"pure_black_modal":true,"stationary_shroud":true,"official_write_flow":true,"official_multi_passive_write":true,"vanilla_armor_defaults":true,', table.concat(values, ','), '}')
+                file:write('{"phase":"ready","language":"', state.lang(), '","draw_items":', tostring(shim.draw_items or 0), ',"armor_choices":',tostring(#AR.list),',"ammo_choices":',tostring(#choices),',"unicode_search":true,"install_feedback":true,"custom_input":true,"ammo_selection":true,"armor_value_edit":true,"armor_write_preflight":true,"backup_migration":true,"migration_fallback":true,"core_320_features":true,"theme_switch":true,"fixed_left_pages":true,"no_redundant_shortcuts":true,"pure_black_modal":true,"stationary_shroud":true,"official_write_flow":true,"official_multi_passive_write":true,"vanilla_armor_defaults":true,"release_323_regressions":true,"reviewed_parameters":true,', table.concat(values, ','), '}')
                 file:close()
                 break
             end
@@ -702,7 +973,10 @@ end
 
 local ok, err = xpcall(main, debug.traceback)
 if not ok then
+    if eui then error(err) end
     log('error: ' .. tostring(err))
     if qa_output then local f=io.open(qa_output..'/failure.txt','wb');if f then f:write(tostring(err));f:close() end;os.exit(1)
     else shim.message_box('SHODAN Stat Editor Offline stopped:\n\n' .. tostring(err), 0x10) end
 end
+
+if eui then return err end
