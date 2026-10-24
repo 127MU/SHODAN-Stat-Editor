@@ -30,6 +30,7 @@ no longer works; SSEO replaces it. See [In-game version](#in-game-version).
 | Ammo | Magazine size, starting magazines, magazines from supply, max spare magazines, reload time, rounds per reload and reload allowed below (clip weapons, in-game version only) |
 | Handling | Recoil, spread, sway, ergonomics |
 | Heat | Overheat threshold, heat per shot / per second, cool-down time, heatsinks |
+| Loadout | Slot: list a primary weapon among the secondaries, or a secondary among the primaries |
 | Projectile swap | The projectile the weapon fires: pick another weapon's (by name, or type its id) |
 | Grenade swap | In-game version only: fire a throwable grenade, Dynamite or a throwable mine from a grenade launcher or pistol, the One-Two's launcher or the Grenadier Battlement (solo missions) |
 

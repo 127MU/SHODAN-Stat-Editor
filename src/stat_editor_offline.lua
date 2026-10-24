@@ -1162,6 +1162,7 @@ MOD.langs = {
       ['Limb health'] = '四肢生命值',
       ['Limb injury avoidance'] = '避免肢体受伤的几率',
       ['Load'] = '读取',
+      ['Loadout'] = '装备配置',
       ['Log file'] = '日志文件',
       ['Log file path copied.'] = '已复制日志文件路径。',
       ['Logs'] = '日志',
@@ -1569,6 +1570,10 @@ MOD.langs = {
       ['Silo'] = '发射井',
       ['Simo Iron Sights'] = '“西莫”机械瞄具',
       ['Slide speed / duration'] = '滑行速度 / 持续时间',
+      ['Slot (choice)'] = '栏位（选择）',
+      ['Slot: 1 primary or 3 secondary.'] = '栏位：1 主武器或 3 副武器。',
+      ['Slot: Primary'] = '栏位：主武器',
+      ['Slot: Secondary'] = '栏位：副武器',
       ['Slugger'] = '重炮手',
       ['Small Plasma Bolt'] = '小型等离子弹',
       ['Smoke'] = '烟雾弹',
@@ -1778,6 +1783,7 @@ MOD.langs = {
       ['Your values are not in the game yet: close the game, then Install.'] = '修改尚未写入游戏：请先关闭游戏，再点击“写入游戏”。',
       ['[Tutorial] Extraction'] = '【教学】撤离',
       ['a settings table moved; scanning again'] = '设置数据表已移动，正在重新扫描',
+      ['a slot is 1 (primary) or 3 (secondary)'] = '栏位为 1（主武器）或 3（副武器）',
       ['a table moved; scanning again'] = '数据表已移动，正在重新扫描',
       ['also in your loadout when you bring this one'] = '携带此战略配备时也会一并获得',
       ['also the second firing mode\'s shot (the same projectile)'] = '同样适用于第二种射击模式的弹丸（同一投射物）',
@@ -1831,6 +1837,7 @@ MOD.langs = {
       ['stage 1: uncharged shot, stages 2-3: charged shot'] = '第 1 阶段：未蓄力射击；第 2-3 阶段：蓄力射击',
       ['status effect'] = '状态效果',
       ['the armor passive file is not loaded'] = '未加载护甲被动数据文件',
+      ['the armory list it is in: 1 primary, 3 secondary'] = '它在军械库中所属的列表：1 主武器，3 副武器',
       ['the download helper (shodan_hash.dll) is missing'] = '缺少下载辅助库（shodan_hash.dll）',
       ['the game\'s tiers: 10 small arms, 20 HMG, 30 autocannon, 40 Strider, 50 orbital, 60 Hellbomb, 250 never'] = '游戏的分级：10 轻武器、20 重机枪、30 机炮、40 蹂躏者、50 轨道、60 地狱炸弹、250 不可摧毁',
       ['the shot fired from this heat on, and what it does to you'] = '从该热量值起发射的弹丸，以及它对你自己造成的效果',
@@ -3974,6 +3981,7 @@ MOD.langs = {
       ['Limb health'] = '四肢生命值',
       ['Limb injury avoidance'] = '避免肢體受傷的機率',
       ['Load'] = '讀取',
+      ['Loadout'] = '裝備配置',
       ['Log file'] = '日誌檔案',
       ['Log file path copied.'] = '已複製日誌檔案路徑。',
       ['Logs'] = '日誌',
@@ -4381,6 +4389,10 @@ MOD.langs = {
       ['Silo'] = '發射井',
       ['Simo Iron Sights'] = '「西莫」機械瞄具',
       ['Slide speed / duration'] = '滑行速度 / 持續時間',
+      ['Slot (choice)'] = '欄位（選擇）',
+      ['Slot: 1 primary or 3 secondary.'] = '欄位：1 主武器或 3 副武器。',
+      ['Slot: Primary'] = '欄位：主武器',
+      ['Slot: Secondary'] = '欄位：副武器',
       ['Slugger'] = '制裁者散彈槍',
       ['Small Plasma Bolt'] = '小型電漿彈',
       ['Smoke'] = '煙霧彈',
@@ -4590,6 +4602,7 @@ MOD.langs = {
       ['Your values are not in the game yet: close the game, then Install.'] = '修改尚未寫入遊戲：請先關閉遊戲，再點選「寫入遊戲」。',
       ['[Tutorial] Extraction'] = '【教學】撤離',
       ['a settings table moved; scanning again'] = '設定資料表已移動，正在重新掃描',
+      ['a slot is 1 (primary) or 3 (secondary)'] = '欄位為 1（主武器）或 3（副武器）',
       ['a table moved; scanning again'] = '資料表已移動，正在重新掃描',
       ['also in your loadout when you bring this one'] = '攜帶此戰略配備時也會一併獲得',
       ['also the second firing mode\'s shot (the same projectile)'] = '同樣適用於第二種射擊模式的射彈（同一投射物）',
@@ -4643,6 +4656,7 @@ MOD.langs = {
       ['stage 1: uncharged shot, stages 2-3: charged shot'] = '第 1 階段：未蓄力射擊；第 2-3 階段：蓄力射擊',
       ['status effect'] = '狀態效果',
       ['the armor passive file is not loaded'] = '未載入護甲被動資料檔案',
+      ['the armory list it is in: 1 primary, 3 secondary'] = '它在軍械庫中所屬的列表：1 主武器，3 副武器',
       ['the download helper (shodan_hash.dll) is missing'] = '缺少下載輔助庫（shodan_hash.dll）',
       ['the game\'s tiers: 10 small arms, 20 HMG, 30 autocannon, 40 Strider, 50 orbital, 60 Hellbomb, 250 never'] = '遊戲的分級：10 輕武器、20 重機槍、30 機炮、40 蹂躪者、50 軌道、60 地獄炸彈、250 不可摧毀',
       ['the shot fired from this heat on, and what it does to you'] = '從該熱量值起發射的射彈，以及它對你自己造成的效果',
@@ -6730,6 +6744,7 @@ MOD.langs = {
       ['Limb health'] = 'Здоровье конечностей',
       ['Limb injury avoidance'] = 'Защита конечностей от ранений',
       ['Load'] = 'Загрузить',
+      ['Loadout'] = 'Снаряжение',
       ['Log file'] = 'Файл журнала',
       ['Log file path copied.'] = 'Путь к файлу журнала скопирован.',
       ['Logs'] = 'Журналы',
@@ -7104,6 +7119,10 @@ MOD.langs = {
       ['Sightliner'] = '«Целенаводчик»',
       ['Silo'] = 'Шахта',
       ['Slide speed / duration'] = 'Скорость / длительность скольжения',
+      ['Slot (choice)'] = 'Слот (выбор)',
+      ['Slot: 1 primary or 3 secondary.'] = 'Слот: 1 основное или 3 дополнительное.',
+      ['Slot: Primary'] = 'Слот: основное',
+      ['Slot: Secondary'] = 'Слот: дополнительное',
       ['Slugger'] = '«Крушила»',
       ['Small Plasma Bolt'] = 'Малый заряд плазмы',
       ['Smoke'] = '«Дымовая»',
@@ -7288,6 +7307,7 @@ MOD.langs = {
       ['Your changes are off: turn them on in Settings to edit.'] = 'Ваши изменения выключены: включите их в Настройках, чтобы редактировать.',
       ['Your changes are off: turn them on in Settings to load a preset'] = 'Ваши изменения выключены: включите их в Настройках, чтобы загрузить пресет',
       ['Your values are not in the game yet: close the game, then Install.'] = 'Ваши значения ещё не в игре: закройте игру и нажмите «Установить в игру».',
+      ['a slot is 1 (primary) or 3 (secondary)'] = 'слот: 1 (основное) или 3 (дополнительное)',
       ['also the second firing mode\'s shot (the same projectile)'] = 'также выстрел второго режима (тот же снаряд)',
       ['clip'] = 'обойма',
       ['damage: the same as the other rounds (Damage above)'] = 'урон: как у остальных выстрелов («Урон» выше)',
@@ -7306,6 +7326,7 @@ MOD.langs = {
       ['speedloader'] = 'скорозарядник',
       ['stage 1: partial charge shot, stages 2-3: full charge shot'] = 'этап 1: выстрел с частичным зарядом, этапы 2-3: выстрел с полным зарядом',
       ['stage 1: uncharged shot, stages 2-3: charged shot'] = 'этап 1: выстрел без заряда, этапы 2-3: заряженный выстрел',
+      ['the armory list it is in: 1 primary, 3 secondary'] = 'в каком списке арсенала: 1 основное, 3 дополнительное',
       ['the game\'s tiers: 10 small arms, 20 HMG, 30 autocannon, 40 Strider, 50 orbital, 60 Hellbomb, 250 never'] = 'уровни игры: 10 стрелковое, 20 тяжелый пулемет, 30 автопушка, 40 Страйдер, 50 орбитальный удар, 60 Адская бомба, 250 никогда',
       ['the shot fired from this heat on, and what it does to you'] = 'выстрел начиная с этого нагрева и его действие на вас',
       ['the spare ammo in its backpack; read when the backpack is called in'] = 'запас боеприпасов в его рюкзаке; читается при вызове рюкзака',
@@ -9418,6 +9439,7 @@ local function write_field(f, value)
     if not entry then return false, 'table not found' end
     if read_field(f) == nil then return false, 'current value implausible' end
     if type(value) == 'number' and not MOD.parse_number(value) then return false, 'not a finite number' end
+    if f.allowed and not f.allowed[value] then return false, f.allowed.why end   -- (the Slot row: 1 or 3)
     default_of(f)
     if f.most and value > f.most then value = f.most end
     local bytes, done = nil, {}
@@ -12092,6 +12114,9 @@ local function resolve(weapon)
         end
     end
     resolve_gun(weapon, weapon.key)
+    if not weapon.mounted and (weapon.slot == 'Primary' or weapon.slot == 'Secondary') then
+        MOD.slot.row(weapon)
+    end
 end
 
 -- The shots a weapon fires besides its projectile, read as the game had them: a second ammo type
@@ -13023,6 +13048,70 @@ local function apply_config(deadline)
     return true
 end
 
+-- ---------------------------------------------------------------- loadout slot (issue #82)
+-- The loadout list (LoadoutEntryComponentData): keyed by entity, records of 32 bytes (+0 id, +4 type:
+-- 1 primary, 2 support, 3 secondary, 4 throwable, 5 gear, 6 backpack), more records than buckets, so its
+-- bucket count is the one whose keys all sit near their home bucket (key % count). The type is the armory
+-- slot the weapon is listed in: the Slot row moves it (primary, secondary or support).
+TYPES.loadout = 0x4F2CF417
+KINDS[TYPES.loadout] = { name = 'loadout', stride = 32 }
+
+KINDS[TYPES.loadout].parse = function(blob, stride)
+    local total, count, live, keys, found = #blob, 0, 0, {}, nil
+    while count * 16 + 16 <= total do
+        local at = count * 16
+        local slot, pad = u32(blob, at + 8), u32(blob, at + 12)
+        if pad ~= 0 or slot > 100000 then break end
+        local lo, hi = u32(blob, at), u32(blob, at + 4)
+        count = count + 1
+        if lo ~= 0 or hi ~= 0 then live = live + 1; keys[live] = { count - 1, lo, hi, slot } end
+        local records = math.floor((total - count * 16) / stride)
+        if count == 2 * live and count >= 64 and records > 0 then   -- (a few buckets always sit near home)
+            local fits = true
+            for k = 1, live do
+                local b = keys[k]
+                local home = ((b[3] % count) * (4294967296 % count) + b[2]) % count
+                if (b[1] - home) % count >= 16 or b[4] >= records then fits = false; break end
+            end
+            if fits then
+                if found then return nil, 'two layouts fit' end
+                found = count
+            end
+        end
+    end
+    if not found then return nil, 'no layout fits' end
+    local index, entries = {}, 0
+    for k = 0, found - 1 do
+        local key = blob:sub(k * 16 + 1, k * 16 + 8)
+        if key ~= string.rep('\0', 8) and not index[key] then
+            index[key] = found * 16 + u32(blob, k * 16 + 8) * stride
+            entries = entries + 1
+        end
+    end
+    return index, entries
+end
+
+-- Primary and secondary weapons only: a support weapon put in another slot is not listed there (the armory
+-- lists the weapons your account owns, and support weapons come with their stratagem; tested 2026-10-24).
+MOD.slot = { NAMES = { [1] = 'Primary', [3] = 'Secondary' } }
+function MOD.slot.row(weapon)
+    local t = tables[TYPES.loadout]
+    local off = t and t.index[weapon.key]
+    if not off then return end
+    local f = field_at(TYPES.loadout, off + 4, 'u32', 100000)
+    if not MOD.slot.NAMES[default_of(f) or 0] then return end
+    f.allowed = { [1] = true, [3] = true, why = 'a slot is 1 (primary) or 3 (secondary)' }
+    local row = add_row(weapon, 'Loadout', 'slot', 'Slot (choice)', 'u32', { part('slot', TYPES.loadout, off + 4, 'u32', 100000) }, 1, 3, 2, 2)
+    row.choice = 'slot'
+    row.label_of = function() return 'Slot: ' .. (MOD.slot.NAMES[read_field(f) or 0] or '?') end
+    row.note = 'the armory list it is in: 1 primary, 3 secondary'
+    -- at the bottom, above the projectile swap
+    table.remove(weapon.rows)
+    local at = #weapon.rows + 1
+    for k, r in ipairs(weapon.rows) do if r.section == 'Projectile swap' then at = k; break end end
+    table.insert(weapon.rows, at, row)
+end
+
 -- ---------------------------------------------------------------- scan client
 -- Once the tables are in: resolve every weapon, then apply the saved values, a slice per frame.
 local progress = nil
@@ -13555,6 +13644,20 @@ local function change(row, delta_sign, big, exact)
                 set_override(weapon, p, unless_default(target, default_of(p.field)))
             end
             if not ok then ui.message = { text = why, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'slot' then   -- primary (1) or secondary (3)
+            local target = exact and math.floor(exact + 0.5) or (current == 1 and 3 or 1)
+            if not MOD.slot.NAMES[target] then
+                ui.message = { text = 'Slot: 1 primary or 3 secondary.', till = api.now() + 4 }
+                return
+            end
+            if target == current then return end
+            local p = row.parts[1]
+            local ok, err = write_field(p.field, target)
+            if ok then set_override(weapon, p, unless_default(target, default_of(p.field)))
+            else ui.message = { text = err, till = api.now() + 4 } end
             ui.version = ui.version + 1
             return
         end
