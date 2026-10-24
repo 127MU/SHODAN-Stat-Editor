@@ -37,6 +37,7 @@
 namespace app {
 DslAppConfig& mutableConfig();
 namespace {
+void requestWindowClose(GLFWwindow* window){glfwSetWindowShouldClose(window,GLFW_TRUE);glfwPostEmptyEvent();}
 struct ManagedMod {std::filesystem::path path;std::string name,description;bool enabled=true;std::vector<shodan::ModOption> options;std::vector<int> choices;};
 struct ModImportResult {std::vector<ManagedMod> mods;std::vector<std::string> errors;};
 struct McpResult {Value value;bool updateMods=false;std::vector<ManagedMod> mods;};
@@ -65,7 +66,7 @@ struct Model {
  bool groupOpen=false,armorTargetOpen=false;
  bool started=false,dark=false,onlyChanged=false,busy=false,presetsExpanded=false,weaponPresetOpen=false;
  std::map<std::string,int> presetSlots;
- int fullPreset=0,rowsRevision=0;
+ int fullPreset=0,rowsRevision=0,savedPage=-1;bool savedEnemyMode=false;std::map<std::string,std::string> lastSelections;
  std::string presetName;
  int page=0,sub=0,enemySub=0,preset=1,group=0,armorTarget=999,armorDetail=-1,choiceRow=0,codeRow=0;
  std::vector<int> codeArrows;Value tweaks;bool enemyMode=false;
@@ -230,13 +231,19 @@ void markRecent(){
  if(m.recent.size()>40)m.recent.resize(40);
  std::ofstream file(profile()/"recent.txt");for(const auto& id:m.recent)file<<id<<'\n';
 }
+std::string currentTab(){return m.page==13?"ArmorWeight":m.page==11?enemyKeys[m.enemySub]:m.page==12?"Boosters":m.page==10?"Helldiver":m.page==0?equipKeys[m.sub]:categories[std::min(m.page,5)];}
+void saveNavigation(){
+ if(!m.backend)return;std::ofstream file(profile()/"last-view.txt");
+ file<<m.page<<' '<<m.sub<<' '<<m.enemySub<<' '<<m.enemyMode<<'\n';
+ for(const auto& value:m.lastSelections)file<<std::quoted(value.first)<<' '<<std::quoted(value.second)<<'\n';
+}
 void select(const Value& item){
  if(!m.selected.empty())m.presetSlots[m.selected]=m.preset;
  m.backend->call("select",{item["id"]});m.selected=item["id"].str();m.selectedName=item["name"].str();m.preset=m.presetSlots.count(m.selected)?m.presetSlots[m.selected]:1;
- m.groupOpen=false;m.group=0;m.onlyChanged=false;m.detailScroll.set(0);refreshRows();updatePresetInfo();
+ m.groupOpen=false;m.group=0;m.onlyChanged=false;m.detailScroll.set(0);refreshRows();updatePresetInfo();m.lastSelections[currentTab()]=m.selected;saveNavigation();
 }
 void reloadList(bool chooseFirst=false){
- const auto tab=m.page==11?enemyKeys[m.enemySub]:m.page==12?std::string("Boosters"):m.page==10?std::string("Helldiver"):m.page==0?equipKeys[m.sub]:categories[std::min(m.page,5)];
+ const auto tab=m.page==13?std::string("ArmorWeight"):m.page==11?enemyKeys[m.enemySub]:m.page==12?std::string("Boosters"):m.page==10?std::string("Helldiver"):m.page==0?equipKeys[m.sub]:categories[std::min(m.page,5)];
  if(!m.catalog.count(tab))m.catalog[tab]=m.backend->call("items",{tab,""}).array;
  m.items.clear();
  for(const auto& item:m.catalog[tab]){
@@ -247,15 +254,19 @@ void reloadList(bool chooseFirst=false){
   return std::find(m.recent.begin(),m.recent.end(),a["id"].str())<std::find(m.recent.begin(),m.recent.end(),b["id"].str());
  });
  m.listScroll.set(0);m.listVisual=0;
- if(chooseFirst && !m.items.empty())select(m.items.front());
+ if(chooseFirst && !m.items.empty()){
+  auto remembered=m.lastSelections.find(tab);auto found=remembered==m.lastSelections.end()?m.items.end():std::find_if(m.items.begin(),m.items.end(),[&](const Value& item){return item["id"].str()==remembered->second;});
+  select(found==m.items.end()?m.items.front():*found);
+ }
 }
 void navigate(int page){safe([&]{
  if(page==8&&!m.modsUnlocked)return;
  if(page!=9){m.enemyMode=page==11;m.backend->call("editor_mode",{m.enemyMode});}
  m.animationClock=std::chrono::steady_clock::now();
  m.groupOpen=false;m.armorTargetOpen=false;m.page=page;m.pageProgress=0;m.armorDetail=-1;m.query.clear();m.recentOnly=false;m.error.clear();m.group=0;m.detailScroll.set(0);m.armorScroll.set(0);
- if(page<4||page==5||page==10||page==11||page==12)reloadList(true);
+ if(page<4||page==5||page==10||page==11||page==12||page==13)reloadList(true);
  if(page==6)m.tweaks=m.backend->call("tweaks");
+ saveNavigation();
 });}
 void searchEquipment(const std::string& query){safe([&]{
  if(m.page==0&&query=="mu7"){
@@ -679,6 +690,13 @@ void start(){
  std::ifstream f(profile()/"theme.txt");std::string s;f>>s;m.dark=s=="dark";
  {int pixels=18;std::ifstream font(profile()/"font-size.txt");font>>pixels;m.fontPixels=std::clamp(pixels,12,24);mutableConfig().uiScale(std::min(1.0f,110.4f/float(GetDpiForSystem()))*float(m.fontPixels)/16.0f);}
  {int mode=0;std::ifstream sidebar(profile()/"sidebar-mode.txt");sidebar>>mode;m.sidebarMode=std::clamp(mode,0,2);}
+ {
+  std::ifstream view(profile()/"last-view.txt");int page=-1,sub=0,enemy=0;bool scope=false;
+  if(view>>page>>sub>>enemy>>scope){
+   if((page>=0&&page<=6)||page==9||page==10||page==11||page==12||page==13){m.savedPage=page;m.sub=std::clamp(sub,0,3);m.enemySub=std::clamp(enemy,0,4);m.savedEnemyMode=scope;}
+   std::string tab,id;while(m.lastSelections.size()<32&&view>>std::quoted(tab)>>std::quoted(id))if(id.size()==16)m.lastSelections[tab]=id;
+  }
+ }
  m.loading=std::async(std::launch::async,[]{return std::make_unique<Backend>();});m.started=true;
 }
 void tick(){
@@ -717,7 +735,7 @@ void tick(){
   m.backend=m.loading.get();m.armor=m.backend->initialArmor;
   m.armorValues=m.backend->initialArmorValues;m.catalog=m.backend->initialCatalog;
   m.armorGroups=m.backend->property("armor_groups").array;m.gamePath=m.backend->property("game").str();
-  reloadList(true);
+  if(m.savedPage>=0){m.enemyMode=m.savedEnemyMode;m.backend->call("editor_mode",{m.enemyMode});int page=m.savedPage;m.savedPage=-1;navigate(page);}else reloadList(true);
   m.message="数据已载入 · 修改后点击「写入游戏」生效";
  });}
  if(m.reviewWork.valid()&&m.reviewWork.wait_for(0ms)==std::future_status::ready){
@@ -796,12 +814,13 @@ void field(eui::Ui& ui,const Value& r,float y,float w,bool armor=false){
  }else if(flag){
   button(ui,"flag."+id,r["value"].number>=0.5?"已启用":"已关闭",inputX,y+40,w-112,[n,r]{commit(n,r["value"].number>=0.5?"0":"1");},r["value"].number>=0.5);
  }else{
-  components::input(ui,"input."+id).position(inputX,y+40).size(inputW,40).theme(theme()).style(inputStyle()).fontSize(17)
+  auto valueStyle=inputStyle();if(r["faction_only"].yes())valueStyle.text={0.18f,0.48f,0.95f,1};
+  components::input(ui,"input."+id).position(inputX,y+40).size(inputW,40).theme(theme()).style(valueStyle).fontSize(17)
   .value(m.edits.count(id)?m.edits[id]:raw).onChange([id](const std::string& v){m.edits[id]=v;})
   .onEnter(apply).build();
   button(ui,"apply."+id,"应用",w-156,y+40,64,apply,true);
  }
- button(ui,"reset."+id,"恢复",w-80,y+40,64,reset);
+ if(r["faction_only"].yes())text(ui,"faction.source."+id,"阵营设置",w-80,y+48,70,26,12,true);else button(ui,"reset."+id,"恢复",w-80,y+40,64,reset);
  if(!r["inline_note"].str().empty())text(ui,"note."+id,r["inline_note"].str(),18,y+(shared.empty()?85:115),w-36,24,13,true);
  if(!shared.empty()){
   sharedHints[id]={r["label"].str(),shared};
@@ -863,7 +882,7 @@ void groupedBrowser(eui::Ui& ui,float left,float height){
  }).build();
 }
 void parameterPage(eui::Ui& ui,float w,float h){
- const bool player=m.page==10;
+ const bool player=m.page==10||m.page==13;
  const float left=w<850?220.0f:250.0f,gap=28,detailX=player?0:left+gap,detailW=w-detailX;
  if(!player){
  ui.stack("equipment.browser").size(left,h).content([&]{
@@ -899,6 +918,7 @@ void parameterPage(eui::Ui& ui,float w,float h){
  ui.stack("details").position(detailX,0).size(detailW,h).opacity(0.7f+detailEnter*0.3f).translateY((1-detailEnter)*6).content([&]{
   if(m.selected.empty()){text(ui,"no.selection","请先选择一项装备",24,30,detailW-48);return;}
   text(ui,"details.title",m.selectedName,0,4,detailW-128,40,25);
+  if(m.page==13)button(ui,"armor.weights.back","返回护甲被动",detailW-270,0,140,[]{navigate(4);});
   button(ui,"reset.item","重置本项",detailW-118,0,118,[]{m.confirm="reset";});
   text(ui,"details.subtitle","直接输入数值，按 Enter 或点应用保存；恢复始终使用游戏原始值。",0,45,detailW,28,13,true);
   std::vector<std::string> groups={"全部参数"};for(const auto& r:m.rows){auto s=r["section"].str();if(!s.empty()&&std::find(groups.begin(),groups.end(),s)==groups.end())groups.push_back(s);}
@@ -954,7 +974,8 @@ void parameterPage(eui::Ui& ui,float w,float h){
 }
 void armorPage(eui::Ui& ui,float w,float h){
  panel(ui,"armor.profile.panel",0,0,w,102);
- text(ui,"armor.profile.title","应用范围与叠加方式",20,12,w-40,26,15,true);
+ text(ui,"armor.profile.title","应用范围与叠加方式",20,12,w-200,26,15,true);
+ button(ui,"armor.weights.open","护甲重量",w-152,6,132,[]{navigate(13);},false,32);
  const auto& groups=m.armorGroups;std::vector<std::string> labels;int selected=0;
  for(size_t i=0;i<groups.size();++i){int id=groups[i].integer();std::string s=id==999?"所有护甲":"被动 #"+std::to_string(id);for(const auto& a:m.armor)if(a["id"].integer()==id)s=a["zh"].str();labels.push_back(s);if(id==m.armorTarget)selected=int(i);}
  if(!m.busy)m.armorProfileView=m.backend->call("armor_profile",{m.armorTarget});
@@ -1241,10 +1262,12 @@ void reviewDialog(eui::Ui& ui,const eui::Screen& screen){
  const bool install=m.reviewAction=="install",importing=m.reviewAction.rfind("import-",0)==0;
  const auto& entries=m.reviewData["entries"].array;const auto& files=m.reviewData["files"].array;
  const auto& problems=m.reviewData["problems"].array;
+ const auto& warnings=m.reviewData["warnings"].array;
+ const float warningHeight=warnings.empty()?0:112;
  const bool sharedRows=std::any_of(entries.begin(),entries.end(),[](const Value& r){return !r["shared"].array.empty();});
  const float rowPitch=sharedRows?116.0f:88.0f;
  const float fileExtra=install&&m.reviewFilesOpen?std::min(160.0f,float(files.size()*22+8)):0;
- const float desired=!problems.empty()?520.0f:m.reviewLoading?300.0f:(install?166.0f:144.0f)+104+std::max(70.0f,float(entries.size())*rowPitch)+fileExtra;
+ const float desired=!problems.empty()?520.0f:m.reviewLoading?300.0f:(install?166.0f:144.0f)+104+warningHeight+std::max(70.0f,float(entries.size())*rowPitch)+fileExtra;
  const float h=std::min(screen.height-64,std::min(760.0f,std::max(300.0f,desired)));
  components::dialog(ui,"review.dialog").theme(theme()).style(dialogStyle()).screen(screen.width,screen.height).size(w,h)
  .open(m.reviewOpen).zIndex(150).transition(motion()).onOpenChange([](bool open){if(!open&&!m.reviewLoading)m.reviewOpen=false;})
@@ -1260,7 +1283,7 @@ void reviewDialog(eui::Ui& ui,const eui::Screen& screen){
    components::scrollView(ui,"review.errors").theme(theme()).position(24,126).size(w-48,h-202).contentKey(reason).content([&](eui::Ui& content,float cw,float vh){
     const float lines=std::ceil(labelWidth(reason)/cw)+8;text(content,"review.error.body",reason,0,0,cw,std::max(vh,lines*22),15);
    }).build();
-   text(ui,"review.blocked","未写入游戏。请调整冲突 Mod 或选项后重新预览。",24,h-56,w-48,36,14,true);return;
+   text(ui,"review.blocked",install?"未写入游戏。请调整冲突 Mod 或选项后重新预览。":"预设尚未读取，当前修改已保留。请核对预设版本与参数。",24,h-56,w-48,36,14,true);return;
   }
   float top=144;
   if(install){
@@ -1274,6 +1297,13 @@ void reviewDialog(eui::Ui& ui,const eui::Screen& screen){
     top=166+fileHeight;
    }
   }else text(ui,"review.preset.name",m.reviewData["name"].str(),24,116,w-48,26,17);
+  if(!warnings.empty()){
+   text(ui,"review.compat.title","发现 "+std::to_string(warnings.size())+" 项失效参数，确认后仅读取有效项：",24,top,w-48,28,15);
+   std::string detail;for(const auto& warning:warnings)detail+=warning.str()+"\n";
+   components::scrollView(ui,"review.compat.scroll").theme(theme()).position(24,top+30).size(w-48,72).step(36).contentKey(detail)
+    .content([&](eui::Ui& content,float cw,float vh){const float lines=std::ceil(labelWidth(detail)/cw)+float(warnings.size())*2;text(content,"review.compat.body",detail,4,0,cw-8,std::max(vh,lines*22),13,true);}).build();
+   top+=warningHeight;
+  }
   const float viewHeight=std::max(80.0f,h-top-104);
   clampScroll(m.reviewScroll,m.reviewVisual,float(entries.size())*rowPitch-viewHeight);
   components::scrollView(ui,"review.scroll").theme(theme()).position(24,top).size(w-48,viewHeight)
@@ -1300,7 +1330,7 @@ void reviewDialog(eui::Ui& ui,const eui::Screen& screen){
   text(ui,"review.summary",problems.empty()?std::to_string(entries.size())+" 项数值或组合变化":problems.front().str(),24,h-90,w-48,34,14,!problems.empty());
   const bool allowed=problems.empty()&&(!install||!files.empty());
   components::button(ui,"review.accept").position(w-212,h-50).size(188,38).theme(theme(),true).radius(10).fontSize(16)
-   .text(install?"确认写入游戏":importing?"确认导入预设":"确认读取预设").disabled(!allowed).onClick(acceptReview).build();
+   .text(install?"确认写入游戏":importing?"确认导入预设":warnings.empty()?"确认读取预设":"确认读取有效项").disabled(!allowed).onClick(acceptReview).build();
   text(ui,"review.foot",importing?"不会写入游戏文件":install?"仅在确认后执行写入":"读取后仍需点击写入游戏才生效",24,h-45,w-260,28,13,true);
  }).build();
  components::dialog(ui,"preset.rename.dialog").theme(theme()).style(dialogStyle()).screen(screen.width,screen.height).size(560,244)
@@ -1444,18 +1474,24 @@ void qaTick(eui::Ui& ui){
    }else if(step==22){
     auto* children=ui.find("browser.group."+qaBrowserGroup+".children");if(!children||children->height.value<50||!qaAnimatedArrows.count("browser."+qaBrowserGroup))throw std::runtime_error("Vehicle subgroup did not animate open");
     capture(folder/"v4-vehicle-group-expanded.bmp");searchEquipment(qaBrowserLabel);if(m.items.size()<2)throw std::runtime_error("Vehicle search lost mounted weapons");navigate(6);
-   }else if(step==23){
+   }else if(step==23){navigate(4);
+   }else if(step==24){auto* open=ui.find("armor.weights.open.bg");if(!open||!open->onClick)throw std::runtime_error("Armor weight entry missing");open->onClick();
+   }else if(step==25){if(m.page!=13||m.rows.size()<100)throw std::runtime_error("Armor weight page missing");capture(folder/"v41-armor-weights.bmp");auto* choice=ui.find("choice.1.bg");if(!choice||!choice->onClick)throw std::runtime_error("Armor weight choice missing");choice->onClick();
+   }else if(step==26){if(m.choices.size()!=3)throw std::runtime_error("Armor weight choices invalid");capture(folder/"v41-weight-choice.bmp");auto* choice=ui.find("choice.item.2.bg");if(!choice||!choice->onClick)throw std::runtime_error("Heavy armor choice missing");choice->onClick();
+   }else if(step==27){if(m.rows.front()["value"].integer()!=2)throw std::runtime_error("Armor weight did not save");m.backend->call("reset",{1});navigate(9);openReview("load-full",1);
+   }else if(step==28){if(m.reviewData["warnings"].array.size()!=1||!m.reviewData["problems"].array.empty()||!ui.find("review.compat.title"))throw std::runtime_error("Legacy preset warning dialog missing");capture(folder/"v41-preset-compatibility.bmp");m.reviewOpen=false;navigate(6);
+   }else if(step==29){
     HWND window=glfwGetWin32Window(glfwGetCurrentContext());RECT rect{};GetWindowRect(window,&rect);
     auto hit=SendMessageW(window,WM_NCHITTEST,0,MAKELPARAM(rect.right-2,(rect.top+rect.bottom)/2));if(hit!=HTRIGHT)throw std::runtime_error("Frameless window cannot resize");
     auto* toggle=ui.find("settings.mcp.toggle.bg");if(!toggle||!toggle->onClick)throw std::runtime_error("MCP settings toggle missing");toggle->onClick();
     if(!m.mcp.enabled())throw std::runtime_error("MCP failed to start");
     std::ofstream(folder/"mcp-ready.json")<<shodan::jsonEncode(shodan::object({{"url",m.mcp.endpoint()},{"token",m.mcp.token()},{"player","4D1C334D294DFA97"}}));
-   }else if(step==24){if(!std::filesystem::exists(folder/"mcp-done.txt"))return;
+   }else if(step==30){if(!std::filesystem::exists(folder/"mcp-done.txt"))return;
     capture(folder/"mcp-settings.bmp");toggleMcp();if(m.mcp.enabled())throw std::runtime_error("MCP did not close");
     std::ofstream(folder/"report.txt")<<"Helldiver full-width category and original health, armor dropdown scrolling and final option, font slider at 22/24, small-window navigation, resize intermediate frames, native resize hit test, MCP enable/disable, enemy and booster categories, nine-arrow call-in modal, dark and light logo verified. No game writes.\n";
-    glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);
+    requestWindowClose(glfwGetCurrentContext());
    }++step;
-  }catch(const std::exception& e){capture(std::filesystem::u8path(target)/"failure.bmp");std::ofstream(std::filesystem::u8path(target)/"failure.txt")<<"MCP UI stage "<<step<<": "<<e.what();glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);}
+  }catch(const std::exception& e){capture(std::filesystem::u8path(target)/"failure.bmp");std::ofstream(std::filesystem::u8path(target)/"failure.txt")<<"MCP UI stage "<<step<<": "<<e.what();requestWindowClose(glfwGetCurrentContext());}
   return;
  }
  static int stage=0;static bool smoothStarted=false;
@@ -1734,13 +1770,13 @@ void qaTick(eui::Ui& ui){
    report<<"Search (model, English, initials, recent), preset roundtrip and preview verified; parameter and equipment list smooth scroll intermediate positions verified; armor modal validates, saves, closes and retains its page.\n";
 
    if(!samples.empty())report<<"UI composition median="<<samples[samples.size()/2]<<" ms, p95="<<samples[std::min(samples.size()-1,size_t(samples.size()*0.95))]<<" ms; frames="<<samples.size()<<"\n";
-   glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);
+   requestWindowClose(glfwGetCurrentContext());
   }
   ++stage;
  }catch(const std::exception& e){
   std::ofstream(std::filesystem::path(target)/"failure.txt")<<"stage "<<stage<<": "<<e.what();
   capture(std::filesystem::path(target)/"failure.bmp");
-  glfwSetWindowShouldClose(glfwGetCurrentContext(),GLFW_TRUE);
+  requestWindowClose(glfwGetCurrentContext());
  }
 }
 
@@ -1751,7 +1787,14 @@ DslAppConfig& mutableConfig(){
  .textFont("C:/Windows/Fonts/msyh.ttc").iconFont("assets/Font Awesome 7 Free-Solid-900.otf")
  .iconPath("assets/icon.png").clearColor({0,0,0,1}).fps(120)
  .uiScale(std::min(1.0f,110.4f/float(GetDpiForSystem())))
- .onStart([]{installWindowResize();centerStartupWindow();glfwSetDropCallback(glfwGetCurrentContext(),receiveModDrop);})
+  .onStart([]{
+  auto* window=glfwGetCurrentContext();installWindowResize();centerStartupWindow();glfwSetDropCallback(window,receiveModDrop);
+  // Show and activate once at startup; later frames must not steal focus.
+  glfwShowWindow(window);glfwFocusWindow(window);app::requestUpdate();
+  const auto* vendor=glGetString(GL_VENDOR);const auto* renderer=glGetString(GL_RENDERER);const auto* version=glGetString(GL_VERSION);
+  int width=0,height=0;glfwGetFramebufferSize(window,&width,&height);
+  std::fprintf(stderr,"[startup] Window visible=%d framebuffer=%dx%d OpenGL vendor=%s renderer=%s version=%s\n",int(IsWindowVisible(glfwGetWin32Window(window))),width,height,vendor?reinterpret_cast<const char*>(vendor):"unknown",renderer?reinterpret_cast<const char*>(renderer):"unknown",version?reinterpret_cast<const char*>(version):"unknown");std::fflush(stderr);
+ })
  .onShutdown([]{m.mcp.stop();if(m.mcpWork.valid())m.mcpWork.wait();if(m.modImport.valid())m.modImport.wait();if(m.operation.valid())m.operation.wait();if(m.reviewWork.valid())m.reviewWork.wait();if(m.loading.valid())m.loading.wait();m.backend.reset();});
  return c;
 }
@@ -1797,7 +1840,7 @@ void composeEditor(eui::Ui& ui,const eui::Screen& screen){
    .contentKey(std::to_string(m.page)+":"+std::to_string(menu.size())+":"+std::to_string(m.dark)+":"+std::to_string(compact)+":"+std::to_string(arrowAngle)).content([&](eui::Ui& content,float cw,float vh){
    content.stack("navigation.canvas").size(cw,float(menu.size()*48)).content([&]{
    for(size_t i=0;i<menu.size();++i){auto item=menu[i];
-   components::button(content,"nav."+item.id).position(12,i*48).size(cw-24,40).theme(theme(),m.page==item.value)
+   components::button(content,"nav."+item.id).position(12,i*48).size(cw-24,40).theme(theme(),m.page==item.value||(m.page==13&&item.value==4))
     .text(compact?"":item.label).icon(compact&&item.value==7?0:item.icon).iconSize(16).fontSize(15).radius(10)
     .shadow(0,0,0,{0,0,0,0}).transition(motion()).onClick([item]{if(!m.backend||m.busy)return;if(item.value==7){m.presetsExpanded=!m.presetsExpanded;return;}navigate(item.value);}).build();
    if(auto* root=content.find("nav."+item.id)){root->transition=motion();root->transition.properties=core::AnimProperty::Frame;}
@@ -1810,7 +1853,7 @@ void composeEditor(eui::Ui& ui,const eui::Screen& screen){
   }).build();
   button(ui,"nav.theme",compact?"◐":m.dark?"浅色模式":"纯黑模式",12,screen.height-64,nav-24,[]{m.dark=!m.dark;saveTheme();});
  }).build();
- const std::string pageName=m.page==11?"敌人编辑":m.page==12?"强化增益":m.page==10?"潜兵数值":m.page==8?"Mod 管理":m.page==9?(m.enemyMode?"敌人难度预设":"全局预设"):names[std::min(m.page,6)];
+ const std::string pageName=m.page==13?"护甲重量":m.page==11?"敌人编辑":m.page==12?"强化增益":m.page==10?"潜兵数值":m.page==8?"Mod 管理":m.page==9?(m.enemyMode?"敌人难度预设":"全局预设"):names[std::min(m.page,6)];
  const bool smallHeader=bodyW<650;
  text(ui,"page.heading",pageName,bodyX,22,std::max(100.0f,bodyW-(smallHeader?120:448)),38,26);
  if(!smallHeader)text(ui,"page.subtitle",m.page==4?"被动组合与数值分层管理":m.page>=6?"按工作流程分类管理，保持编辑区清晰":"选择装备，再编辑分组参数",bodyX,66,bodyW-320,28,14,true);
@@ -1827,6 +1870,7 @@ void composeEditor(eui::Ui& ui,const eui::Screen& screen){
   if(m.page==11){const float width=std::min(150.0f,(bodyW-32)/5);for(int i=0;i<5;++i)button(ui,"enemy.kind."+std::to_string(i),enemyNames[i],bodyX+i*(width+8),smallHeader?140:104,width,[i]{m.enemySub=i;safe([]{reloadList(true);});},m.enemySub==i);top=smallHeader?194:158;}
   ui.stack("page.body").position(bodyX,top).size(bodyW,screen.height-top-68).disabled(m.busy||m.operationResult||!m.confirm.empty()||m.armorDetail>=0||m.choiceRow!=0||m.codeRow!=0||m.reviewOpen||m.renameId>=0||sharedView.open||m.modInfoOpen||m.modOptionsIndex>=0||m.hiddenFeaturePrompt).opacity(0.75f+0.25f*(1-(1-m.pageProgress)*(1-m.pageProgress))).translateY((1-m.pageProgress)*8).content([&]{
    if(m.page==4)armorPage(ui,bodyW,screen.height-top-68);
+   else if(m.page==13)parameterPage(ui,bodyW,screen.height-top-68);
    else if(m.page==8)modPage(ui,bodyW,screen.height-top-68);
    else if(m.page==6)settingsPage(ui,bodyW,screen.height-top-68);
    else if(m.page==9)fullPresets(ui,bodyW,screen.height-top-68);
@@ -1909,6 +1953,8 @@ void windowControl(eui::Ui& ui,const char* id,unsigned int icon,float x,std::fun
  .shadow(0,0,0,{0,0,0,0}).transition(motion()).onClick(std::move(action)).build();
 }
 void compose(eui::Ui& ui,const eui::Screen& screen){
+ static bool firstComposition=true;
+ if(firstComposition){std::fprintf(stderr,"[startup] First UI composition: %.0fx%.0f\n",screen.width,screen.height);std::fflush(stderr);firstComposition=false;}
  UiFrameSample frameSample;
  static float width=0,height=0,vx=0,vy=0;
  static auto last=std::chrono::steady_clock::now();auto now=std::chrono::steady_clock::now();float dt=std::chrono::duration<float>(now-last).count();last=now;
@@ -1928,7 +1974,20 @@ void compose(eui::Ui& ui,const eui::Screen& screen){
   if(e.button==eui::PointerButton::Left){ReleaseCapture();SendMessageW(glfwGetWin32Window(window),WM_NCLBUTTONDOWN,HTCAPTION,0);}
  }).build();
  windowControl(ui,"window.minimize",0xF068,screen.width-116,[window]{glfwIconifyWindow(window);});
- windowControl(ui,"window.close",0xF00D,screen.width-64,[window]{glfwSetWindowShouldClose(window,GLFW_TRUE);});
+ windowControl(ui,"window.close",0xF00D,screen.width-64,[window]{requestWindowClose(window);});
+ // Smoke mode keeps the normal startup path (no SHODAN_EUI_QA or backend test shortcuts).
+ if(const char* folder=std::getenv("SHODAN_STARTUP_SMOKE")){
+  static auto readyAt=std::chrono::steady_clock::time_point{};
+  if(m.backend&&!m.items.empty()&&m.error.empty()){
+   if(readyAt==std::chrono::steady_clock::time_point{})readyAt=std::chrono::steady_clock::now();
+   if(std::chrono::steady_clock::now()-readyAt>std::chrono::seconds(1)){
+    const auto output=std::filesystem::u8path(folder);capture(output/"startup-ready.bmp");
+    std::ofstream(output/"startup-report.txt")<<"normal startup, rendered equipment list, backend ready, visible="<<IsWindowVisible(glfwGetWin32Window(window))<<" minimized="<<IsIconic(glfwGetWin32Window(window))<<" game_writes=0\n";
+    requestWindowClose(window);
+   }else app::requestUpdate();
+  }
+ }
+
 }
 
 }

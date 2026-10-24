@@ -89,7 +89,7 @@ local function main()
     local selected_theme=theme_file and theme_file:read('*a') or 'light'
     if theme_file then theme_file:close() end
     shim.set_theme(selected_theme:match('dark') and 'dark' or 'light')
-    shim.open('SHODAN 数值编辑器 4.0.0', saved_place())
+    shim.open('SHODAN 数值编辑器 4.1.0', saved_place())
     shim.pump()
     local migrated = I.migrate()
     if migrated then log('copied ' .. migrated .. ' files from the CowboyBingus folder') end
@@ -211,7 +211,7 @@ local function main()
     ARM.tr=state.tr;ARM.transition=shim.transition
     state.open_armor = AR.show
     local build = U.build(here)   -- app/build.txt: version, commit, channel
-    shim.set_title('SHODAN 数值编辑器 4.0.0')
+    shim.set_title('SHODAN 数值编辑器 4.1.0')
     -- the host's own text in the panel's language, drawn with its font
     local function tr(text)
         if type(state.tr)~='function' then return text end
@@ -489,14 +489,24 @@ local function main()
         for name,data in pairs(shipped or {}) do if mod_management_enabled or not managed[name] then writes[name]=data end end
         if not next(writes) then write_succeeded=true;say('The game\'s own files are already in place.', GOOD); return end
         busy('Restoring the game\'s files...')
-        local done, why = I.write_files(game, writes, originals)
+        local names = {}
+        for name in pairs(writes) do names[#names + 1] = name end
+        local done, why = I.write_files(game, writes, originals, true)
         bar.busy = nil
         if not done then say('Not restored: ' .. tostring(why), WARN); return end
         write_succeeded=true
-        for name in pairs(writes) do ours[name] = false end
+        -- files another tool changed since: left as they are (theirs now); files another mod had changed before
+        -- this editor: back to that mod's version, which Steam's file check replaces (issue #90)
+        local modded = 0
+        for _, name in ipairs(names) do
+            ours[name] = false
+            if writes[name] and D.modded[name] then modded = modded + 1 end
+        end
+        for _, name in ipairs(why) do log('restore skipped ' .. name .. ': another tool changed it since') end
         bar.base = nil
         log('restored the originals')
-        say('The game\'s own files are back. Your values stay saved here (Install puts them in again).', GOOD)
+        say('The game\'s files are back as they were before this editor. Your values stay saved here (Install puts them in again).'
+            .. (modded > 0 and string.format(' %d of them still hold another mod\'s changes: Steam\'s "Verify integrity of game files" puts back the game\'s own.', modded) or ''), GOOD)
     end
 
     local function dispatch(action)

@@ -56,6 +56,13 @@ local labels={
 local lower={};for k,v in pairs(labels) do lower[k:lower()]=v end
 local M={}
 function M.translate(text,recurse)
+ local restored="The game's files are back as they were before this editor. Your values stay saved here (Install puts them in again)."
+ if text:sub(1,#restored)==restored then
+  local suffix=text:sub(#restored+1);local count=suffix:match('^ (%d+) of them still hold another mod')
+  return '游戏文件已恢复到本编辑器写入之前的状态。修改值仍保留，重新写入即可生效。'..(count and ('其中 '..count..' 个文件仍包含其他 Mod 的改动，可通过 Steam 验证游戏文件恢复原版。') or suffix)
+ end
+ local changed=text:match('^another tool changed (.-) after this editor opened%.')
+ if changed then return '编辑器启动后，其他工具又修改了这些文件：'..changed..'。请关闭并重新打开编辑器后再写入。' end
  local value=labels[text] or lower[text:lower()];if value then return value end
  local category=text:match('(%a[%a ]-) stratagem %(')
  if category then

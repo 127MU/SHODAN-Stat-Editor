@@ -103,6 +103,38 @@ class DesktopFeaturesTests(unittest.TestCase):
         assert(#preview[1].shared==1 and preview[1].shared[1].id==OTHER)
         another.rows={};assert(#F.shared(w,{part})==0,'stale references survived ammunition change')
         ''')
+    def test_saved_legacy_preset_warns_without_discarding_valid_values(self):
+        self.lua.execute('''
+        P.full[1]={name='旧预设',values={{hash=H,id='damage',value=180},{hash=H,id='f018',value=3}}}
+        local p=B.preset_compare('full',1)
+        assert(p.accepted==1 and p.skipped==1 and #p.warnings==1)
+        assert(p.warnings[1]:find('f018',1,true) and p.entries[1].after=='180')
+        assert(field.value==70 and #P.full[1].values==2,'preview mutated values or discarded old fields')
+        local ok=pcall(B.preset_import,'full',0,F.encode('full','未知参数',nil,P.full[1].values))
+        assert(not ok,'portable import silently accepted an unknown parameter')
+        ''')
+    def test_all_unknown_saved_preset_cannot_clear_current_changes(self):
+        self.lua.execute('''
+        field.value=95;P.full[1]={name='失效预设',values={{hash=H,id='f018',value=3}}}
+        local ok,why=pcall(B.preset_compare,'full',1)
+        assert(not ok and tostring(why):find('以免清空当前修改',1,true))
+        assert(field.value==95 and #P.full[1].values==1)
+        local calls=0;local api={full_preset=function()calls=calls+1;field.value=70 end}
+        F.attach(api,C);assert(not pcall(api.full_preset,'load',1) and calls==0 and field.value==95)
+        ''')
+    def test_direct_load_checks_match_preview_for_each_preset_kind(self):
+        self.lua.execute('''
+        slots[1]={{id='damage',value=120},{id='f018',value=2}}
+        P.full[1]={name='全局',values={{hash=H,id='damage',value=180},{hash=H,id='f018',value=3}}}
+        local weaponCalls,fullCalls=0,0
+        local api={preset=function()weaponCalls=weaponCalls+1;return '装备' end,
+                   full_preset=function()fullCalls=fullCalls+1;return '全局' end}
+        F.attach(api,C)
+        assert(api.preset('load',1):find('已跳过 1 项',1,true) and weaponCalls==1)
+        assert(api.full_preset('load',1):find('已跳过 1 项',1,true) and fullCalls==1)
+        P.full[1].values={{hash=OTHER,id='f018',value=3}}
+        assert(not pcall(api.full_preset,'load',1) and fullCalls==1)
+        ''')
     def test_pending_preview_and_shared_field_conflict(self):
         self.lua.execute('''
         assert(#B.pending_preview()==0);field.value=95

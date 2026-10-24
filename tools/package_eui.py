@@ -43,8 +43,8 @@ def main():
         'version':VERSION,'core_version':CORE_VERSION,'core_commit':CORE_COMMIT,
         'ui_framework':'EUI-NEO','ui_commit':EUI_COMMIT,
         'write_flow':'official-3.2.0','transport':'in-process-luajit','mcp':'optional-loopback-http-session-only',
-        'feature_source':'https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor/releases/tag/v4.0.0',
-        'feature_commit':'c532f63aca6d7c341ffc873dfff07b74b93d75fd',
+        'feature_source':'https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor/releases/tag/v4.1.0',
+        'feature_commit':'ed8f8be397c6d5b816394034ee724572d9f14607',
         'game_writes_during_tests':False,
         'files':{n:hashlib.sha256((release/n).read_bytes()).hexdigest() for n in sorted(allowed)}
     }
