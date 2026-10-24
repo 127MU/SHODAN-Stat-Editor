@@ -14240,14 +14240,15 @@ local function draw(width, height)
         return regions
     end
 
-    -- the tabs, each as wide as its (translated) name, the row shrunk to end before the reset button
+    -- the tabs, each as wide as its (translated) name, the row shrunk to end before the reset button (offline the
+    -- reset button sits up on the title's line: the tabs get the whole row)
     do
         local tabs, widths, total = settings.shown_tabs(), {}, 0
         for i, tab in ipairs(tabs) do
             widths[i] = math.max(#tab * 7 + 8, width(tab, 16) + 18)
             total = total + widths[i]
         end
-        local room = W - 16 - 124 - 16 - 4 * (#tabs - 1)
+        local room = W - 16 - (MOD.offline and 0 or 124 + 16) - 4 * (#tabs - 1)
         local fit, tab_x = math.min(1, room / total), 16
         for i, tab in ipairs(tabs) do
             local w = math.floor(widths[i] * fit + 0.5)
@@ -14255,7 +14256,7 @@ local function draw(width, height)
             tab_x = tab_x + w + 4
         end
     end
-    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.booster and 'Reset booster' or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or 'Reset weapon', W - 16 - 124, 52, 124, 32, ui.weapon ~= nil and modified(ui.weapon))
+    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.booster and 'Reset booster' or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or 'Reset weapon', W - 16 - 124, MOD.offline and 10 or 52, 124, MOD.offline and 30 or 32, ui.weapon ~= nil and modified(ui.weapon))
 
     -- a list's scroll bar (the weapon list, or the full presets): a thin track between the list and the
     -- line that parts the panel's halves, shown when the list is longer than LIST_ROWS
