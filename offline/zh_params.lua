@@ -1,5 +1,6 @@
 -- Reviewed editor parameter labels. Internal coefficients are not presented as percentages.
 local labels={
+ ["Shield lifetime (s)"]="防护罩持续时间（秒）",
  ["Sentry lifetime (s)"]="炮塔持续时间（秒）",
  ["0 seconds = unlimited time"]="0 秒＝无限时间",
  ["Arc"]="电弧", ["Backpack"]="背包", ["Barrage"]="弹幕",

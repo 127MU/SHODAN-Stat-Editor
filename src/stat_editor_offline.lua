@@ -13799,6 +13799,16 @@ KINDS[TYPES.shield].rows = function(entry, hex)
         r('shield_rate', 'Recharge rate (per s)', 96, 1000000, 10, 50)
         r('shield_restart', 'Charge when it comes back', 100, 1000000, 10, 50)
     end
+    -- Ground relay only: its payload lifetime is independent of shield recharge.
+    if hex == 'ED13DDC480EC6910' then
+        local payload = tables[TYPES.hellpod_payload]
+        local life = payload and payload.index[hash_key(hex)]
+        if life then
+            local row = add_row(entry, 'Shield', 'shield_lifetime', 'Shield lifetime (s)', 'f32',
+                { part('shield_lifetime', TYPES.hellpod_payload, life + 4, 'f32', 1000000) }, 0, 86400, 1, 10)
+            row.inline_note = '0 seconds = unlimited time'
+        end
+    end
     for k, b in ipairs(of.bodies or {}) do
         local hat = ht and ht.index[hash_key(b[1])]
         if hat then
