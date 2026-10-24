@@ -215,6 +215,15 @@ local function main()
             say('Not installed: the armor passives could not be stacked (' .. tostring(why_not) .. '). Nothing was changed.', WARN)
             return
         end
+        local coded
+        coded, why_not = D.codes(changes, state.codes and state.codes(), log)
+        if not coded then
+            for _, c in ipairs(changes) do G.free(c.plain) end
+            bar.busy = nil
+            log('install stopped: stratagem codes: ' .. tostring(why_not))
+            say('Not installed: the stratagem codes could not be set (' .. tostring(why_not) .. '). Nothing was changed.', WARN)
+            return
+        end
         local writes, made, back = {}, 0, 0
         for k, c in ipairs(changes) do
             busy(string.format('Installing: preparing %s (%d of %d)...', c.name, k, #changes))

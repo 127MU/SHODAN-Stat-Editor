@@ -37,7 +37,7 @@ local RELOC = {
     end,
     [0x30EB6399] = function(P, size, rel)                                                     -- stratagems
         rel(0)
-        for r = 0, u32(P, 8) - 1 do rel(16 + r * 400 + 16); rel(16 + r * 400 + 152) end
+        for r = 0, u32(P, 8) - 1 do rel(16 + r * 400 + 16); rel(16 + r * 400 + 64); rel(16 + r * 400 + 152) end
     end,
 }
 
@@ -319,6 +319,97 @@ function M.stack(changes, stacks, log, own_off)
     G.free(c.plain)
     -- the edited floats moved: the other headers' reserved bytes salt the hash correction
     c.plain, c.n, c.bytes, c.floats = grown, #s, c.bytes + #s - n, {}
+    return true
+end
+
+-- ---------------------------------------------------------------- stratagem codes
+-- StratagemInfo (rows of 400 bytes, the stratagem type at +0) +64: its call-in code, the payload offset of a u32
+-- per arrow (1 up, 2 right, 3 down, 4 left), +72 the arrow count. A code no longer than the game's goes over its
+-- own; a longer one is appended to its table, which grows (by whole 16 bytes, so the tables after keep their
+-- alignment). codes: stratagem type -> { arrow, ... } (1 to 9: the game's code readers take 9 at most).
+-- Adds to / changes `changes` (from M.diff) in place.
+local STRATAGEM = 0x30EB6399
+function M.codes(changes, codes, log)
+    log, codes = log or function() end, codes or {}
+    if not next(codes) then return true end
+    local f
+    for _, file in pairs(M.files) do
+        for _, h in ipairs(G.headers(file.p, file.n)) do if h.type == STRATAGEM then f = file; break end end
+        if f then break end
+    end
+    if not f then return nil, 'the stratagem file is not loaded' end
+    local c
+    for _, x in ipairs(changes) do if x.name == f.name then c = x end end
+    if not c then
+        local plain, n = open_base(f.cipher)
+        if not plain then return nil, f.name .. ': ' .. tostring(n) end
+        c = { name = f.name, plain = plain, n = n, bytes = 0, floats = {}, hash = f.hash }
+        changes[#changes + 1] = c
+        table.sort(changes, function(x, y) return x.name < y.name end)
+    end
+    local p, n = c.plain, c.n
+    local hs = G.headers(p, n)
+    local out, grown, done = { ffi.string(p, hs[1].at) }, 0, 0
+    for k, h in ipairs(hs) do
+        local P = h.at + 24
+        local block_end = k < #hs and hs[k + 1].at or n
+        local extra = {}   -- longer codes, appended after the payload
+        if h.type == STRATAGEM and h.size >= 16 then
+            local rows = u32(p, P + 8)
+            for r = 0, rows - 1 do
+                local R = P + 16 + r * 400
+                local code = R + 400 <= P + h.size and codes[u32(p, R)]
+                local ok = type(code) == 'table' and #code >= 1 and #code <= 9
+                for _, a in ipairs(ok and code or {}) do ok = ok and (a == 1 or a == 2 or a == 3 or a == 4) end
+                if code and not ok then
+                    log('stratagem ' .. u32(p, R) .. ': code left as it is (1 to 9 arrows, 1-4 each)')
+                elseif code then
+                    local at, count = tonumber(ffi.cast(u64p, p + R + 64)[0]), u32(p, R + 72)
+                    if at < 16 + rows * 400 or at + count * 4 > h.size then
+                        log('stratagem ' .. u32(p, R) .. ': its code is not where it should be: left as it is')
+                    else
+                        if #code > count then   -- appended: 8-aligned, after the payload and earlier ones
+                            local size = h.size
+                            for _, s in ipairs(extra) do size = size + #s end
+                            local pad = (8 - size % 8) % 8
+                            extra[#extra + 1] = string.rep('\0', pad)
+                            at = size + pad
+                            ffi.cast(u64p, p + R + 64)[0] = at
+                            local arrows = {}
+                            for j, a in ipairs(code) do arrows[j] = string.char(a, 0, 0, 0) end
+                            extra[#extra + 1] = table.concat(arrows)
+                        else
+                            for j, a in ipairs(code) do ffi.cast('uint32_t *', p + P + at)[j - 1] = a end
+                        end
+                        ffi.cast('uint32_t *', p + R + 72)[0] = #code
+                        done = done + 1
+                        log(string.format('stratagem %d: code of %d arrows (was %d)%s', u32(p, R), #code, count,
+                            #code > count and ', appended to its table' or ''))
+                    end
+                end
+            end
+        end
+        if #extra > 0 then
+            local add = table.concat(extra)
+            add = add .. string.rep('\0', (16 - #add % 16) % 16)
+            local head = ffi.new('uint8_t[24]')
+            ffi.copy(head, p + h.at, 24)
+            ffi.cast('uint32_t *', head + 12)[0] = h.size + #add                                 -- block size
+            out[#out + 1] = ffi.string(head, 24) .. ffi.string(p + P, h.size) .. add
+            out[#out + 1] = ffi.string(p + P + h.size, block_end - P - h.size)                   -- any padding after
+            grown = grown + #add
+        else
+            out[#out + 1] = ffi.string(p + h.at, block_end - h.at)
+        end
+    end
+    c.bytes = c.bytes + done
+    if grown == 0 then return true end
+    local s = table.concat(out)
+    local bigger = G.alloc(#s)
+    ffi.copy(bigger, s, #s)
+    G.free(c.plain)
+    -- the edited floats moved: the other headers' reserved bytes salt the hash correction
+    c.plain, c.n, c.floats = bigger, #s, {}
     return true
 end
 

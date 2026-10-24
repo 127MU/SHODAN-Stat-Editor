@@ -59,7 +59,7 @@ takes priority over Projectile swap.
 
 | Stratagem | Stats |
 |---|---|
-| All | Cooldown, and uses where limited |
+| All | Cooldown, uses where limited, and the call-in code (record a new one with the arrow keys or WASD) |
 | Eagles | Uses per rearm, Eagle rearm time; time between bombs (bombers), fire duration (Strafing Run, 110mm Rocket Pods), run length |
 | Orbital and Eagle strikes | For every projectile and blast they use: velocity, inner / outer / shockwave radius, and the full damage set above |
 | Orbital barrages and strikes | Salvos, shells per salvo, time between shells, time between salvos, spread area; the Walking Barrage's walking speed |

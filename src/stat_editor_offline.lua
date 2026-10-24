@@ -11419,6 +11419,105 @@ function MOD.extra.row(entry, def)
     row.after_h = #row.after * 16 + 6
 end
 
+-- Call-in code: StratagemInfo +64 the code (the host resolves it to the array's address: a u32 per arrow, 1 up,
+-- 2 right, 3 down, 4 left), +72 the arrow count. Offline only: the host writes the codes at Install (a longer
+-- one is appended to its table, hostdata.lua M.codes). The row's value is the code as a number, an arrow per
+-- base-5 digit (Up Right = 12 in base 5 = 7), so it is saved, preset and reset like any other value.
+-- Recorded with the arrow keys or WASD, like the game's own entry.
+MOD.code = { ARROWS = { '↑', '→', '↓', '←' }, MAX = 9 }
+function MOD.code.native(def)
+    local b = api.read(def.at + 64, 16)
+    if not b then return nil end
+    local at, count = u32(b, 0) + u32(b, 4) * 4294967296, u32(b, 8)
+    if at < 65536 or count < 1 or count > MOD.code.MAX then return nil end
+    local arrows = {}
+    for k = 1, count do
+        local a = peek4(at + (k - 1) * 4)
+        if not a or a < 1 or a > 4 then return nil end
+        arrows[k] = a
+    end
+    return arrows
+end
+function MOD.code.number(arrows)
+    local v = 0
+    for _, a in ipairs(arrows) do v = v * 5 + a end
+    return v
+end
+function MOD.code.arrows(v)
+    local out = {}
+    v = math.floor((v or 0) + 0.5)
+    while v > 0 do
+        local a = v % 5
+        if a == 0 then return nil end
+        table.insert(out, 1, a)
+        v = (v - a) / 5
+    end
+    return #out > 0 and #out <= MOD.code.MAX and out or nil
+end
+function MOD.code.text(v, arrows, gap)
+    arrows = arrows or MOD.code.arrows(v)
+    if not arrows then return '?' end
+    local out = {}
+    for k, a in ipairs(arrows) do out[k] = MOD.code.ARROWS[a] end
+    return table.concat(out, gap or ' ')
+end
+function MOD.code.field(def) return fields[def.kind .. ':code' .. def.off] end
+-- the stratagem's code as it stands (edited or the game's)
+function MOD.code.current(def)
+    local f = MOD.code.field(def)
+    return f and MOD.code.arrows(read_field(f)) or MOD.code.native(def)
+end
+-- In every mission: a code that clashes with theirs is refused. Clashes with what a loadout can hold are
+-- pointed out; the mission, tutorial and unused ones are not checked.
+MOD.code.ALWAYS = { ['Reinforcement Beacon'] = true, ['Resupply'] = true, ['Sos Beacon'] = true }
+MOD.code.LOADOUT = { orbital = true, eagle = true, support = true, backpack = true, sentry = true, emplacements = true,
+                     vehicles = true }
+-- arrows for def: nil, why (refused) or true, warning (a clash with a stratagem you may bring along)
+function MOD.code.check(def, arrows)
+    local list = MOD.extra.choices()
+    local own = peek4(def.at)
+    local function starts(a, b)   -- a begins with the whole of b
+        if #b > #a then return false end
+        for k = 1, #b do if a[k] ~= b[k] then return false end end
+        return true
+    end
+    local same, under, over = {}, {}, {}
+    for _, c in ipairs(list) do
+        local other = c.type ~= own and (MOD.code.ALWAYS[c.name] or MOD.code.LOADOUT[c.family]) and MOD.code.current(c.def)
+        if other then
+            local hit = (#other == #arrows and starts(arrows, other) and same)
+                        or (starts(other, arrows) and under)   -- theirs begins with this one
+                        or (starts(arrows, other) and over)    -- this one begins with theirs
+            if hit then
+                if MOD.code.ALWAYS[c.name] then
+                    local name = c.name == 'Reinforcement Beacon' and 'Reinforce' or c.name == 'Sos Beacon' and 'SOS Beacon' or c.name
+                    if hit == same then return nil, 'Same code as ' .. name .. ', which is in every mission: not set.' end
+                    if hit == under then return nil, name .. "'s code starts with that one, and it is in every mission: not set." end
+                    return nil, 'That code starts with ' .. name .. "'s, which is in every mission: not set."
+                end
+                hit[#hit + 1] = c.name
+            end
+        end
+    end
+    local function names(t) return table.concat(t, ', ', 1, math.min(#t, 3)) .. (#t > 3 and ' and others' or '') end
+    if #same > 0 then return true, 'Same code as ' .. names(same) .. ': bring only one of them.' end
+    if #under > 0 then return true, names(under) .. " can't be called while this one is ready: their codes start with it." end
+    if #over > 0 then return true, "This one can't be called while " .. names(over) .. ' is ready: its code starts with theirs.' end
+    return true
+end
+function MOD.code.row(entry, def)
+    if not MOD.offline then return end   -- (live, the HUD keeps the arrows it drew: offline only)
+    local native = MOD.code.native(def)
+    if not native then return end
+    local f = field_at(def.kind, 'code' .. def.off, 'virtual', 1e7)
+    f.default, f.def = MOD.code.number(native), def
+    local row = add_row(entry, 'Stratagem', 'code', 'Call-in code', 'u32', { { id = 'code', field = f } }, 1, 1953124, 1, 1)
+    row.code = true
+    row.tip = { 'The arrows you enter to call it in: click Record (or press Enter on this row), then enter',
+                'the new code with the arrow keys or WASD, 1 to 9 arrows. Enter keeps it, Backspace takes one back,',
+                'Esc cancels. The HUD shows the new code too.' }
+end
+
 -- Call-in (issue #43), StratagemInfo +84 spawn_time: the beacon's countdown before the delivery is sent (every
 -- stratagem; ship upgrades take some off). The hellpod's fall (4.75 s), a Pelican's flight and an Eagle's are the
 -- game's own; +96 extra_travel_time and +100 (vehicles 10.5) change neither (tested in game). With every ship
@@ -11442,6 +11541,7 @@ local function resolve_stratagem(entry)
             add_row(entry, 'Stratagem', 'uses', s.family == 'eagle' and 'Uses per rearm' or 'Uses per mission', 'u32',
                     { part('uses', def.kind, def.off + 80, 'u32', 999) }, 0, 999, 1, 5)
         end
+        MOD.code.row(entry, def)
         if s.family ~= 'eagle' then MOD.callin_rows(entry, { def }) end
         if s.family ~= 'eagle' and MOD.extra.FAMILIES[s.family] then MOD.extra.row(entry, def) end
     end
@@ -11760,6 +11860,7 @@ local function resolve(weapon)
             parts[k] = part(k == 1 and 'cooldown' or 'cooldown' .. k, def.kind, def.off + 104, 'f32', 100000)
         end
         if parts[1] then add_row(weapon, 'Stratagem', 'cooldown', 'Cooldown (s)', 'f32', parts, 0, 10000, 1, 10) end
+        if weapon.sentry_defs[1] then MOD.code.row(weapon, weapon.sentry_defs[1]) end
         if weapon.sentry_defs[1] then MOD.callin_rows(weapon, weapon.sentry_defs) end
         if weapon.sentry_defs[1] then MOD.extra.row(weapon, weapon.sentry_defs[1]) end
         unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
@@ -12356,6 +12457,17 @@ do
         state.update_channel = function() return settings.update_channel end   -- 'releases' or 'commits'
         state.stacks = function() return settings.stacks end   -- passive id -> { passive ids stacked on it }
         state.own_off = function() return settings.own_off end -- passive id -> true: its own effects left out
+        -- stratagem type -> { arrow, ... }: every call-in code set here (hostdata.lua M.codes writes them)
+        state.codes = function()
+            local out = {}
+            for _, f in pairs(fields) do
+                if f.def and f.storage == 'virtual' and f.value ~= nil and f.value ~= f.default then
+                    local arrows, t = MOD.code.arrows(f.value), peek4(f.def.at)
+                    if arrows and t then out[t] = arrows end
+                end
+            end
+            return out
+        end
     end
     function settings.tr(v)
         if settings.lang == 'en' or not LANG[settings.lang] then return v end
@@ -13207,7 +13319,7 @@ end
 
 local function select_weapon(weapon)
     ui.weapon = weapon
-    ui.row, ui.scroll, ui.settings, ui.binding, ui.stack_pick = 1, 1, false, nil, nil
+    ui.row, ui.scroll, ui.settings, ui.binding, ui.stack_pick, ui.code = 1, 1, false, nil, nil, nil
     if weapon and settings.remember and state.phase == 'ready' and settings.last_weapon ~= weapon.hash then
         settings.last_tab, settings.last_weapon = weapon.slot, weapon.hash
         mark_config_dirty()
@@ -13226,6 +13338,7 @@ local function change(row, delta_sign, big, exact)
     local weapon = ui.weapon
     local current = row_value(row)
     if not weapon or current == nil then return end
+    if row.code then return end   -- (recorded with the arrows: MOD.code.start)
     if not settings.changes then
         ui.message = { text = 'Your changes are off: turn them on in Settings to edit.', till = api.now() + 4 }
         return
@@ -13384,6 +13497,32 @@ local function finish_value(keep)
         if row.limit and rounded > row.max then text = row.limit .. ' Set to ' .. fmt(target, row.storage) .. '.' end
         ui.message = { text = text, till = api.now() + 4 }
     end
+end
+
+-- A call-in code row: recording starts (the arrow keys or WASD add arrows), or ends with keep = true / false.
+function MOD.code.start(n)
+    local weapon = ui.weapon
+    if not settings.changes then
+        ui.message = { text = 'Your changes are off: turn them on in Settings to edit.', till = api.now() + 4 }
+        return
+    end
+    ui.value, ui.code = nil, { n = n, weapon = weapon, arrows = {} }
+end
+function MOD.code.finish(keep)
+    local rec = ui.code
+    ui.code = nil
+    ui.version = ui.version + 1
+    local weapon = rec and keep and rec.weapon
+    local row = weapon and weapon == ui.weapon and weapon.rows[rec.n]
+    if not (row and row.code) or #rec.arrows == 0 then return end
+    local p = row.parts[1]
+    local ok, warning = MOD.code.check(p.field.def, rec.arrows)
+    if not ok then ui.message = { text = warning, till = api.now() + 6 }; return end
+    local value = MOD.code.number(rec.arrows)
+    local done, why = write_field(p.field, value)
+    if not done then ui.message = { text = why, till = api.now() + 4 }; return end
+    set_override(weapon, p, unless_default(value, default_of(p.field)))
+    if warning then ui.message = { text = 'Set. ' .. warning, till = api.now() + 8 } end
 end
 
 local function reset_row(weapon, row)
@@ -14298,25 +14437,44 @@ local function draw(width, height)
                     text('(?)', x0 + math.min(width(label, 16), 236) + 6, y + bh / 2 - 7, 14, DIM)
                     if ui.hover == 'row:' .. n then tip_overlay = { lines = row.tip, x = x0, y = y + bh + 2 } end
                 end
-                text(changed and ('was ' .. fmt(default, row.storage)) or '', 690, y + bh / 2 - 7, 14, DIM, 90, true)
-                local typing = ui.value and ui.value.n == n and ui.value.weapon == weapon
-                if typing or (ui.hover == 'value:' .. n and value ~= nil) then
-                    rect(696, y, 88, bh, typing and color(20, 26, 34) or color(40, 52, 64), 951)
-                    outline(696, y, 88, bh, GOLD)
-                end
-                if typing then
-                    text(ui.value.text .. '_', 780, y + bh / 2 - 8, 17, WHITE, 84, true)
+                if row.code then   -- a call-in code: its arrows, and Record
+                    local rec = ui.code and ui.code.n == n and ui.code.weapon == weapon and ui.code
+                    if rec or ui.hover == 'value:' .. n then
+                        rect(572, y, 212, bh, rec and color(20, 26, 34) or color(40, 52, 64), 951)
+                        outline(572, y, 212, bh, GOLD)
+                    end
+                    if rec then
+                        text(#rec.arrows > 0 and (MOD.code.text(nil, rec.arrows) .. '  _') or 'Enter the code...', 780,
+                             y + bh / 2 - 9, 18, #rec.arrows > 0 and WHITE or MUTED, 204, true)
+                    else
+                        text(MOD.code.text(value), 780, y + bh / 2 - 9, 18, changed and GOLD or WHITE, 204, true)
+                    end
+                    text(changed and ('was ' .. MOD.code.text(default, nil, '')) or '', 566, y + bh / 2 - 7, 14, DIM, 94, true)
+                    button('code:' .. n, rec and 'Done' or 'Record', 790, y, 164, bh, value ~= nil, rec ~= false and rec ~= nil)
+                    button('reset:' .. n, 'R', 958, y, 26, bh, changed)
+                    region('row:' .. n, x0 - 6, y - 1, 430, pitch - 1)
+                    region('value:' .. n, 572, y, 212, bh, value ~= nil)
                 else
-                    text(fmt(value, row.storage), 780, y + bh / 2 - 8, 17, changed and GOLD or WHITE, 84, true)
+                    text(changed and ('was ' .. fmt(default, row.storage)) or '', 690, y + bh / 2 - 7, 14, DIM, 90, true)
+                    local typing = ui.value and ui.value.n == n and ui.value.weapon == weapon
+                    if typing or (ui.hover == 'value:' .. n and value ~= nil) then
+                        rect(696, y, 88, bh, typing and color(20, 26, 34) or color(40, 52, 64), 951)
+                        outline(696, y, 88, bh, GOLD)
+                    end
+                    if typing then
+                        text(ui.value.text .. '_', 780, y + bh / 2 - 8, 17, WHITE, 84, true)
+                    else
+                        text(fmt(value, row.storage), 780, y + bh / 2 - 8, 17, changed and GOLD or WHITE, 84, true)
+                    end
+                    local ok = value ~= nil
+                    button('dec_big:' .. n, '--', 790, y, 40, bh, ok)
+                    button('dec:' .. n, '-', 834, y, 36, bh, ok)
+                    button('inc:' .. n, '+', 874, y, 36, bh, ok)
+                    button('inc_big:' .. n, '++', 914, y, 40, bh, ok)
+                    button('reset:' .. n, 'R', 958, y, 26, bh, changed)
+                    region('row:' .. n, x0 - 6, y - 1, 430, pitch - 1)
+                    region('value:' .. n, 696, y, 88, bh, ok)
                 end
-                local ok = value ~= nil
-                button('dec_big:' .. n, '--', 790, y, 40, bh, ok)
-                button('dec:' .. n, '-', 834, y, 36, bh, ok)
-                button('inc:' .. n, '+', 874, y, 36, bh, ok)
-                button('inc_big:' .. n, '++', 914, y, 40, bh, ok)
-                button('reset:' .. n, 'R', 958, y, 26, bh, changed)
-                region('row:' .. n, x0 - 6, y - 1, 430, pitch - 1)
-                region('value:' .. n, 696, y, 88, bh, ok)
                 y = y + pitch
                 for k, line in ipairs(row.after or {}) do text(line, x0, y + 2 + (k - 1) * 16, 14, MUTED, W - x0 - 20) end
                 y = y + (row.after_h or 0)
@@ -14384,6 +14542,9 @@ local function draw(width, height)
     if ui.binding then
         text('Press the key that should open and close the panel: F1-F12, Insert, Home, End, Pause or Scroll Lock. Esc cancels.',
              18, H - 56, 14, MUTED, W - 260)
+    elseif ui.code then
+        text('Enter the new code with the arrow keys or WASD, 9 arrows at most. Enter or Done keeps it, Backspace takes ' ..
+             'one back, Esc cancels.', 18, H - 56, 14, MUTED, W - 260)
     elseif ui.settings then
         text('Settings are saved at once, in config.txt with your changes.', 18, H - 56, 14, MUTED, W - 260)
     elseif ui.editing then
@@ -14501,6 +14662,7 @@ local function click(key)
     if ui.editing and kind ~= 'name' then presets.finish_rename(true) end
     if ui.search.active and kind ~= 'search' then ui.search.active = false end
     if ui.value and key ~= 'value:' .. ui.value.n then finish_value(true) end
+    if ui.code and key ~= 'code:' .. ui.code.n then MOD.code.finish(false) end
     if kind ~= 'set' then ui.binding = nil end
     if kind == 'tab' then
         ui.tab, ui.page, ui.search, ui.settings = arg, 1, { text = '', active = false }, false
@@ -14624,6 +14786,9 @@ local function click(key)
         elseif kind == 'inc' then change(row, 1, false)
         elseif kind == 'inc_big' then change(row, 1, true)
         elseif kind == 'reset' then reset_row(weapon, row)
+        elseif kind == 'code' and row.code then
+            if ui.code then MOD.code.finish(true) else MOD.code.start(tonumber(arg)) end
+        elseif kind == 'value' and row.code then MOD.code.start(tonumber(arg))
         elseif kind == 'value' and not ui.value and row_value(row) ~= nil then
             ui.value = { n = tonumber(arg), weapon = weapon, text = fmt(row_value(row), row.storage), fresh = true }
         end
@@ -14696,6 +14861,23 @@ local function keyboard(now)
         end
         for _, c in ipairs(typed or {}) do
             if c ~= '#' then presets.type_char(c) end   -- '#' starts a comment in the preset files
+        end
+        return
+    end
+    if ui.code then   -- recording a call-in code: an arrow per press (held keys don't repeat)
+        local rec = ui.code
+        local function hit(name) local fresh = held[name] == nil; return pressed(name, now) and fresh end
+        if hit('Escape') then MOD.code.finish(false); return end
+        if hit('Enter') then MOD.code.finish(true); return end
+        if hit('Backspace') and #rec.arrows > 0 then rec.arrows[#rec.arrows] = nil; ui.version = ui.version + 1 end
+        for a, keys in ipairs({ { 'Up', 'T87' }, { 'Right', 'T68' }, { 'Down', 'T83' }, { 'Left', 'T65' } }) do
+            for _, name in ipairs(keys) do
+                if hit(name) then
+                    if #rec.arrows < MOD.code.MAX then rec.arrows[#rec.arrows + 1] = a
+                    else ui.message = { text = 'A code is 9 arrows at most.', till = now + 3 } end
+                    ui.version = ui.version + 1
+                end
+            end
         end
         return
     end
@@ -14798,7 +14980,9 @@ local function keyboard(now)
             end
         end
     end
-    if pressed('Enter', now) and weapon.rows[ui.row] and row_value(weapon.rows[ui.row]) ~= nil then
+    local enter = pressed('Enter', now)
+    if enter and weapon.rows[ui.row] and weapon.rows[ui.row].code then MOD.code.start(ui.row); return end
+    if enter and weapon.rows[ui.row] and row_value(weapon.rows[ui.row]) ~= nil then
         ui.value = { n = ui.row, weapon = weapon, text = fmt(row_value(weapon.rows[ui.row]), weapon.rows[ui.row].storage), fresh = true }
         return
     end
