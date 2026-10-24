@@ -2,7 +2,7 @@
 
 Change the stats of weapons, throwables, stratagems, mechas, boosters, attachments, armor passives and your
 helldiver in **Helldivers 2**, and transmog armor passives: stack any passives into one. The **Enemy Editor**
-changes every enemy and how they spawn, and keeps custom difficulties as presets. **SHODAN Stat Editor
+changes every enemy, your SEAF allies and how they spawn, and keeps custom difficulties as presets. **SHODAN Stat Editor
 Offline** (SSEO) is a Windows program: pick a weapon, change its numbers, press **Install into the
 game**, and play. It writes your values into the game's own
 data files, so no mod loader is needed and the game does not have to run while you edit. Keep
@@ -145,7 +145,7 @@ players' lobbies.
 
 Make your own difficulty. Click **SHODAN Enemy Editor** at the top left: the window turns red and
 edits the enemies instead; **SHODAN Stat Editor** switches back. One Install puts the changes of
-both editors in the game. Its tabs are Terminids, Automatons, Illuminate and Spawning.
+both editors in the game. Its tabs are Terminids, Automatons, Illuminate, SEAF and Spawning.
 
 | Page | Stats |
 |---|---|
@@ -154,7 +154,8 @@ both editors in the game. Its tabs are Terminids, Automatons, Illuminate and Spa
 | Attacks | Each melee attack's damage, armor penetration, stagger and push; the explosion it sets off when it dies |
 | Enemy weapons | Each gun listed under its enemy, stat for stat like a weapon: damage, armor penetration, explosion, projectile speed, fire rate, magazine and spread |
 | Shields and jamming | Shield capacity and recharge; the jamming radius of Stratagem Jammers, Command Bunkers and AA Emplacements; the scrambling radius of Cognitive Disruptors; the Leviathan's flight height |
-| All Terminids, All Automatons, All Illuminate | One row for the whole faction: health, armor, damage, movement speed, sight, stagger resistance, stun and gas resistance, fire damage taken |
+| SEAF | Every SEAF soldier kind, stat for stat like an enemy, with its weapons; the weapons each kind carries, from the ones the game has for SEAF |
+| All Terminids, All Automatons, All Illuminate, All SEAF | One row for the whole faction: health, armor, damage, movement speed, sight, stagger resistance, stun and gas resistance, fire damage taken |
 | Spawning | Per faction: reinforcement size and frequency, or none at all; the cap on enemies at once; patrol frequency and patrols at once; modifier patrols; outpost garrison size; Fabricator and bug hole output |
 | All factions | The lowest patrol and reinforcement rates the game allows, and SEAF reinforcement and wave cooldowns |
 
