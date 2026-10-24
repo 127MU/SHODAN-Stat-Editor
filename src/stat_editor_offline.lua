@@ -671,6 +671,7 @@ MOD.langs = {
       ['Arm armor'] = '机臂护甲',
       ['Arm durability'] = '机臂耐久',
       ['Arm health'] = '机臂生命值',
+      ['Armed Resupply Pods'] = '武装重新补给舱',
       ['Arming distance (m)'] = '解除保险距离（米）',
       ['Arming time (s)'] = '解除保险时间（秒）',
       ['Armor'] = '护甲',
@@ -725,6 +726,8 @@ MOD.langs = {
       ['Bolt Pistol'] = '爆弹手枪',
       ['Bonnet'] = '引擎盖',
       ['Boost after the launch (s)'] = '起跳后的推进时间（秒）',
+      ['Booster selection is limited due to the other boosters keeping their values in the game\'s program (game.dll), not in the data files SSEO edits. Those could only be changed while the game runs, which is currently impossible.'] = '可选的增强配备有限：其他增强配备的数值保存在游戏程序（game.dll）中，而不在 SSEO 修改的数据文件里。这些数值只能在游戏运行时修改，而这目前无法做到。',
+      ['Boosters'] = '强化资源',
       ['Breacher'] = '爆破者',
       ['Breaching Hammer'] = '破门锤',
       ['Break-Action Shotgun'] = '中折式霰弹枪',
@@ -790,6 +793,7 @@ MOD.langs = {
       ['Combat Walker'] = '战斗步行机甲',
       ['Combat Walker Breacher'] = '爆破型战斗机甲',
       ['Commando'] = '突击兵',
+      ['Concealed Insertion'] = '隐蔽上阵',
       ['Concealment when still, crouched / prone'] = '静止蹲伏或卧倒时的隐蔽',
       ['Concussive Padding (Grenadier)'] = '防震内衬（掷弹兵型）',
       ['Concussive Padding (Hazmat)'] = '防震内衬（防化型）',
@@ -820,11 +824,13 @@ MOD.langs = {
       ['DIRECT HIT'] = '直击',
       ['Dagger'] = '匕首',
       ['Damage'] = '伤害',
+      ['Damage taken (multiplier)'] = '受到伤害（倍率）',
       ['Damage tick (s)'] = '伤害间隔(秒)',
       ['Damage to you'] = '对你造成的伤害',
       ['Dark Fluid Backpack'] = '暗液背包',
       ['Data Jack'] = '数据接口',
       ['De-Escalator'] = '缓和使者',
+      ['Dead Sprint'] = '死亡冲刺',
       ['Deadeye'] = '鹰眼',
       ['Defender'] = '防卫者',
       ['Defoliation Tool'] = '除叶工具',
@@ -884,6 +890,7 @@ MOD.langs = {
       ['Eagle rearm time (s)'] = '飞鹰重新武装时间（秒）',
       ['Eagle strike. The rearm time is shared by every Eagle.'] = '飞鹰打击。所有飞鹰共用重新武装时间。',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = '在“投掷物”页编辑该手雷即可调整。资源加载完成后选择才会生效。',
+      ['Effect'] = '效果',
       ['Electrical Conduit'] = '电路导管',
       ['Emancipator Exosuit'] = '“解放者”外骨骼装甲',
       ['Emergency Extraction Beacon'] = '紧急撤离信标',
@@ -906,6 +913,7 @@ MOD.langs = {
       ['Expendable Anti-Tank'] = '消耗性反坦克武器',
       ['Expendable Anti-Tank (Booster)'] = '消耗性反坦克武器（增强配备）',
       ['Expendable Napalm'] = '消耗性凝固汽油弹',
+      ['Experimental Infusion'] = '试验性注射剂',
       ['Expiry explosion (id)'] = '存续结束时爆炸（编号）',
       ['Explodes after death (s)'] = '死亡后爆炸（秒）',
       ['Exploding Crossbow'] = '爆燃弩',
@@ -933,6 +941,7 @@ MOD.langs = {
       ['Fire panic'] = '着火恐慌',
       ['Fire rate (RPM)'] = '射速（RPM）',
       ['Fire/gas/acid/arc damage taken'] = '受到火焰 / 毒气 / 酸液 / 电弧伤害',
+      ['Firebomb Hellpods'] = '火焰炸弹绝地喷射舱',
       ['Flame Sentry'] = '火焰喷射哨戒炮',
       ['Flames'] = '喷射火焰',
       ['Flames Mk2'] = '喷射火焰 MK2',
@@ -1025,6 +1034,7 @@ MOD.langs = {
       ['Head health'] = '头部生命值',
       ['Health'] = '生命值',
       ['Health Pack Rack'] = '医疗包架',
+      ['Health drain'] = '生命流失',
       ['Heat'] = '热量',
       ['Heat per second firing'] = '射击时每秒积热',
       ['Heat per shot'] = '每发积热',
@@ -1225,6 +1235,7 @@ MOD.langs = {
       ['Mortar Sentry'] = '迫击哨戒炮',
       ['Move while reloading'] = '换弹时可移动',
       ['Movement'] = '移动',
+      ['Movement speed (multiplier)'] = '移动速度（倍率）',
       ['Muzzle'] = '枪口',
       ['Muzzle brake'] = '枪口制退器',
       ['Napalm Bomb'] = '凝固汽油弹',
@@ -1419,6 +1430,7 @@ MOD.langs = {
       ['Rename'] = '重命名',
       ['Reprimand'] = '训斥',
       ['Reset all values'] = '重置全部数值',
+      ['Reset booster'] = '重置增强配备',
       ['Reset helldiver'] = '重置潜兵',
       ['Reset passive'] = '重置被动',
       ['Reset record'] = '重置记录',
@@ -1560,6 +1572,8 @@ MOD.langs = {
       ['Slugger'] = '重炮手',
       ['Small Plasma Bolt'] = '小型等离子弹',
       ['Smoke'] = '烟雾弹',
+      ['Smoke radius, edge (m)'] = '烟雾半径，边缘(米)',
+      ['Smoke radius, full (m)'] = '烟雾半径，浓密(米)',
       ['Smokescreen'] = '烟幕',
       ['Sniper Scope 10x'] = '10倍狙击瞄准镜',
       ['Sniper Scope 10x Helghast'] = '10倍狙击瞄准镜',
@@ -1610,6 +1624,7 @@ MOD.langs = {
       ['Stun (small)'] = '眩晕弹（小）',
       ['Stun Baton'] = '眩晕短棍',
       ['Stun Lance'] = '眩晕长矛',
+      ['Stun Pods'] = '眩晕喷射舱',
       ['Stun rounds'] = '眩晕弹',
       ['Stun rounds fire (id)'] = '眩晕弹发射的弹丸（编号）',
       ['Supplementary Adrenaline'] = '肾上腺素补充剂',
@@ -1621,6 +1636,7 @@ MOD.langs = {
       ['Support weapon drop; the weapon itself is under Support.'] = '支援武器空投；武器本身列在“支援武器”分类下。',
       ['Suppressor'] = '消音器',
       ['Sure?'] = '确定？',
+      ['Surplus EAT Allocation'] = '盈余EAT配给',
       ['Surviving lethal damage'] = '致命伤害存活几率',
       ['Swapping makes the shot the chosen weapon\'s, your edits to it included: damage,'] = '替换后使用所选武器的弹丸，包含你对其伤害、',
       ['Sway multiplier'] = '晃动系数',
@@ -2059,6 +2075,7 @@ MOD.langs = {
       ['arc weapon'] = '电弧武器',
       ['arc-12 blitzer'] = 'ARC-12 雷霆',
       ['arc-3 arc thrower'] = 'ARC-3 电弧发射器',
+      ['armed resupply pods'] = '武装重新补给舱',
       ['arming time (s)'] = '解除保险时间（秒）',
       ['armor'] = '护甲',
       ['armor passive'] = '护甲被动',
@@ -2104,6 +2121,7 @@ MOD.langs = {
       ['bolt pistol'] = '爆弹手枪',
       ['bonnet'] = '引擎盖',
       ['boost after the launch (s)'] = '起跳后的推进时间（秒）',
+      ['boosters'] = '强化资源',
       ['br-14 adjudicator'] = 'BR-14 审判者',
       ['breacher'] = '爆破者',
       ['breaching hammer'] = '破门锤',
@@ -2153,6 +2171,7 @@ MOD.langs = {
       ['combat walker'] = '战斗步行机甲',
       ['combat walker breacher'] = '爆破型战斗机甲',
       ['commando'] = '突击兵',
+      ['concealed insertion'] = '隐蔽上阵',
       ['concussive padding (grenadier)'] = '防震内衬（掷弹兵型）',
       ['concussive padding (hazmat)'] = '防震内衬（防化型）',
       ['concussive padding (reinforced)'] = '防震内衬（强化型）',
@@ -2190,6 +2209,7 @@ MOD.langs = {
       ['data jack'] = '数据接口',
       ['dbs-2 double freedom'] = 'DBS-2 双重自由',
       ['de-escalator'] = '缓和使者',
+      ['dead sprint'] = '死亡冲刺',
       ['deadeye'] = '鹰眼',
       ['defender'] = '防卫者',
       ['defoliation tool'] = '除叶工具',
@@ -2264,6 +2284,7 @@ MOD.langs = {
       ['expendable anti-tank'] = '消耗性反坦克武器',
       ['expendable anti-tank (booster)'] = '消耗性反坦克武器（增强配备）',
       ['expendable napalm'] = '消耗性凝固汽油弹',
+      ['experimental infusion'] = '试验性注射剂',
       ['explodes after death (s)'] = '死亡后爆炸（秒）',
       ['exploding crossbow'] = '爆燃弩',
       ['explosion'] = '爆炸',
@@ -2285,6 +2306,7 @@ MOD.langs = {
       ['fire panic'] = '着火恐慌',
       ['fire rate (rpm)'] = '射速(RPM)',
       ['fire/gas/acid/arc damage taken'] = '受到火焰 / 毒气 / 酸液 / 电弧伤害',
+      ['firebomb hellpods'] = '火焰炸弹绝地喷射舱',
       ['flam-40 flamethrower'] = 'FLAM-40 火焰喷射器',
       ['flam-66 torcher'] = 'FLAM-66 火炬手',
       ['flame sentry'] = '火焰喷射哨戒炮',
@@ -2872,6 +2894,7 @@ MOD.langs = {
       ['stun (small)'] = '眩晕弹（小）',
       ['stun baton'] = '眩晕短棍',
       ['stun lance'] = '眩晕长矛',
+      ['stun pods'] = '眩晕喷射舱',
       ['supplementary adrenaline'] = '肾上腺素补充剂',
       ['supply backpack'] = '补给背包',
       ['supply frv'] = '补给型快速侦察载具',
@@ -2881,6 +2904,7 @@ MOD.langs = {
       ['support weapon drop; the weapon itself is under support.'] = '支援武器空投；武器本身列在“支援武器”分类下。',
       ['suppressor'] = '消音器',
       ['sure?'] = '确定？',
+      ['surplus eat allocation'] = '盈余EAT配给',
       ['surviving lethal damage'] = '致命伤害存活几率',
       ['swapping makes the shot the chosen weapon\'s, your edits to it included: damage,'] = '替换后使用所选武器的弹丸，包含你对其伤害、',
       ['sway multiplier'] = '晃动系数',
@@ -3459,6 +3483,7 @@ MOD.langs = {
       ['Arm armor'] = '機臂護甲',
       ['Arm durability'] = '機臂耐久',
       ['Arm health'] = '機臂生命值',
+      ['Armed Resupply Pods'] = '武裝重新補給艙',
       ['Arming distance (m)'] = '解除保險距離（米）',
       ['Arming time (s)'] = '解除保險時間（秒）',
       ['Armor'] = '護甲',
@@ -3513,6 +3538,8 @@ MOD.langs = {
       ['Bolt Pistol'] = '爆彈手槍',
       ['Bonnet'] = '引擎蓋',
       ['Boost after the launch (s)'] = '起跳後的推進時間（秒）',
+      ['Booster selection is limited due to the other boosters keeping their values in the game\'s program (game.dll), not in the data files SSEO edits. Those could only be changed while the game runs, which is currently impossible.'] = '可選的增強配備有限：其他增強配備的數值儲存在遊戲程式（game.dll）中，而不在 SSEO 修改的資料檔案裡。這些數值只能在遊戲執行時修改，而這目前無法做到。',
+      ['Boosters'] = '強化套件',
       ['Breacher'] = '突破者',
       ['Breaching Hammer'] = '破門戰錘',
       ['Break-Action Shotgun'] = '中折式散彈槍',
@@ -3578,6 +3605,7 @@ MOD.langs = {
       ['Combat Walker'] = '戰鬥步行機甲',
       ['Combat Walker Breacher'] = '爆破型戰鬥機甲',
       ['Commando'] = '突擊兵',
+      ['Concealed Insertion'] = '隱蔽上陣',
       ['Concealment when still, crouched / prone'] = '靜止蹲伏或臥倒時的隱蔽',
       ['Concussive Padding (Grenadier)'] = '擲彈兵防震盪襯墊',
       ['Concussive Padding (Hazmat)'] = '危害物質防震盪襯墊',
@@ -3608,11 +3636,13 @@ MOD.langs = {
       ['DIRECT HIT'] = '直擊',
       ['Dagger'] = '匕首',
       ['Damage'] = '傷害',
+      ['Damage taken (multiplier)'] = '受到傷害（倍率）',
       ['Damage tick (s)'] = '傷害間隔(秒)',
       ['Damage to you'] = '對你造成的傷害',
       ['Dark Fluid Backpack'] = '暗液背包',
       ['Data Jack'] = '資料介面',
       ['De-Escalator'] = '緩和使者',
+      ['Dead Sprint'] = '死亡衝刺',
       ['Deadeye'] = '鷹眼',
       ['Defender'] = '防衛者',
       ['Defoliation Tool'] = '除草器',
@@ -3672,6 +3702,7 @@ MOD.langs = {
       ['Eagle rearm time (s)'] = '飛鷹重新武裝時間（秒）',
       ['Eagle strike. The rearm time is shared by every Eagle.'] = '飛鷹打擊。所有飛鷹共用重新武裝時間。',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = '在「投擲物」頁編輯該手雷即可調整。資源載入完成後選擇才會生效。',
+      ['Effect'] = '效果',
       ['Electrical Conduit'] = '電氣管線',
       ['Emancipator Exosuit'] = '解放者外骨骼裝甲',
       ['Emergency Extraction Beacon'] = '緊急撤離信標',
@@ -3694,6 +3725,7 @@ MOD.langs = {
       ['Expendable Anti-Tank'] = '反坦克消耗品',
       ['Expendable Anti-Tank (Booster)'] = '消耗性反坦克武器（增強配備）',
       ['Expendable Napalm'] = '消耗型凝固汽油彈',
+      ['Experimental Infusion'] = '實驗性融合',
       ['Expiry explosion (id)'] = '存續結束時爆炸（編號）',
       ['Explodes after death (s)'] = '死亡後爆炸（秒）',
       ['Exploding Crossbow'] = '猛爆十字弓',
@@ -3721,6 +3753,7 @@ MOD.langs = {
       ['Fire panic'] = '著火恐慌',
       ['Fire rate (RPM)'] = '射速（RPM）',
       ['Fire/gas/acid/arc damage taken'] = '受到火焰 / 毒氣 / 酸液 / 電弧傷害',
+      ['Firebomb Hellpods'] = '燃燒彈絕地噴射艙',
       ['Flame Sentry'] = '火焰火箭炮',
       ['Flames'] = '火焰噴射器',
       ['Flames Mk2'] = '火焰噴射器MK2',
@@ -3813,6 +3846,7 @@ MOD.langs = {
       ['Head health'] = '頭部生命值',
       ['Health'] = '生命值',
       ['Health Pack Rack'] = '醫療包架',
+      ['Health drain'] = '生命流失',
       ['Heat'] = '熱量',
       ['Heat per second firing'] = '射擊時每秒積熱',
       ['Heat per shot'] = '每發積熱',
@@ -4013,6 +4047,7 @@ MOD.langs = {
       ['Mortar Sentry'] = '哨戒迫擊炮',
       ['Move while reloading'] = '換彈時可移動',
       ['Movement'] = '移動',
+      ['Movement speed (multiplier)'] = '移動速度（倍率）',
       ['Muzzle'] = '槍口',
       ['Muzzle brake'] = '槍口制退器',
       ['Napalm Bomb'] = '凝固汽油彈',
@@ -4207,6 +4242,7 @@ MOD.langs = {
       ['Rename'] = '重新命名',
       ['Reprimand'] = '懲戒',
       ['Reset all values'] = '重置全部數值',
+      ['Reset booster'] = '重置增強配備',
       ['Reset helldiver'] = '重置潛兵',
       ['Reset passive'] = '重置被動',
       ['Reset record'] = '重置記錄',
@@ -4348,6 +4384,8 @@ MOD.langs = {
       ['Slugger'] = '制裁者散彈槍',
       ['Small Plasma Bolt'] = '小型電漿彈',
       ['Smoke'] = '煙霧彈',
+      ['Smoke radius, edge (m)'] = '煙霧半徑，邊緣(米)',
+      ['Smoke radius, full (m)'] = '煙霧半徑，濃密(米)',
       ['Smokescreen'] = '煙幕',
       ['Sniper Scope 10x'] = '10倍狙擊鏡',
       ['Sniper Scope 10x Helghast'] = '10倍狙擊鏡',
@@ -4398,6 +4436,7 @@ MOD.langs = {
       ['Stun (small)'] = '暈眩彈（小）',
       ['Stun Baton'] = '暈眩棍',
       ['Stun Lance'] = '暈眩長槍',
+      ['Stun Pods'] = '暈眩噴射艙',
       ['Stun rounds'] = '眩暈彈',
       ['Stun rounds fire (id)'] = '眩暈彈發射的射彈（編號）',
       ['Supplementary Adrenaline'] = '腎上腺素補劑',
@@ -4409,6 +4448,7 @@ MOD.langs = {
       ['Support weapon drop; the weapon itself is under Support.'] = '支援武器空投；武器本身列在「支援武器」分類下。',
       ['Suppressor'] = '消音器',
       ['Sure?'] = '確定？',
+      ['Surplus EAT Allocation'] = '剩餘EAT配給',
       ['Surviving lethal damage'] = '致命傷害存活機率',
       ['Swapping makes the shot the chosen weapon\'s, your edits to it included: damage,'] = '替換後使用所選武器的射彈，包含你對其傷害、',
       ['Sway multiplier'] = '晃動係數',
@@ -4847,6 +4887,7 @@ MOD.langs = {
       ['arc weapon'] = '電弧武器',
       ['arc-12 blitzer'] = 'ARC-12 閃擊者',
       ['arc-3 arc thrower'] = 'ARC-3 電弧發射器',
+      ['armed resupply pods'] = '武裝重新補給艙',
       ['arming time (s)'] = '解除保險時間（秒）',
       ['armor'] = '護甲',
       ['armor passive'] = '護甲被動',
@@ -4892,6 +4933,7 @@ MOD.langs = {
       ['bolt pistol'] = '爆彈手槍',
       ['bonnet'] = '引擎蓋',
       ['boost after the launch (s)'] = '起跳後的推進時間（秒）',
+      ['boosters'] = '強化套件',
       ['br-14 adjudicator'] = 'BR-14 審判者',
       ['breacher'] = '突破者',
       ['breaching hammer'] = '破門戰錘',
@@ -4941,6 +4983,7 @@ MOD.langs = {
       ['combat walker'] = '戰鬥步行機甲',
       ['combat walker breacher'] = '爆破型戰鬥機甲',
       ['commando'] = '突擊兵',
+      ['concealed insertion'] = '隱蔽上陣',
       ['concussive padding (grenadier)'] = '擲彈兵防震盪襯墊',
       ['concussive padding (hazmat)'] = '危害物質防震盪襯墊',
       ['concussive padding (reinforced)'] = '強化防震盪襯墊',
@@ -4978,6 +5021,7 @@ MOD.langs = {
       ['data jack'] = '資料介面',
       ['dbs-2 double freedom'] = 'DBS-2 雙重自由',
       ['de-escalator'] = '緩和使者',
+      ['dead sprint'] = '死亡衝刺',
       ['deadeye'] = '鷹眼',
       ['defender'] = '防衛者',
       ['defoliation tool'] = '除草器',
@@ -5052,6 +5096,7 @@ MOD.langs = {
       ['expendable anti-tank'] = '反坦克消耗品',
       ['expendable anti-tank (booster)'] = '消耗性反坦克武器（增強配備）',
       ['expendable napalm'] = '消耗型凝固汽油彈',
+      ['experimental infusion'] = '實驗性融合',
       ['explodes after death (s)'] = '死亡後爆炸（秒）',
       ['exploding crossbow'] = '猛爆十字弓',
       ['explosion'] = '爆炸',
@@ -5073,6 +5118,7 @@ MOD.langs = {
       ['fire panic'] = '著火恐慌',
       ['fire rate (rpm)'] = '射速(RPM)',
       ['fire/gas/acid/arc damage taken'] = '受到火焰 / 毒氣 / 酸液 / 電弧傷害',
+      ['firebomb hellpods'] = '燃燒彈絕地噴射艙',
       ['flam-40 flamethrower'] = 'FLAM-40 火焰噴射器',
       ['flam-66 torcher'] = 'FLAM-66 噴火者',
       ['flame sentry'] = '火焰火箭炮',
@@ -5660,6 +5706,7 @@ MOD.langs = {
       ['stun (small)'] = '暈眩彈（小）',
       ['stun baton'] = '暈眩棍',
       ['stun lance'] = '暈眩長槍',
+      ['stun pods'] = '暈眩噴射艙',
       ['supplementary adrenaline'] = '腎上腺素補劑',
       ['supply backpack'] = '補給背包',
       ['supply frv'] = '補給FRV',
@@ -5669,6 +5716,7 @@ MOD.langs = {
       ['support weapon drop; the weapon itself is under support.'] = '支援武器空投；武器本身列在「支援武器」分類下。',
       ['suppressor'] = '消音器',
       ['sure?'] = '確定？',
+      ['surplus eat allocation'] = '剩餘EAT配給',
       ['surviving lethal damage'] = '致命傷害存活機率',
       ['swapping makes the shot the chosen weapon\'s, your edits to it included: damage,'] = '替換後使用所選武器的射彈，包含你對其傷害、',
       ['sway multiplier'] = '晃動係數',
@@ -6239,6 +6287,7 @@ MOD.langs = {
       ['Arm armor'] = 'Броня руки',
       ['Arm durability'] = 'Прочность руки',
       ['Arm health'] = 'Здоровье руки',
+      ['Armed Resupply Pods'] = 'Вооруженные капсулы «Пополнения запасов»',
       ['Arming distance (m)'] = 'Дистанция взведения (м)',
       ['Arming time (s)'] = 'Время взведения (с)',
       ['Armor'] = 'Броня',
@@ -6292,6 +6341,8 @@ MOD.langs = {
       ['Bolt Pistol'] = 'Болтострел',
       ['Bonnet'] = 'Капот',
       ['Boost after the launch (s)'] = 'Ускорение после пуска (с)',
+      ['Booster selection is limited due to the other boosters keeping their values in the game\'s program (game.dll), not in the data files SSEO edits. Those could only be changed while the game runs, which is currently impossible.'] = 'Выбор усилений ограничен: остальные усиления хранят свои значения в программе игры (game.dll), а не в файлах данных, которые меняет SSEO. Их можно было бы изменить только во время работы игры, что сейчас невозможно.',
+      ['Boosters'] = 'Двигатели',
       ['Breacher'] = 'Прорывник',
       ['Breaching Hammer'] = 'Штурмовой молот',
       ['Break-Action Shotgun'] = 'Дробовик-переломка',
@@ -6349,6 +6400,7 @@ MOD.langs = {
       ['Combat Hatchet'] = 'Боевой топорик',
       ['Combat Scope 4x'] = 'Боевой прицел (4х)',
       ['Commando'] = '«Коммандос»',
+      ['Concealed Insertion'] = 'Скрытное внедрение',
       ['Concealment when still, crouched / prone'] = 'Скрытность без движения, присев / лёжа',
       ['Concussive Padding (Grenadier)'] = 'Противовзрывная подкладка, гренадер',
       ['Concussive Padding (Hazmat)'] = 'Противовзрывная подкладка, химзащита',
@@ -6377,9 +6429,11 @@ MOD.langs = {
       ['DIRECT HIT'] = 'ПРЯМОЕ ПОПАДАНИЕ',
       ['Dagger'] = '«Кинжал»',
       ['Damage'] = 'Урон',
+      ['Damage taken (multiplier)'] = 'Получаемый урон (множитель)',
       ['Damage tick (s)'] = 'Такт урона (с)',
       ['Damage to you'] = 'Урон вам',
       ['De-Escalator'] = 'Деэскалатор',
+      ['Dead Sprint'] = 'Смертельный рывок',
       ['Deadeye'] = 'Меткий стрелок',
       ['Defender'] = 'Защитник',
       ['Defoliation Tool'] = 'Дефолиатор',
@@ -6434,6 +6488,7 @@ MOD.langs = {
       ['Eagle rearm time (s)'] = 'Время перевооружения «Орла» (с)',
       ['Eagle strike. The rearm time is shared by every Eagle.'] = 'Удар «Орла». Время перевооружения общее для всех ударов «Орла».',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = 'Настраивайте гранату во вкладке «Метательное». Выбор применяется после загрузки ресурсов.',
+      ['Effect'] = 'Эффект',
       ['Electrical Conduit'] = 'Электропроводник',
       ['Emancipator Exosuit'] = 'Экзокостюм «Благодетель»',
       ['Emplacement'] = 'Огневая позиция',
@@ -6453,6 +6508,7 @@ MOD.langs = {
       ['Evictor'] = 'Вытеснитель',
       ['Expendable Anti-Tank'] = '«Одноразовый бронебой»',
       ['Expendable Napalm'] = 'Одноразовый напалм',
+      ['Experimental Infusion'] = 'Экспериментальная инъекция',
       ['Expiry explosion (id)'] = 'Взрыв по истечении (ID)',
       ['Explodes after death (s)'] = 'Взрывается после гибели (с)',
       ['Exploding Crossbow'] = '«Взрывной арбалет»',
@@ -6475,6 +6531,7 @@ MOD.langs = {
       ['Fire duration (s)'] = 'Длительность огня (с)',
       ['Fire rate (RPM)'] = 'Скорострельность (выстр./мин)',
       ['Fire/gas/acid/arc damage taken'] = 'Получаемый урон от огня/газа/кислоты/дуги',
+      ['Firebomb Hellpods'] = 'Зажигательные Адские Капсулы',
       ['Flame Sentry'] = 'Турель-огнемет',
       ['Flames'] = 'Горючая смесь',
       ['Flames Mk2'] = 'Горючая смесь Mk2',
@@ -6557,6 +6614,7 @@ MOD.langs = {
       ['Head health'] = 'Здоровье головы',
       ['Health'] = 'Здоровье',
       ['Health Pack Rack'] = 'Стойка с аптечками',
+      ['Health drain'] = 'Потеря здоровья',
       ['Heat'] = 'Нагрев',
       ['Heat per second firing'] = 'Нагрев за секунду стрельбы',
       ['Heat per shot'] = 'Нагрев за выстрел',
@@ -6740,6 +6798,7 @@ MOD.langs = {
       ['Mortar Sentry'] = '«Турель с минометом»',
       ['Move while reloading'] = 'Движение при перезарядке',
       ['Movement'] = 'Передвижение',
+      ['Movement speed (multiplier)'] = 'Скорость движения (множитель)',
       ['Muzzle'] = 'Дуло',
       ['Muzzle brake'] = 'Дульный тормоз',
       ['Napalm Bomb'] = 'Напалмовая бомба',
@@ -6920,6 +6979,7 @@ MOD.langs = {
       ['Rename'] = 'Переимен.',
       ['Reprimand'] = 'Взыскание',
       ['Reset all values'] = 'Сбросить все значения',
+      ['Reset booster'] = 'Сбросить усиление',
       ['Reset helldiver'] = 'Сбросить десантника',
       ['Reset passive'] = 'Сброс эффекта',
       ['Reset record'] = 'Сбросить запись',
@@ -7047,6 +7107,8 @@ MOD.langs = {
       ['Slugger'] = '«Крушила»',
       ['Small Plasma Bolt'] = 'Малый заряд плазмы',
       ['Smoke'] = '«Дымовая»',
+      ['Smoke radius, edge (m)'] = 'Радиус дыма, край (м)',
+      ['Smoke radius, full (m)'] = 'Радиус дыма, плотный (м)',
       ['Smokescreen'] = 'Дымовая завеса',
       ['Sniper Scope 10x'] = 'Снайперский прицел (10х)',
       ['Sniper Scope 10x Helghast'] = 'Снайперский прицел (10х)',
@@ -7092,6 +7154,7 @@ MOD.langs = {
       ['Stun (small)'] = 'Оглушение (слабое)',
       ['Stun Baton'] = 'Оглушающая дубинка',
       ['Stun Lance'] = 'Оглушающее копье',
+      ['Stun Pods'] = 'Оглушающие капсулы',
       ['Stun rounds'] = 'Оглушающие боеприпасы',
       ['Stun rounds fire (id)'] = 'Выстрел оглушающими (id)',
       ['Supplementary Adrenaline'] = 'Добавки-адреналин',
@@ -7102,6 +7165,7 @@ MOD.langs = {
       ['Support weapon drop; the weapon itself is under Support.'] = 'Сброс оружия поддержки; само оружие — во вкладке «Поддержка».',
       ['Suppressor'] = 'Подавитель',
       ['Sure?'] = 'Уверены?',
+      ['Surplus EAT Allocation'] = 'Выдача излишков «ОБ»',
       ['Surviving lethal damage'] = 'Выживание при смертельном уроне',
       ['Sway multiplier'] = 'Множитель колебания',
       ['Sweeper'] = 'Чистильщик',
@@ -7433,6 +7497,7 @@ MOD.langs = {
       ['arc thrower'] = '«Дуговой метатель»',
       ['arc-12 blitzer'] = 'ARC-12 «Налетчик»',
       ['arc-3 arc thrower'] = 'ARC-3 «Дуговой метатель»',
+      ['armed resupply pods'] = 'Вооруженные капсулы «Пополнения запасов»',
       ['assault rifle'] = 'Штурмовая винтовка',
       ['autocannon'] = '«Автопушка»',
       ['autocannon sentry'] = '«Турель с автопушкой»',
@@ -7446,6 +7511,7 @@ MOD.langs = {
       ['blitzer'] = '«Налетчик»',
       ['blunt-force mitigation'] = 'Уменьшение дробящего урона',
       ['bolt pistol'] = 'Болтострел',
+      ['boosters'] = 'Двигатели',
       ['br-14 adjudicator'] = 'BR-14 «Эксперт»',
       ['breacher'] = 'Прорывник',
       ['breaching hammer'] = 'Штурмовой молот',
@@ -7463,6 +7529,7 @@ MOD.langs = {
       ['combat hatchet'] = 'Боевой топорик',
       ['combat scope 4x'] = 'Боевой прицел (4х)',
       ['commando'] = '«Коммандос»',
+      ['concealed insertion'] = 'Скрытное внедрение',
       ['concussive padding (grenadier)'] = 'Противовзрывная подкладка, гренадер',
       ['concussive padding (hazmat)'] = 'Противовзрывная подкладка, химзащита',
       ['concussive padding (reinforced)'] = 'Противовзрывная подкладка, усиленная',
@@ -7485,6 +7552,7 @@ MOD.langs = {
       ['dagger'] = '«Кинжал»',
       ['dbs-2 double freedom'] = 'DBS-2 Двойная свобода',
       ['de-escalator'] = 'Деэскалатор',
+      ['dead sprint'] = 'Смертельный рывок',
       ['deadeye'] = 'Меткий стрелок',
       ['defender'] = 'Защитник',
       ['defoliation tool'] = 'Дефолиатор',
@@ -7527,11 +7595,13 @@ MOD.langs = {
       ['exo-55 breakthrough exosuit'] = 'EXO-55 Экзокостюм «Прорыв»',
       ['expendable anti-tank'] = '«Одноразовый бронебой»',
       ['expendable napalm'] = 'Одноразовый напалм',
+      ['experimental infusion'] = 'Экспериментальная инъекция',
       ['exploding crossbow'] = '«Взрывной арбалет»',
       ['extended magazine'] = 'Увеличенный магазин',
       ['extra padding'] = 'Экстра-уплотнение',
       ['faf-14 spear'] = 'FAF-14 Копье',
       ['feet first'] = 'Вперед ногами',
+      ['firebomb hellpods'] = 'Зажигательные Адские Капсулы',
       ['flam-40 flamethrower'] = 'FLAM-40 «Огнемет»',
       ['flam-66 torcher'] = 'FLAM-66 «Сжигатель»',
       ['flame sentry'] = 'Турель-огнемет',
@@ -7794,11 +7864,13 @@ MOD.langs = {
       ['stun'] = '«Оглушающая»',
       ['stun baton'] = 'Оглушающая дубинка',
       ['stun lance'] = 'Оглушающее копье',
+      ['stun pods'] = 'Оглушающие капсулы',
       ['supplementary adrenaline'] = 'Добавки-адреналин',
       ['supply frv'] = 'МТР снабжения',
       ['supply pack'] = '«Рюкзак: боеприпасы»',
       ['support'] = 'поддержка',
       ['suppressor'] = 'Подавитель',
+      ['surplus eat allocation'] = 'Выдача излишков «ОБ»',
       ['sweeper'] = 'Чистильщик',
       ['talon'] = 'Коготь',
       ['td-110 maelstrom'] = 'TD-110 Водоворот',
@@ -11830,6 +11902,121 @@ KINDS[TYPES.seeking].silo_rows = function(weapon)
     return true
 end
 
+-- Boosters (the Boosters tab): the ones whose values are in the data files. The rest keep theirs in a
+-- table in game.dll (HD2Runtime's booster research, docs/booster-authoring.md), out of reach offline.
+-- Each finds its rows the way the game picks them: a status effect by its debug name (+8), an explosion
+-- among candidate ids by what it looks like (smoke: no damage and no shockwave; it moved 400 -> 401 in
+-- 25988413), the Armed Resupply Pods' turret by its entity, Surplus EAT's one-shot EAT by its stratagem id.
+-- { enum value (the entry's hash), name, note, kind, what }
+MOD.boosters = { LIST = {
+    { 11, 'Experimental Infusion', 'Stims give this effect instead of the normal one.', 'status', 'Stim Combat Drugs' },
+    { 12, 'Firebomb Hellpods', 'Every hellpod sets this off where it lands.', 'blast', { 83 }, 5 },
+    { 14, 'Dead Sprint', 'Sprinting out of stamina costs health instead.', 'drain', 'Death March' },
+    { 15, 'Armed Resupply Pods', 'The machine gun turret on each resupply pod.', 'turret', '73681FFD58FA1A90' },
+    { 17, 'Stun Pods', 'Every hellpod sets this off where it lands.', 'blast', { 335 }, 41 },
+    { 18, 'Concealed Insertion', 'Every hellpod leaves this smoke where it lands.', 'smoke', { 401, 400 } },
+    { 20, 'Surplus EAT Allocation', 'The free one-shot EAT it adds to your stratagems.', 'eat', 0xDFB589B2 } } }
+
+MOD.boosters.WHY = "Booster selection is limited due to the other boosters keeping their values in the game's program " ..
+                   '(game.dll), not in the data files SSEO edits. Those could only be changed while the game runs, which ' ..
+                   'is currently impossible.'
+
+-- A pointer in a status row: an address in game, a payload offset offline (the host leaves this table's as they are).
+function MOD.boosters.at(t, lo, hi)
+    local v = lo and hi and lo + hi * 4294967296
+    if not v or v == 0 then return nil end
+    return v < t.payload and t.copies[1] + HEADER_BYTES + v or v
+end
+
+-- A status effect's row by its debug name, or nil.
+function MOD.boosters.status(name)
+    local t = tables[T_STATUS]
+    if not t then return nil end
+    for id, off in pairs(t.index) do
+        local top = t.copies[1] + HEADER_BYTES
+        if type(id) == 'number' and read_text(MOD.boosters.at(t, peek4(top + off + 8), peek4(top + off + 12))) == name then return off end
+    end
+end
+
+-- The first candidate explosion that fits: `status` (its damage row's first status), or none for smoke.
+function MOD.boosters.blast(ids, status)
+    local t = tables[T_EXPLOSION]
+    for _, id in ipairs(ids) do
+        local xrow = t and t.index[id]
+        local did = xrow and default_of(field_at(T_EXPLOSION, xrow + 4, 'u32', 100000))
+        local qrow = did and did > 0 and tables[T_DAMAGE] and tables[T_DAMAGE].index[did]
+        if status and qrow and default_of(field_at(T_DAMAGE, qrow + 44, 'u32', 100000)) == status then return xrow, qrow end
+        if not status and xrow and did == 0 and default_of(field_at(T_EXPLOSION, xrow + 24, 'f32', 100000)) == 0 then return xrow end
+    end
+end
+
+-- The list: the boosters this game build has, after the stratagems.
+function MOD.boosters.build()
+    for k = #weapons, 1, -1 do
+        if weapons[k].booster then by_hash[weapons[k].hash] = nil; table.remove(weapons, k) end
+    end
+    local list = {}
+    for _, b in ipairs(MOD.boosters.LIST) do
+        local hash = string.format('FFFFFFFD%08X', b[1])
+        list[#list + 1] = { name = b[2], slot = 'Boosters', hash = hash, rows = {}, by_id = {}, booster = b,
+                            note = 'Booster. ' .. b[3] }
+        by_hash[hash] = list[#list]
+    end
+    table.sort(list, function(a, b) return a.name:lower() < b.name:lower() end)
+    for _, entry in ipairs(list) do weapons[#weapons + 1] = entry end
+end
+
+function MOD.boosters.resolve(entry)
+    local b = entry.booster
+    local kind = b[4]
+    if kind == 'status' then
+        local srow = MOD.boosters.status(b[5])
+        if not srow then return end
+        add_row(entry, 'Effect', 'duration', 'Duration (s)', 'f32', { part('duration', T_STATUS, srow + 40, 'f32', 100000) }, 0, 600, 0.5, 5)
+        add_row(entry, 'Effect', 'speed', 'Movement speed (multiplier)', 'f32',
+                { part('speed', T_STATUS, srow + 36, 'f32', 100) }, 0, 10, 0.05, 0.25)
+        -- its stat modifiers (+112 list, +120 count; 8 bytes each: stat, value): stat 2 = damage taken
+        local t = tables[T_STATUS]
+        local top = t.copies[1] + HEADER_BYTES
+        local list, n = MOD.boosters.at(t, peek4(top + srow + 112), peek4(top + srow + 116)), peek4(top + srow + 120)
+        local at = list and n and n > 0 and n <= 8 and list - top
+        for k = 0, at and n - 1 or -1 do
+            if peek4(top + at + k * 8) == 2 then
+                add_row(entry, 'Effect', 'damage_taken', 'Damage taken (multiplier)', 'f32',
+                        { part('damage_taken', T_STATUS, at + k * 8 + 4, 'f32', 100) }, 0, 10, 0.05, 0.25)
+            end
+        end
+    elseif kind == 'drain' then
+        local srow = MOD.boosters.status(b[5])
+        local did = srow and default_of(field_at(T_STATUS, srow + 44, 'u32', 100000))
+        local qrow = did and did > 0 and tables[T_DAMAGE] and tables[T_DAMAGE].index[did]
+        if qrow then damage_rows(entry, 'Health drain', 'drain_', qrow, nil, 2) end
+    elseif kind == 'blast' or kind == 'smoke' then
+        local xrow, qrow = MOD.boosters.blast(b[5], b[6])
+        if not xrow then return end
+        if qrow then
+            damage_rows(entry, 'Explosion', 'x_', qrow, 'Explosion')
+            status_rows(entry, 'Explosion', 'x_', qrow, 'blast')
+        end
+        local radii = kind == 'smoke' and { { 'inner', 'Smoke radius, full (m)', 16 }, { 'outer', 'Smoke radius, edge (m)', 20 } }
+                      or { { 'inner', 'Inner radius (m)', 16 }, { 'outer', 'Outer radius (m)', 20 }, { 'shockwave', 'Shockwave radius (m)', 24 } }
+        for _, r in ipairs(radii) do
+            add_row(entry, kind == 'smoke' and 'Smoke' or 'Explosion', 'x_' .. r[1], r[2], 'f32',
+                    { part('x_' .. r[1], T_EXPLOSION, xrow + r[3], 'f32', 100000) }, 0, 200, 0.1, 1)
+        end
+    elseif kind == 'turret' then
+        resolve_gun(entry, hash_key(b[5]))
+    elseif kind == 'eat' then
+        for _, group in ipairs(stratagem_groups) do
+            local off = tables[group] and tables[group].index[b[5]]
+            if off then
+                add_row(entry, 'Stratagem', 'uses', 'Uses per mission', 'u32', { part('uses', group, off + 80, 'u32', 999) }, 0, 999, 1, 5)
+                break
+            end
+        end
+    end
+end
+
 local function resolve(weapon)
     weapon.rows, weapon.by_id, weapon.aliases, weapon.backpack, weapon.mines, weapon.legacy = {}, {}, nil, nil, nil, nil
     weapon.swaps = nil
@@ -11846,6 +12033,7 @@ local function resolve(weapon)
         resolve_throwable(weapon, true)
         return
     end
+    if weapon.booster then MOD.boosters.resolve(weapon); return end
     if weapon.passive then KINDS[TYPES.passive].resolve(weapon); return end
     if weapon.player then KINDS[TYPES.avatar].resolve(weapon); return end
     if weapon.stratagem then resolve_stratagem(weapon); return end
@@ -12846,6 +13034,7 @@ local function become_ready(final)
         { 'stratagems', build_stratagems, 'stratagems: not listed: ' },
         { 'attachments', KINDS[TYPES.items].build, 'attachments: not listed: ' },
         { 'passives', KINDS[TYPES.passive].build, 'armor passives: not listed: ' },
+        { 'boosters', MOD.boosters.build, 'boosters: not listed: ' },
     }
     set_status('building', 'listing stratagems, attachments and armor passives')
 end
@@ -13145,7 +13334,7 @@ local ui = { open = false, measured = {}, measures = 0, tab = 'Primary', page = 
 
 -- the status line, for code above the panel's
 function MOD.notify(text, seconds) ui.message = { text = text, till = api.now() + (seconds or 4) } end
-local TABS = { 'Primary', 'Secondary', 'Support', 'Throwables', 'Stratagems', 'Mechas', 'Attachments', 'Armors', 'Records' }
+local TABS = { 'Primary', 'Secondary', 'Support', 'Throwables', 'Stratagems', 'Mechas', 'Boosters', 'Attachments', 'Armors', 'Records' }
 -- the tabs Settings > Tabs shown leaves on
 function settings.shown_tabs()
     local list = {}
@@ -14066,7 +14255,7 @@ local function draw(width, height)
             tab_x = tab_x + w + 4
         end
     end
-    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or 'Reset weapon', W - 16 - 124, 52, 124, 32, ui.weapon ~= nil and modified(ui.weapon))
+    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.booster and 'Reset booster' or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or 'Reset weapon', W - 16 - 124, 52, 124, 32, ui.weapon ~= nil and modified(ui.weapon))
 
     -- a list's scroll bar (the weapon list, or the full presets): a thin track between the list and the
     -- line that parts the panel's halves, shown when the list is longer than LIST_ROWS
@@ -14185,6 +14374,20 @@ local function draw(width, height)
         local id = weapon.extra_id and ' (' .. weapon.extra_id .. ')' or ''
         text((changed and '* ' or '') .. settings.tr(weapon.name) .. id, 24, y + 4, 16, changed and GOLD or WHITE, searching and 226 or 302)
         region(key, 16, y, 318, 25)
+    end
+    -- the Boosters tab: why only some boosters are there, under the list
+    if ui.tab == 'Boosters' and not searching and not presets_tab and #list > 0 and #list <= LIST_ROWS - 5 then
+        local line, y, words = '', 96 + #list * 26 + 12, settings.tr(MOD.boosters.WHY)
+        local spaced = words:find(' ')
+        for word in words:gmatch(spaced and '%S+' or '[^\128-\191][\128-\191]*') do
+            local next_line = line == '' and word or (line .. (spaced and ' ' or '') .. word)
+            if line ~= '' and width(next_line, 14) > 306 then
+                text(line, 24, y, 14, MUTED); y, line = y + 19, word
+            else
+                line = next_line
+            end
+        end
+        text(line, 24, y, 14, MUTED)
     end
     local py = 96 + LIST_ROWS * 26 + 8
     if not presets_tab then

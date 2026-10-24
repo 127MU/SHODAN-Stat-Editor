@@ -1,6 +1,6 @@
 # SHODAN Stat Editor
 
-Change the stats of weapons, throwables, stratagems, mechas, attachments, armor passives and your
+Change the stats of weapons, throwables, stratagems, mechas, boosters, attachments, armor passives and your
 helldiver in **Helldivers 2**, and transmog armor passives: stack any passives into one. **SHODAN Stat Editor
 Offline** (SSEO) is a Windows program: pick a weapon, change its numbers, press **Install into the
 game**, and play. It writes your values into the game's own
@@ -80,6 +80,17 @@ takes priority over Projectile swap.
 
 Body parts whose names aren't known show as "Part N". The Breacher's left arm is a shield whose
 hit is an ability, not a weapon stat, so it has no damage to change.
+
+**Boosters**: the boosters whose values are in the game's data files, on the Boosters tab
+
+| Booster | Stats |
+|---|---|
+| Experimental Infusion | Effect duration, movement speed and damage taken |
+| Firebomb Hellpods, Stun Pods | The blast every hellpod sets off: damage, radii and its burn or stun |
+| Concealed Insertion | Smoke radius |
+| Dead Sprint | Health drain |
+| Armed Resupply Pods | The resupply pod's turret, stat for stat like a weapon |
+| Surplus EAT Allocation | Uses of the extra EAT |
 
 **Attachments**: optics, underbarrels, muzzles and ammunition types, on the Attachments tab
 
