@@ -600,6 +600,17 @@ MOD.ENEMY_LIST = {
     { 'terminids', 'structure', 'Stratagem Jammer', '', '7BDAA1BB44C3EE1C', '', '' },
     { 'illuminate', 'structure', 'Cognitive Disruptor', '', '3478839C3C9B6646', '', '' },
     { 'automatons', 'structure', 'Stratagem Scrambler (convoy)', '', 'B971B1141E1CBFAC', '', '' },
+    { 'seaf', 'enemy', 'SEAF Soldier', 'Variant 1', '75F7E96AF7DCD303', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Soldier', 'Variant 2', '6B22AE8E5F669D4F', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Soldier', 'Variant 3', 'A00331F24DEEF2EE', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Soldier', 'Variant 4', '548136F66F5C9B5C', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Leader', 'Variant 1', 'BCFC57848F206106', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Leader', 'Variant 2', '78DABC7344E50234', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Medic', 'Variant 1', '14453B8FCB040099', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Medic', 'Variant 2', '6FB1E73E00A84329', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Medic', 'Variant 3', 'C47287D738BE91C3', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Specialist', 'Variant 1', 'BFB5C88D557595D8', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
+    { 'seaf', 'enemy', 'SEAF Specialist', 'Variant 2', 'A6DCC225E1263606', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
 }
 -- translations of the panel, by its English text (built from lang/*.json and the game's own names)
 -- and the fonts to draw them with: { font, its glyph texture } resource ids, the first one loaded wins
@@ -829,6 +840,7 @@ MOD.langs = {
       ['All'] = '全部',
       ['All Automatons'] = '所有机器人',
       ['All Illuminate'] = '所有光能者',
+      ['All SEAF'] = '所有 SEAF',
       ['All Terminids'] = '所有虫族',
       ['All factions'] = '所有阵营',
       ['Alpha Commander'] = '阿尔法指挥官',
@@ -1203,6 +1215,7 @@ MOD.langs = {
       ['Ergonomics'] = '人机工效',
       ['Ergonomics bonus'] = '人机工效加成',
       ['Eruptor'] = '爆裂铳',
+      ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = '一次调整所有 SEAF 士兵。在各自页面修改过的士兵保留其数值。',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = '拥有此被动的所有护甲也会获得它们的效果（在各自页面设置）。',
       ['Every change as soon as it is pushed, before testing: it may break.'] = '每项更改一经推送即更新，未经测试：可能出错。',
       ['Every commit'] = '每次提交',
@@ -2014,7 +2027,12 @@ MOD.langs = {
       ['SEAF Artillery: Napalm'] = 'SEAF 火炮：凝固汽油弹',
       ['SEAF Artillery: Smoke'] = 'SEAF 火炮：烟雾弹',
       ['SEAF Artillery: Static Field'] = 'SEAF 火炮：静电场',
+      ['SEAF Leader'] = 'SEAF 指挥官',
+      ['SEAF Medic'] = 'SEAF 医疗兵',
+      ['SEAF Soldier'] = '超级地球武装部队战士',
+      ['SEAF Specialist'] = 'SEAF 专家',
       ['SEAF reinforcement cooldown (x)'] = 'SEAF 增援冷却 (x)',
+      ['SEAF soldier: an ally.'] = 'SEAF 士兵：友军。',
       ['SEAF wave cooldown (x)'] = 'SEAF 波次冷却 (x)',
       ['SECOND MODE'] = '第二模式',
       ['SG-20 Halt'] = 'SG-20 止息',
@@ -3550,6 +3568,7 @@ MOD.langs = {
       ['seaf artillery: smoke'] = 'SEAF 火炮：烟雾弹',
       ['seaf artillery: static field'] = 'SEAF 火炮：静电场',
       ['seaf gun'] = 'SEAF 火炮',
+      ['seaf soldier'] = '超级地球武装部队战士',
       ['seaf squad'] = 'SEAF 小队',
       ['search radius (m)'] = '搜索半径(米)',
       ['search weapons and stratagems'] = '搜索武器与战略配备',
@@ -4270,6 +4289,7 @@ MOD.langs = {
       ['All'] = '全部',
       ['All Automatons'] = '所有機器人',
       ['All Illuminate'] = '所有光能者',
+      ['All SEAF'] = '所有 SEAF',
       ['All Terminids'] = '所有蟲族',
       ['All factions'] = '所有陣營',
       ['Alpha Commander'] = '阿爾法蟲族指揮官',
@@ -4644,6 +4664,7 @@ MOD.langs = {
       ['Ergonomics'] = '人機工效',
       ['Ergonomics bonus'] = '人機工效加成',
       ['Eruptor'] = '噴發者',
+      ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = '一次調整所有 SEAF 士兵。在各自頁面修改過計程車兵保留其數值。',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = '擁有此被動的所有護甲也會獲得它們的效果（在各自頁面設定）。',
       ['Every change as soon as it is pushed, before testing: it may break.'] = '每項更改一經推送即更新，未經測試：可能出錯。',
       ['Every commit'] = '每次提交',
@@ -5455,7 +5476,12 @@ MOD.langs = {
       ['SEAF Artillery: Napalm'] = 'SEAF 火炮：凝固汽油彈',
       ['SEAF Artillery: Smoke'] = 'SEAF 火炮：煙霧彈',
       ['SEAF Artillery: Static Field'] = 'SEAF 火炮：靜電場',
+      ['SEAF Leader'] = 'SEAF 指揮官',
+      ['SEAF Medic'] = 'SEAF 醫療兵',
+      ['SEAF Soldier'] = 'SEAF士兵',
+      ['SEAF Specialist'] = 'SEAF 專家',
       ['SEAF reinforcement cooldown (x)'] = 'SEAF 增援冷卻 (x)',
+      ['SEAF soldier: an ally.'] = 'SEAF 士兵：友軍。',
       ['SEAF wave cooldown (x)'] = 'SEAF 波次冷卻 (x)',
       ['SECOND MODE'] = '第二模式',
       ['SG-20 Halt'] = 'SG-20 制止者',
@@ -6991,6 +7017,7 @@ MOD.langs = {
       ['seaf artillery: smoke'] = 'SEAF 火炮：煙霧彈',
       ['seaf artillery: static field'] = 'SEAF 火炮：靜電場',
       ['seaf gun'] = 'SEAF 火炮',
+      ['seaf soldier'] = 'SEAF士兵',
       ['seaf squad'] = 'SEAF 小隊',
       ['search radius (m)'] = '搜尋半徑(米)',
       ['search weapons and stratagems'] = '搜尋武器與戰略配備',
@@ -7707,6 +7734,7 @@ MOD.langs = {
       ['All'] = 'Всё',
       ['All Automatons'] = 'Все автоматоны',
       ['All Illuminate'] = 'Все светороды',
+      ['All SEAF'] = 'Все SEAF',
       ['All Terminids'] = 'Все терминиды',
       ['All factions'] = 'Все фракции',
       ['Alpha Commander'] = 'Альфа-командир',
@@ -8058,6 +8086,7 @@ MOD.langs = {
       ['Ergonomics'] = 'Эргономика',
       ['Ergonomics bonus'] = 'Бонус эргономики',
       ['Eruptor'] = '«Извергатель»',
+      ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = 'Все солдаты SEAF сразу. Солдаты, изменённые на своей странице, сохраняют свои значения.',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = 'Вся броня с этим эффектом получает и их эффекты (настраиваются на их страницах).',
       ['Every change as soon as it is pushed, before testing: it may break.'] = 'Каждое изменение сразу после публикации, без проверки: возможны ошибки.',
       ['Every commit'] = 'Каждый коммит',
@@ -8817,7 +8846,12 @@ MOD.langs = {
       ['Rupture Warrior'] = 'Прорывной воин',
       ['S-11 Speargun'] = 'S-11 Гарпун',
       ['SEAF'] = 'СЕАФ',
+      ['SEAF Leader'] = 'Командир SEAF',
+      ['SEAF Medic'] = 'Медик SEAF',
+      ['SEAF Soldier'] = 'Солдат ВССЗ',
+      ['SEAF Specialist'] = 'Специалист SEAF',
       ['SEAF reinforcement cooldown (x)'] = 'Перезарядка подкреплений СЕАФ (x)',
+      ['SEAF soldier: an ally.'] = 'Солдат SEAF: союзник.',
       ['SEAF wave cooldown (x)'] = 'Перезарядка волн СЕАФ (x)',
       ['SECOND MODE'] = 'ВТОРОЙ РЕЖИМ',
       ['SG-20 Halt'] = 'SG-20 Стоп',
@@ -9841,6 +9875,7 @@ MOD.langs = {
       ['scout raider'] = 'Налетчик-разведчик',
       ['scout strider'] = 'Шатун-разведчик',
       ['scythe'] = '«Коса»',
+      ['seaf soldier'] = 'Солдат ВССЗ',
       ['secondary'] = 'дополнительное',
       ['seeker'] = 'Искатель',
       ['senator'] = 'Сенатор',
@@ -11452,6 +11487,9 @@ local function read_field(f)
     if f.storage == 'grenade' then
         return KINDS[TYPES.throwable].read_entity(api.read(entry.copies[1] + HEADER_BYTES + f.offset, 8))
     end
+    if f.storage == 'gun' then   -- an enemy's weapon: the chosen entity's number (MOD.enemy.gun_choices)
+        return MOD.enemy.gun_id(api.read(entry.copies[1] + HEADER_BYTES + f.offset, 8))
+    end
     if f.storage == 'flag' then   -- a bool byte
         local b = api.read(entry.copies[1] + HEADER_BYTES + f.offset, 1)
         b = b and b:byte()
@@ -11467,6 +11505,7 @@ end
 
 local function encode(f, value)
     if f.storage == 'grenade' then return KINDS[TYPES.throwable].entity_bytes(value) end
+    if f.storage == 'gun' then local g = MOD.enemy.gun_choices().by_id[value]; return g and g.key end
     if f.storage == 'f32' then return f32_bytes(value) end
     if f.storage == 'flag' then return value >= 0.5 and string.char(1) or string.char(0) end
     return u32_bytes(math.floor(value + 0.5))
@@ -11495,7 +11534,8 @@ local function write_field(f, value)
     local bytes, done = nil, {}
     if f.storage == 'tier' then bytes = KINDS[TYPES.destruction].bytes(f, value, read_field(f))
     else bytes = encode(f, value) end
-    if not bytes then return false, f.storage == 'tier' and 'no demolition tier there' or 'unknown grenade selection' end
+    if not bytes then return false, f.storage == 'tier' and 'no demolition tier there' or f.storage == 'gun' and 'unknown weapon'
+                                    or 'unknown grenade selection' end
     if f.storage == 'grenade' and value ~= 0 then
         local ok, why = KINDS[TYPES.throwable].ensure_launch()
         if not ok then return false, why end
@@ -14094,8 +14134,8 @@ end
 -- and structure of MOD.ENEMY_LIST (HD2Runtime's enemy catalogue: faction, kind, name, variant, entity, zone
 -- names), and a Spawning page per faction. Saved and installed with everything else.
 -- Variants of one enemy whose health records are the same share a page (every one is written).
-MOD.enemy = { on = false, TABS = { 'Terminids', 'Automatons', 'Illuminate', 'Spawning' },
-              FACTIONS = { terminids = 'Terminids', automatons = 'Automatons', illuminate = 'Illuminate' },
+MOD.enemy = { on = false, TABS = { 'Terminids', 'Automatons', 'Illuminate', 'SEAF', 'Spawning' },
+              FACTIONS = { terminids = 'Terminids', automatons = 'Automatons', illuminate = 'Illuminate', seaf = 'SEAF' },
               ZONE = 552, ZONES = 520 }
 
 -- 'leg_right' -> 'Right leg', 'l_wrist' -> 'Left wrist'
@@ -14159,7 +14199,7 @@ function MOD.enemy.build()
             end
             list[#list + 1] = { name = name, slot = MOD.enemy.FACTIONS[first[1]], hash = hash, rows = {}, by_id = {},
                                 enemy = { members = b.members, zones = first[6], attacks = table.concat(attacks, ';'), structure = first[2] == 'structure' },
-                                note = (first[2] == 'structure' and 'Structure.' or 'Enemy.') ..
+                                note = (first[2] == 'structure' and 'Structure.' or first[1] == 'seaf' and 'SEAF soldier: an ally.' or 'Enemy.') ..
                                        (#b.members > 1 and (' ' .. #b.members .. ' variants share these values.') or '') }
         end
     end
@@ -14371,6 +14411,26 @@ function MOD.enemy.more_rows(entry)
                            'walking, patrolling, searching, fighting and charging speeds together')
     end
     row(TYPES.sensor, 'Senses', 'sight', 'Sight range (m)', { 0 }, 'f32', 10000, 0, 1000, 1, 10)
+    -- the weapons it carries (inventory +0 / +8 / +16): SEAF only, a SEAF or player weapon instead
+    -- (an enemy's gun in SEAF hands crashed the game; enemies keep theirs)
+    for _, slot in ipairs(entry.slot == 'SEAF' and { { 0, 'gun_primary', 'Primary weapon' }, { 8, 'gun_sidearm', 'Sidearm' }, { 16, 'gun_support', 'Support weapon' } } or {}) do
+        local p = {}
+        for n, m in ipairs(members) do
+            local base = at(TYPES.inventory, m)
+            local bytes = base and api.read(tables[TYPES.inventory].copies[1] + HEADER_BYTES + base + slot[1], 8)
+            if bytes and bytes ~= string.rep('\0', 8) then
+                p[#p + 1] = part(#p == 0 and slot[2] or (slot[2] .. '_' .. n), TYPES.inventory, base + slot[1], 'gun', 4294967295)
+            end
+        end
+        if #p > 0 and read_field(p[1].field) then
+            local r = add_row(entry, 'Weapons carried', slot[2], slot[3], 'gun', p, 1, 4294967295, 1, 10)
+            r.choice = 'gun'
+            r.label_of = function()
+                local g = MOD.enemy.gun_choices().by_id[read_field(p[1].field) or 0]
+                return slot[3] .. ': ' .. (g and g.label or '?')
+            end
+        end
+    end
     -- how long it keeps tracking you out of sight (target retention +16: how fast it forgets; x2: half as fast)
     local keep = {}
     for _, m in ipairs(members) do
@@ -14481,7 +14541,7 @@ MOD.enemy.SPAWN = {
     { 'Outposts and spawners', 'spawner_production', 'Fabricator / bug hole refill speed (x)', 616 },
     { 'Outposts and spawners', 'spawner_release', 'Fabricator / bug hole release speed (x)', 796 },
 }
-MOD.enemy.FACTION_IDS = { Terminids = 2, Automatons = 8, Illuminate = 4 }
+MOD.enemy.FACTION_IDS = { Terminids = 2, Automatons = 8, Illuminate = 4, SEAF = 16 }
 
 function MOD.enemy.spawning_build()
     for _, name in ipairs({ 'Terminids', 'Automatons', 'Illuminate' }) do
@@ -14498,10 +14558,11 @@ function MOD.enemy.spawning_build()
     weapons[#weapons + 1] = entry
     by_hash[hash] = entry
     -- a faction-wide page, first in each faction's list (MOD.enemy.faction_refresh writes its rows)
-    for _, name in ipairs({ 'Terminids', 'Automatons', 'Illuminate' }) do
+    for _, name in ipairs({ 'Terminids', 'Automatons', 'Illuminate', 'SEAF' }) do
         local h = string.format('FFFFFFFB%08X', MOD.enemy.FACTION_IDS[name])
         local page = { name = 'All ' .. name, slot = name, hash = h, rows = {}, by_id = {}, enemy = { faction = name },
-                       note = 'Every enemy of this faction at once. Enemies you have edited on their own page keep their values.' }
+                       note = name == 'SEAF' and 'Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'
+                              or 'Every enemy of this faction at once. Enemies you have edited on their own page keep their values.' }
         local at = #weapons + 1
         for k, w in ipairs(weapons) do if w.slot == name then at = k; break end end
         table.insert(weapons, at, page)
@@ -14518,6 +14579,54 @@ function MOD.enemy.spawning_build()
             by_hash[bh] = bp
         end
     end
+end
+
+-- The weapons SEAF can carry: the player weapons' SEAF versions, then SEAF's own guns; a choice's number
+-- is its entity's lower 32 bits, so saved choices outlast changes to the list. gun_id: 8 entity bytes -> number.
+function MOD.enemy.gun_choices()
+    local c = MOD.enemy.choices
+    if c then return c end
+    c = { list = {}, by_id = {}, by_key = {} }
+    MOD.enemy.choices = c
+    local function key_of(w)
+        if w.key and #w.key == 8 then return w.key end
+        if not (w.hash and #w.hash == 16) then return nil end
+        local out = {}
+        for k = 15, 1, -2 do out[#out + 1] = string.char(tonumber(w.hash:sub(k, k + 1), 16)) end
+        return table.concat(out)
+    end
+    local function add(key, label)
+        if not key or c.by_key[key] then return end
+        local b1, b2, b3, b4 = key:byte(1, 4)
+        local id = b1 + b2 * 256 + b3 * 65536 + b4 * 16777216
+        if id == 0 or c.by_id[id] then return end
+        local g = { id = id, key = key, label = label, n = #c.list + 1 }
+        c.list[#c.list + 1] = g
+        c.by_id[id], c.by_key[key] = g, id
+    end
+    -- only weapons the game loads for SEAF: a player weapon nobody brought shows as a missing model and never fires
+    for _, w in ipairs(weapons) do
+        if not w.enemy and w.name:find('(SEAF)', 1, true) then add(key_of(w), w.name) end
+    end
+    for _, w in ipairs(weapons) do   -- 'SEAF Leader: primary weapon' -> 'SEAF primary weapon'
+        if w.enemy and w.enemy.gun and w.slot == 'SEAF' then add(key_of(w), (w.name:gsub('^SEAF [%a ]-: ', 'SEAF '))) end
+    end
+    return c
+end
+function MOD.enemy.gun_id(bytes)
+    if not bytes or #bytes ~= 8 then return nil end
+    local c = MOD.enemy.gun_choices()
+    if not c.by_key[bytes] then   -- a weapon no page lists: kept as it is, under its hash
+        local h = {}
+        for k = 8, 1, -1 do h[#h + 1] = string.format('%02X', bytes:byte(k)) end
+        local b1, b2, b3, b4 = bytes:byte(1, 4)
+        local id = b1 + b2 * 256 + b3 * 65536 + b4 * 16777216
+        if c.by_id[id] then return nil end
+        local g = { id = id, key = bytes, label = 'weapon ' .. table.concat(h), n = #c.list + 1 }
+        c.list[#c.list + 1] = g
+        c.by_id[id], c.by_key[bytes] = g, id
+    end
+    return c.by_key[bytes]
 end
 
 -- The faction-wide rows: each scales (or, `add`, raises) one stat of every enemy page of the faction and its gun
@@ -16308,6 +16417,10 @@ end
 
 local function fmt(v, storage)
     if v == nil then return '?' end
+    if storage == 'gun' then   -- its place in the list of weapons
+        local g = MOD.enemy.gun_choices().by_id[v]
+        return g and ('#' .. g.n) or '?'
+    end
     if storage == 'flag' then return v >= 0.5 and 'On' or 'Off' end
     if storage == 'u32' then return tostring(math.floor(v + 0.5)) end
     if math.abs(v - math.floor(v + 0.5)) < 1e-4 then return tostring(math.floor(v + 0.5)) end
@@ -16373,6 +16486,23 @@ local function change(row, delta_sign, big, exact)
                 set_override(weapon, p, unless_default(target, default_of(p.field)))
             end
             if not ok then ui.message = { text = why, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'gun' then   -- an enemy's weapon: the next / previous in the list (typed: its number there)
+            local c = MOD.enemy.gun_choices()
+            local g = c.by_id[current]
+            local at = exact and math.floor(exact + 0.5) or ((g and g.n or 0) + delta_sign * (big and 10 or 1))
+            local pick = c.list[math.max(1, math.min(#c.list, at))]
+            if not pick or pick.id == current then return end
+            local p = row.parts[1]
+            local ok, err = true, nil
+            for _, q in ipairs(row.parts) do
+                local done, why = write_field(q.field, pick.id)
+                if done then set_override(weapon, q, unless_default(pick.id, default_of(q.field)))
+                else ok, err = false, why end
+            end
+            if not ok then ui.message = { text = err, till = api.now() + 4 } end
             ui.version = ui.version + 1
             return
         end
