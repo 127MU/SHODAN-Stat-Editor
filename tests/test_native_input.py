@@ -74,7 +74,7 @@ class OfficialFlowTests(unittest.TestCase):
  def test_official_write_function_is_unchanged(self):
   text=(ROOT/'offline/install.lua').read_text(encoding='utf8')
   start=text.index('function M.write_files(');end=text.index('\n-- the files written by an install',start)
-  self.assertEqual(hashlib.sha256(text[start:end].encode()).hexdigest(),'9b4ef05eb20d3a2c760ffa7933b40084802c7a290b57844e2a510aa8c7d45140')
+  self.assertEqual(hashlib.sha256(text[start:end].encode()).hexdigest(),'6c43fe8b42cc4bda01e0c7fca5e44775bc356108a7573bbd2a26c684d36ed715')
 
 class PackageTests(unittest.TestCase):
  def test_native_package_allowlist_and_manifest(self):

@@ -1,6 +1,7 @@
 // In-process LuaJIT bridge. All callers must serialize access to this state.
 #include "bridge.h"
 #include <stdexcept>
+#include <cstdio>
 #include <filesystem>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -21,6 +22,7 @@ int Backend::progressThunk(lua_State* state){
  }return 0;
 }
 Backend::Backend(){
+ std::fprintf(stderr,"[startup] Lua backend starting\n");std::fflush(stderr);
  L=luaL_newstate();if(!L)throw std::runtime_error("LuaJIT 初始化失败");
  try {
   luaL_openlibs(L);lua_pushboolean(L,1);lua_setglobal(L,"SHODAN_EUI");
@@ -32,23 +34,28 @@ Backend::Backend(){
   lua_newtable(L);lua_pushstring(L,editor.c_str());lua_rawseti(L,-2,1);lua_setglobal(L,"arg");
   auto search=(root/"app"/"?.lua").generic_u8string();
   lua_getglobal(L,"package");lua_pushstring(L,search.c_str());lua_setfield(L,-2,"path");lua_pop(L,1);
+  std::fprintf(stderr,"[startup] Loading host: %s\n",host.c_str());std::fflush(stderr);
   if(luaL_loadfile(L,host.c_str())||lua_pcall(L,0,1,0))throw std::runtime_error(luaError(L));
   if(!lua_istable(L,-1))throw std::runtime_error("后端未返回桌面接口");
   api=luaL_ref(L,LUA_REGISTRYINDEX);
+  std::fprintf(stderr,"[startup] Host model ready\n");std::fflush(stderr);
   // Warm catalogs and armor metadata in the initialization worker. Page clicks
   // subsequently read these snapshots rather than rebuilding Lua record lists.
-  for(const char* tab:{"Primary","Secondary","Support","Throwables","Stratagems","Mechas","Boosters","Attachments","Records","Helldiver","Terminids","Automatons","Illuminate","SEAF","Spawning"})
-   initialCatalog[tab]=call("items",{tab,""}).array;
+  for(const char* tab:{"Primary","Secondary","Support","Throwables","Stratagems","Mechas","Boosters","Attachments","Records","Helldiver","ArmorWeight","Terminids","Automatons","Illuminate","SEAF","Spawning"})
+   {initialCatalog[tab]=call("items",{tab,""}).array;std::fprintf(stderr,"[startup] Catalog %s: %zu\n",tab,initialCatalog[tab].size());std::fflush(stderr);}
   for(auto& catalog:initialCatalog)for(auto& item:catalog.second){
    std::string index;
    for(const char* key:{"name","english","id","note","english_note"})index+=shodan::searchIndex(item[key].str())+" ";
    for(const auto& group:item["groups"].array)index+=shodan::searchIndex(group["name"].str())+" ";
    item.fields["search"]=Value(index);
   }
+  std::fprintf(stderr,"[startup] Building armor metadata\n");std::fflush(stderr);
   initialArmor=property("armor_list").array;
   for(const auto& entry:initialArmor)
    initialArmorValues[entry["id"].integer()]=call("armor_rows",{entry["id"]}).array;
- } catch(...) {lua_close(L);L=nullptr;throw;}
+  std::fprintf(stderr,"[startup] Backend initialization complete\n");std::fflush(stderr);
+ } catch(const std::exception& error) {std::fprintf(stderr,"[startup] Backend initialization failed: %s\n",error.what());std::fflush(stderr);lua_close(L);L=nullptr;throw;}
+ catch(...) {std::fprintf(stderr,"[startup] Backend initialization failed (unknown)\n");std::fflush(stderr);lua_close(L);L=nullptr;throw;}
 }
 Backend::~Backend(){if(L){try{call("flush");}catch(...){}lua_close(L);}}
 void Backend::push(const Value& v){
@@ -74,7 +81,7 @@ Value Backend::read(int index,int depth){
   lua_pushnil(L);while(lua_next(L,index)){
    if(lua_type(L,-2)==LUA_TSTRING){
     const std::string key=lua_tostring(L,-2);auto item=read(-1,depth+1);
-    if(item.kind==Value::Table&&(key=="help"||key=="shared"||key=="entries"||key=="files"||key=="problems"||key=="conflicts"))item.arrayValue=true;
+    if(item.kind==Value::Table&&(key=="help"||key=="shared"||key=="entries"||key=="files"||key=="problems"||key=="conflicts"||key=="warnings"))item.arrayValue=true;
     v.fields[key]=std::move(item);
    }
    else if(lua_type(L,-2)==LUA_TNUMBER)v.fields[std::to_string(int(lua_tonumber(L,-2)))]=read(-1,depth+1);

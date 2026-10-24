@@ -1,3 +1,4 @@
+#include "version.h"
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -92,7 +93,7 @@ void McpServer::serve(std::uintptr_t listenerValue){SOCKET listener=SOCKET(liste
   if(!request.fields.count("id")){reply(c,202,"");closeConnection(c);continue;}
   Value result;bool found=true;
   if(method=="initialize"){auto requested=request["params"]["protocolVersion"].str();if(requested!="2025-03-26"&&requested!="2025-06-18")requested="2025-11-25";
-   result=object({{"protocolVersion",requested},{"capabilities",object({{"tools",object({{"listChanged",false}})}})},{"serverInfo",object({{"name","SHODAN Stat Editor"},{"version","4.0.0"}})},{"instructions","所有工具共享当前编辑器数据。先查询再修改，写入前关闭游戏。二进制字段使用 {\"$base64\":\"...\"}。"}});
+   result=object({{"protocolVersion",requested},{"capabilities",object({{"tools",object({{"listChanged",false}})}})},{"serverInfo",object({{"name","SHODAN Stat Editor"},{"version",shodan::version}})},{"instructions","所有工具共享当前编辑器数据。先查询再修改，写入前关闭游戏。二进制字段使用 {\"$base64\":\"...\"}。"}});
   }else if(method=="ping")result=object({});
   else if(method=="tools/list")result=object({{"tools",tools}});
   else if(method=="tools/call"){

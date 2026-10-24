@@ -115,33 +115,52 @@ function M.attach(B,C)
         local preset=assert((P.list and P.list() or P.full)[n],'找不到全局预设')
         return {kind=kind,name=preset.name,values=preset.values,editor=C.editor and C.editor() or nil}
     end
-    local function validate(bundle)
+    local function validate(bundle,allow_missing)
         if bundle.kind=='full' and C.editor then assert((bundle.editor or 'equipment')==C.editor(),'预设属于另一种编辑器，请先切换装备或敌人编辑') end
-        local fields={}
+        local fields,warnings,accepted={},{},0
         for _,o in ipairs(bundle.values) do
-            local w=assert(C.by_hash[o.hash],'预设包含当前数据中不存在的装备：'..o.hash)
-            if bundle.kind=='full' and C.in_scope then assert(C.in_scope(w),'预设混入了另一种编辑器的数据') end
-            local parts=assert(C.parts(w,o.id),'预设包含当前数据中不存在的参数：'..o.id)
+            local w=C.by_hash[o.hash]
+            if w and bundle.kind=='full' and C.in_scope then assert(C.in_scope(w),'预设混入了另一种编辑器的数据') end
+            local resolved,why=o.id,nil
+            if w and C.preset_id then resolved,why=C.preset_id(w,o.id,bundle.values) end
+            if why then error(why,0) end
+            local parts=w and resolved and C.parts(w,resolved,bundle.values)
+            if not w or not parts or not parts[1] then
+                local reason=not w and ('当前版本没有此装备：'..o.hash) or
+                    ((C.name and C.name(w) or C.tr(w.name))..'：当前版本没有参数 '..o.id)
+                if not allow_missing then error(reason,0) end
+                warnings[#warnings+1]=reason..'（将跳过，原预设保留）'
+            else
+                accepted=accepted+1
             for _,p in ipairs(parts) do
-                local f=p.field;local v=o.value;local limit=(f.storage=='u32' and 4294967295 or f.storage=='u16' and 65535 or f.storage=='u8' and 255 or (f.storage=='flag' or f.storage=='bit') and 1 or 3.4028234663852886e38)
+                local f=p.field;local v=o.value;assert(not f.allowed or f.allowed[v],f.allowed and f.allowed.why or '预设含无效选项');local limit=(f.storage=='u32' and 4294967295 or f.storage=='u16' and 65535 or f.storage=='u8' and 255 or (f.storage=='flag' or f.storage=='bit') and 1 or 3.4028234663852886e38)
                 assert(finite(v) and v>=((f.storage=='f32' or f.storage=='virtual') and -limit or 0) and v<=limit,'预设数值超出字段范围：'..o.id)
                 if f.storage=='flag' or f.storage=='bit' then assert(v==0 or v==1,'开关数值必须为 0 或 1') end
                 if f.storage=='u32' or f.storage=='u16' or f.storage=='u8' or f.storage=='grenade' then assert(v%1==0,'编号和整数参数不能有小数') end
                 if f.storage=='u16' then assert(v<=65535,'数值超出 16 位范围') end
                 if f.storage=='u8' then assert(v<=255,'数值超出 8 位范围') end
-                assert(fields[f.key]==nil or fields[f.key]==v,'预设对共享参数指定了互相冲突的值')
+                assert(fields[f.key]==nil or fields[f.key]==v,'预设对共享参数指定了互相冲突的值：'..o.hash..' '..o.id..' ['..f.key..'] '..tostring(fields[f.key])..' / '..tostring(v))
                 fields[f.key]=v
             end
+            end
         end
-        return fields
+        if allow_missing and #warnings>0 and accepted==0 then
+            error('此预设的 '..#warnings..' 项参数均无法识别，已停止读取以免清空当前修改。请使用创建预设时的版本重新导出。首项：'..warnings[1],0)
+        end
+        return fields,warnings,accepted
     end
     local function describe(w,p,before,after,index)
         return {equipment=C.name and C.name(w) or C.tr(w.name),parameter=C.tr(p.row and p.row.label or p.id),
             before=C.number(before),after=C.number(after),file=C.file(p.field),shared=M.shared(w,{p},C.tr,index)}
     end
-    local function compare(bundle)
-        local desired=validate(bundle);local out,seen={},{};local index=M.shared_index(C.by_hash)
-        for _,w in pairs(C.by_hash) do
+    local function current_registry()
+        local all={};for id,w in pairs(C.by_hash) do all[id]=w end
+        for id,w in pairs(C.record_pages and C.record_pages() or {}) do all[id]=w end
+        return all
+    end
+    local function compare(bundle,allow_missing)
+        local desired,warnings,accepted=validate(bundle,allow_missing);local out,seen={},{};local registry=current_registry();local index=M.shared_index(registry)
+        for _,w in pairs(registry) do
             if (bundle.kind=='full' and (not C.in_scope or C.in_scope(w))) or w.hash==bundle.weapon then
                 for _,row in ipairs(w.rows or {}) do for _,p in ipairs(row.parts) do
                     local f=p.field
@@ -154,7 +173,7 @@ function M.attach(B,C)
             end
         end
         table.sort(out,function(a,b)return a.equipment..a.parameter<b.equipment..b.parameter end)
-        return {name=bundle.name,entries=out,count=#out,kind=bundle.kind}
+        return {name=bundle.name,entries=out,count=#out,kind=bundle.kind,warnings=warnings,skipped=#warnings,accepted=accepted}
     end
     function B.preset_info(slot)
         local w=assert(C.selected());local values=P.weapon_preset(w,slot)
@@ -168,9 +187,30 @@ function M.attach(B,C)
         else local p=assert((P.list and P.list() or P.full)[n]);P.full_put(n,name,p.values) end
         return '预设名称已保存'
     end
-    function B.preset_compare(kind,n)return compare(source(kind,n))end
+    function B.preset_compare(kind,n)return compare(source(kind,n),true)end
+    -- Apply the same compatibility check for direct API/MCP loads as for the dialog.
+    for method,kind in pairs({preset='weapon',full_preset='full'}) do
+        local load=B[method]
+        if type(load)=='function' then B[method]=function(action,n,...)
+            local preview=action=='load' and compare(source(kind,n),true)
+            local message=load(action,n,...)
+            if preview and preview.skipped>0 then
+                message=tostring(message)..'；已跳过 '..preview.skipped..' 项失效参数，原预设保留。'
+            end
+            return message
+        end end
+    end
     function B.preset_export(kind,n)
-        local s=source(kind,n);return M.encode(kind,s.name,s.weapon,s.values,s.editor)
+        local s=source(kind,n);local values,seen={},{}
+        for _,v in ipairs(s.values) do
+            local w=C.by_hash[v.hash];local id,why=v.id,nil
+            if w and C.preset_id then id,why=C.preset_id(w,v.id,s.values) end
+            if why then error(why,0) end
+            id=id or v.id;local key=v.hash..':'..id
+            assert(seen[key]==nil or seen[key]==v.value,'预设的旧名称与槽位名称指定了不同数值')
+            if seen[key]==nil then values[#values+1]={hash=v.hash,id=id,value=v.value};seen[key]=v.value end
+        end
+        return M.encode(kind,s.name,s.weapon,values,s.editor)
     end
     local function imported(kind,text)
         local bundle=M.decode(text);assert(bundle.kind==kind,'导入预设的类型不匹配')
@@ -191,9 +231,9 @@ function M.attach(B,C)
         return {id=n,message='预设已导入，读取后才会改变编辑器数值'}
     end
     function B.pending_preview()
-        local out,seen={},{};local index=M.shared_index(C.by_hash)
+        local out,seen={},{};local index=M.shared_index(current_registry())
         for _,o in ipairs(C.overrides()) do
-            local w=C.by_hash[o.hash];local p=w and w.by_id[o.id]
+            local w=C.by_hash[o.hash];local parts=w and C.parts(w,o.id,C.overrides());local p=parts and parts[1]
             if p and not seen[p.field.key] then
                 local d=C.default(p.field)
                 if d~=nil and math.abs(o.value-d)>1e-6 then out[#out+1]=describe(w,p,d,o.value,index);seen[p.field.key]=true end

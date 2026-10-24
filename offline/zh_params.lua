@@ -1,5 +1,18 @@
 -- Reviewed editor parameter labels. Internal coefficients are not presented as percentages.
 local labels={
+ ["Light"]="轻型", ["Medium"]="中型", ["Heavy"]="重型",
+ ["Light armor"]="轻型护甲", ["Medium armor"]="中型护甲", ["Heavy armor"]="重型护甲",
+ ["Apex firing action"]="尖峰开火动作",
+ ["Time deployed (s)"]="部署持续时间（秒）",
+ ["Armor weight"]="护甲重量",
+ ["One-handed"]="单手持用",
+ ["Suppressed"]="消音（敌人感知）",
+ ["Damage ticks per minute"]="每分钟伤害判定次数",
+ ["Highest ledge it climbs (m)"]="可攀爬的最大高度（米）",
+ ["Drowning depth offset (m)"]="开始溺水的深度偏移（米）",
+ ["Floating depth offset (m)"]="漂浮高度偏移（米）",
+ ["Time before drowning (s)"]="溺水前持续时间（秒）",
+
  ["Shield lifetime (s)"]="防护罩持续时间（秒）",
  ["Sentry lifetime (s)"]="炮塔持续时间（秒）",
  ["0 seconds = unlimited time"]="0 秒＝无限时间",
