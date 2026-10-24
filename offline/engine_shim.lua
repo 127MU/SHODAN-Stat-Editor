@@ -4,10 +4,19 @@
 -- Windows' own (DefWindowProcW): no Lua runs inside a window message, the panel reads keys and the mouse itself.
 local ffi = require('ffi')
 local bit = require('bit')
+local text_input=require('text_input')
+local theme=require('theme')
 
 for _, declaration in ipairs({
     -- (the same signatures as Stat Editor's own declarations: whichever comes first is used by both)
     'void *GetForegroundWindow(void);',
+    'int OpenClipboard(void *);',
+    'int CloseClipboard(void);',
+    'void *GetClipboardData(uint32_t);',
+    'void *GlobalLock(void *);',
+    'int GlobalUnlock(void *);',
+    'int WideCharToMultiByte(uint32_t,uint32_t,const uint16_t *,int,char *,int,const char *,int *);',
+    'uint64_t GetTickCount64(void);',
     'int GetCursorPos(void*);',
     'int ScreenToClient(void*,void*);',
     'int GetClientRect(void*,void*);',
@@ -61,9 +70,6 @@ for _, declaration in ipairs({
     'int TextOutW(void *dc, int x, int y, const uint16_t *text, int count);',
     'int GetTextExtentPoint32W(void *dc, const uint16_t *text, int count, int32_t *size);',
     'int GdiFlush(void);',
-    'uint64_t GetTickCount64(void);',
-    'typedef struct { void *hwnd; uint32_t message; uint32_t pad; uintptr_t wparam; intptr_t lparam;'
-        .. ' uint32_t time, x, y, private_; } host_msg;',
 }) do pcall(ffi.cdef, declaration) end
 
 local user, gdi, kernel = ffi.load('user32'), ffi.load('gdi32'), ffi.C
@@ -84,62 +90,15 @@ function M.message_box(text, kind)   -- kind: 0x10 error, 0x30 warning, 0x40 inf
 end
 
 -- ---------------------------------------------------------------- the window and its back buffer
--- ---------------------------------------------------------------- text typed into the window
--- The window procedure is Windows' own, so the characters the window receives arrive as WM_CHAR: the keyboard's,
--- and an input method's Chinese or any other script. They are taken out of the message queue in pump() and
--- handed to the panel, which uses them instead of reading the keys: an input method takes the keys it composes
--- with before they make characters, so keys read on their own would type the pinyin (and the digit that picks a
--- candidate) next to the character the input method commits, and a Chinese input method takes the digits too.
-local typed, typed_at, typed_high = {}, 0, nil
-local TYPED_KEEP = 2   -- seconds a character waits for the panel (dropped if the panel was not there)
-
-local function now_ms() return tonumber(kernel.GetTickCount64()) end
-
-local function utf8_of(code)
-    if code < 0x80 then return string.char(code) end
-    if code < 0x800 then return string.char(0xC0 + math.floor(code / 0x40), 0x80 + code % 0x40) end
-    if code < 0x10000 then
-        return string.char(0xE0 + math.floor(code / 0x1000), 0x80 + math.floor(code / 0x40) % 0x40,
-                           0x80 + code % 0x40)
-    end
-    return string.char(0xF0 + math.floor(code / 0x40000), 0x80 + math.floor(code / 0x1000) % 0x40,
-                       0x80 + math.floor(code / 0x40) % 0x40, 0x80 + code % 0x40)
-end
-
--- One UTF-16 code unit of WM_CHAR (a surrogate pair arrives as two). Control characters are dropped: Enter,
--- Tab and the like are keys the panel reads itself, not text.
-function M.push_typed(code)
-    if not code or code < 0x20 or code == 0x7F then return end
-    if code >= 0xD800 and code < 0xDC00 then typed_high = code; return end
-    local point = code
-    if code >= 0xDC00 and code < 0xE000 then
-        if not typed_high then return end
-        point, typed_high = 0x10000 + (typed_high - 0xD800) * 0x400 + (code - 0xDC00), nil
-    else
-        typed_high = nil
-    end
-    typed[#typed + 1] = utf8_of(point)
-    while #typed > 64 do table.remove(typed, 1) end
-    typed_at = now_ms()
-end
-
--- The characters typed since the last call ('' when there were none)
-function M.take_typed()
-    if #typed == 0 then return '' end
-    local text = table.concat(typed)
-    for k = #typed, 1, -1 do typed[k] = nil end
-    typed_high = nil
-    if now_ms() - typed_at > TYPED_KEEP * 1000 then return '' end
-    return text
-end
-
-local PANEL_W, PANEL_H = 1060, 1080   -- the panel (1000 wide) and its margins, in 1080p units
+local layout=require('layout')
+local PANEL_W, PANEL_H = layout.window_w,layout.window_h
 local STYLE = 0x00CA0000   -- WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX (no resizing)
 
 -- the client for a work area (left, top, right, bottom) and a frame `extra_h` tall: as tall as it allows (at most
 -- 1350 px), panel-shaped
 local function client_for(work, extra_h)
-    local ch = math.floor(math.min(work[3] - work[1] - extra_h, 1.25 * 1080) * 0.95)
+    local ch = math.floor(math.min(work[3]-work[1]-extra_h,1.25*1080,
+        (work[2]-work[0]-32)*PANEL_H/PANEL_W)*0.95)
     return math.floor(ch * PANEL_W / PANEL_H + 0.5), ch
 end
 
@@ -233,18 +192,36 @@ function M.open(title, place)
     return M.window
 end
 
-local msg = ffi.new('host_msg')
--- Handles the window's messages; false once the window is closed. A window moved onto another screen is sized
--- for that one (moving it is Windows' own loop inside DispatchMessageW: this runs once it is let go).
--- M.place: the window's top left, while it is not minimized.
+local msg = ffi.new('uint8_t[64]')
+-- Handles the window's messages; false once the window is closed.
+function M.take_text() return text_input.take() end
+function M.clipboard_text()
+    if user.OpenClipboard(M.window)==0 then return nil end
+    local data=user.GetClipboardData(13);local out
+    if data~=nil then
+        local ptr=kernel.GlobalLock(data)
+        if ptr~=nil then
+            local n=kernel.WideCharToMultiByte(65001,0,ptr,-1,nil,0,nil,nil)
+            if n>0 and n<1048576 then
+                local buf=ffi.new('char[?]',n)
+                kernel.WideCharToMultiByte(65001,0,ptr,-1,buf,n,nil,nil)
+                out=ffi.string(buf,n-1)
+            end
+            kernel.GlobalUnlock(data)
+        end
+    end
+    user.CloseClipboard();return out
+end
 function M.pump()
     while user.PeekMessageW(msg, nil, 0, 0, 1) ~= 0 do
-        if msg.message == 0x0102 then   -- WM_CHAR: a character for the panel, an input method's own included
-            M.push_typed(tonumber(msg.wparam))
-        else
-            user.TranslateMessage(msg)
-            user.DispatchMessageW(msg)
+        if ffi.cast('uint32_t *',msg+8)[0]==0x020A then M.wheel=(M.wheel or 0)+tonumber(ffi.cast('int16_t *',msg+18)[0])/120 end
+        local kind=ffi.cast('uint32_t *',msg+8)[0]
+        if kind==0x0102 and M.focused() then
+            local code=tonumber(ffi.cast('uintptr_t *',msg+16)[0])
+            if code==22 then text_input.paste(M.clipboard_text()) else text_input.push(code) end
         end
+        user.TranslateMessage(msg)
+        user.DispatchMessageW(msg)
     end
     if M.window == nil or user.IsWindow(M.window) == 0 then return false end
     if user.IsIconic(M.window) == 0 then
@@ -256,7 +233,11 @@ function M.pump()
 end
 
 function M.sleep(ms) kernel.Sleep(ms) end
-function M.set_title(text) user.SetWindowTextW(M.window, (wide(text))) end
+function M.set_theme(mode)
+    theme.set(mode);M.theme=theme.mode;M.version=(M.version or 0)+1
+    if M.transition then M.transition() end
+end
+function M.set_title(text) M.title=text;user.SetWindowTextW(M.window, (wide(text))) end
 function M.focused() return M.window ~= nil and user.GetForegroundWindow() == M.window end
 
 -- the cursor in the client, pixels from the top left (nil outside)
@@ -275,7 +256,7 @@ local fonts = {}
 local FACES = { ['zh-Hans'] = 'Microsoft YaHei UI', ['zh-Hant'] = 'Microsoft JhengHei UI' }
 M.lang = function() return 'en' end
 local function font_of(size, bold)
-    local h = math.max(6, math.floor(size + 0.5))
+    local h = math.max(12, math.floor(size + 0.5))
     local face = FACES[M.lang()] or 'Segoe UI'
     local key = face .. h .. (bold and 'b' or '')
     if not fonts[key] then
@@ -297,6 +278,7 @@ end
 
 -- c: { a, r, g, b }
 function M.fill(x0, y0, x1, y1, c)
+    c=theme.color(c,false)
     x0, y0 = math.max(0, math.floor(x0 + 0.5)), math.max(0, math.floor(y0 + 0.5))
     x1, y1 = math.min(M.w, math.floor(x1 + 0.5)), math.min(M.h, math.floor(y1 + 0.5))
     if x1 <= x0 or y1 <= y0 then return end
@@ -326,6 +308,7 @@ end
 
 -- text with its baseline at y (pixels from the top)
 function M.text(text, x, y, size, c, bold)
+    c=theme.color(c,true)
     if text == '' then return end
     gdi.SelectObject(M.dc, font_of(size, bold))
     gdi.SetTextColor(M.dc, c[2] + c[3] * 256 + c[4] * 65536)
@@ -349,12 +332,90 @@ function M.save_bmp(path)
     f:close()
 end
 
+local fx={hover=nil,selected=nil,clock=0}
+local function now_ms() return tonumber(kernel.GetTickCount64()) end
+local function motion_enabled()
+    if fx.enabled==nil then local enabled=ffi.new('int[1]',1);user.SystemParametersInfoW(0x1042,0,enabled,0);fx.enabled=enabled[0]~=0 end
+    return fx.enabled
+end
+function M.transition() if motion_enabled() then M.motion_start=now_ms() end end
+function M.pulse(key) if motion_enabled() then fx.pulse_key=key;fx.pulse_start=now_ms() end end
+function M.effects(regions,hover,selected,topdown)
+    local t=now_ms();local hovered,active
+    for _,r in ipairs(regions or {}) do
+        if r.enabled~=false then
+            local rect={x=r.x,y=topdown and r.y or M.h-r.y-r.h,w=r.w,h=r.h,key=r.key}
+            if r.key==hover and r.key~='panel' then hovered=rect end
+            if r.key=='tab:'..tostring(selected) then active=rect end
+            if r.key==fx.pulse_key then fx.pulse=rect end
+        end
+    end
+    if hover~=fx.hover then fx.hover=hover;fx.hover_start=t end
+    fx.hover_rect=hovered
+    if active then
+        if selected~=fx.selected then
+            local previous=fx.active or active
+            fx.tab_from={x=previous.x,w=previous.w};fx.tab_start=t;fx.selected=selected
+        end
+        fx.active=active
+    end
+end
+function M.animating()
+    if not motion_enabled() then return false end
+    local t=now_ms()
+    return M.progress or fx.hover_rect~=nil or M.motion_start and t-M.motion_start<360
+        or fx.tab_start and t-fx.tab_start<320 or fx.pulse_start and t-fx.pulse_start<480
+end
+local function outline(r,c,inset)
+    if not r then return end
+    local d=inset or 0;local s=M.h/1080;local e=math.max(1,2*s)
+    local x,y,w,h=r.x-d,r.y-d,r.w+2*d,r.h+2*d
+    M.fill(x,y,x+w,y+e,c);M.fill(x,y+h-e,x+w,y+h,c)
+    M.fill(x,y,x+e,y+h,c);M.fill(x+w-e,y,x+w,y+h,c)
+end
 function M.present()
     gdi.GdiFlush()
     if user.IsIconic(M.window) ~= 0 then return end
+    local saved
+    if motion_enabled() then
+        local count=M.w*M.h
+        if fx.scratch_n~=count then fx.scratch=ffi.new('uint32_t[?]',count);fx.scratch_n=count end
+        saved=fx.scratch;ffi.copy(saved,M.bits,count*4)
+        local t,s=now_ms(),M.h/1080
+        if M.motion_start then
+            local phase=math.min(1,(t-M.motion_start)/360)
+            if phase<1 then
+                M.fill(30*s,148*s,M.w-30*s,1028*s,{math.floor(90*(1-phase)^2),237,242,234})
+            end
+        end
+        if fx.active then
+            local a=fx.active;local phase=math.min(1,(t-(fx.tab_start or t))/320)
+            local ease=1-(1-phase)^3;local from=fx.tab_from or a
+            local x=from.x+(a.x-from.x)*ease;local w=from.w+(a.w-from.w)*ease
+            M.fill(x-3*s,a.y+a.h-2*s,x+w+3*s,a.y+a.h+4*s,{40,32,230,170})
+            M.fill(x,a.y+a.h-2*s,x+w,a.y+a.h+1*s,{255,24,175,132})
+        end
+        if fx.hover_rect then
+            local intensity=100+math.floor(95*math.min(1,(t-(fx.hover_start or t))/160))
+            outline(fx.hover_rect,{intensity,20,185,133})
+            local r=fx.hover_rect;local travel=(t%1200)/1200*r.w
+            M.fill(r.x+travel,r.y,r.x+math.min(r.w,travel+20*s),r.y+2*s,{255,93,237,185})
+        end
+        if fx.pulse and fx.pulse_start then
+            local phase=(t-fx.pulse_start)/480
+            if phase<1 then outline(fx.pulse,{math.floor(210*(1-phase)),30,226,157},phase*6*s) end
+        end
+        if M.progress then
+            local span=M.w-60*s;local x=30*s+(t%1300)/1300*span
+            M.fill(30*s,1032*s,M.w-30*s,1035*s,{80,28,158,117})
+            M.fill(x,1032*s,math.min(M.w-30*s,x+180*s),1035*s,{255,52,237,170})
+        end
+    end
+    if M.capture_path then M.save_bmp(M.capture_path);M.capture_path=nil end
     local dc = user.GetDC(M.window)
-    gdi.BitBlt(dc, 0, 0, M.w, M.h, M.dc, 0, 0, 0x00CC0020)   -- SRCCOPY
-    user.ReleaseDC(M.window, dc)
+    gdi.BitBlt(dc,0,0,M.w,M.h,M.dc,0,0,0x00CC0020)
+    user.ReleaseDC(M.window,dc)
+    if saved then ffi.copy(M.bits,saved,M.w*M.h*4) end
 end
 
 -- ---------------------------------------------------------------- the engine
@@ -387,8 +448,6 @@ function M.engine()
             main_world = function() return main_world end,
             worlds = function() return { main_world, overlay_world } end,
             can_get = function() return true end,
-            -- the characters typed into the window (an input method's Chinese included; see take_typed)
-            typed_text = function() return M.take_typed() end,
         },
         World = {
             create_screen_gui = function(world)
@@ -433,6 +492,7 @@ function M.paint_guis(background)
     for gui in pairs(guis) do
         for _, item in ipairs(gui.items) do items[#items + 1] = item end
     end
+    M.draw_items = #items
     table.sort(items, function(a, b) if a.z ~= b.z then return a.z < b.z end return a.n < b.n end)
     local texting = false
     for _, item in ipairs(items) do

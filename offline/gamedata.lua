@@ -10,6 +10,7 @@ int sodium_init(void);
 int crypto_box_seal(unsigned char *c, const unsigned char *m, unsigned long long mlen, const unsigned char *pk);
 int crypto_box_seal_open(unsigned char *m, const unsigned char *c, unsigned long long clen,
                          const unsigned char *pk, const unsigned char *sk);
+int crypto_hash_sha256(unsigned char *out, const unsigned char *in, unsigned long long inlen);
 void *VirtualAlloc(void *address, size_t size, uint32_t type, uint32_t protect);
 int VirtualFree(void *address, size_t size, uint32_t type);
 void *memcpy(void *dst, const void *src, size_t n);
@@ -69,6 +70,15 @@ function M.seal(p, n)
     local c = ffi.new('uint8_t[?]', n + SEALBYTES)
     assert(sodium.crypto_box_seal(c, p, n, PK) == 0, 'seal failed')
     return ffi.string(c, n + SEALBYTES)
+end
+
+function M.seal_string(s)
+    return M.seal(ffi.cast('const uint8_t *',s),#s)
+end
+function M.sha256_hex(s)
+    local out=ffi.new('uint8_t[32]')
+    if sodium.crypto_hash_sha256(out,s,#s)~=0 then return nil end
+    return (ffi.string(out,32):gsub('.',function(c) return string.format('%02x',c:byte()) end))
 end
 
 -- ---------------------------------------------------------------- murmur64 (seeded, 64-bit words)

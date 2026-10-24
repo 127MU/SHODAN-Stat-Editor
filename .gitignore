@@ -7,3 +7,13 @@ offline/launcher/*.obj
 offline/launcher/*.lib
 offline/launcher/*.exp
 offline/launcher/*.res
+__pycache__/
+
+# Custom editor local outputs
+dist/
+__pycache__/
+*.pyc
+
+# EUI desktop compiler outputs
+desktop/eui/*.lib
+desktop/eui/*.exp
