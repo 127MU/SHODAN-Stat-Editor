@@ -18014,6 +18014,11 @@ local function handle_table(address, kind, payload, blob)
         return
     end
     local table_type = kind
+    if MOD.offline and not spec.parse and rawget(_G,'SHODAN_OFFLINE_REGISTER_LAYOUT') then
+        local stride=spec.stride
+        local layout={keyed=spec.keyed,slack=spec.slack,tail=spec.tail,id_at=spec.id_at}
+        SHODAN_OFFLINE_REGISTER_LAYOUT(address,kind,stride,index,function(data)return parse(data,stride,layout)end)
+    end
     if spec.groups then
         -- each group is its own table; copies of one group have its size and first row
         local list = kind == T_STRATAGEM and stratagem_groups or spec.list
