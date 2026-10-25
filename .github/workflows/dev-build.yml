@@ -65,8 +65,19 @@ jobs:
           python tools/package_eui.py --build-dir build/eui --eui-root build/eui/_deps/eui-src --output-root dist/desktop
           if ($LASTEXITCODE -ne 0) { throw "Desktop packaging failed" }
 
+      - name: Build single-file package
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set "VS=%%i"
+          call "%VS%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
+          for /d %%d in ("dist\desktop\SHODAN_*") do python tools/package_onefile.py --release "%%d" --msvc || exit /b 1
+
       - name: Keep desktop packages
         uses: actions/upload-artifact@v4
         with:
           name: desktop-build
-          path: dist/desktop/*.zip
+          path: |
+            dist/desktop/*.zip
+            dist/desktop/*.exe
+          if-no-files-found: error
+          retention-days: 30

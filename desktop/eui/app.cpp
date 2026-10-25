@@ -220,7 +220,7 @@ void scrollDropdown(eui::Ui& ui,const std::string& id,float width,float height,f
  .onChange([&state](float v){state.offset.set(v);app::requestUpdate();}).step(44).scrollbarWidth(7).scrollbarGap(4)
  .contentKey(id+":"+std::to_string(labels.size())+":"+std::to_string(selected)).content([=](eui::Ui& content,float cw,float vh){
   content.stack(id+".canvas").size(cw,float(labels.size()*44)).content([&]{for(size_t i=0;i<labels.size();++i)
-   button(content,id+".option."+std::to_string(i),labels[i],0,float(i*44),cw,[onOpen,onChange,i]{onChange(int(i));onOpen(false);app::requestUpdate();},int(i)==selected,40);
+   button(content,id+".option."+std::to_string(i),labels[i],0,float(i*44),cw,[openCallback=std::function<void(bool)>(onOpen),changeCallback=std::function<void(int)>(onChange),i]{changeCallback(int(i));openCallback(false);app::requestUpdate();},int(i)==selected,40);
   }).build();
  }).build();
  if(auto* scroll=ui.find(id+".scroll"))scroll->composeOnScrollOffsetChange=true;
@@ -233,6 +233,7 @@ void checkRelease(){
  m.releaseWork=std::async(std::launch::async,[]{auto result=shodan::checkReleaseUpdate(shodan::version);app::requestUpdate();return result;});
 }
 void refreshRows(){++m.rowsRevision;m.rows=m.backend->call("rows").array;m.edits.clear();m.error.clear();}
+void flushEdits();
 void updatePresetInfo(){if(m.backend&&!m.selected.empty())m.presetLabel=m.backend->call("preset_info",{m.preset})["name"].str();}
 void markRecent(){
  if(m.selected.empty())return;
@@ -247,6 +248,7 @@ void saveNavigation(){
  for(const auto& value:m.lastSelections)file<<std::quoted(value.first)<<' '<<std::quoted(value.second)<<'\n';
 }
 void select(const Value& item){
+ flushEdits();
  if(!m.selected.empty())m.presetSlots[m.selected]=m.preset;
  m.backend->call("select",{item["id"]});m.selected=item["id"].str();m.selectedName=item["name"].str();m.preset=m.presetSlots.count(m.selected)?m.presetSlots[m.selected]:1;
  m.groupOpen=false;m.group=0;m.onlyChanged=false;m.detailScroll.set(0);refreshRows();updatePresetInfo();m.lastSelections[currentTab()]=m.selected;saveNavigation();
@@ -270,6 +272,7 @@ void reloadList(bool chooseFirst=false){
 }
 void navigate(int page){safe([&]{
  if(page==8&&!m.modsUnlocked)return;
+ flushEdits();
  if(page!=9){m.enemyMode=page==11;m.backend->call("editor_mode",{m.enemyMode});}
  m.animationClock=std::chrono::steady_clock::now();
  m.groupOpen=false;m.armorTargetOpen=false;m.page=page;m.pageProgress=0;m.armorDetail=-1;m.query.clear();m.recentOnly=false;m.error.clear();m.group=0;m.detailScroll.set(0);m.armorScroll.set(0);
@@ -286,7 +289,9 @@ void searchEquipment(const std::string& query){safe([&]{
  }
  m.query=query;reloadList();
 });}
-void commit(int n,const std::string& value){safe([&]{m.message=m.backend->call("set",{n,value}).str();refreshRows();markRecent();});}
+void commit(int n,const std::string& value){safe([&]{
+ m.message=m.backend->call("set",{n,value}).str();auto drafts=m.edits;drafts.erase(std::to_string(n));refreshRows();m.edits=std::move(drafts);markRecent();
+});}
 void flushEdits(){
  auto edits=m.edits;
  for(const auto& e:edits){
@@ -821,9 +826,11 @@ void field(eui::Ui& ui,const Value& r,float y,float w,bool armor=false){
   m.message="已恢复此项原始值";
  });};
  const float inputX=18.0f;
- const float inputW=w-184.0f;
- auto apply=[id,n,armor,raw]{safe([&]{
-  const std::string value=m.edits.count(id)?m.edits[id]:raw;
+ const float inputW=w-112.0f;
+ auto apply=[id,n,armor,owner=m.selected,armorOwner=m.armorDetail]{safe([&]{
+  if(!m.edits.count(id))return;
+  if(armor?(m.armorDetail!=armorOwner||m.page!=4):(m.selected!=owner||m.armorDetail>=0))return;
+  const std::string value=m.edits[id];
   if(armor){auto v=m.backend->call("armor_set",{m.armorDetail,id,value});if(v.kind==Value::Nil)throw std::runtime_error("请输入有效的护甲数值");m.edits.erase(id);m.armorValues[m.armorDetail]=m.backend->call("armor_rows",{m.armorDetail}).array;m.message="护甲数值已保存";}
   else commit(n,value);
  });};
@@ -837,8 +844,7 @@ void field(eui::Ui& ui,const Value& r,float y,float w,bool armor=false){
   auto valueStyle=inputStyle();if(r["faction_only"].yes())valueStyle.text={0.18f,0.48f,0.95f,1};
   components::input(ui,"input."+id).position(inputX,y+40).size(inputW,40).theme(theme()).style(valueStyle).fontSize(17)
   .value(m.edits.count(id)?m.edits[id]:raw).onChange([id](const std::string& v){m.edits[id]=v;})
-  .onEnter(apply).build();
-  button(ui,"apply."+id,"应用",w-156,y+40,64,apply,true);
+  .onEnter(apply).onFocus([apply](bool focused){if(!focused)apply();}).build();
  }
  if(r["faction_only"].yes())text(ui,"faction.source."+id,"阵营设置",w-80,y+48,70,26,12,true);else button(ui,"reset."+id,"恢复",w-80,y+40,64,reset);
  if(!r["inline_note"].str().empty())text(ui,"note."+id,r["inline_note"].str(),18,y+(shared.empty()?85:115),w-36,24,13,true);
@@ -940,10 +946,10 @@ void parameterPage(eui::Ui& ui,float w,float h){
   text(ui,"details.title",m.selectedName,0,4,detailW-128,40,25);
   if(m.page==13)button(ui,"armor.weights.back","返回护甲被动",detailW-270,0,140,[]{navigate(4);});
   button(ui,"reset.item","重置本项",detailW-118,0,118,[]{m.confirm="reset";});
-  text(ui,"details.subtitle","直接输入数值，按 Enter 或点应用保存；恢复始终使用游戏原始值。",0,45,detailW,28,13,true);
+  text(ui,"details.subtitle","输入数值后按回车，或点击输入框外自动确认；写入游戏后生效。",0,45,detailW,28,13,true);
   std::vector<std::string> groups={"全部参数"};for(const auto& r:m.rows){auto s=r["section"].str();if(!s.empty()&&std::find(groups.begin(),groups.end(),s)==groups.end())groups.push_back(s);}
   ui.stack("group.wrap").position(0,82).size(detailW-320,44).zIndex(30).content([&]{
-   scrollDropdown(ui,"group",detailW-320,42,std::max(88.0f,h-164),groups,m.group,m.groupOpen,[](bool open){m.groupOpen=open;},[](int i){m.group=i;m.detailScroll.set(0);});
+   scrollDropdown(ui,"group",detailW-320,42,std::max(88.0f,h-164),groups,m.group,m.groupOpen,[](bool open){m.groupOpen=open;},[](int i){safe([i]{flushEdits();refreshRows();m.group=i;m.detailScroll.set(0);});});
   }).build();
   button(ui,"changed.filter",m.onlyChanged?"显示全部":"仅看已修改",detailW-304,82,132,[]{m.onlyChanged=!m.onlyChanged;m.detailScroll.set(0);},m.onlyChanged);
 
@@ -1035,7 +1041,7 @@ void armorValueDialog(eui::Ui& ui,const eui::Screen& screen){
   std::string title="被动数值";for(const auto& a:m.armor)if(a["id"].integer()==id)title=a["zh"].str()+" · 数值修改";
   text(ui,"armor.modal.title",title,24,20,w-176,36,23);
   button(ui,"armor.modal.close","完成",w-126,18,102,close);
-  text(ui,"armor.modal.note","修改后按 Enter 或点击应用；关闭弹窗时保存尚未提交的输入。",24,70,w-48,30,14,true);
+  text(ui,"armor.modal.note","输入后按回车，或点击输入框外自动确认；写入游戏后生效。",24,70,w-48,30,14,true);
   const auto& rows=m.armorValues[id];
   components::scrollView(ui,"armor.values.scroll").theme(theme()).position(24,118).size(w-48,h-142)
   .bind(m.armorValueScroll).onChange([](float offset){m.armorValueScroll.set(offset);app::requestUpdate();}).contentKey("armor-values-"+std::to_string(id)).step(60).content([&](eui::Ui& content,float cw,float){
@@ -1436,6 +1442,7 @@ void qaTick(eui::Ui& ui){
  app::requestUpdate();
  if(std::getenv("SHODAN_MCP_QA")){
   static int step=0;static auto due=std::chrono::steady_clock::now()+std::chrono::seconds(2);
+  static int autoArmor=0;static std::string autoArmorKey;static double autoArmorBefore=0;
   if(!m.backend||m.busy||std::chrono::steady_clock::now()<due)return;due=std::chrono::steady_clock::now()+std::chrono::milliseconds(350);
   try{
    const auto folder=std::filesystem::u8path(target);std::filesystem::create_directories(folder);
@@ -1541,7 +1548,28 @@ void qaTick(eui::Ui& ui){
     m.group=int(std::find(sections.begin(),sections.end(),"锁定")-sections.begin());
    }else if(step==34){
     bool range=false,time=false;for(const auto& row:m.rows){range=range||row["label"].str()=="锁定距离（米）";time=time||row["label"].str()=="锁定所需时间（秒）";}if(!range||!time)throw std::runtime_error("Lock parameter labels missing");capture(folder/"lock-on-fields.bmp");
-    std::ofstream(folder/"report.txt")<<"Native UI verified: existing regressions, update prompt and Chinese lock fields. No game writes.\n";
+    for(const auto& row:m.rows)if(row["label"].str()=="锁定距离（米）"){m.qaRow=row["id"].integer();m.qaBefore=row["value"].number;break;}
+    auto key=std::to_string(m.qaRow);auto* field=ui.find("input."+key+".hit");if(!field||!field->onKeyEvent||ui.find("apply."+key+".bg"))throw std::runtime_error("Enter confirmation or removed Apply button regression");
+    m.edits[key]=number(m.qaBefore+5);field->onKeyEvent({core::InputKey::Enter});
+   }else if(step==35){
+    if(m.rows[m.qaRow-1]["value"].number!=m.qaBefore+5||!m.edits.empty())throw std::runtime_error("Enter did not confirm numeric value");
+    auto key=std::to_string(m.qaRow);auto* field=ui.find("input."+key+".hit");if(!field||!field->onFocusChanged)throw std::runtime_error("Blur confirmation missing");m.edits[key]=number(m.qaBefore+10);field->onFocusChanged(false);
+   }else if(step==36){
+    auto key=std::to_string(m.qaRow);if(m.rows[m.qaRow-1]["value"].number!=m.qaBefore+10||!m.edits.empty())throw std::runtime_error("Blur did not confirm numeric value");
+    m.edits[key]="invalid-number";auto* field=ui.find("input."+key+".hit");field->onFocusChanged(false);
+    if(m.edits[key]!="invalid-number"||m.error.empty()||m.rows[m.qaRow-1]["value"].number!=m.qaBefore+10)throw std::runtime_error("Invalid input was lost or saved on blur");
+    m.edits[key]=number(m.qaBefore+15);navigate(6);
+   }else if(step==37){
+    if(!m.edits.empty()||m.backend->call("rows").array[m.qaRow-1]["value"].number!=m.qaBefore+15)throw std::runtime_error("Page switch discarded a numeric draft");
+    m.backend->call("reset",{m.qaRow});navigate(4);
+    for(const auto& a:m.armor){auto rows=m.backend->call("armor_rows",{a["id"]}).array;for(const auto& row:rows)if(row["value"].kind==Value::Number){autoArmor=a["id"].integer();autoArmorKey=row["key"].str();autoArmorBefore=row["value"].number;break;}if(autoArmor)break;}
+    if(!autoArmor)throw std::runtime_error("Armor autosave fixture missing");m.armorDetail=autoArmor;m.armorDialogId=autoArmor;m.armorValues[autoArmor]=m.backend->call("armor_rows",{autoArmor}).array;
+   }else if(step==38){
+    auto* field=ui.find("input."+autoArmorKey+".hit");if(!field||!field->onFocusChanged)throw std::runtime_error("Armor blur confirmation missing");m.edits[autoArmorKey]=number(autoArmorBefore+0.1);field->onFocusChanged(false);
+   }else if(step==39){
+    bool saved=false;for(const auto& row:m.backend->call("armor_rows",{autoArmor}).array)if(row["key"].str()==autoArmorKey)saved=std::abs(row["value"].number-autoArmorBefore-0.1)<0.0001;
+    if(!saved||!m.edits.empty())throw std::runtime_error("Armor blur did not confirm numeric value");m.backend->call("armor_set",{autoArmor,autoArmorKey,autoArmorBefore});closeArmorValues();
+    std::ofstream(folder/"report.txt")<<"Native UI verified: existing regressions, update prompt, lock fields, Enter and blur confirmation, retained invalid drafts, page-switch flush and armor blur. No game writes.\n";
     requestWindowClose(glfwGetCurrentContext());
    }++step;
   }catch(const std::exception& e){capture(std::filesystem::u8path(target)/"failure.bmp");std::ofstream(std::filesystem::u8path(target)/"failure.txt")<<"MCP UI stage "<<step<<": "<<e.what();requestWindowClose(glfwGetCurrentContext());}
@@ -1789,7 +1817,7 @@ void qaTick(eui::Ui& ui){
    const auto id=std::to_string(m.qaRow);auto* note=ui.find("note."+id);auto* card=ui.find("field."+id);
    if(!note||!card||note->text!="0 秒＝无限时间"||note->frame.y+note->frame.height>card->frame.y+card->frame.height+1)throw std::runtime_error("unlimited timer note is missing or outside its card");
    capture(std::filesystem::path(target)/"sentry-duration.bmp");m.edits[id]="0";
-   auto* apply=ui.find("apply."+id+".bg");if(!apply||!apply->onClick)throw std::runtime_error("duration apply button missing");apply->onClick();
+   auto* field=ui.find("input."+id+".hit");if(!field||!field->onFocusChanged)throw std::runtime_error("duration blur action missing");field->onFocusChanged(false);
   }
   else if(stage==46){
    if(m.rows[m.qaRow-1]["value"].number!=0)throw std::runtime_error("UI duration input failed to save zero");capture(std::filesystem::path(target)/"sentry-duration-zero.bmp");
