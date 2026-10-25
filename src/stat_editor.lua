@@ -11766,6 +11766,13 @@ local TYPES = { arc_weapon = 0xB87BA9ED, arc = 0xAFDF0267, health = 0xB3915DE3, 
                 warp = 0xA7813546, deposit = 0xC435BA85, package = 0x7A858691, reload = 0x991D454E,
                 thrower = 0xA29A84D8, minefield = 0x74FEF89A, mine_spawner = 0x0697FED6, bombard = 0xCDBC43D8, eagle = 0x556FF68B,
                 seeking = 0xBF3A6789, guidance = 0x84957034, windup = 0x84CE7EEE, laser = 0x32528174, avatar = 0x40EF204C, hellpod_payload = 0xDDB5C03F }
+-- The two selectors a weapon's record carries: its firing modes (WeaponData +144/+148/+152) and the
+-- functions its two inputs run (+184/+188, WeaponFunctionType). The names are the ones the datamined
+-- headers give these values; a value they leave unnamed is shown as the number it is, never guessed at.
+MOD.FIRE_MODES = { [0] = '空槽（不显示）', [1] = '自动', [2] = '半自动', [3] = '连发', [4] = '齐射',
+                   [5] = '安全', [6] = '不安全', [7] = '全射', [8] = '未使用' }
+MOD.FIRE_FUNCTIONS = { [0] = '无功能', [2] = '射速档位', [3] = '射击模式', [4] = '双弹药池',
+                       [8] = '可编程弹药', [11] = '下挂／第二弹源' }
 local KINDS = {
     [T_WEAPON] = { name = 'weapon', stride = 1232, keyed = true, layouts = { { stride = 1240 } } },
     [T_MAGAZINE] = { name = 'magazine', stride = 160, keyed = true },
@@ -13546,6 +13553,39 @@ local function resolve_gun(weapon, key)
             local id = ({ 'rpm_1', 'rpm', 'rpm_3' })[rate.n]
             local label = #rates == 1 and 'Fire rate (RPM)' or ('Fire rate ' .. k .. ' (RPM)')
             add_row(weapon, 'Fire', id, label, 'f32', { part(id, T_FIRE, fire + rate.offset, 'f32', 100000) }, 1, 6000, 10, 50)
+        end
+        -- The rest of how it shoots: the modes the game offers (three slots in its record), the rounds one
+        -- trigger pull of Burst fires, and the two inputs a weapon function is bound to. A weapon offers more
+        -- than one mode in a mission only when one of those inputs is Fire mode (3).
+        local wdata = record(T_WEAPON)
+        if wdata then
+            local modes = { [0] = true, [1] = true, [2] = true, [3] = true, [4] = true,
+                            [5] = true, [6] = true, [7] = true, [8] = true, why = '射击模式只能取 0 到 8' }
+            local explain = '模式值：1 自动、2 半自动、3 连发、4 齐射、5 安全、6 不安全、7 全射；0 为空槽。'
+            local slot_tip = {
+                '游戏最多显示 3 个模式；要在对局中切换，下面两个功能键输入之一必须是 3（射击模式）。',
+                '0 为空槽，游戏里不显示；填入模式值即新增一个模式。',
+                '0 为空槽；这是能显示的第三个、也是最后一个模式槽（第 4 槽游戏不显示）。' }
+            for n, offset in ipairs({ 144, 148, 152 }) do
+                local id = n == 1 and 'fire_mode' or ('fire_mode_' .. n)
+                local p = part(id, T_WEAPON, wdata + offset, 'u32', 100000)
+                p.field.allowed = modes
+                local r = add_row(weapon, 'Fire', id, 'Fire mode ' .. n, 'u32', { p }, 0, 8, 1, 1)
+                r.choice = 'firemode'
+                r.tip = { explain, slot_tip[n], '齐射的发数等于枪管数（数据表里没有）；全射一次打空整个弹匣。' }
+            end
+            local bursts = add_row(weapon, 'Fire', 'burst_rounds', 'Rounds per burst', 'u32',
+                { part('burst_rounds', T_WEAPON, wdata + 140, 'u32', 100000) }, 1, 60, 1, 1)
+            bursts.tip = { '「连发」模式下扣一次扳机打出的弹丸数；其它射击模式忽略此值。' }
+            for n, offset in ipairs({ 184, 188 }) do
+                local id = n == 1 and 'fire_key' or 'fire_key_2'
+                local p = part(id, T_WEAPON, wdata + offset, 'u32', 100000)
+                local r = add_row(weapon, 'Fire', id, 'Function input ' .. n, 'u32', { p }, 0, 15, 1, 1)
+                r.choice = 'fntype'
+                r.tip = { '绑定到这个输入上的武器功能：0 无、2 射速档位、3 射击模式、4 双弹药池、8 可编程弹药、11 下挂／第二弹源。',
+                    '要让武器在对局中能切换射击模式，把其中一个输入设为 3。',
+                    '6、10、12 这几个值游戏里确实存在，但含义尚未确认；面板按原值保留，不解释。' }
+            end
         end
     end
     local magazine, heat = record(T_MAGAZINE), record(T_HEAT)
@@ -18026,6 +18066,24 @@ local function change(row, delta_sign, big, exact)
             else ui.message={text=why,till=api.now()+4} end
             ui.version=ui.version+1;return
         end
+        if row.choice == 'firemode' or row.choice == 'fntype' then
+            -- the game's own lists: the nine weapon fire modes, and the function types this build names
+            local list = row.choice == 'firemode' and { 0, 1, 2, 3, 4, 5, 6, 7, 8 } or { 0, 2, 3, 4, 8, 11 }
+            local target = exact and math.floor(exact + 0.5)
+            if target == nil then   -- the panel's arrows step through the list
+                local at = 0
+                for n, v in ipairs(list) do if v == current then at = n end end
+                at = math.max(1, math.min(#list, at + delta_sign * (big and 10 or 1)))
+                target = list[at]
+            end
+            if target == current then return end
+            local p = row.parts[1]
+            local ok, why = write_field(p.field, target)
+            if ok then set_override(weapon, p, unless_default(target, default_of(p.field)))
+            else ui.message = { text = why, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
         if row.choice == 'weight' then
             -- 0 light, 1 medium, 2 heavy, on every piece of the armor (back to the default: each piece's own)
             local target = math.max(0, math.min(2, exact and math.floor(exact + 0.5) or current + delta_sign))
@@ -21883,6 +21941,8 @@ if MOD.offline then
             if row.choice=='weight' then choice_name=settings.tr(MOD.kits.NAMES[v] or '?')
             elseif row.choice=='status' then choice_name=type(v)=='number' and settings.tr(MOD.status.name(v)) or ''
             elseif row.choice=='apex_fire' then choice_name=v==2719 and '站立开火（参考 Mod）' or '原始开火动作'
+            elseif row.choice=='firemode' then choice_name=MOD.FIRE_MODES[v] or ('模式 ' .. tostring(v))
+            elseif row.choice=='fntype' then choice_name=MOD.FIRE_FUNCTIONS[v] or ('未确认功能 ' .. tostring(v))
             elseif row.choice=='slot' then choice_name=v==1 and '主武器' or '副武器'
             elseif row.choice=='gun' then local g=MOD.enemy.gun_choices().by_id[v];choice_name=g and settings.tr(g.label) or ''
             elseif row.choice==true then
@@ -21921,6 +21981,18 @@ if MOD.offline then
         local row=ui.weapon and ui.weapon.rows[n]
         if row and row.choice=='weight' then return {{id=0,name='轻型'},{id=1,name='中型'},{id=2,name='重型'}} end
         if row and row.choice=='apex_fire' then return {{id=2677,name='原始开火动作'},{id=2719,name='站立开火（参考 Mod）'}} end
+        if row and row.choice=='firemode' then
+            local out={}
+            for id=0,8 do out[#out+1]={id=id,name=MOD.FIRE_MODES[id]} end
+            return out
+        end
+        if row and row.choice=='fntype' then
+            local out={}
+            for _,id in ipairs({0,2,3,4,8,11}) do out[#out+1]={id=id,name=MOD.FIRE_FUNCTIONS[id]} end
+            local v=row_value(row)
+            if type(v)=='number' and v%1==0 and not MOD.FIRE_FUNCTIONS[v] then out[#out+1]={id=v,name='未确认的功能 '..v..'（原值）'} end
+            return out
+        end
         if row and row.choice=='slot' then return {{id=1,name='主武器'},{id=3,name='副武器'}} end
         if row and row.choice=='gun' then
             local out={};for _,g in ipairs(MOD.enemy.gun_choices().list)do out[#out+1]={id=g.id,name=settings.tr(g.label)}end;return out
@@ -21941,6 +22013,7 @@ if MOD.offline then
         id=assert(tonumber(id),'请选择有效的条目 ID')
         if row.choice=='weight' then assert(id==0 or id==1 or id==2,'护甲重量类型无效');return state.desktop.set(n,id)
         elseif row.choice=='apex_fire' then assert(id==2677 or id==2719,'请选择有效的尖峰开火动作');return state.desktop.set(n,id)
+        elseif row.choice=='firemode' or row.choice=='fntype' then return state.desktop.set(n,id)
         elseif row.choice=='slot' then return state.desktop.set(n,id)
         elseif row.choice=='gun' then
             assert(MOD.enemy.gun_choices().by_id[id],'找不到此武器')
