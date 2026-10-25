@@ -11779,7 +11779,7 @@ MOD.FIRE_FUNCTIONS = { [0] = '无功能', [2] = '射速档位', [3] = '射击模
 -- give; the arm parts are every entity this build ships as an exosuit arm, including the two the
 -- mount table never puts on a suit (the 200-round right arm, the MK2 missile pod).
 MOD.MOUNT_SIDE = { [0] = '通用', [1] = '右侧', [2] = '左侧' }
-MOD.FACTION_NAMES = { [0] = '继承', [1] = '超级地球', [2] = '终结者', [4] = '光明族', [8] = '自动化军团' }
+MOD.FACTION_NAMES = { [0] = '继承', [1] = '超级地球', [2] = '终结族', [4] = '光能族', [8] = '机器人' }
 MOD.MOUNT_NAMES = { [0x7BDEC47B] = '左臂', [0x47775624] = '右臂', [0x23CC0657] = '火炮', [0xCB79FA57] = '主炮',
                     [0x409652FC] = '驾驶位机枪', [0x3ECFB64B] = '货架', [0x372F0418] = '炮塔' }
 MOD.ARM_ORDER = { '824B7E0C4C879EB5', '08F6089289C83D22', 'E5F64DCC3BFE9DD1', 'FF9878576A4C543B',
@@ -14775,6 +14775,15 @@ function MOD.extra.step(def, current, n)
     return to <= 0 and 0 or list[to].type
 end
 -- why `target` can't be `def`'s extra (itself, or a chain of extras back to it), or nil
+function MOD.extra.validate(change)
+    if not MOD.offline then return nil end
+    local nodes={}
+    for _,c in ipairs(MOD.extra.choices())do
+        nodes[#nodes+1]={id=c.type,name=MOD.extra.translate and MOD.extra.translate(c.name) or c.name,target=peek4(c.def.at+200) or 0,
+            original=default_of(field_at(c.def.kind,c.def.off+200,'u32',100000)) or 0}
+    end
+    return require('extra_stratagem_guard').validate(nodes,change)
+end
 function MOD.extra.refused(def, target)
     local _, by_type = MOD.extra.choices()
     if target == 0 then return nil end
@@ -14786,7 +14795,7 @@ function MOD.extra.refused(def, target)
         if t == own then return 'That would make a loop of extra stratagems.' end
         local c = by_type[t]
         t = c and peek4(c.def.at + 200) or 0
-        if not t or t == 0 then return nil end
+        if not t or t == 0 then return MOD.extra.validate({id=own,target=target}) end
     end
     return 'That would make a loop of extra stratagems.'
 end
@@ -14803,6 +14812,7 @@ function MOD.extra.row(entry, def)
         return by_type[t] and by_type[t].name or ('Stratagem ' .. t)
     end
     row.note = 'also in your loadout when you bring this one'
+    row.inline_note = '不要在配装中再次携带附赠战备，也不要让两个携带的战备附赠同一战备；重复可能导致进入任务时崩溃。编辑器会拦截可检测到的重复附赠，实际配装需在游戏中核对。'
     row.after = { '点击「选择配备」按名称选择；选择「无」取消附加配备。',
                   "It doesn't take a loadout slot, but the HUD's stratagem list can fill up." }
     row.after_h = #row.after * 16 + 6
@@ -18004,6 +18014,11 @@ local function handle_table(address, kind, payload, blob)
         return
     end
     local table_type = kind
+    if MOD.offline and not spec.parse and rawget(_G,'SHODAN_OFFLINE_REGISTER_LAYOUT') then
+        local stride=spec.stride
+        local layout={keyed=spec.keyed,slack=spec.slack,tail=spec.tail,id_at=spec.id_at}
+        SHODAN_OFFLINE_REGISTER_LAYOUT(address,kind,stride,index,function(data)return parse(data,stride,layout)end)
+    end
     if spec.groups then
         -- each group is its own table; copies of one group have its size and first row
         local list = kind == T_STRATAGEM and stratagem_groups or spec.list
@@ -18721,15 +18736,27 @@ function MOD.ammo.open(n)
         kind='stratagem';title='选择附加战略配备'
         choices[1]={id=0,name='无',raw='none'}
         for _,item in ipairs(MOD.extra.choices()) do
-            if not MOD.extra.refused(row.def,item.type) then choices[#choices+1]={id=item.type,name=settings.tr(item.name),raw=item.name} end
+            local why=MOD.extra.refused(row.def,item.type)
+            choices[#choices+1]={id=item.type,name=settings.tr(item.name),raw=item.name,description=why and settings.tr(why) or '',disabled=why~=nil}
         end
     else
         if row.choice=='explosion' or row.choice=='shrapnel' then choices[1]={id=0,name='无',raw='none'} end
         for _,id in ipairs(MOD.records.ids(kind)) do
             local raw=MOD.records.name(kind,id)
             local shot=kind==T_PROJECTILE and KINDS[T_PROJECTILE].by_id and KINDS[T_PROJECTILE].by_id[id]
-            raw=raw or (shot and shot.label)
-            choices[#choices+1]={id=id,name=raw and settings.tr(raw) or ('未命名弹丸 #'..id),raw=raw or ''}
+            local owner=shot and shot.label
+            raw=raw or owner
+            local usage=MOD.records.users()
+            local users=kind==T_PROJECTILE and usage.shots[id] or kind==T_EXPLOSION and usage.blasts[id] or {}
+            local translated,described={},{}
+            for _,name in ipairs(users or {})do translated[#translated+1]=settings.tr(name)end
+            if owner and raw and owner~=raw then described[#described+1]='弹丸：'..settings.tr(raw) end
+            if #translated>0 then
+                local shown={};for k=1,math.min(3,#translated)do shown[#shown+1]=translated[k]end
+                described[#described+1]='用于：'..table.concat(shown,'、')..(#translated>3 and (' 等 '..#translated..' 项') or '')
+            elseif kind==T_PROJECTILE and not owner then described[#described+1]='归属未确认（当前数据未找到关联装备）' end
+            choices[#choices+1]={id=id,name=owner and settings.tr(owner) or raw and settings.tr(raw) or ('未命名弹丸 #'..id),
+                description=table.concat(described,'\n'),raw=(raw or '')..' '..(owner or '')..' '..table.concat(translated,' ')}
         end
     end
     ui.ammo={weapon=weapon,row=row,n=tonumber(n),kind=kind,title=title,choices=choices,query='',page=1,typing=true}
@@ -22325,6 +22352,8 @@ if MOD.offline then
         return out
     end
     state.desktop={registry={}}
+    MOD.extra.translate=function(text)return settings.tr(text)end
+    function state.desktop.extra_validate() return MOD.extra.validate() end
     function state.desktop.editor_mode(enemy)
         if enemy~=nil then MOD.enemy.on=not not enemy end
         return MOD.enemy.on

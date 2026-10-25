@@ -84,7 +84,15 @@ Timer {
             else if(step===50){const groups=CatalogGroups.build(store.library,store.catalogs[store.tab] || [],store.tab);ensure(groups.some(x=>x.entries.length>1),"搜索丢失关联条目");Backend.capture("35-expanded-vehicle-group");const arm=store.catalogs.Mechas.find(x=>(x.english || "").indexOf("EXO-55")===0 && (x.english || "").indexOf("Left arm")>=0);ensure(!!arm,"突破机甲左臂缺失");store.select(arm)}
             else if(step===51){const hp=store.rows.find(x=>x.label==="机臂生命值");ensure(!!hp && hp.original!==4294967295,"继承标记误作机臂默认生命值");Backend.capture("36-breakthrough-arm");const vehicle=store.catalogs.Mechas.find(x=>(x.english || "").indexOf("M-103")===0);ensure(!!vehicle,"M-103 缺失");store.select(vehicle)}
             else if(step===52){ensure(store.rows.some(x=>x.original===4294967295 && (x.inline_note || "").indexOf("不限")>=0),"无限次数缺少说明");Backend.capture("37-unlimited-uses");ensure(window.qaUpdatePreview(),"更新弹窗无法打开")}
-            else if(step===53){Backend.capture("38-update-release-notes");window.qaCloseUpdate();ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");Backend.finishQa("")}
+            else if(step===53){Backend.capture("38-update-release-notes");window.qaCloseUpdate();ensure(window.qaSearchContext(),"搜索结果未区分武器与战备");store.openModule("equipment");store.select(store.library[0])}
+            else if(step===54){const projectile=store.rows.find(x=>x.choice && !x.choice_kind);ensure(!!projectile,"射弹选项缺失");window.qaProjectilePreview(projectile)}
+            else if(step===55){Backend.capture("39-projectile-context");window.qaCloseChoices();window.width=1480;window.height=960;store.setCatalogColumns(4);store.openModule("vehicle")}
+            else if(step===56){ensure(store.module==="vehicle" && window.qaCatalogAligned(),"载具四列排列错位");Backend.capture("40-vehicle-four-columns-aligned");window.width=1120;window.height=760}
+            else if(step===57){ensure(store.module==="vehicle" && window.qaCatalogAligned(),"窗口缩小后载具排列错位");Backend.capture("41-vehicle-resized-aligned");store.openModule("enemy")}
+            else if(step===58){ensure(store.module==="enemy","导航同步意外改变当前页面");store.setTab("SEAF");store.setCatalogColumns(3)}
+            else if(step===59){ensure(store.module==="enemy" && store.tab==="SEAF" && window.qaCatalogAligned(),"SEAF 最后一行排列错位");Backend.capture("42-seaf-last-row-aligned");window.width=1480;window.height=960}
+            else if(step===60){ensure(store.module==="enemy" && store.tab==="SEAF" && window.qaCatalogAligned(),"窗口放大后排列错位");Backend.capture("43-seaf-resized-aligned");store.setCatalogColumns(4)}
+            else if(step===61){ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");Backend.finishQa("")}
             step++
         }catch(e){Backend.finishQa(String(e))}
     }

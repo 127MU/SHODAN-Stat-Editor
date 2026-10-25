@@ -104,6 +104,100 @@ end
 -- Translate a working-buffer address to its immutable, unrelocated original.
 -- Keeping the defaults separate lets installed values remain visible without
 -- turning those installed values into the target of a Reset operation.
+M.original_layouts={}
+function M.register_original_layout(address,kind,stride,index,parse)
+    M.original_layouts[address]={kind=kind,stride=stride,index=index,parse=parse}
+    for _,file in pairs(M.files)do
+        local offset=address-tonumber(ffi.cast('uintptr_t',file.p))
+        if offset>=0 and offset<file.n then
+            file.original_positional=false
+            if file.original_matches then file.original_matches[offset]=nil end
+            break
+        end
+    end
+end
+
+local function original_at(file,offset,size)
+    if not file.original_headers then
+        file.original_headers=G.headers(file.original_p,file.original_n)
+        file.working_headers=G.headers(file.p,file.n)
+        file.original_matches={}
+    end
+    for _,h in ipairs(file.working_headers)do
+        local live=h.at+24
+        if offset>=live and offset+size<=live+h.size then
+            local key=h.at
+            local match=file.original_matches[key]
+            local layout=M.original_layouts[tonumber(ffi.cast('uintptr_t',file.p+h.at))]
+            if match==nil then
+                local candidates={}
+                for _,ref in ipairs(file.original_headers)do if ref.type==h.type and ref.at>=0 and ref.size>=0 and ref.at+24+ref.size<=file.original_n then candidates[#candidates+1]=ref end end
+                if layout then
+                    local best,score,ambiguous,at_position=nil,0,false,nil
+                    for _,ref in ipairs(candidates)do
+                        local ok,index=pcall(layout.parse,ffi.string(file.original_p+ref.at+24,ref.size))
+                        if ok and type(index)=='table' then
+                            if file.original_isomorphic and ref.at==h.at then at_position={header=ref,index=index} end
+                            local overlap=0;for id in pairs(layout.index)do if index[id]~=nil then overlap=overlap+1 end end
+                            if overlap>score then best={header=ref,index=index};score=overlap;ambiguous=false
+                            elseif overlap==score and overlap>0 then ambiguous=true end
+                        end
+                    end
+                    if ambiguous and at_position then best=at_position;ambiguous=false end
+                    if best and not ambiguous then
+                        local rows,by_offset={},{}
+                        for id,at in pairs(layout.index)do
+                            local row=by_offset[at]
+                            if not row then row={at=at,keys={}};by_offset[at]=row;rows[#rows+1]=row end
+                            row.keys[#row.keys+1]=id
+                        end
+                        table.sort(rows,function(a,b)return a.at<b.at end)
+                        best.rows,best.stride=rows,layout.stride
+                        local unchanged=h.size==best.header.size
+                        for id,at in pairs(layout.index)do if best.index[id]~=at then unchanged=false;break end end
+                        if unchanged then for id,at in pairs(best.index)do if layout.index[id]~=at then unchanged=false;break end end end
+                        best.tail_positional=unchanged
+                        match=best
+                    else match=false end
+                else
+                    local ref=#candidates==1 and candidates[1]
+                    if not ref and file.original_isomorphic then for _,candidate in ipairs(candidates)do if candidate.at==h.at then ref=candidate;break end end end
+                    if ref then
+                    if h.size==ref.size then match={header=ref,positional=true}
+                    elseif h.type==0x30EB6399 and h.size>=ref.size then
+                        local base=ref.at+24;local count=u32(file.original_p,base+8)
+                        local same=count==u32(file.p,live+8) and 16+count*400<=math.min(h.size,ref.size)
+                        if same then for r=0,count-1 do if u32(file.p,live+16+r*400)~=u32(file.original_p,base+16+r*400)then same=false;break end end end
+                        if same then match={header=ref,positional=true}end
+                    end
+                    end
+                end
+                match=match or false;file.original_matches[key]=match
+            end
+            if not match then return nil end
+            local relative=offset-live
+            local original
+            if match.rows then
+                local lo,hi=1,#match.rows
+                while lo<=hi do local mid=math.floor((lo+hi)/2);if match.rows[mid].at<=relative then lo=mid+1 else hi=mid-1 end end
+                local row=match.rows[hi]
+                if row and relative+size<=row.at+match.stride then
+                    local base
+                    for _,id in ipairs(row.keys)do
+                        local at=match.index[id]
+                        if at then if base and base~=at then return nil end;base=at end
+                    end
+                    if not base then return nil end -- a genuinely new Mod record has no vanilla default
+                    original=base+relative-row.at
+                elseif match.tail_positional then original=relative
+                else return nil end
+            else original=relative end
+            if original<0 or original+size>match.header.size then return nil end
+            return ffi.string(file.original_p+match.header.at+24+original,size)
+        end
+    end
+end
+
 function M.original_bytes(address,size)
     for _,file in pairs(M.files) do
         local offset=address-tonumber(ffi.cast('uintptr_t',file.p))
@@ -136,9 +230,13 @@ function M.original_bytes(address,size)
                     end
                     if mapped then compatible=true;file.original_ranges=ranges end
                 end
-                if not compatible then G.free(p);file.original_unavailable=true;return nil end
+                -- One changed/appended block must not invalidate every other
+                -- component in this file. Resolve compatible records separately.
                 G.clear_correction(p,n);file.original_p,file.original_n=p,n
+                file.original_positional=compatible and not next(M.original_layouts)
+                file.original_isomorphic=compatible
             end
+            if not file.original_positional and not file.original_ranges then return original_at(file,offset,size) end
             if file.original_ranges then
                 for _,range in ipairs(file.original_ranges)do
                     if offset>=range.at and offset+size<=range.finish then return ffi.string(file.original_p+range.original+offset-range.at,size) end
