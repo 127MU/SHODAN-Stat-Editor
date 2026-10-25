@@ -7,13 +7,10 @@ ROOT=Path(__file__).resolve().parents[1]
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--release',type=Path,required=True)
-    compiler=p.add_mutually_exclusive_group(required=True)
-    compiler.add_argument('--compiler-bin',type=Path)
-    compiler.add_argument('--msvc',action='store_true',help='Use rc/cl from an initialized Visual Studio x64 command prompt')
+    p.add_argument('--compiler-bin',type=Path,required=True)
     a=p.parse_args()
     work=a.release.parent/'onefile-build';work.mkdir(parents=True,exist_ok=True)
-    env=os.environ.copy()
-    if a.compiler_bin:env['PATH']=str(a.compiler_bin.resolve())+';'+env.get('PATH','')
+    env=os.environ.copy();env['PATH']=str(a.compiler_bin.resolve())+';'+env.get('PATH','')
     temp=work/'temp';temp.mkdir(exist_ok=True)
     env['TEMP']=env['TMP']=str(temp.resolve())
     manifest=json.loads((a.release/'manifest.json').read_text(encoding='utf8'))
@@ -49,17 +46,10 @@ def main():
     for rid,name in [(101,'payload.cab'),(102,'checksums.txt'),(103,'build.txt')]:
         rc+=str(rid)+' RCDATA "'+resource_path(work/name)+'"\n'
     (work/'onefile.rc').write_text(rc,encoding='utf8')
+    subprocess.run([str(a.compiler_bin/'windres.exe'),str(work/'onefile.rc'),'-o',str(work/'onefile.res.o')],env=env,check=True)
     target=a.release.parent/('SHODAN_'+manifest['version']+'_单文件.exe')
-    if a.msvc:
-        resource=(work/'onefile.res').resolve()
-        subprocess.run(['rc.exe','/nologo','/c65001','/fo',str(resource),str((work/'onefile.rc').resolve())],env=env,check=True)
-        subprocess.run(['cl.exe','/nologo','/std:c++17','/EHsc','/utf-8','/O2','/MT','/DUNICODE','/D_UNICODE',
-                        str(ROOT/'desktop/eui/onefile.cpp'),str(resource),'/Fo'+str((work/'onefile.obj').resolve()),
-                        '/link','/SUBSYSTEM:WINDOWS','cabinet.lib','bcrypt.lib','/OUT:'+str(target.resolve())],env=env,check=True)
-    else:
-        subprocess.run([str(a.compiler_bin/'windres.exe'),str(work/'onefile.rc'),'-o',str(work/'onefile.res.o')],env=env,check=True)
-        subprocess.run([str(a.compiler_bin/'g++.exe'),'-std=c++17','-O2','-s','-static','-mwindows','-municode',
-                        str(ROOT/'desktop/eui/onefile.cpp'),str(work/'onefile.res.o'),'-lcabinet','-lbcrypt','-o',str(target)],env=env,check=True)
+    subprocess.run([str(a.compiler_bin/'g++.exe'),'-std=c++17','-O2','-s','-static','-mwindows','-municode',
+                    str(ROOT/'desktop/eui/onefile.cpp'),str(work/'onefile.res.o'),'-lcabinet','-lbcrypt','-o',str(target)],env=env,check=True)
     print(json.dumps({'exe':str(target),'bytes':target.stat().st_size,'cache_build':build},ensure_ascii=False))
 
 if __name__=='__main__':main()
