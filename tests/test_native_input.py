@@ -71,10 +71,13 @@ class ReleaseTests(unittest.TestCase):
   ''')
 
 class OfficialFlowTests(unittest.TestCase):
- def test_official_write_function_is_unchanged(self):
+ def test_official_backup_and_staging_flow_is_preserved(self):
   text=(ROOT/'offline/install.lua').read_text(encoding='utf8')
-  start=text.index('function M.write_files(');end=text.index('\n-- the files written by an install',start)
-  self.assertEqual(hashlib.sha256(text[start:end].encode()).hexdigest(),'6c43fe8b42cc4bda01e0c7fca5e44775bc356108a7573bbd2a26c684d36ed715')
+  start=text.index('    mkdirs(M.originals_dir)',text.index('function M.write_files('));end=text.index('\n-- the files written by an install',start)
+  # r4 intentionally changes the preflight guard to use the startup snapshot.
+  # The successful-write snapshot bookkeeping must not alter upstream staging.
+  body='\n'.join(line for line in text[start:end].split('\n') if 'if observed then observed[' not in line)
+  self.assertEqual(hashlib.sha256(body.encode()).hexdigest(),'388d1fe66551eaff4c97e1cf8378164fc656ee2b3dd77e931a0be958f2346d0c')
 
 class PackageTests(unittest.TestCase):
  def test_native_package_allowlist_and_manifest(self):

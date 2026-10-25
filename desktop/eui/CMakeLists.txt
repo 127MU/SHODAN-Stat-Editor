@@ -12,7 +12,7 @@ include(FetchContent)
 FetchContent_Declare(eui GIT_REPOSITORY https://github.com/sudoevolve/EUI-NEO.git
  GIT_TAG 1647709068e36834ab26da5a97ef4ad98aa34c9d)
 FetchContent_MakeAvailable(eui)
-add_executable(shodan_desktop app.cpp bridge.cpp mod_zip.cpp patch_mods.cpp mcp_server.cpp startup.cpp)
+add_executable(shodan_desktop app.cpp bridge.cpp mod_zip.cpp patch_mods.cpp mcp_server.cpp release_update.cpp startup.cpp)
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/shodan_icon.rc"
  "1 ICON \"${CMAKE_CURRENT_SOURCE_DIR}/../../offline/launcher/sseo.ico\"\n1 24 \"${CMAKE_CURRENT_SOURCE_DIR}/application.manifest\"\n")
 set_property(GLOBAL PROPERTY EUI_NEO_APP_ICON_RESOURCE "${CMAKE_CURRENT_BINARY_DIR}/shodan_icon.rc")
@@ -30,7 +30,7 @@ else()
  execute_process(COMMAND "${LUA_DLLTOOL}" -d "${CMAKE_CURRENT_SOURCE_DIR}/lua51.def"
   -l "${LUA_IMPORT}" COMMAND_ERROR_IS_FATAL ANY)
 endif()
-target_link_libraries(shodan_desktop PRIVATE "${LUA_IMPORT}" comdlg32 eui_zlib ws2_32 bcrypt)
+target_link_libraries(shodan_desktop PRIVATE "${LUA_IMPORT}" comdlg32 eui_zlib ws2_32 bcrypt winhttp)
 target_compile_definitions(shodan_desktop PRIVATE EUI_APP_RUNNER_LIBRARY)
 target_include_directories(shodan_desktop PRIVATE "${eui_SOURCE_DIR}/3rd/yyjson-0.12.0/src")
 target_include_directories(shodan_desktop PRIVATE "${eui_SOURCE_DIR}/3rd/zlib-1.3.1")

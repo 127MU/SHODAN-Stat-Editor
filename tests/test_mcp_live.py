@@ -7,6 +7,8 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--exe',required=True,type=pathlib.Path);p.add_argument('--output',required=True,type=pathlib.Path)
     a=p.parse_args();out=a.output.resolve();out.mkdir(parents=True,exist_ok=False)
     profile=out/'profile';profile.mkdir();(profile/'gamefolder.txt').write_text('D:/steam/steamapps/common/Helldivers 2',encoding='utf8')
+    retired=(profile/'Mods/farm_pods.zip').as_posix()
+    (profile/'mods-v2.txt').write_text('1 '+json.dumps(retired)+' "retired builtin" "removed" 2 1 1\n',encoding='utf8')
     (profile/'preset_01.txt').write_text('name Legacy compatibility\n968211C0033DCE64 damage 180\n968211C0033DCE64 f018 3\n',encoding='utf8')
     env=os.environ.copy();env.update(SHODAN_PROFILE=str(profile),SHODAN_EUI_QA=str(out),SHODAN_QA_OUTPUT=str(out),SHODAN_MCP_QA='1')
     proc=subprocess.Popen([str(a.exe.resolve())],env=env,cwd=a.exe.resolve().parent)
