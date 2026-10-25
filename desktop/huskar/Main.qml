@@ -187,6 +187,16 @@ HusWindow {
         if(row.code){codeEditor.row=row;codeEditor.arrows=[];codeEditor.open();return}
         choiceDialog.row=row;choiceDialog.items=[];choiceDialog.query="";choiceDialog.open();workspace.call("choices",[row.id],x=>choiceDialog.items=x)
     }
+    function selectChoice(row,item){
+        if(row.choice_kind!=="resomode"){
+            workspace.call("choose",[row.id,item.id],x=>{workspace.status=x;choiceDialog.close();workspace.refreshRows()});return
+        }
+        choiceDialog.close()
+        if(Number(item.id)===0)return
+        residency.row=row;residency.mode=item.id
+        residency.description="此操作会立即"+(Number(item.id)===3?"移除":"写入")+"当前条目的资源驻留补丁（"+(item.name || item.label)+"）。请先关闭游戏，完成后重启游戏生效。"
+        residency.open()
+    }
     function shared(row){message("共享影响 · "+row.label,(row.shared || []).map(x=>typeof x==="string"?x:(x.name || x.equipment || JSON.stringify(x))).join("\n"))}
     function armorValues(passive){armorDialog.passive=passive;armorDialog.values=[];armorDialog.open();workspace.call("armor_rows",[passive.id],x=>armorDialog.values=x)}
     function importPreset(kind,id){
@@ -424,6 +434,15 @@ HusWindow {
             }
         }
     }
+    HusModal {
+        id:residency;width:Math.min(680,window.width-100);title:"确认修改资源驻留补丁";modal:true;maskClosable:false
+        property var row:({});property int mode:0
+        confirmText:"确认";cancelText:"取消";onCancel:close()
+        onConfirm:{
+            close();workspace.busy=true;progress.title="处理资源驻留补丁";progressText="正在处理，请稍候…";progressPercent="auto";progress.open()
+            workspace.call("choose",[row.id,mode],x=>{workspace.busy=false;progress.close();workspace.status=x;window.message("操作结果",x);workspace.refreshRows()},e=>{workspace.busy=false;progress.close();window.message("操作未完成",e)})
+        }
+    }
     HusModal { id:info;width:Math.min(760,window.width-100);modal:true;cancelText:"关闭";onCancel:close() }
     HusModal {
         id:review;width:Math.min(1000,window.width-100);modal:true;maskClosable:false
@@ -469,7 +488,7 @@ HusWindow {
                         HusText {Layout.fillWidth:true;text:choiceButton.text;color:choiceButton.colorText;wrapMode:Text.Wrap}
                         HusText {Layout.fillWidth:true;visible:!!choiceButton.modelData.description;text:choiceButton.modelData.description || "";color:HusTheme.Primary.colorTextSecondary;wrapMode:Text.Wrap}
                     }
-                    onClicked:workspace.call("choose",[choiceDialog.row.id,modelData.id],x=>{workspace.status=x;choiceDialog.close();workspace.refreshRows()})
+                    onClicked:window.selectChoice(choiceDialog.row,modelData)
                 }
             }
         }
