@@ -1,5 +1,6 @@
 import QtQuick
 import HuskarUI.Basic
+import "CatalogGroups.js" as CatalogGroups
 
 Timer {
     id:qa
@@ -10,6 +11,7 @@ Timer {
     property bool waiting:false
     property var row
     property real original:0
+    property int inputRetries:0
     interval:850;repeat:true
     function run(w,s,p){window=w;store=s;preferences=p;start()}
     function ensure(ok,message){if(!ok)throw new Error(message)}
@@ -36,12 +38,13 @@ Timer {
             else if(step===5){ensure(Backend.qaEdit("field_"+row.id,String(original+10),false),"无法失焦保存")}
             else if(step===6){checkRows(original+10)}
             else if(step===7){waiting=true;store.call("preset",["save",5],function(){store.call("preset_export",["weapon",5],function(text){try{ensure(text.indexOf("SHODAN-PRESET 1")===0,"预设导出失败");store.call("preset_import",["weapon",5,text],function(){qa.waiting=false})}catch(e){Backend.finishQa(String(e))}})})}
-            else if(step===8){ensure(Backend.qaEdit("field_"+row.id,"invalid",true),"无法验证无效输入")}
+            else if(step===8){if(!Backend.qaEdit("field_"+row.id,"invalid",true)){ensure(++inputRetries<=4,"无法验证无效输入");return}}
             else if(step===9){checkRows(original+10)}
             else if(step===10){store.call("set",[row.id,String(original)]);store.call("preset",["clear",5]);store.openModule("vehicle")}
-            else if(step===11){Backend.capture("05-vehicles");store.openModule("armor")}
-            else if(step===12){ensure(store.armor.length>0,"护甲为空");Backend.capture("06-armor");window.armorValues(store.armor[0])}
-            else if(step===13){Backend.capture("07-armor-popup");window.closeQaDialogs();store.openModule("enemy")}
+            else if(step===11){const groups=CatalogGroups.build(store.library,store.catalogs[store.tab] || [],store.tab);ensure(groups.some(x=>x.entries.length>1),"机甲关联条目未分组");ensure(CatalogGroups.build(store.catalogs.Primary,store.catalogs.Primary,"Primary").length===0,"武器不应分组");Backend.capture("05-vehicles");store.openModule("armor")}
+            else if(step===12){ensure(store.armor.length>0,"护甲为空");ensure(Backend.qaCheck("passive_"+store.armor[0].id,true),"无法点击被动")}
+            else if(step===13){ensure(store.armorProfile.enabled[String(store.armor[0].id)]===true,"被动 ID 映射未保留");ensure(Backend.qaCheck("passive_"+store.armor[0].id),"被动点击后未勾选");Backend.capture("06-armor");store.armorChange(store.armor[0].id,false,null,null);window.armorValues(store.armor[0])}
+            else if(step===14){ensure(!store.armorProfile.enabled[String(store.armor[0].id)],"被动取消未保存");Backend.capture("07-armor-popup");window.closeQaDialogs();store.openModule("enemy");store.select(store.library[0])}
             else if(step===14){store.select(store.library[0])}
             else if(step===15){ensure(store.rows.length>0,"敌人参数为空");Backend.capture("08-enemy");store.openModule("settings")}
             else if(step===16){Backend.capture("09-settings");preferences.dark=true}
@@ -76,7 +79,12 @@ Timer {
             else if(step===45){ensure(window.qaWindowEffectValid(preferences.windowEffect),"开启材质后浅色效果异常");Backend.capture("30-card-light-glass");preferences.setColorMode("dark")}
             else if(step===46){ensure(window.qaWindowEffectValid(preferences.windowEffect),"切回深色效果异常");Backend.capture("31-card-dark-glass")}
             else if(step===47){preferences.compact=false;preferences.motion=false;store.openModule("home")}
-            else if(step===48){Backend.capture("33-home-material");ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");Backend.finishQa("")}
+            else if(step===48){Backend.capture("33-home-material");preferences.backgroundMode="flow"}
+            else if(step===49){Backend.capture("34-flow-shader");preferences.backgroundMode="image";store.openModule("vehicle");store.search="EXO-45"}
+            else if(step===50){const groups=CatalogGroups.build(store.library,store.catalogs[store.tab] || [],store.tab);ensure(groups.some(x=>x.entries.length>1),"搜索丢失关联条目");Backend.capture("35-expanded-vehicle-group");const arm=store.catalogs.Mechas.find(x=>(x.english || "").indexOf("EXO-55")===0 && (x.english || "").indexOf("Left arm")>=0);ensure(!!arm,"突破机甲左臂缺失");store.select(arm)}
+            else if(step===51){const hp=store.rows.find(x=>x.label==="机臂生命值");ensure(!!hp && hp.original!==4294967295,"继承标记误作机臂默认生命值");Backend.capture("36-breakthrough-arm");const vehicle=store.catalogs.Mechas.find(x=>(x.english || "").indexOf("M-103")===0);ensure(!!vehicle,"M-103 缺失");store.select(vehicle)}
+            else if(step===52){ensure(store.rows.some(x=>x.original===4294967295 && (x.inline_note || "").indexOf("不限")>=0),"无限次数缺少说明");Backend.capture("37-unlimited-uses");ensure(window.qaUpdatePreview(),"更新弹窗无法打开")}
+            else if(step===53){Backend.capture("38-update-release-notes");window.qaCloseUpdate();ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");Backend.finishQa("")}
             step++
         }catch(e){Backend.finishQa(String(e))}
     }

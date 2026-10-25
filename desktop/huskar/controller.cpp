@@ -130,7 +130,14 @@ int Controller::request(QString method,QVariantList args){
  },Qt::QueuedConnection);return id;
 }
 QVariant Controller::dispatch(const QString& method,const QVariantList& args){
- std::vector<Value> a;for(const auto& item:args)a.push_back(value(item));return variant(invoke(utf(method),a));
+ std::vector<Value> a;for(const auto& item:args)a.push_back(value(item));
+ auto result=invoke(utf(method),a);
+ // Passive IDs are a sparse, one-based map, never a zero-based QVariantList.
+ if(method=="armor_profile"){
+  auto it=result.fields.find("enabled");
+  if(it!=result.fields.end()){it->second.array.clear();it->second.arrayValue=false;}
+ }
+ return variant(result);
 }
 Value Controller::invoke(const std::string& method,const std::vector<Value>& args){
  using shodan::object;
@@ -210,7 +217,7 @@ void Controller::checkUpdate(){
  if(checking_)return;checking_=true;updateStatus_="正在检查正式发行版…";emit updateChanged();
  auto* watcher=new QFutureWatcher<shodan::ReleaseUpdate>(this);
  connect(watcher,&QFutureWatcherBase::finished,this,[this,watcher]{auto r=watcher->result();watcher->deleteLater();checking_=false;
-  updateStatus_=r.error.empty()?(r.newer?"有新版本 "+qs(r.version):"当前已是最新版本"):qs(r.error);emit updateChanged();if(r.newer)emit updateAvailable(qs(r.version),qs(r.url));});
+  updateStatus_=r.error.empty()?(r.newer?"有新版本 "+qs(r.version):"当前已是最新版本"):qs(r.error);emit updateChanged();if(r.newer)emit updateAvailable(qs(r.version),qs(r.url),qs(r.notes),qs(r.downloadUrl));});
  watcher->setFuture(QtConcurrent::run([]{try{return shodan::checkReleaseUpdate(shodan::version);}catch(const std::exception& e){shodan::ReleaseUpdate r;r.error=e.what();return r;}}));
 }
 void Controller::toggleMcp(){
@@ -285,6 +292,24 @@ bool Controller::qaEdit(QString name,QString text,bool enter){
   if(enter){QKeyEvent down(QEvent::KeyPress,Qt::Key_Return,Qt::NoModifier),up(QEvent::KeyRelease,Qt::Key_Return,Qt::NoModifier);QCoreApplication::sendEvent(window,&down);QCoreApplication::sendEvent(window,&up);}
   else {item->setFocus(false,Qt::OtherFocusReason);window->contentItem()->forceActiveFocus();}
   return true;
+ }return false;
+}
+bool Controller::qaCheck(QString name,bool click){
+ if(!qEnvironmentVariableIsSet("SHODAN_HUSKAR_QA"))return false;
+ std::function<QQuickItem*(QQuickItem*)> find=[&](QQuickItem* root)->QQuickItem*{if(root->objectName()==name)return root;for(auto* child:root->childItems())if(auto* item=find(child))return item;return nullptr;};
+ for(auto* w:QGuiApplication::allWindows())if(auto* window=qobject_cast<QQuickWindow*>(w))if(auto* item=find(window->contentItem())){
+  if(click){
+   item->forceActiveFocus();window->requestActivate();QCoreApplication::processEvents();
+   const auto point=item->mapToScene(QPointF(item->width()/2,item->height()/2));
+   fprintf(stderr,"[QA] checkbox %s size %.0fx%.0f at %.0f,%.0f\n",qPrintable(name),item->width(),item->height(),point.x(),point.y());fflush(stderr);
+   const QPointF local(item->width()/2,item->height()/2);
+   QMouseEvent down(QEvent::MouseButtonPress,local,point,window->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
+   QMouseEvent up(QEvent::MouseButtonRelease,local,point,window->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
+   down.setTimestamp(1000);up.setTimestamp(1025);
+   QCoreApplication::sendEvent(item,&down);QCoreApplication::sendEvent(item,&up);
+   return true;
+  }
+  return item->property("checked").toBool();
  }return false;
 }
 bool Controller::qaDrag(QString name){

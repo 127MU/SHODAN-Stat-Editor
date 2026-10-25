@@ -4,7 +4,7 @@ import argparse, hashlib, json, os, shutil, subprocess, sys, zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '4.1.0-r14'
+VERSION = '4.1.0-r15'
 
 def main():
     p = argparse.ArgumentParser()
@@ -12,7 +12,7 @@ def main():
     p.add_argument('--qt-dir', type=Path, required=True)
     p.add_argument('--compiler-bin', type=Path, required=True)
     p.add_argument('--huskar-root', type=Path, required=True)
-    p.add_argument('--output-root', type=Path, default=ROOT/'dist/huskar-r14')
+    p.add_argument('--output-root', type=Path, default=ROOT/'dist/huskar-r15')
     a = p.parse_args()
     release = a.output_root/('SHODAN_'+VERSION)
     release.mkdir(parents=True, exist_ok=True)
@@ -65,9 +65,9 @@ def main():
     sources+=list((ROOT/'assets').glob('*.png'))
     sources+=[f for f in (ROOT/'offline/launcher').iterdir() if f.is_file() and f.suffix in ('.cpp','.h','.c','.ico','.def','.manifest')]
     sources+=list((ROOT/'offline').glob('*.lua'))+list((ROOT/'offline/originals').glob('*'))+list((ROOT/'offline/licenses').glob('*.txt'))
-    sources+=[f for folder in ('desktop/huskar','desktop/eui') for f in (ROOT/folder).rglob('*') if f.is_file() and f.suffix in ('.cpp','.h','.qml','.def','.txt','.md','.manifest')]
+    sources+=[f for folder in ('desktop/huskar','desktop/eui') for f in (ROOT/folder).rglob('*') if f.is_file() and f.suffix in ('.cpp','.h','.qml','.js','.cmake','.def','.txt','.md','.manifest')]
     sources+=[ROOT/'tools'/n for n in ('package_huskar.py','package_lab.py','package_eui.py','package_onefile.py')]
-    sources+=[ROOT/'tests/test_huskar.py',ROOT/'tests/test_release_update.cpp',ROOT/'tests/test_startup_update.py']
+    sources+=[ROOT/'tests'/name for name in ('test_huskar.py','test_huskar_shaders.py','test_parameter_audit.py','parameter_audit_regression.lua','test_release_update.cpp','test_startup_update.py')]
     with zipfile.ZipFile(a.output_root/(release.name+'_Source.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for f in sorted(set(sources)):
             if f.is_file():z.write(f,release.name+'_Source/'+f.relative_to(ROOT).as_posix())

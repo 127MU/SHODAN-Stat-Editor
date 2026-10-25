@@ -2,6 +2,7 @@
 
 使用 Qt 6.8.3、MinGW 13.1、CMake 3.22+ 与 Ninja 本地构建。
 HuskarUI 固定为 `d760773ee0f440284965fe443f765caeb66d8114`，自动获取其子模块。
+配置时 `PatchShaderUniforms.cmake` 会为依赖源码的玻璃和动态背景顶点着色器补齐 uniform 声明；同时支持本地依赖路径，重新构建会重烘对应 QSB。构建目录需允许写入依赖源码。
 
 ```powershell
 cmake -S desktop/huskar -B build/huskar -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=<Qt SDK 路径>

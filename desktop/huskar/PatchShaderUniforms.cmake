@@ -1,0 +1,16 @@
+# Keep the pinned third-party shaders compatible with strict OpenGL linkers.
+# Take the entire declaration from the fragment stage, retaining std140 order.
+function(shodan_patch_shader_uniforms base)
+ file(READ "${base}.vert" vertex)
+ file(READ "${base}.frag" fragment)
+ set(pattern "layout\\(std140, binding = 0\\) uniform buf \\{[^}]*\\};")
+ string(REGEX MATCH "${pattern}" block "${fragment}")
+ string(REGEX MATCH "${pattern}" old_block "${vertex}")
+ if(block STREQUAL "" OR old_block STREQUAL "")
+  message(FATAL_ERROR "Unrecognized shader uniform block: ${base}")
+ endif()
+ if(NOT old_block STREQUAL block)
+  string(REPLACE "${old_block}" "${block}" patched "${vertex}")
+  file(WRITE "${base}.vert" "${patched}")
+ endif()
+endfunction()
