@@ -26,7 +26,11 @@ ColumnLayout {
             visible:store.types.length>0
             options:store.types
             currentIndex:Math.max(0,store.types.findIndex(x=>x.value===store.tab))
-            onCurrentValueChanged:if(Backend.ready && currentValue && currentValue!==store.tab)store.setTab(currentValue)
+            onCurrentValueChanged:Qt.callLater(function(){
+                // HusSegmented rebuilds its internal model when categories
+                // change. Wait until its index/value bindings have settled.
+                if(Backend.ready && currentValue && store.types.some(x=>x.value===currentValue) && currentValue!==store.tab)store.setTab(currentValue)
+            })
         }
         Item { Layout.fillWidth:true }
         HusInput {

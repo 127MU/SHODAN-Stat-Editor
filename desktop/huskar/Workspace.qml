@@ -93,13 +93,21 @@ QtObject {
             refreshPreset()
         })
     }
-    function refreshRows(){if(!current.id)return;const ticket=epoch;call("rows",[],x=>{if(ticket===epoch)rows=x})}
+    function applyRows(updated){
+        rows=updated
+        // FieldEditor updates its local row after edits. Replacing the model
+        // alone does not update that local copy when section delegates survive.
+        for(const item of updated)rowUpdated(item)
+    }
+    function refreshRows(){if(!current.id)return;const ticket=epoch;call("rows",[],x=>{if(ticket===epoch)applyRows(x)})}
     function save(row,text,done,failed){
+        const ticket=epoch;const owner=current.id
         call("set",[row.id,text],function(result){
-            status=String(result);recent=recent.filter(x=>x!==current.id);recent.unshift(current.id);recent=recent.slice(0,40);Backend.saveSetting("recent",recent)
+            status=String(result);recent=recent.filter(x=>x!==owner);recent.unshift(owner);recent=recent.slice(0,40);Backend.saveSetting("recent",recent)
+            if(ticket!==epoch)return
             if(done)done()
             store.call("rows",[],function(updated){
-                for(let i=0;i<updated.length;i++){store.rows[i]=updated[i];store.rowUpdated(updated[i])}
+                if(ticket===epoch)store.applyRows(updated)
             })
         },failed)
     }

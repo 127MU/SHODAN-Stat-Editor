@@ -12,6 +12,9 @@ Timer {
     property var row
     property real original:0
     property int inputRetries:0
+    property bool flagOnly:Backend.setting("qaFlagReset",false)
+    property bool flagStarted:false
+    property var flagRow
     interval:850;repeat:true
     function run(w,s,p){window=w;store=s;preferences=p;start()}
     function ensure(ok,message){if(!ok)throw new Error(message)}
@@ -22,6 +25,7 @@ Timer {
     onTriggered:{
         if(!Backend.ready || waiting || Object.keys(store.callbacks).length)return
         try{
+            if(flagOnly && !flagStarted){flagStarted=true;step=61}
             if(QaRestoreMode){
                 const expected=JSON.parse(Backend.readText(QaDirectory+"/appearance.json"))
                 const actual=window.qaAppearanceSnapshot()
@@ -92,7 +96,10 @@ Timer {
             else if(step===58){ensure(store.module==="enemy","导航同步意外改变当前页面");store.setTab("SEAF");store.setCatalogColumns(3)}
             else if(step===59){ensure(store.module==="enemy" && store.tab==="SEAF" && window.qaCatalogAligned(),"SEAF 最后一行排列错位");Backend.capture("42-seaf-last-row-aligned");window.width=1480;window.height=960}
             else if(step===60){ensure(store.module==="enemy" && store.tab==="SEAF" && window.qaCatalogAligned(),"窗口放大后排列错位");Backend.capture("43-seaf-resized-aligned");store.setCatalogColumns(4)}
-            else if(step===61){ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");Backend.finishQa("")}
+            else if(step===61){store.openModule("equipment");store.select(store.library[0])}
+            else if(step===62){flagRow=store.rows.find(x=>x.flag && typeof x.original==="number");ensure(!!flagRow,"没有开关字段");ensure(Backend.qaCheck("toggle_"+flagRow.id,true),"无法点击开关")}
+            else if(step===63){waiting=true;store.call("rows",[],function(rows){try{ensure(rows.find(x=>x.id===qa.flagRow.id).value!==qa.flagRow.original,"开关修改未保存");ensure(Backend.qaCheck("toggle_"+qa.flagRow.id)!==(qa.flagRow.original>=0.5),"开关修改后界面状态错误");Backend.capture("44-flag-changed");ensure(Backend.qaCheck("reset_"+qa.flagRow.id,true),"无法点击恢复");qa.waiting=false}catch(e){Backend.finishQa(String(e))}})}
+            else if(step===64){waiting=true;store.call("rows",[],function(rows){try{ensure(rows.find(x=>x.id===qa.flagRow.id).value===qa.flagRow.original,"恢复后后台仍是修改值");ensure(Backend.qaCheck("toggle_"+qa.flagRow.id)===(qa.flagRow.original>=0.5),"后台已恢复但开关界面未恢复");Backend.capture("45-flag-reset");ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");Backend.finishQa("")}catch(e){Backend.finishQa(String(e))}})}
             step++
         }catch(e){Backend.finishQa(String(e))}
     }

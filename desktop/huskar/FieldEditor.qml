@@ -8,7 +8,7 @@ ColumnLayout {
     required property var store
     property bool armor:false
     property int passiveId:0
-    property string saved:armor?String(row.value):String(row.text ?? "")
+    property string saved:armor || row.flag?String(row.value):String(row.text ?? "")
     property string error:""
     signal choose(var row)
     signal shared(var row)
@@ -22,7 +22,7 @@ ColumnLayout {
     }
     Connections {
         target:field.store
-        function onRowUpdated(updated){if(!field.armor && updated.id===field.row.id){field.row=updated;field.saved=String(updated.text)}}
+        function onRowUpdated(updated){if(!field.armor && updated.id===field.row.id){field.row=updated;field.saved=updated.flag?String(updated.value):String(updated.text)}}
     }
     RowLayout {
         Layout.fillWidth:true
@@ -52,12 +52,15 @@ ColumnLayout {
             onClicked:field.choose(field.row)
         }
         HusSwitch {
+            objectName:"toggle_"+field.row.id
             visible:!!field.row.flag
             checked:Number(field.row.value)>=0.5
             checkedText:"开";uncheckedText:"关"
             onClicked:field.commit(checked?"1":"0")
         }
         HusButton {
+            objectName:"reset_"+field.row.id
+            visible:field.row.choice_kind!=="resomode"
             text:"恢复";type:HusButton.Type_Text
             onClicked:{
                 if(field.armor){store.call("armor_set",[field.passiveId,field.row.key,field.row.default],function(){field.saved=String(field.row.default);field.error=""})}
@@ -67,7 +70,7 @@ ColumnLayout {
     }
     RowLayout {
         Layout.fillWidth:true
-        HusText { text:"原值  "+(field.armor?field.row.default:field.row.default_text);color:HusTheme.Primary.colorTextSecondary;font.pixelSize:13 }
+        HusText { visible:field.row.choice_kind!=="resomode";text:"原值  "+(field.armor?field.row.default:field.row.default_text);color:HusTheme.Primary.colorTextSecondary;font.pixelSize:13 }
         Item { Layout.fillWidth:true }
         HusButton { visible:(field.row.shared || []).length>0;text:"查看共享影响";type:HusButton.Type_Link;onClicked:field.shared(field.row) }
     }

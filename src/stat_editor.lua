@@ -17921,6 +17921,14 @@ function MOD.resident.state_of(row)
 end
 
 function MOD.resident.act(row, mode)
+    if mode == 0 then return true, '未更改资源驻留补丁' end
+    if mode ~= 1 and mode ~= 2 and mode ~= 3 then return false, '无效的资源驻留模式' end
+    if os.getenv('SHODAN_QA_OUTPUT') or os.getenv('SHODAN_HUSKAR_QA') then
+        return false, '测试模式禁止修改游戏资源补丁'
+    end
+    local ok_install, installer = pcall(require, 'install')
+    if not ok_install or type(installer.game_running) ~= 'function' then return false, '无法检查游戏运行状态' end
+    if installer.game_running() then return false, '请先关闭游戏，再修改资源驻留补丁' end
     local module = MOD.resident.module()
     if not module then return false, '读不到资源驻留模块（offline/res_patch.lua）' end
     local ctx, why = MOD.resident.ctx()

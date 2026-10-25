@@ -526,9 +526,10 @@ local function used_numbers(root, host)
         if size == nil then
             size = M.file_size(base .. '.stream') or M.file_size(base .. '.gpu_resources')
         end
-        if size == nil then break end
-        used[#used + 1] = index
-        highest = index
+        if size ~= nil then
+            used[#used + 1] = index
+            highest = index
+        end
     end
     return used, highest
 end
@@ -592,13 +593,46 @@ end
 
 local function remove_files(root, host, index)
     local base = root .. '/' .. patch_name(host, index)
-    os.remove(base)
-    os.remove(base .. '.gpu_resources')
-    os.remove(base .. '.stream')
+    for _, suffix in ipairs({ '', '.gpu_resources', '.stream' }) do
+        local path = base .. suffix
+        if M.file_size(path) ~= nil and not os.remove(path) then return nil, '无法移除补丁文件：' .. path end
+    end
+    return true
+end
+
+local function transaction(ctx, host, indexes, action)
+    local before, read_error = {}, nil
+    local function remember(path)
+        local bytes, why = M.read_file(path)
+        if not bytes and M.file_size(path) ~= nil then read_error = why or ('无法备份：' .. path) end
+        before[#before + 1] = { path = path, bytes = bytes }
+    end
+    remember(M.ledger_path(ctx))
+    for _, index in ipairs(indexes) do
+        local base = ctx.root .. '/' .. patch_name(host, index)
+        for _, suffix in ipairs({ '', '.gpu_resources', '.stream' }) do remember(base .. suffix) end
+    end
+    if read_error then return nil, read_error end
+    local ran, result, why = pcall(action)
+    if not ran then why = tostring(result); result = nil end
+    if result then return result end
+    local failures = {}
+    for _, item in ipairs(before) do
+        local ok, err
+        if item.bytes then ok, err = M.write_file(item.path, item.bytes)
+        else
+            ok = M.file_size(item.path) == nil or os.remove(item.path)
+            err = item.path
+        end
+        if not ok then failures[#failures + 1] = tostring(err) end
+    end
+    if #failures > 0 then why = tostring(why) .. '；回滚失败：' .. table.concat(failures, '，') end
+    return nil, why
 end
 
 -- Writes one patch set and returns the slot it took, plus what went into it.
 function M.install(ctx, host, name, mode)
+    if mode ~= 'full' and mode ~= 'light' then return nil, '无效的资源驻留模式' end
     local set, why = bundle_set(ctx)
     if not set then return nil, why end
     if not set.packages[name] then return nil, 'this game has no package ' .. name end
@@ -619,12 +653,14 @@ function M.install(ctx, host, name, mode)
     local index
     if existing then
         index = entries[existing].index
-        remove_files(ctx.root, host, index)
     else
         local used, highest = used_numbers(ctx.root, host)
         if not used then return nil, 'the game data folder was not found: ' .. ctx.root end
+        if #used ~= highest + 1 then return nil, '补丁序号不连续，请先整理现有补丁；未修改任何文件' end
+        if highest >= 63 then return nil, '补丁槽位已满' end
         index = highest + 1
     end
+    return transaction(ctx, host, { index }, function()
     local base = ctx.root .. '/' .. patch_name(host, index)
     local ok, write_why = M.write_file(base, toc)
     if not ok then return nil, write_why end
@@ -637,10 +673,17 @@ function M.install(ctx, host, name, mode)
         if not ok then os.remove(base) os.remove(base .. '.gpu_resources') return nil, write_why end
     end
 
+    for _, suffix in ipairs({ '.gpu_resources', '.stream' }) do
+        if (suffix == '.gpu_resources' and #gpu == 0) or (suffix == '.stream' and #stream == 0) then
+            if M.file_size(base .. suffix) ~= nil and not os.remove(base .. suffix) then return nil, '无法清理旧资源：' .. base .. suffix end
+        end
+    end
     if existing then table.remove(entries, existing) end
     entries[#entries + 1] = { host = host, index = index, name = name, mode = mode, built = #blobs }
-    M.write_ledger(ctx, entries)
+    local saved, ledger_why = M.write_ledger(ctx, entries)
+    if not saved then return nil, ledger_why end
     return { index = index, entries = #blobs, toc = #toc, gpu = #gpu, stream = #stream, mode = mode }
+    end)
 end
 
 -- Takes one patch set back out.  Later slots move down so the numbering stays continuous (a hole
@@ -652,7 +695,22 @@ function M.remove(ctx, host, name)
         if entry.host == host and entry.name == name then at, found = index, entry break end
     end
     if not found then return nil, 'nothing to take back: this package is not resident' end
-    remove_files(ctx.root, host, found.index)
+    local used = used_numbers(ctx.root, host)
+    if not used then return nil, '找不到游戏资源目录' end
+    local owned = {}
+    for _, entry in ipairs(entries) do if entry.host == host then owned[entry.index] = true end end
+    local affected = { found.index }
+    for _, index in ipairs(used) do
+        if index > found.index then
+            if not owned[index] then return nil, '后续槽位含有其他 Mod 补丁，请先移除该补丁；未修改任何文件' end
+            affected[#affected + 1] = index
+        end
+    end
+    if #used > 0 and #used ~= used[#used] + 1 then return nil, '补丁序号不连续；未修改任何文件' end
+    return transaction(ctx, host, affected, function()
+    local removed, remove_why = remove_files(ctx.root, host, found.index)
+    if not removed then return nil, remove_why end
+    if M.file_size(ctx.root .. '/' .. patch_name(host, found.index)) ~= nil then return nil, '无法移除补丁文件' end
     local after = {}
     for _, entry in ipairs(entries) do
         if entry.host == host and entry.index > found.index then after[#after + 1] = entry end
@@ -672,13 +730,16 @@ function M.remove(ctx, host, name)
                     if not written then return nil, extra_why end
                 end
             end
-            remove_files(ctx.root, host, entry.index)
+            local removed, remove_why = remove_files(ctx.root, host, entry.index)
+            if not removed then return nil, remove_why end
             entry.index = entry.index - 1
         end
     end
     table.remove(entries, at)
-    M.write_ledger(ctx, entries)
+    local saved, why = M.write_ledger(ctx, entries)
+    if not saved then return nil, why end
     return found
+    end)
 end
 
 M._internal.patch_name = patch_name
