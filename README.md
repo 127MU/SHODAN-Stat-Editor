@@ -1,378 +1,149 @@
-# SHODAN Stat Editor
+# SHODAN 数值编辑器
 
-Change the stats of weapons, throwables, stratagems, mechas, boosters, attachments, armor passives and your
-helldiver in **Helldivers 2**, and transmog armor passives: stack any passives into one. The **Enemy Editor**
-changes every enemy, your SEAF allies and how they spawn, and keeps custom difficulties as presets. **SHODAN Stat Editor
-Offline** (SSEO) is a Windows program: pick a weapon, change its numbers, press **Install into the
-game**, and play. It writes your values into the game's own
-data files, so no mod loader is needed and the game does not have to run while you edit. Keep
-setups as presets: 5 per weapon, and up to 50 named ones for everything you have changed.
-English, Simplified Chinese, Traditional Chinese and Russian, in one program.
+用于《绝地潜兵 2》的 Windows 离线数值编辑器，基于 SHODAN 4.1.0 核心，提供中文桌面界面、分类编辑、预设管理和写入前预览。
 
-**[Download the latest release](../../releases/latest)** · Windows · No mod loader needed
+**[下载最新版本](https://github.com/127MU/SHODAN-Stat-Editor/releases/latest)** · [全部发行版](https://github.com/127MU/SHODAN-Stat-Editor/releases) · [反馈问题](https://github.com/127MU/SHODAN-Stat-Editor/issues)
 
-Since game build 25988413 the in-game panel (v2.5.0 and earlier, run by Bingus Shared Loader)
-no longer works; SSEO replaces it. See [In-game version](#in-game-version).
+无需额外加载器或 Python 环境。程序修改游戏的数据文件；请关闭游戏后编辑和写入，再启动游戏查看效果。
 
-![SHODAN Stat Editor Offline](images/feature.png)
+## 快速开始
 
-## What you can change
+1. 从发行版页面下载 `SHODAN_<版本>.exe`，或下载 `SHODAN_<版本>_Windows.zip`。
+2. 单文件版直接运行；ZIP 版请完整解压，运行其中的 `SHODAN 数值编辑器.exe`，并保留同目录文件。
+3. 程序会通过 Steam 自动查找游戏目录。进入设置可查看识别到的路径。
+4. 在左侧选择分类和装备，修改需要的参数。
+5. **输入后按回车，或点击输入框外，自动确认当前数值。**
+6. 点击右上角“写入游戏”，核对预览并确认。操作在当前窗口弹窗中显示进度和结果。
+7. 完成后启动游戏。
 
-**Weapons**: every primary, secondary and support weapon
+确认输入只会保存编辑器中的修改；点击“写入游戏”后才会写入游戏文件。
 
-| Section | Stats |
-|---|---|
-| Damage | Damage, durable damage, armor penetration, demolition force, stagger force, push force |
-| Projectile | Projectiles per shot, velocity, drag factor, penetration slowdown |
-| Explosion | Inner, outer and shockwave radius of the blast; the Breaching Hammer's explosion also has its full damage set |
-| Arc | Range, chain length, chain split |
-| Burning / Gas | How much fire or gas each hit applies; burn / gas damage, armor penetration and duration |
-| Fire | Fire rate |
-| Ammo | Magazine size, starting magazines, magazines from supply, max spare magazines, reload time, rounds per reload and reload allowed below (clip weapons, in-game version only) |
-| Handling | Recoil, spread, sway, ergonomics |
-| Heat | Overheat threshold, heat per shot / per second, cool-down time, heatsinks |
-| Loadout | Slot: list a primary weapon among the secondaries, or a secondary among the primaries |
-| Projectile swap | The projectile the weapon fires: pick another weapon's (by name, or type its id) |
-| Grenade swap | In-game version only: fire a throwable grenade, Dynamite or a throwable mine from a grenade launcher or pistol, the One-Two's launcher or the Grenadier Battlement (solo missions) |
+## 可以修改什么
 
-**Burning and gas are shared.** "Burning applied per hit" belongs to the weapon; the **Burning**
-(or **Gas**) section below it is the effect itself, shared by every source of it in the game,
-enemies' fire included. To make one weapon burn harder, raise its own values.
+页面根据实际读取到的数据生成。不同装备拥有的组件不同，因此不会显示完全相同的参数。
 
-**Cool-down time** is shown in seconds: how long a full heat bar takes to cool to zero. Setting it
-sets the cooling rate, so raising the overheat threshold also lengthens it. The Quasar Cannon's
-recharge is its "cool-down time after overheat".
+| 分类 | 主要内容 |
+| --- | --- |
+| 装备编辑 | 主武器、副武器、支援武器和投掷物；伤害、穿甲、弹药、射速、装填、后坐力、散布、过热等 |
+| 弹丸与爆炸 | 弹丸选择、初速、重力、阻力、寿命、近炸引信、爆炸范围、破片和速度继承 |
+| 锁定与制导 | 支持的武器可修改锁定距离、锁定所需时间；导弹速度、加速度、转向和飞行时间；部分高级参数标注为实验性 |
+| 喷流与粘附 | 喷流预热、停火后导引火熄灭时间、弹药消耗等；具有粘附组件的物品可编辑附着旋转和偏移 |
+| 战略配备 | 冷却、使用次数、呼叫指令、弹幕与空袭参数，以及具备对应数据的炮塔、无人机、背包等 |
+| 载具与机甲 | 生命值、护甲、部件与挂载武器；相关条目按所属载具分组 |
+| 武器配件 | 瞄具、枪口、下挂、弹药等可解析配件的参数 |
+| 护甲被动 | 多被动选择、保留原生被动、叠加方式、被动数值弹窗和护甲重量分类 |
+| 潜兵数值 | 可解析的生命值、抗性、移动和其他潜兵参数 |
+| 强化增益 | 数据文件中能够解析的 Booster 参数，并非所有强化增益都有离线可编辑项 |
+| 敌人编辑 | 终结族、机器人、光能族、超级地球武装部队，以及增援、巡逻和生成规则 |
+| 数据记录 | 按记录查看弹丸、爆炸、状态效果等数据，编辑没有单独装备入口的相关参数 |
 
-**Grenade swap** (in-game version only): pick the grenade by name with - / +; 0 is the launcher's own round. The
-grenade's assets load first, so the choice applies a second or two later. Ammo, fire rate and
-handling stay the launcher's; edit the grenade itself on the Throwables tab. A grenade choice
-takes priority over Projectile swap.
+状态效果目录包含当前数据中存在的条目。**实验性**表示字段或效果仍需进一步验证，不代表已经完成游戏内效果测试。
 
-**Throwables**: every grenade, knife and throwable mine, and the shield, on the Throwables tab
+### 参数说明与共享影响
 
-| Section | Stats |
-|---|---|
-| Throwable | Starting count, max carried, from supply, max throw distance, fuse time (timed ones) |
-| Explosion | The full damage set above, inner / outer / shockwave radius, and the burning or gas it applies |
-| Shrapnel | Pieces, their damage and velocity; the G-7 Pineapple's bomblets and their explosion |
-| Arc / Damage | The G-31 Arc's arc (range, chain length, split, damage); the K-2 Throwing Knife's hit |
+- 参数标题旁的 `?` 提供功能说明，鼠标悬停即可查看。
+- 共享参数会列出受影响的其他装备或战略配备。修改共用的伤害、爆炸或状态记录，可能同时影响多个来源。
+- “原值”用于对照；“恢复”将该参数还原到编辑器记录的原始值。
+- 倍率通常以 `1` 为原始比例，例如 `2` 表示两倍；它与绝对数值或百分数不同，请结合参数提示填写。
+- 数值仍需符合字段的数据类型；开关和编号选择项需要使用有效选项。
+- 无效输入会保留并显示错误，不会被当作有效值静默保存。
 
-**Stratagems**
+### 弹丸和状态效果选择
 
-| Stratagem | Stats |
-|---|---|
-| All | Cooldown, uses where limited, and the call-in code (record a new one with the arrow keys or WASD) |
-| Eagles | Uses per rearm, Eagle rearm time; time between bombs (bombers), fire duration (Strafing Run, 110mm Rocket Pods), run length |
-| Orbital and Eagle strikes | For every projectile and blast they use: velocity, inner / outer / shockwave radius, and the full damage set above |
-| Orbital barrages and strikes | Salvos, shells per salvo, time between shells, time between salvos, spread area; the Walking Barrage's walking speed |
-| Orbital Laser | Duration, tracking speed, search radius, damage tick |
-| Guard Dogs | The drone's health, spotting range and target search interval, and the gun it carries, stat for stat like a weapon |
-| Sentries and emplacements | Cooldown, health, spotting range, target search interval, turret turn speed, and their weapon stat for stat (the Tesla Tower's arc included) |
-| Anti-Personnel, Anti-Tank, Gas and Incendiary Minefields | Panels and mines per panel, arming time, throw velocity and spread; the mines' trigger and chain reaction delays, their explosion's damage and radii |
-| LIFT-850 Jump Pack, LIFT-860 Hover Pack | Recharge time; Jump Pack: launch force and duration, forward share of the launch, boost after the launch, mid-air steering; Hover Pack: hover time, hover speed, climb speed, acceleration and time limit |
-| LIFT-182 Warp Pack | Warp distance, reach up / down, heat per warp, cooling, safe and unsafe heat, the damage an unsafe warp does to you and its explosion |
-| Supply Pack, Portable Hellbomb, Guard Dogs; the ammo backpacks of the Autocannon, Recoilless Rifle, Spear, W.A.S.P., Airburst, Maxigun, Cremator and Belt-Fed GL | Backpack charges: capacity, at the start, from resupply |
+通过选择窗口按名称、型号或编号查找弹丸、爆炸或状态效果，不需要反复点击加减按钮切换编号。
 
-**Mechas**: the exosuits, FRVs and tanks, on the Mechas tab
+状态槽需要从第一个开始连续使用，不能跳过空槽。清空时从最后一个已使用的槽开始。新增或更换状态后，还应核对其施加强度，以及共享记录的影响范围。
 
-| Mecha | Stats |
-|---|---|
-| Every exosuit, FRV and tank | Cooldown, health and armor; the health and armor of every body part (legs, cockpit, tracks, doors, ...) |
-| Their weapons | Each an entry of its own, stat for stat like a weapon |
+制导导弹使用自身的飞行参数；普通弹丸的“初速”并不一定控制这类导弹的实际速度。
 
-Body parts whose names aren't known show as "Part N". The Breacher's left arm is a shield whose
-hit is an ability, not a weapon stat, so it has no damage to change.
+## 预设
 
-**Boosters**: the boosters whose values are in the game's data files, on the Boosters tab
+**装备预设跟随当前选中的装备**，可在参数区域展开或收起，支持保存、读取、命名、导入和导出。
 
-| Booster | Stats |
-|---|---|
-| Experimental Infusion | Effect duration, movement speed and damage taken |
-| Firebomb Hellpods, Stun Pods | The blast every hellpod sets off: damage, radii and its burn or stun |
-| Concealed Insertion | Smoke radius |
-| Dead Sprint | Health drain |
-| Armed Resupply Pods | The resupply pod's turret, stat for stat like a weapon |
-| Surplus EAT Allocation | Uses of the extra EAT |
+全局预设用于保存一组装备与记录修改。敌人难度预设与装备预设分开管理，护甲被动组合也有独立配置。
 
-**Attachments**: optics, underbarrels, muzzles and ammunition types, on the Attachments tab
+读取预设前会显示对比。旧版本预设如果包含已不存在或无法识别的参数，会显示兼容提示；无法可靠映射的参数会被拦截，避免写到错误位置。
 
-| Attachment | Stats |
-|---|---|
-| Optics, underbarrels, muzzles (weapons' own Custom muzzle brakes included), shotgun chokes | Ergonomics bonus, and where the attachment has them: sway, recoil, climb and spread multipliers; an optic's zoom levels and zeroing distances |
-| Ammunition types (alternate loads included), by their names in game | Recoil and spread multipliers |
+导入后请先核对预览，再写入游戏。
 
-An attachment's values apply to every weapon fitted with it (an ammunition type's, to every
-weapon loaded with it).
+## 写入和恢复
 
-**Armor passives**: every one, on the Armors tab
+写入前预览会列出待修改的数据；写入过程会校验文件、保留恢复所需的原始数据，并生成游戏可读取的输出。
 
-| Passive | Stats |
-|---|---|
-| Every armor passive | Every value it has: damage taken from explosions, fire, gas, arc, impacts and to the chest; extra stims and throwables; stim duration; reload speeds; ammo capacity; throw range; melee damage; limb health; noise and detection range; armor rating and ergonomics bonuses; and the weapon stat values some passives carry |
+- 编辑期间如果其他程序又修改或删除了相关游戏文件，写入会停止。请确认外部改动后重新打开编辑器。
+- 启动前已存在的文件差异，与启动后的外部改动分别处理。
+- “恢复原版”恢复编辑器记录的原始文件。启动后被其他程序修改的文件会跳过，避免覆盖外部改动。
+- 恢复游戏文件不会清空编辑器的配置和预设；重新写入可以再次应用保存的参数。
+- 游戏更新或 Steam 校验文件后，先重新打开编辑器读取当前版本，再核对并写入。
 
-Multipliers show as the game stores them: 1 is no change, 0.5 damage taken is 50% resistance,
-1.3 reload speed is 30% faster. A passive's values apply to every armor that has it.
+## 设置与更新
 
-### Transmog
+设置中提供：
 
-Give an armor passive the effects of any other passives, as many as you like. On a passive's page
-(Armors tab), **Also includes** lists the passives stacked on it:
+- 浅色／纯黑主题。
+- 字体大小滑动条。
+- 侧边栏自动、展开和收起。
+- 当前游戏路径。
+- 部分可写入的游戏设置。
+- MCP 与调试接口开关。
+- 手动检查更新及项目地址。
 
-- **+ Add passive** picks one from a list; **Remove** takes it off; **Open** goes to its page.
-- **Own effects**: **On** keeps the passive's own stats; **Off** leaves them out, so only the
-  passives listed below it apply. Off with Engineering Kit listed turns Med-Kit into Engineering
-  Kit on every Med-Kit armor.
-- A stacked passive brings every effect it has (Engineering Kit: its grenades and its recoil
-  reduction), at the values set on its own page.
-- Like every passive value, a transmog applies to every armor with that passive: the game does
-  not let one armor be changed alone.
-- **Reset passive** clears its stack and turns its own effects back on.
+启动后会在后台检查本仓库的**最新正式发行版**。有新版本时弹窗提示，可前往 GitHub 查看说明并下载；不会自动覆盖当前程序。草稿、预发行版和开发分支不参与检查。
 
-**Helldiver**: first on the Armors tab: health, each body part's health, movement speeds and
-stamina. It changes every helldiver in your game: restore the game's files before joining other
-players' lobbies.
+版本号中的 `r` 区分本项目的桌面修订，例如 `4.1.0-r8`。更新程序前请关闭旧版；预设和配置默认保存在用户目录中。
 
-### Explosions and records
+## MCP 与调试接口
 
-- Each shot's **Impact explosion** and **Expiry explosion** can be any explosion of the game, or
-  none (0), with its **Blast proximity** (a flak fuse) and **Blast delay**; each explosion's
-  **Shrapnel** can be any projectile. These rows are at the bottom of a weapon page.
-- The **Records** tab lists every projectile, explosion and status record of the game, named after
-  the game's rounds and the weapons using them. The explosion rows on a weapon page stay its own
-  explosion's: edit a newly chosen one here.
+默认关闭。在设置中开启后，点击“复制连接配置”，将其添加到支持 HTTP MCP 的客户端，并保持编辑器运行。
 
-## Enemy Editor
+接口可查询和修改现有参数、管理预设、预览写入结果，以及调用现有写入与恢复流程。调试接口提供后端状态、调用记录和参数检查。
 
-Make your own difficulty. Click **SHODAN Enemy Editor** at the top left: the window turns red and
-edits the enemies instead; **SHODAN Stat Editor** switches back. One Install puts the changes of
-both editors in the game. Its tabs are Terminids, Automatons, Illuminate, SEAF and Spawning.
+连接只监听本机，端口和令牌随会话变化。复制的配置包含会话令牌，不要公开分享。关闭开关或退出程序后，连接失效。
 
-| Page | Stats |
-|---|---|
-| Every enemy | Health, armor, durable ratio, explosive damage taken, bleed-out health and regeneration; each body part's health and armor, and whether destroying it kills the enemy |
-| Behavior | Movement speed, size, sight range and cone, hearing, how long it keeps tracking you after losing sight, stagger resistance, stun and gas resistance, and the fire, acid, electric and gas damage it takes |
-| Attacks | Each melee attack's damage, armor penetration, stagger and push; the explosion it sets off when it dies |
-| Enemy weapons | Each gun listed under its enemy, stat for stat like a weapon: damage, armor penetration, explosion, projectile speed, fire rate, magazine and spread |
-| Shields and jamming | Shield capacity and recharge; the jamming radius of Stratagem Jammers, Command Bunkers and AA Emplacements; the scrambling radius of Cognitive Disruptors; the Leviathan's flight height |
-| SEAF | Every SEAF soldier kind, stat for stat like an enemy, with its weapons; the weapons each kind carries, from the ones the game has for SEAF |
-| All Terminids, All Automatons, All Illuminate, All SEAF | One row for the whole faction: health, armor, damage, movement speed, sight, stagger resistance, stun and gas resistance, fire damage taken |
-| Spawning | Per faction: reinforcement size and frequency, or none at all; the cap on enemies at once; patrol frequency and patrols at once; modifier patrols; outpost garrison size; Fabricator and bug hole output |
-| All factions | The lowest patrol and reinforcement rates the game allows, and SEAF reinforcement and wave cooldowns |
+## 游戏目录与配置
 
-**Custom difficulties.** The Enemy Editor's **Presets** hold only enemy and spawning values, apart
-from the Stat Editor's: loading a difficulty leaves your weapons as they are, and loading a weapon
-setup leaves the enemies. It comes with **Default** (the game's own values), **Horde**, **Glass
-Cannon** and **Elite**; change them, delete them or add your own. They are saved as
-`enemy_preset_01.txt` … next to config.txt, to share like full presets.
+程序会读取 Steam 安装信息和库目录，游戏不必安装在固定盘符。
 
-- A faction row leaves alone every enemy you have changed by hand, so a difficulty can raise a
-  whole faction and still tune single enemies.
-- Some values are shared: a melee attack, gun or death explosion used by several enemies changes
-  for all of them.
-- Spawn values are multipliers of the game's own (1 is no change). A very high enemy cap can make
-  the game stutter or crash.
+默认配置目录：
 
-## Install
-
-1. Download `SHODAN-Stat-Editor-Offline-v<version>.zip` from the [releases page](../../releases/latest) and
-   unzip it anywhere (keep the files together).
-2. Close Helldivers 2 and start **SHODAN Stat Editor Offline.exe**. It finds the game through Steam;
-   if it cannot, write your Helldivers 2 folder's path into
-   `%LOCALAPPDATA%\SHODAN\StatEditor\game folder.txt` and start it again.
-3. Change values, press **Install into the game**, then start the game.
-
-**Restore the game's files** puts the files back as they were before SSEO (the game's own, or
-another mod's); your values stay saved, and Install
-puts them in again. After a game update or Steam's "Verify integrity of game files" the game's own
-files are back: start SSEO and press Install again.
-
-**Updates.** From v3.1.0 SSEO asks GitHub for its latest release at start. When there is a newer
-one, **Update to v…** appears at the top right: one click downloads it, swaps the new files in
-and restarts. Your values, presets and the game's originals stay as they are. (v3.0.0 has no
-updater: download the latest release once by hand.)
-
-Windows SmartScreen or an antivirus may warn about the program the first time (it is not signed).
-
-## Use
-
-The window is the panel: click, or use the keys.
-
-| Key | Action |
-|---|---|
-| Up / Down | Choose a stat |
-| Left / Right | Change it (hold Shift for bigger steps) |
-| Enter, or click a value | Type the value (Enter sets it, Esc cancels) |
-| PgUp / PgDn | Previous / next weapon |
-| Ctrl+F | Search (or click the box under the list) |
-| Del | Reset the stat to the game's value |
-| Ctrl+1–5 / Ctrl+Shift+1–5 | Load / save a weapon preset |
-
-**Typing values.** Click a number (or press Enter on a stat) and type: digits, and "." or ","
-for decimals. Enter sets it, Esc cancels, and clicking elsewhere also sets it. A value outside
-what the stat can take is set to the nearest allowed one, and the panel says so.
-
-Every change is saved to
-
-```
-%LOCALAPPDATA%\SHODAN\StatEditor\config.txt
+```text
+%LOCALAPPDATA%\SHODAN\StatEditor
 ```
 
-with your presets. The game gets them when you press **Install into the game** (with the game
-closed: it reads its files when it starts). The bar at the bottom says whether your values are in
-the game.
+如果没有自动找到游戏，可在该目录的 `game folder.txt` 中填写游戏根目录，例如：
 
-## Settings
-
-The **Settings** button at the bottom right opens its options:
-
-- **Language**: English, Simplified Chinese, Traditional Chinese or Russian.
-- **Apply my changes**: turn it off (then Install) to play with the game's own values; your
-  changes are kept and come back when you turn it on.
-- **Remember last tab and weapon**.
-- **Updates**: **Ask** (the Update button; the default) or **Automatic** (updates at start
-  without asking).
-- **Update channel**: **Releases** (tested versions; the default) or **Every commit**: the
-  [Development build](../../releases/tag/dev), built automatically from every change pushed to
-  this repository, before it is tested. It may break; switch back to Releases to get the next
-  tested version.
-- **Tabs shown**: hide the tabs you do not use (their items leave the search too).
-- **Several vehicles of a kind**: off by default; on, a loadout can take more than one exosuit, FRV or tank.
-- **Sniper crosshair in third person**: off by default; on, sniper rifles show a crosshair when you aim in
-  third person.
-- **Reset all values**: every change of the current setup back to the game's values (asks
-  "Sure?" first; click again to confirm).
-
-The page also has the version, a link to this page and **Logs and Presets**, which opens the
-`%LOCALAPPDATA%\SHODAN\StatEditor` folder.
-
-## Search
-
-Click the box under the weapon list (or press Ctrl+F) and type: the list shows the weapons and
-stratagems of every tab whose name holds all the words typed ("orb las" finds the Orbital
-Laser). On the Records tab it searches the records. Enter keeps the results; Esc or **X** clears
-the search.
-
-## Presets
-
-**Weapon presets.** Every weapon and stratagem has 5. Use the PRESETS strip under its stats:
-pick a number, then **Save** (its current values), **Load** or **Clear**. Numbers in gold hold a
-preset. Loading one sets the weapon exactly as saved; anything the preset doesn't name goes back
-to the game's value.
-
-**Full presets.** Up to 50, under the **Presets** button (left of Settings), each with a name you choose and every change
-you have made.
-
-- **+ New preset** saves your current changes as one, then you type its name (Enter keeps it,
-  Esc cancels).
-- **Load** replaces all current changes with the preset. **Save current changes here**,
-  **Rename** and **Delete** work on the chosen one; overwriting and deleting ask twice.
-- Keyboard there: Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves
-  into the chosen one, F2 renames, Del deletes.
-
-Presets are saved next to config.txt, as `weapon_presets.txt` and `preset_01.txt` …
-`preset_50.txt`. A full preset file can be copied into another player's `StatEditor` folder to
-share the whole setup.
-
-## Good to know
-
-- **Shared values.** Some weapons fire the same projectile or share its damage values (for
-  example the Liberator, Liberator Carbine, StA-52 and Stalwart). The panel names the weapons
-  that change along with the one you edit.
-- **Projectile swap.** A weapon firing another weapon's projectile deals that projectile's damage
-  and flies like it; fire rate, ammo and handling stay its own. To tune those shots, edit the
-  other weapon's values (they change for both).
-- **Variants.** Some weapons exist more than once in the game's data (a mounted copy, an
-  underbarrel attachment). The list labels each one, and the panel says which copy
-  you are editing.
-- **Barrages** can use different shells for different rounds; the section names say which rounds
-  a value belongs to. Long lists scroll: Up/Down follow the chosen stat, or use the buttons under
-  the list.
-- **Each magazine is edited on its own.** Weapons with several magazines or heatsinks list each
-  one in a section of its own (size, spare magazines, reload time, heat, ergonomics bonus);
-  changing one leaves the others as they are. A magazine some other weapons also use is shared
-  with them, and its section names them. Values saved by older versions for the whole weapon
-  carry over to its magazines.
-- **Magazines hold at most 2048 rounds.** The game caps a magazine there (a bigger one drops to
-  2048 at the first shot), so the editor stops at 2048 and says so if you go past it.
-- **Custom muzzle brakes.** Seven weapons come with a muzzle brake of their own (Liberator
-  Penetrator, Pacifier, Coyote, Adjudicator, Tenderizer, Hyena, Diligence Counter Sniper). Each is
-  an entry on the Attachments tab, named after its weapon ("Muzzle brake (Liberator Penetrator)").
-- **In multiplayer** your changes exist only in your game.
-- **Other mods.** SSEO should work alongside mods that change the same game files (other stat or
-  stratagem tools) without conflict, as long as they go in first: SSEO keeps their changes and
-  adds yours on top. This is not thoroughly tested yet.
-  1. Install or apply the other mod.
-  2. Start SSEO and press Install.
-  3. To change or remove the other mod later, press Restore in SSEO first, change the other mod,
-     then press Install in SSEO again.
-
-  Where both change the same stat, SSEO's value wins.
-- **SSEO changes the game's data files.** The changed files keep the checksum the game expects,
-  and the originals are kept in `%LOCALAPPDATA%\SHODAN\StatEditor\originals` (Restore puts them
-  back). Use it at your own risk, and keep to private games with friends if in doubt.
-- **Projectile swap** works offline, but a swapped projectile has its trail only if someone in
-  the mission carries the weapon it comes from. Arc chain length / split edits also apply with
-  other players.
-- **Game Updates** might require you to use the "Restore the game's files" option and then 
-  "Install into the game" again, otherwise your game may fail to connect to EAC.
-
-## Reporting problems
-
-Open an [issue](../../issues) and attach the logs (Settings > Logs and Presets opens their folder):
-
-```
-%LOCALAPPDATA%\SHODAN\StatEditor\Logs\SHODANStatEditor.log
-%LOCALAPPDATA%\SHODAN\StatEditor\Logs\SHODANStatEditorHost.log
+```text
+D:\steam\steamapps\common\Helldivers 2
 ```
 
-The logs list the game files and tables SSEO found, every stratagem it listed, what Install
-wrote, and anything it could not match, which is usually enough to find the cause.
+保存后重新启动程序。上述路径只是示例，请填写自己的实际路径。默认目录不可写时，单文件版可能改用程序旁的 `.SHODAN\Profile` 等可写目录；设置了 `SHODAN_PROFILE` 时，以指定目录为准。
 
-## In-game version
+迁移或备份配置时，请先退出编辑器，保留预设、配置及原始文件备份。不要将别人的备份目录直接覆盖到自己的游戏配置中。
 
-Versions up to v2.5.0 were an in-game panel (F8) run by **Bingus Shared Loader**, changing the
-game's settings in memory while it ran. Game build 25988413 removed what it needed, so it no
-longer works; SSEO edits the same values in the game's files instead. Grenade swap, speedloader /
-clip sizes and unlocking unused items (M-104 Incinerator FRV, P-41 Ombudsman, G-11 Caltrops,
-LAS-22 Shear) need the running game and exist only there. `src/stat_editor.lua` is the in-game
-version's source.
+## 常见问题
 
-## Building from source
+| 问题 | 处理方式 |
+| --- | --- |
+| 找不到游戏 | 检查设置中的路径，确认 Steam 库目录，或按上文填写 `game folder.txt` |
+| 只能看到任务栏图标、窗口没有出现 | 先关闭旧进程，再使用最新完整包；反馈时附 Windows 版本、程序版本和启动日志 |
+| 提示无法创建、备份或替换文件 | 关闭游戏，核对报错路径及该目录的写入权限，确认没有同时运行其他编辑器实例 |
+| 提示编辑器启动后文件被其他工具修改 | 确认相关外部操作已经结束，再重新打开编辑器；不要直接删除备份绕过检查 |
+| 修改后游戏内没有变化 | 确认已经写入成功并重新启动游戏；检查是否改到了共享记录、原弹丸或替换后的实际来源 |
+| 旧预设无法读取 | 核对兼容提示，尽量使用创建预设时的版本重新导出，并附上预设文件反馈 |
+| 找不到某项参数 | 该装备可能没有对应组件，或当前游戏版本尚未适配；请附装备名称和版本号反馈 |
 
-`offline/` holds SSEO: `host.lua` (the program), `engine_shim.lua` (its window), `gamedata.lua`
-(reading and sealing the game's data files), `install.lua` (Install / Restore), `update.lua` (the
-updater) and `launcher/` (the .exe, and `shodan_hash.dll` for the checksums and downloads). The
-panel is `src/stat_editor_offline.lua`.
+反馈建议包含：程序版本、游戏 build、Windows 版本、具体装备与参数、操作步骤，以及报错截图或日志。日志通常在配置目录的 `Logs` 中。
 
-1. Build [LuaJIT](https://luajit.org) 2.1 (`msvcbuild.bat`), then `offline\launcher\build.bat`
-   with `LJ` set to LuaJIT's `src` folder (Visual Studio 2022 Build Tools).
-2. Put `lua51.dll` (LuaJIT) and `libsodium.dll` ([libsodium](https://libsodium.org), x64) in
-   `offline\runtime\`.
-3. `python offline\package.py` makes the release zip in `offline\release\`.
+## 构建与开发
 
-`.github/workflows/dev-build.yml` does the same on GitHub for every push to `main` and publishes
-the result as the Development build pre-release.
+桌面界面使用 C++17 和 EUI-NEO，后端通过进程内 LuaJIT 读取和处理游戏数据。运行发行包不需要单独安装 Python。
 
-## Credits
+本地构建说明见 [desktop/eui/BUILD.md](desktop/eui/BUILD.md)，MCP 接口细节见 [desktop/eui/MCP.md](desktop/eui/MCP.md)。打包使用明确的运行文件清单，测试应使用隔离配置和临时输出，避免改动真实游戏文件。
 
-- **Bingus Shared Loader** by CowboyBingus, which runs the in-game version.
-- **[LuaJIT](https://luajit.org)** (MIT) and **[libsodium](https://libsodium.org)** (ISC), which SSEO
-  ships: their licences are in the release's THIRD-PARTY-NOTICES.txt.
-- **HD2Runtime** by Skyeshade, whose weapon, stratagem and enemy catalogs name the weapons and
-  enemies and map every strike to its projectiles, blasts and damage, and whose research locates
-  package loading and the live entity and unit layouts that Grenade swap uses.
-- **Gameplay Reforged: Recovery Edition** by SweetSwallow and **Little Enemy Kontrol** by Nappleon,
-  whose enemy and spawn edits showed where those values live.
-- **[Filediver](https://github.com/xypwn/filediver)** and the **[helldivers.io](https://helldivers.io/)**
-  data dump by shalzuth, for the game's data layouts and the armor passives.
-- The **[Helldivers 2 wiki](https://helldivers.wiki.gg/)**, whose passive descriptions name every
-  armor passive value.
-- **DiverKit** and **HD2 HUD Plus**, which showed where the game's UI font lives.
+## 来源与许可
 
-## License
+- 核心：[SHODAN-HORAI / SHODAN-Stat-Editor](https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor)。
+- 桌面界面：[EUI-NEO](https://github.com/sudoevolve/EUI-NEO)。
+- 部分字段研究参考：[hd2-datamined](https://github.com/deepseekv41flash/hd2-datamined)。研究结论需要按游戏 build 核对。
 
-[GNU General Public License v3.0](LICENSE). You can use, change and share it, but anything
-you distribute that is based on it must also be released under the GPL v3 with its source.
-
-SHODAN Stat Editor is not affiliated with or endorsed by Arrowhead Game Studios or Sony
-Interactive Entertainment.
+项目许可为 GPL-3.0，详见 [LICENSE](LICENSE)。第三方运行库的许可说明随发行包保留。
