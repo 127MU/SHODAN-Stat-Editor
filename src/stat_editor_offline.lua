@@ -12801,6 +12801,7 @@ function MOD.kits.resolve(entry)
         for _, kit in ipairs(by_name[id]) do
             for _, piece in ipairs(kit.index.pieces) do
                 local p = part(row_id .. '_' .. (#parts + 1), kit.group, piece.offset, 'u32', 2)
+                p.field.allowed={[0]=true,[1]=true,[2]=true,why='护甲重量只能选择轻型、中型或重型'}
                 if piece.torso and not first then first = #parts + 1 end
                 parts[#parts + 1] = p
             end
@@ -17136,6 +17137,42 @@ function MOD.parts_of(weapon, id, values)
     for _, listed in ipairs(weapon.legacy and weapon.legacy[id] or {}) do out[#out + 1] = weapon.by_id[listed] end
     return out[1] and out or nil
 end
+
+-- Presets bypass interactive choice handlers; validate the desired slot layout as a whole.
+function MOD.validate_preset_values(bundle, desired)
+    local groups={}
+    for _,o in ipairs(bundle.values) do
+        local owner=by_hash[o.hash]
+        local parts=owner and MOD.parts_of(owner,o.id,bundle.values)
+        for _,p in ipairs(parts or {}) do
+            local f,row=p.field,p.row
+            if f.storage=='gun' then
+                assert(o.value%1==0 and MOD.enemy.gun_choices().by_id[o.value],'预设包含无效的武器编号：'..o.id)
+            elseif f.storage=='grenade' then
+                assert(o.value%1==0 and KINDS[TYPES.throwable].entity_bytes(o.value),'预设包含无效的手雷编号：'..o.id)
+            end
+            if row and row.choice=='status' then groups[row.drow]=row.drow end
+            if row and row.choice==true then
+                assert(o.value==0 or tables[T_PROJECTILE] and tables[T_PROJECTILE].index[o.value],'预设包含当前版本不存在的弹丸编号：'..o.id)
+            end
+            if row and (row.choice=='explosion' or row.choice=='shrapnel') and row.parts[1]==p then
+                local kind=row.choice=='explosion' and T_EXPLOSION or T_PROJECTILE
+                assert(o.value==0 or tables[kind] and tables[kind].index[o.value],'预设包含当前版本不存在的爆炸或弹丸编号：'..o.id)
+            end
+        end
+    end
+    for drow in pairs(groups) do
+        local empty=false
+        for slot=0,3 do
+            local f=field_at(T_DAMAGE,drow+44+slot*8,'u32',100000)
+            local v=desired[f.key];if v==nil then v=default_of(f) end
+            assert(type(v)=='number' and v%1==0 and (v==0 or tables[T_STATUS] and tables[T_STATUS].index[v]),'预设的状态效果槽 '..(slot+1)..' 包含无效编号')
+            assert(v==0 or not empty,'预设的状态效果槽不能跳过空槽：请从第 1 槽开始依次填写')
+            empty=empty or v==0
+        end
+    end
+end
+
 
 -- For other mods: the game's own value of a stat, named as in config.txt (weapon hash, stat id), as
 -- read at startup before this mod wrote anything. nil: no such weapon / stat, or its table not found.
@@ -21789,6 +21826,7 @@ if MOD.offline then
             for _,line in ipairs(row.after or {}) do help[#help+1]=settings.tr(line) end
             local choice_name=''
             if row.choice=='weight' then choice_name=settings.tr(MOD.kits.NAMES[v] or '?')
+            elseif row.choice=='status' then choice_name=type(v)=='number' and settings.tr(MOD.status.name(v)) or ''
             elseif row.choice=='apex_fire' then choice_name=v==2719 and '站立开火（参考 Mod）' or '原始开火动作'
             elseif row.choice=='slot' then choice_name=v==1 and '主武器' or '副武器'
             elseif row.choice=='gun' then local g=MOD.enemy.gun_choices().by_id[v];choice_name=g and settings.tr(g.label) or ''
@@ -21814,9 +21852,10 @@ if MOD.offline then
         assert(not row.code,'请使用战备指令录入接口')
         value=assert(tonumber(value),'请输入有效数值')
         assert(value==value and math.abs(value)~=math.huge,'请输入有限数值')
+        if row.choice=='weight' then assert(value==0 or value==1 or value==2,'护甲重量只能选择轻型、中型或重型') end
         ui.message=nil;change(row,0,false,value)
+        if ui.message then error(settings.tr(ui.message.text),0) end
         save_config()
-        if ui.message then return settings.tr(ui.message.text) end
         return '数值已保存，写入游戏后生效'
     end
     function state.desktop.reset(n)
@@ -21846,7 +21885,7 @@ if MOD.offline then
         local row=assert(ui.weapon and ui.weapon.rows[tonumber(n)],'找不到参数')
         id=assert(tonumber(id),'请选择有效的条目 ID')
         if row.choice=='weight' then assert(id==0 or id==1 or id==2,'护甲重量类型无效');return state.desktop.set(n,id)
-        elseif row.choice=='apex_fire' then return state.desktop.set(n,id)
+        elseif row.choice=='apex_fire' then assert(id==2677 or id==2719,'请选择有效的尖峰开火动作');return state.desktop.set(n,id)
         elseif row.choice=='slot' then return state.desktop.set(n,id)
         elseif row.choice=='gun' then
             assert(MOD.enemy.gun_choices().by_id[id],'找不到此武器')
@@ -21892,7 +21931,7 @@ if MOD.offline then
     require('desktop_features').attach(state.desktop,{
         name=MOD.desktop_name,editor=function()return MOD.enemy.on and 'enemy' or 'equipment' end,
         in_scope=function(w)return MOD.is_enemy_value(w.hash)==MOD.enemy.on end,
-        record_pages=function()return MOD.records.pages end,preset_id=MOD.preset_id,presets=presets,by_hash=by_hash,selected=function()return ui.weapon end,
+        validate_values=MOD.validate_preset_values,record_pages=function()return MOD.records.pages end,preset_id=MOD.preset_id,presets=presets,by_hash=by_hash,selected=function()return ui.weapon end,
         overrides=function()return overrides end,parts=MOD.parts_of,read=read_field,default=default_of,
         tr=settings.tr,number=number_text,write=MOD.write_text,path=function(name)return data_dir('StatEditor')..'/'..name end,
         file=function(field)

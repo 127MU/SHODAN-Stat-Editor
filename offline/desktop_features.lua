@@ -147,6 +147,7 @@ function M.attach(B,C)
         if allow_missing and #warnings>0 and accepted==0 then
             error('此预设的 '..#warnings..' 项参数均无法识别，已停止读取以免清空当前修改。请使用创建预设时的版本重新导出。首项：'..warnings[1],0)
         end
+        if C.validate_values then C.validate_values(bundle,fields) end
         return fields,warnings,accepted
     end
     local function describe(w,p,before,after,index)
