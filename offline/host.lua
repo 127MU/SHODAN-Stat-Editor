@@ -362,6 +362,8 @@ local function main()
     -- ------------------------------------------------------------ install / restore
     local write_succeeded=false
     local function install()
+        local extra_error=state.desktop and state.desktop.extra_validate and state.desktop.extra_validate()
+        if extra_error then say(extra_error,WARN);return end
         if not ARM.flush() then say('请先修正护甲数值输入。',WARN);return end
         if state.desktop_commit and not state.desktop_commit() then say('请输入有效数值，再写入游戏。',WARN);return end
         if I.game_running() then say('Helldivers 2 is running: close it, then Install.', WARN); return end
@@ -545,6 +547,8 @@ local function main()
             state.writes=(state.writes or 0)+1;return true
         end
         B.install_preview=function()
+            local extra_error=B.extra_validate and B.extra_validate()
+            assert(not extra_error,extra_error)
             local entries=B.pending_preview()
             for _,a in ipairs(AR.list) do
                 for _,r in ipairs(D.armor_values(a.id)) do

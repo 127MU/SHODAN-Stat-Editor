@@ -96,18 +96,25 @@ HusWindow {
     onInitializedChanged:if(initialized)Qt.callLater(window.applyWindowEffect)
     opacity:appearance.windowOpacity
     property var searchOptions:{
-        const out=[];for(let tab of Object.keys(workspace.catalogs))for(let item of workspace.catalogs[tab])out.push({label:item.name,value:tab+":"+item.id,tab:tab,id:item.id,search:item.search || item.name});return out
+        const categories={Primary:"主武器参数",Secondary:"副武器参数",Support:"支援武器参数",Throwables:"投掷物参数",Boosters:"强化增益",Stratagems:"战备参数",Mechas:"载具与机甲参数",Attachments:"武器配件",Records:"数据记录",Helldiver:"潜兵数值",ArmorWeight:"护甲类型参数",Terminids:"终结族参数",Automatons:"机器人参数",Illuminate:"光能族参数",SEAF:"超级地球部队参数",Spawning:"敌人生成参数"}
+        const out=[];for(let tab of Object.keys(workspace.catalogs))for(let item of workspace.catalogs[tab]){
+            const category=categories[tab] || tab
+            out.push({label:"【"+category+"】 "+item.name,value:tab+":"+item.id,tab:tab,id:item.id,search:(item.search || item.name)+" "+category})
+        }return out
     }
     function selectSearch(option){
         const module=({Primary:"equipment",Secondary:"equipment",Support:"equipment",Throwables:"equipment",Boosters:"equipment",Stratagems:"stratagem",Mechas:"vehicle",Attachments:"attachment",Records:"records",Helldiver:"player",ArmorWeight:"armor",Terminids:"enemy",Automatons:"enemy",Illuminate:"enemy",SEAF:"enemy",Spawning:"enemy"})[option.tab]
         workspace.openModule(module);workspace.setTab(option.tab);workspace.select((workspace.catalogs[option.tab] || []).find(x=>x.id===option.id));searchDialog.close()
     }
     property bool syncingNavigation:false
+    property int navigationTicket:0
     function syncNavigation(){
-        if(!Backend.ready || !navigationLoader.item || workspace.module==="settings")return
+        if(!Backend.ready || !navigationLoader.item){syncingNavigation=false;return}
+        const ticket=++navigationTicket
         syncingNavigation=true
         navigationLoader.item.gotoMenu(workspace.module)
-        syncingNavigation=false
+        // Menu delegates can complete during the next layout pass after resize.
+        Qt.callLater(function(){if(ticket===window.navigationTicket)window.syncingNavigation=false})
     }
     property string locationTitle:workspace.module==="home"?"首页":workspace.module==="settings"?"设置":workspace.module==="tweaks"?"游戏参数":workspace.module==="presets"?"全局预设":workspace.module==="mods"?"Mod 管理":workspace.destinations.find(x=>x.key===workspace.module)?.name || "工作台"
     function closeQaDialogs(){if(QaMode)armorDialog.close()}
@@ -118,6 +125,22 @@ HusWindow {
         return true
     }
     function qaCloseUpdate(){if(QaMode)updateDialog.close()}
+    function qaSearchContext(){
+        if(!QaMode)return false
+        const matches=searchOptions.filter(x=>x.label.indexOf("类星体")>=0)
+        return matches.some(x=>x.tab==="Support" && x.label.indexOf("支援武器参数")>=0) && matches.some(x=>x.tab==="Stratagems" && x.label.indexOf("战备参数")>=0)
+    }
+    function qaProjectilePreview(row){if(QaMode){choices(row);choiceDialog.query="120"}}
+    function qaCloseChoices(){if(QaMode)choiceDialog.close()}
+    function qaCatalogAligned(){
+        if(!QaMode)return false
+        function find(item){
+            if(item.objectName==="groupedCatalog" && item.visible)return item.qaAligned()
+            for(let child of item.children || []){const found=find(child);if(found!==null)return found}
+            return null
+        }
+        return find(window.contentItem)===true
+    }
     function qaClosePresets(){if(QaMode)equipmentPresets.close()}
     function qaSliderTest(){
         if(!QaMode || workspace.module!=="settings")return false
@@ -179,7 +202,7 @@ HusWindow {
         function onError(text){message("操作未完成",text)}
         function onUpdateFound(version,url,notes,downloadUrl){updateVersion=version;updateUrl=url;updateNotes=notes || "该发行版未提供更新日志。";updateDownloadUrl=downloadUrl || "";updateDialog.open()}
         function onOperationProgress(text,done,total){progressText=text;progressPercent=total>0?Math.round(done*100/total):"auto"}
-        function onModuleChanged(){focusOut();Qt.callLater(window.syncNavigation)}
+        function onModuleChanged(){window.syncingNavigation=true;focusOut();Qt.callLater(window.syncNavigation)}
         function onLoaded(){Qt.callLater(window.syncNavigation)}
     }
     captionBar.height:42
@@ -434,8 +457,20 @@ HusWindow {
             ListView {
                 Layout.fillWidth:true;Layout.preferredHeight:420;clip:true;spacing:6;ScrollBar.vertical:HusScrollBar{}
                 SmoothWheel { }
-                model:choiceDialog.items.filter(x=>(String(x.name || x.label)+" "+x.id).toLowerCase().indexOf(choiceDialog.query.toLowerCase())>=0)
-                delegate:HusButton { required property var modelData;width:ListView.view.width-16;text:(modelData.name || modelData.label || "条目")+" · #"+modelData.id;onClicked:workspace.call("choose",[choiceDialog.row.id,modelData.id],x=>{workspace.status=x;choiceDialog.close();workspace.refreshRows()}) }
+                model:choiceDialog.items.filter(x=>(String(x.name || x.label)+" "+(x.description || "")+" "+(x.raw || "")+" "+x.id).toLowerCase().indexOf(choiceDialog.query.toLowerCase())>=0)
+                delegate:HusButton {
+                    id:choiceButton
+                    required property var modelData
+                    enabled:!modelData.disabled
+                    width:ListView.view.width-16
+                    text:"#"+modelData.id+" · "+(modelData.name || modelData.label || "条目")
+                    contentItem:ColumnLayout {
+                        spacing:4
+                        HusText {Layout.fillWidth:true;text:choiceButton.text;color:choiceButton.colorText;wrapMode:Text.Wrap}
+                        HusText {Layout.fillWidth:true;visible:!!choiceButton.modelData.description;text:choiceButton.modelData.description || "";color:HusTheme.Primary.colorTextSecondary;wrapMode:Text.Wrap}
+                    }
+                    onClicked:workspace.call("choose",[choiceDialog.row.id,modelData.id],x=>{workspace.status=x;choiceDialog.close();workspace.refreshRows()})
+                }
             }
         }
     }
