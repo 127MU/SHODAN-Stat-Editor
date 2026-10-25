@@ -1,5 +1,12 @@
 -- Reviewed editor parameter labels. Internal coefficients are not presented as percentages.
 local labels={
+ ["Lock-on distance (m)"]="锁定距离（米）",["Lock-on time (s)"]="锁定所需时间（秒）",
+ ["Target loss delay (experimental, s)"]="目标丢失延迟（实验性，秒）",["Lock loss delay (experimental, s)"]="锁定丢失延迟（实验性，秒）",
+ ["Guidance proportional gain (experimental)"]="制导比例增益 P（实验性）",["Guidance integral gain (experimental)"]="制导积分增益 I（实验性）",
+ ["Guidance derivative gain (experimental)"]="制导微分增益 D（实验性）",["Guidance target update interval (experimental, s)"]="制导目标更新间隔（实验性，秒）",
+ ["Spray warm-up time (s)"]="喷流预热时间（秒）",["Spray pilot-light timeout (s)"]="停火后导引火熄灭时间（秒）",
+ ["Spray pose limit (deg)"]="喷流姿态限制（度）",["Spray collision radius (experimental, m)"]="喷流碰撞半径（实验性，米）",
+ ["Spray ammunition cost"]="喷流弹药消耗",["Spray triggers mines"]="喷流引爆地雷",["Spray ground fire template (experimental)"]="喷流地面火焰模板（实验性）",
  ["Light"]="轻型", ["Medium"]="中型", ["Heavy"]="重型",
  ["Light armor"]="轻型护甲", ["Medium armor"]="中型护甲", ["Heavy armor"]="重型护甲",
  ["Apex firing action"]="尖峰开火动作",

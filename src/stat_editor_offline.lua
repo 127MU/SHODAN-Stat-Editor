@@ -11765,7 +11765,7 @@ local TYPES = { arc_weapon = 0xB87BA9ED, arc = 0xAFDF0267, health = 0xB3915DE3, 
                 rack = 0xA98BB156, charge = 0xEAC335A1, jumppack = 0x54270608, recharge = 0x1F42878E,
                 warp = 0xA7813546, deposit = 0xC435BA85, package = 0x7A858691, reload = 0x991D454E,
                 thrower = 0xA29A84D8, minefield = 0x74FEF89A, mine_spawner = 0x0697FED6, bombard = 0xCDBC43D8, eagle = 0x556FF68B,
-                seeking = 0xBF3A6789, windup = 0x84CE7EEE, laser = 0x32528174, avatar = 0x40EF204C, hellpod_payload = 0xDDB5C03F }
+                seeking = 0xBF3A6789, guidance = 0x84957034, windup = 0x84CE7EEE, laser = 0x32528174, avatar = 0x40EF204C, hellpod_payload = 0xDDB5C03F }
 local KINDS = {
     [T_WEAPON] = { name = 'weapon', stride = 1232, keyed = true, layouts = { { stride = 1240 } } },
     [T_MAGAZINE] = { name = 'magazine', stride = 160, keyed = true },
@@ -11874,6 +11874,7 @@ KINDS[TYPES.eagle] = { name = 'eagle', stride = 152, keyed = true,
 -- +68 launch, +72 minimum, +76 cruise speed, +80 acceleration, +88 / +92 turn speed at cruise / slowest.
 -- Records of 272 bytes (FileDiver's layout ends at 252; 264 also fits the table, read off by 8 bytes).
 KINDS[TYPES.seeking] = { name = 'seeking missile', stride = 272, keyed = true }
+KINDS[TYPES.guidance] = { name = 'guidance target', stride = 124, keyed = true }
 KINDS[TYPES.laser] = { name = 'laser designator', stride = 64, keyed = true }
 -- AvatarComponentData (the helldiver's): its move info's speeds and stamina (offsets in MOVE)
 KINDS[TYPES.avatar] = { name = 'avatar', stride = 852, keyed = true }
@@ -11922,7 +11923,7 @@ end
 local KIND_ORDER = { T_WEAPON, T_MAGAZINE, T_ROUNDS, T_FIRE, T_PROJECTILE, T_DAMAGE, T_BEAM_WEAPON, T_BEAM,
                      T_EXPLOSION, T_ORBITAL, T_HEAT, T_SPRAY, T_STATUS, T_MELEE, TYPES.arc_weapon, TYPES.arc,
                      TYPES.health, TYPES.sensor, TYPES.detector, TYPES.turret, TYPES.custom, TYPES.deltas,
-                     TYPES.throwable, TYPES.explosive, TYPES.sticky, TYPES.charge, TYPES.hellpod_payload }
+                     TYPES.throwable, TYPES.explosive, TYPES.sticky, TYPES.charge, TYPES.guidance, TYPES.hellpod_payload }
 
 -- The deltas table: five arrays (pointer, count) head the payload: resource -> slot (u64, u32),
 -- slot -> components (count, first), component (index, first delta, count), delta (offset in the
@@ -12985,6 +12986,19 @@ for _, c in ipairs({ { 2, 'Bleed', 10 }, { 1, 'Blind', 10 }, { 3, 'Deaf', 10 }, 
     MOD.status.choices[#MOD.status.choices + 1] = { c[1], c[2] .. ' (experimental)', c[3] }
 end
 for n, c in ipairs(MOD.status.choices) do MOD.status.by[c[1]] = { n = n, type = c[1], name = c[2], strength = c[3] } end
+function MOD.status.refresh()
+    local names={ '致盲','流血','失聪','混乱','燃烧','火焰恐慌','熔岩','减速','蛛网黏附','定身','酸液溅射','酸液喷流','热熔','生化人火焰','窒息','沙地','泥地','雪地','浸水','荆棘','仙人掌','铁丝网','小型灌木','大型灌木','直接伤害','治疗剂视觉效果','治疗剂耐力恢复','治疗剂生命恢复','治疗手枪生命恢复','实验性注射剂','治疗剂冷却','轻度燃烧','重度燃烧','轻度辐射','重度辐射','电击','隐蔽','轻度眩晕','中度眩晕','重度眩晕','超重度眩晕','光能族眩晕','毒气','毒气（灭菌器）','毒气混乱','毒气混乱（灭菌器）','反向瞄准辅助','被照明','烟雾掩护','背包化学品','酷热','严寒','震颤','沙尘暴','暴风雪','酸雨','天气隔绝','龙卷风眩晕','暗物质','死亡冲刺','热射激光步枪阶段 1','热射激光步枪阶段 2','热射激光步枪阶段 3','光能族干扰','体魄强化','体魄强化护甲抗性','死后爆炸','喷火器减速','幽暗','暗物质（变体）','中毒','重度中毒','毒素易伤' }
+    local t=tables[T_STATUS];if not t then return end
+    local previous=MOD.status.by;MOD.status.choices={};MOD.status.by={}
+    local ids={};for id in pairs(t.index) do if type(id)=='number' and id>0 then ids[#ids+1]=id end end;table.sort(ids)
+    for _,id in ipairs(ids) do
+        local old=previous[id];local known=old and not old.name:find('experimental',1,true)
+        local name=(names[id] or ('状态 #'..id..'（名称待核对）'))..(known and '' or '（实验性）')
+        local strength=known and old.strength or 1
+        MOD.status.choices[#MOD.status.choices+1]={id,name,strength}
+        MOD.status.by[id]={n=#MOD.status.choices,type=id,name=name,strength=strength}
+    end
+end
 function MOD.status.name(kind)
     if kind == 0 then return 'none' end
     return MOD.status.by[kind] and MOD.status.by[kind].name or KINDS[T_STATUS].stuns[kind] or ('status ' .. kind)
@@ -13146,6 +13160,17 @@ local function resolve_gun(weapon, key)
     -- flame and gas weapons: spray component (+200 damage row), damage per flame / gas hit
     local spray = not drow and record(T_SPRAY)
     if spray then
+        for _,r in ipairs({{'spray_warmup','Spray warm-up time (s)',0,'f32'},
+                           {'spray_cooldown','Spray pilot-light timeout (s)',4,'f32'},
+                           {'spray_pose','Spray pose limit (deg)',8,'f32'},
+                           {'spray_capsule','Spray collision radius (experimental, m)',16,'f32'},
+                           {'spray_ammo','Spray ammunition cost',192,'u32'},
+                           {'spray_mines','Spray triggers mines',208,'flag'},
+                           {'spray_ground_fire','Spray ground fire template (experimental)',220,'u32'}}) do
+            local row=add_row(weapon,'喷流',r[1],r[2],r[4],{part(r[1],T_SPRAY,spray+r[3],r[4],100000)},0,10000,0.1,1)
+            if r[4]=='flag' then row.min=0;row.max=1 end
+            if r[1]=='spray_ground_fire' or r[1]=='spray_capsule' then row.tip={'实验性：字段布局已解析，游戏内效果尚未验证。此处不是喷火器射程。'} end
+        end
         local id = read_field(field_at(T_SPRAY, spray + 200, 'u32', 100000))
         drow = id and tables[T_DAMAGE] and tables[T_DAMAGE].index[id]
         -- none of its own (the enemies' bile and acid sprays): its projectile's (+196 projectile type, that +60)
@@ -13494,6 +13519,7 @@ local function resolve_gun(weapon, key)
             end
         end
     end
+    MOD.lockon.rows(weapon,key)
     if fire then
         local rates, values = {}, {}
         for n, offset in ipairs({ 4, 8, 12 }) do
@@ -14941,6 +14967,13 @@ local function resolve_throwable(entry, placed)
     end
     KINDS[TYPES.shield].rows(entry, entry.hash)   -- the G/SH-39's shield
     local sticky = record(TYPES.sticky)
+    if sticky then
+        for _,r in ipairs({{'sticky_rx','附着旋转 X（实验性，度）',8},{'sticky_ry','附着旋转 Y（实验性，度）',12},{'sticky_rz','附着旋转 Z（实验性，度）',16},
+                           {'sticky_x','附着偏移 X（实验性，米）',20},{'sticky_y','附着偏移 Y（实验性，米）',24},{'sticky_z','附着偏移 Z（实验性，米）',28}}) do
+            local row=add_row(entry,'粘附',r[1],r[2],'f32',{part(r[1],TYPES.sticky,sticky+r[3],'f32',100000)},-10000,10000,0.1,1)
+            row.parts[1].field.signed=true;row.tip={'实验性：根据类型库和原始数据推断，尚未实机验证；不代表可以让所有手雷附着任意表面。'}
+        end
+    end
     local hit = sticky and damage(read_field(field_at(TYPES.sticky, sticky + 44, 'u32', 100000)))
     if hit then
         damage_rows(entry, 'Damage', '', hit)
@@ -15020,10 +15053,15 @@ KINDS[TYPES.seeking].flight = function(weapon, seek, steered)
         { 'lost_angle', 'Loses its target past (deg)', 28, 180, 1, 10, true },
         { 'lifetime', 'Max flight time (s)', 64, 600, 1, 5 },
         { 'guidance_after', 'Guidance on after (s)', 12, 60, 0.1, 0.5, true },
+        { 'pid_p', 'Guidance proportional gain (experimental)', 96, 1000, 0.01, 0.1, true },
+        { 'pid_i', 'Guidance integral gain (experimental)', 100, 1000, 0.01, 0.1, true },
+        { 'pid_d', 'Guidance derivative gain (experimental)', 104, 1000, 0.0001, 0.001, true },
+        { 'target_interval', 'Guidance target update interval (experimental, s)', 108, 1000, 0.01, 0.1, true },
     }) do
         local id = 'missile_' .. r[1]
         if steered ~= false or not r[7] then
             add_row(weapon, 'Missile flight', id, r[2], 'f32', { part(id, TYPES.seeking, seek + r[3], 'f32', 1000000) }, 0, r[4], r[5], r[6])
+            if r[1]:find('pid_',1,true) or r[1]=='target_interval' then weapon.rows[#weapon.rows].tip={'实验性：字段映射来自数据结构，当前版本尚未逐项实机验证；不等于锁定锥角。'} end
         end
     end
     -- a missile that weaves (+180 on: the W.A.S.P., P-33): how far, +192 / +196 and the vectors +200 / +212
@@ -15040,6 +15078,22 @@ KINDS[TYPES.seeking].flight = function(weapon, seek, steered)
         end
         local row = add_row(weapon, 'Missile flight', 'missile_deviation', 'Deviation', 'f32', parts, 0.1, 1000, 1, 5)
         row.lead = true   -- the others scale with it
+    end
+end
+
+MOD.lockon={}
+function MOD.lockon.rows(weapon,key)
+    local t=tables[TYPES.guidance];local at=t and t.index[key];if not at then return end
+    local sensor=tables[TYPES.sensor];local sight=sensor and sensor.index[key]
+    if sight then
+        local row=add_row(weapon,'锁定','lock_range','Lock-on distance (m)','f32',{part('lock_range',TYPES.sensor,sight,'f32',1000000)},0,10000,1,10)
+        row.tip={'允许锁定目标的最大距离，单位为米；不改变可锁定的目标种类或锁定锥角。仓库在 build 26088801 对 P-92 做过实机验证。'}
+    end
+    for _,r in ipairs({{'lock_time','Lock-on time (s)',16},
+                       {'target_lost_time','Target loss delay (experimental, s)',20},
+                       {'lock_lost_time','Lock loss delay (experimental, s)',24}}) do
+        local row=add_row(weapon,'锁定',r[1],r[2],'f32',{part(r[1],TYPES.guidance,at+r[3],'f32',1000000)},0,600,0.05,0.25)
+        row.tip={r[1]=='lock_time' and '锁定所需时间，单位为秒。仓库在 build 26088801 对 FAF-14 飞矛做过实机验证。' or '实验性：丢失目标相关时序，字段布局已确认，但具体游戏行为尚未实机验证。'}
     end
 end
 
@@ -17386,6 +17440,7 @@ local progress = nil
 -- carries them all. Each step: { name, function, what failing means }.
 local function become_ready(final)
     state.build_steps = {
+        { 'status catalogue', MOD.status.refresh, 'status catalogue: ' },
         { 'stratagems', build_stratagems, 'stratagems: not listed: ' },
         { 'attachments', KINDS[TYPES.items].build, 'attachments: not listed: ' },
         { 'passives', KINDS[TYPES.passive].build, 'armor passives: not listed: ' },

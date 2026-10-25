@@ -13,6 +13,7 @@
 #include "mod_zip.h"
 #include "patch_mods.h"
 #include "mcp_server.h"
+#include "release_update.h"
 #include <iomanip>
 #include "core/input/input_state.h"
 #include <glad/glad.h>
@@ -33,6 +34,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <regex>
 
 namespace app {
 DslAppConfig& mutableConfig();
@@ -42,6 +44,8 @@ struct ManagedMod {std::filesystem::path path;std::string name,description;bool 
 struct ModImportResult {std::vector<ManagedMod> mods;std::vector<std::string> errors;};
 struct McpResult {Value value;bool updateMods=false;std::vector<ManagedMod> mods;};
 struct Model {
+ std::future<shodan::ReleaseUpdate> releaseWork;shodan::ReleaseUpdate release;
+ bool releaseAutoStarted=false,releasePrompt=false;std::string releaseStatus="启动后自动检查正式发行版";
  int fontPixels=18,pendingFontPixels=0,sidebarMode=0;bool sidebarModeOpen=false;eui::Signal<float> settingsScroll{0};
  eui::Signal<float> navScroll{0};float navWidth=0,navVelocity=0,frameDelta=0.016f;bool qaResizeAnimationObserved=false;
  shodan::McpServer mcp;std::set<std::string> mcpMethods;
@@ -223,6 +227,11 @@ void scrollDropdown(eui::Ui& ui,const std::string& id,float width,float height,f
 }
 components::DialogStyle dialogStyle(){auto s=components::DialogStyle(theme());s.shadow={};return s;}
 void safe(const std::function<void()>& fn){try{fn();}catch(const std::exception& e){m.message=e.what();m.error=e.what();}}
+void checkRelease(){
+ if(m.releaseWork.valid())return;
+ m.releaseStatus="正在检查 GitHub 正式发行版…";
+ m.releaseWork=std::async(std::launch::async,[]{auto result=shodan::checkReleaseUpdate(shodan::version);app::requestUpdate();return result;});
+}
 void refreshRows(){++m.rowsRevision;m.rows=m.backend->call("rows").array;m.edits.clear();m.error.clear();}
 void updatePresetInfo(){if(m.backend&&!m.selected.empty())m.presetLabel=m.backend->call("preset_info",{m.preset})["name"].str();}
 void markRecent(){
@@ -607,6 +616,15 @@ McpResult executeMcp(const shodan::McpRequest& request,std::vector<ManagedMod> m
 }
 void tickMcp(){
  using namespace std::chrono_literals;
+ if(m.backend&&!m.releaseAutoStarted){
+  m.releaseAutoStarted=true;
+  if(!std::getenv("SHODAN_EUI_QA")&&!std::getenv("SHODAN_STARTUP_SMOKE"))checkRelease();
+ }
+ if(m.releaseWork.valid()&&m.releaseWork.wait_for(0ms)==std::future_status::ready){
+  m.release=m.releaseWork.get();m.releasePrompt=m.release.newer;
+  m.releaseStatus=!m.release.error.empty()?m.release.error:m.release.newer?"发现新版本："+m.release.version:"当前已是最新正式发行版";
+  app::requestUpdate();
+ }
  if(m.mcpWork.valid()&&m.mcpWork.wait_for(0ms)==std::future_status::ready){
   auto request=m.mcpRequest;m.mcpRequest.reset();m.busy=false;m.operationResult=false;
   try{auto result=m.mcpWork.get();if(result.updateMods){auto previous=m.mods;m.mods=std::move(result.mods);try{saveMods();}catch(...){m.mods=std::move(previous);throw;}}
@@ -682,6 +700,8 @@ void start(){
   while(in>>mod.enabled>>std::quoted(path)>>std::quoted(mod.name)>>std::quoted(mod.description)){
    mod.path=std::filesystem::u8path(path);mod.choices.clear();mod.options.clear();
    if(modern){size_t count=0;if(!(in>>count)||count>64)break;for(size_t i=0;i<count;++i){int value=0;if(!(in>>value))break;mod.choices.push_back(value);}if(!in)break;}
+   // Retired r6 builtin: never load it again from a previously saved Mod list.
+   if(std::regex_match(mod.path.filename().u8string(),std::regex("^farm_pods(_[0-9]+)?\\.zip$")))continue;
    try{auto zip=shodan::readModZip(mod.path);mod.options=zip.options;if(!zip.title.empty())mod.name=zip.title;if(!zip.description.empty())mod.description=zip.description;mod.choices.resize(zip.options.size(),1);}catch(const std::exception& error){mod.description+="\n读取失败："+std::string(error.what());}
    m.mods.push_back(mod);if(m.mods.size()>=32)break;
   }
@@ -1099,20 +1119,24 @@ void settingsContent(eui::Ui& ui,float w,float h){
  for(int i=0;i<3;++i){const std::string key=keys[i];const bool enabled=m.tweaks[key].yes();
   button(ui,"settings.tweak."+key,std::string(labels[i])+" · "+(enabled?"已启用":"已关闭"),24,760+extra+i*50,w-48,[key,enabled]{safe([&]{m.tweaks=m.backend->call("tweaks",{key,!enabled});m.message="设置已保存，写入游戏后生效";refreshRows();});},enabled,40);
  }
- panel(ui,"settings.project",0,958+extra,w,156);
- text(ui,"settings.project.title","项目地址",24,974+extra,w-48,32,22);
- text(ui,"settings.project.url","github.com/127MU/SHODAN-Stat-Editor",24,1010+extra,w-48,28,14,true);
- button(ui,"settings.project.open","打开 GitHub",24,1054+extra,150,[]{safe([]{
+ panel(ui,"settings.update",0,958+extra,w,140);
+ text(ui,"settings.update.title","版本更新 · "+std::string(shodan::version),24,974+extra,w-48,32,22);
+ text(ui,"settings.update.status",m.releaseStatus,24,1010+extra,w-48,32,14,true);
+ button(ui,"settings.update.check",m.releaseWork.valid()?"正在检查…":"检查更新",24,1050+extra,150,checkRelease,false,36);
+ panel(ui,"settings.project",0,1122+extra,w,156);
+ text(ui,"settings.project.title","项目地址",24,1138+extra,w-48,32,22);
+ text(ui,"settings.project.url","github.com/127MU/SHODAN-Stat-Editor",24,1174+extra,w-48,28,14,true);
+ button(ui,"settings.project.open","打开 GitHub",24,1218+extra,150,[]{safe([]{
   const auto result=ShellExecuteW(glfwGetWin32Window(glfwGetCurrentContext()),L"open",L"https://github.com/127MU/SHODAN-Stat-Editor",nullptr,nullptr,SW_SHOWNORMAL);
   if(reinterpret_cast<INT_PTR>(result)<=32)throw std::runtime_error("无法打开浏览器，请复制项目地址后手动打开");
  });},true,40);
- button(ui,"settings.project.copy","复制地址",186,1054+extra,130,[]{
+ button(ui,"settings.project.copy","复制地址",186,1218+extra,130,[]{
   glfwSetClipboardString(glfwGetCurrentContext(),"https://github.com/127MU/SHODAN-Stat-Editor");m.message="项目地址已复制";
  },false,40);
 }
 void settingsPage(eui::Ui& ui,float w,float h){
- components::scrollView(ui,"settings.scroll").theme(theme()).size(w,h).bind(m.settingsScroll).onChange([](float v){m.settingsScroll.set(v);app::requestUpdate();}).contentKey("settings-"+std::to_string(m.fontPixels)+":"+std::to_string(m.mcp.enabled())+":"+std::to_string(m.pendingFontPixels)+":"+std::to_string(m.dark)+":"+std::to_string(m.sidebarMode)+":"+std::to_string(m.tweaks["bounce"].yes())+":"+std::to_string(m.tweaks["reticle"].yes())+":"+std::to_string(m.tweaks["foliage"].yes())).content([&](eui::Ui& content,float cw,float vh){
-  content.stack("settings.canvas").size(cw,1114+(cw<650?76:0)).content([&]{settingsContent(content,cw,1114);}).build();
+ components::scrollView(ui,"settings.scroll").theme(theme()).size(w,h).bind(m.settingsScroll).onChange([](float v){m.settingsScroll.set(v);app::requestUpdate();}).contentKey("settings-"+std::to_string(m.fontPixels)+":"+std::to_string(m.mcp.enabled())+":"+std::to_string(m.pendingFontPixels)+":"+std::to_string(m.dark)+":"+std::to_string(m.sidebarMode)+":"+std::to_string(m.tweaks["bounce"].yes())+":"+std::to_string(m.tweaks["reticle"].yes())+":"+std::to_string(m.tweaks["foliage"].yes())+":"+m.releaseStatus).content([&](eui::Ui& content,float cw,float vh){
+  content.stack("settings.canvas").size(cw,1278+(cw<650?76:0)).content([&]{settingsContent(content,cw,1278);}).build();
  }).build();
 }
 void codeDialog(eui::Ui& ui,const eui::Screen& screen){
@@ -1416,6 +1440,7 @@ void qaTick(eui::Ui& ui){
   try{
    const auto folder=std::filesystem::u8path(target);std::filesystem::create_directories(folder);
    if(step==0){if(m.mcp.enabled())throw std::runtime_error("MCP must default to disabled");
+    for(const auto& mod:m.mods)if(mod.path.filename()=="farm_pods.zip")throw std::runtime_error("Retired builtin returned from the saved Mod list");
     // A locked manager must not even try to read a persisted enabled ZIP or
     // inspect/deploy an old resource ledger during ordinary numeric editing.
     m.mods.push_back({profile()/"missing-should-not-be-read.zip","QA locked","",true,{},{}});
@@ -1498,7 +1523,25 @@ void qaTick(eui::Ui& ui){
     std::ofstream(folder/"mcp-ready.json")<<shodan::jsonEncode(shodan::object({{"url",m.mcp.endpoint()},{"token",m.mcp.token()},{"player","4D1C334D294DFA97"}}));
    }else if(step==30){if(!std::filesystem::exists(folder/"mcp-done.txt"))return;
     capture(folder/"mcp-settings.bmp");toggleMcp();if(m.mcp.enabled())throw std::runtime_error("MCP did not close");
-    std::ofstream(folder/"report.txt")<<"Helldiver full-width category and original health, armor dropdown scrolling and final option, font slider at 22/24, small-window navigation, resize intermediate frames, native resize hit test, MCP enable/disable, enemy and booster categories, nine-arrow call-in modal, dark and light logo verified. No game writes.\n";
+    m.settingsScroll.set(100000);
+   }else if(step==31){
+    auto* copy=ui.find("settings.project.copy.bg");auto* update=ui.find("settings.update.check.bg");
+    if(!copy||!copy->onClick||!update||!update->onClick)throw std::runtime_error("Project link or update settings missing");
+    copy->onClick();const auto* clipboard=glfwGetClipboardString(glfwGetCurrentContext());
+    if(!clipboard||std::string(clipboard)!="https://github.com/127MU/SHODAN-Stat-Editor")throw std::runtime_error("Project link copy failed");
+    capture(folder/"release-settings.bmp");
+    m.release=shodan::parseReleaseUpdate("{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v9999.0.0\",\"html_url\":\"https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/v9999.0.0\"}",shodan::version);m.releasePrompt=m.release.newer;
+   }else if(step==32){
+    auto* cancel=ui.find("release.update.secondary.bg");auto* download=ui.find("release.update.primary.bg");
+    if(!cancel||!cancel->onClick||!download||!download->onClick)throw std::runtime_error("Release update prompt missing");
+    capture(folder/"release-update.bmp");cancel->onClick();if(m.releasePrompt)throw std::runtime_error("Release update dismissal failed");
+   }else if(step==33){
+    navigate(0);m.sub=2;reloadList(true);bool found=false;for(const auto& item:m.items)if(item["english"].str()=="FAF-14 Spear"){select(item);found=true;break;}if(!found)throw std::runtime_error("Spear missing");
+    std::vector<std::string> sections={"全部参数"};for(const auto& row:m.rows){const auto s=row["section"].str();if(!s.empty()&&std::find(sections.begin(),sections.end(),s)==sections.end())sections.push_back(s);}
+    m.group=int(std::find(sections.begin(),sections.end(),"锁定")-sections.begin());
+   }else if(step==34){
+    bool range=false,time=false;for(const auto& row:m.rows){range=range||row["label"].str()=="锁定距离（米）";time=time||row["label"].str()=="锁定所需时间（秒）";}if(!range||!time)throw std::runtime_error("Lock parameter labels missing");capture(folder/"lock-on-fields.bmp");
+    std::ofstream(folder/"report.txt")<<"Native UI verified: existing regressions, update prompt and Chinese lock fields. No game writes.\n";
     requestWindowClose(glfwGetCurrentContext());
    }++step;
   }catch(const std::exception& e){capture(std::filesystem::u8path(target)/"failure.bmp");std::ofstream(std::filesystem::u8path(target)/"failure.txt")<<"MCP UI stage "<<step<<": "<<e.what();requestWindowClose(glfwGetCurrentContext());}
@@ -1805,7 +1848,7 @@ DslAppConfig& mutableConfig(){
   int width=0,height=0;glfwGetFramebufferSize(window,&width,&height);
   std::fprintf(stderr,"[startup] Window visible=%d framebuffer=%dx%d OpenGL vendor=%s renderer=%s version=%s\n",int(IsWindowVisible(glfwGetWin32Window(window))),width,height,vendor?reinterpret_cast<const char*>(vendor):"unknown",renderer?reinterpret_cast<const char*>(renderer):"unknown",version?reinterpret_cast<const char*>(version):"unknown");std::fflush(stderr);
  })
- .onShutdown([]{m.mcp.stop();if(m.mcpWork.valid())m.mcpWork.wait();if(m.modImport.valid())m.modImport.wait();if(m.operation.valid())m.operation.wait();if(m.reviewWork.valid())m.reviewWork.wait();if(m.loading.valid())m.loading.wait();m.backend.reset();});
+ .onShutdown([]{m.mcp.stop();if(m.releaseWork.valid())m.releaseWork.wait();if(m.mcpWork.valid())m.mcpWork.wait();if(m.modImport.valid())m.modImport.wait();if(m.operation.valid())m.operation.wait();if(m.reviewWork.valid())m.reviewWork.wait();if(m.loading.valid())m.loading.wait();m.backend.reset();});
  return c;
 }
 const DslAppConfig& dslAppConfig(){return mutableConfig();}
@@ -1820,7 +1863,7 @@ void composeEditor(eui::Ui& ui,const eui::Screen& screen){
  const std::string context=std::to_string(m.page)+":"+m.selected+":"+std::to_string(m.rowsRevision)+":"+std::to_string(m.armorDetail);
  if(context!=hintContext){helpHints.clear();sharedHints.clear();hoveredHelp.clear();fadingHelp.clear();helpOpacity=0;hintContext=context;}
  if(!m.started)start();tick();
- if(m.loading.valid()||m.busy)app::requestUpdate();
+ if(m.loading.valid()||m.busy||m.releaseWork.valid())app::requestUpdate();
  ui.rect("background").size(screen.width,screen.height).color(theme().background).transition(motion()).build();
  const bool compact=m.sidebarMode==2||(m.sidebarMode==0&&screen.width<1240);
  if(m.navWidth==0)m.navWidth=compact?76:208;
@@ -1918,6 +1961,18 @@ void composeEditor(eui::Ui& ui,const eui::Screen& screen){
  operationDialog(ui,screen);
  modInfoDialog(ui,screen);
  modOptionsDialog(ui,screen);
+ components::dialog(ui,"release.update").theme(theme()).style(dialogStyle()).screen(screen.width,screen.height).size(600,288)
+ .open(m.releasePrompt&&!m.busy&&m.backend&&!m.reviewOpen&&m.confirm.empty()&&!m.hiddenFeaturePrompt&&!m.operationResult&&m.choiceRow==0&&m.codeRow==0&&m.armorDetail<0&&m.error.empty())
+ .zIndex(170).title("发现新版本 "+m.release.version)
+ .message("当前版本："+std::string(shodan::version)+"\n最新版本："+m.release.version+"\n前往 GitHub 发行版页面查看更新说明并下载。")
+ .primaryText("前往下载").secondaryText("稍后再说").transition(motion())
+ .onOpenChange([](bool open){if(!open)m.releasePrompt=false;})
+ .onPrimary([]{safe([]{
+  const std::wstring url(m.release.url.begin(),m.release.url.end());
+  const auto result=ShellExecuteW(glfwGetWin32Window(glfwGetCurrentContext()),L"open",url.c_str(),nullptr,nullptr,SW_SHOWNORMAL);
+  if(reinterpret_cast<INT_PTR>(result)<=32)throw std::runtime_error("无法打开浏览器，请从设置中的项目地址进入发行版页面");
+  m.releasePrompt=false;
+ });}).onSecondary([]{m.releasePrompt=false;}).build();
  // Tooltips are root overlays, outside the sidebar scroll clip and above the
  // page, dropdowns and dialogs. Off-screen rows must never produce a tooltip.
  if(compact){const float navTop=80;
