@@ -34,4 +34,33 @@ class FileChangeGuardTests(unittest.TestCase):
    put('own.bin','foreign');local ok=I.write_files(QA_GAME,{['own.bin']='third'},originals)
    assert(not ok and I.read(QA_GAME..'/own.bin')=='foreign')
   ''')
+ def test_startup_mod_with_canonical_baseline_can_be_written_and_restored(self):
+  self.lua.execute('''
+   local name='generated_damage_settings.dl_bin'
+   put(name,'installed-before-startup')
+   local originals,ours,problems,count,observed=I.originals(QA_GAME,{[name]='verified-vanilla'})
+   assert(count==1 and originals[name]=='verified-vanilla' and not ours[name])
+   assert(observed[name] and I.read(QA_GAME..'/'..name)=='installed-before-startup')
+   assert(I.write_files(QA_GAME,{[name]='edited'},originals,false,observed))
+   assert(I.read(I.originals_dir..'/'..name)=='verified-vanilla')
+   assert(I.write_files(QA_GAME,{[name]='edited-again'},originals,false,observed))
+   assert(I.write_files(QA_GAME,{[name]='verified-vanilla'},originals,true,observed))
+   assert(I.read(QA_GAME..'/'..name)=='verified-vanilla')
+  ''')
+ def test_startup_snapshot_blocks_later_changes_and_deletions(self):
+  self.lua.execute('''
+   local name='generated_entities.dl_bin'
+   put(name,'startup-mod')
+   local originals,_,_,_,observed=I.originals(QA_GAME,{[name]='vanilla'})
+   put(name,'changed-after-open')
+   local ok,why=I.write_files(QA_GAME,{[name]='edited'},originals,false,observed)
+   assert(not ok and why:find('another tool changed',1,true))
+   assert(I.read(QA_GAME..'/'..name)=='changed-after-open')
+   local writes={[name]='vanilla'}
+   ok,why=I.write_files(QA_GAME,writes,originals,true,observed)
+   assert(ok and #why==1 and writes[name]==nil)
+   assert(os.remove(QA_GAME..'/'..name))
+   assert(not I.write_files(QA_GAME,{[name]='edited'},originals,false,observed))
+   assert(I.read(QA_GAME..'/'..name)==nil)
+  ''')
 if __name__=='__main__':unittest.main()
