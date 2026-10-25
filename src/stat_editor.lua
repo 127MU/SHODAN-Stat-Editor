@@ -11765,7 +11765,8 @@ local TYPES = { arc_weapon = 0xB87BA9ED, arc = 0xAFDF0267, health = 0xB3915DE3, 
                 rack = 0xA98BB156, charge = 0xEAC335A1, jumppack = 0x54270608, recharge = 0x1F42878E,
                 warp = 0xA7813546, deposit = 0xC435BA85, package = 0x7A858691, reload = 0x991D454E,
                 thrower = 0xA29A84D8, minefield = 0x74FEF89A, mine_spawner = 0x0697FED6, bombard = 0xCDBC43D8, eagle = 0x556FF68B,
-                seeking = 0xBF3A6789, guidance = 0x84957034, windup = 0x84CE7EEE, laser = 0x32528174, avatar = 0x40EF204C, hellpod_payload = 0xDDB5C03F }
+                seeking = 0xBF3A6789, guidance = 0x84957034, windup = 0x84CE7EEE, laser = 0x32528174, avatar = 0x40EF204C, hellpod_payload = 0xDDB5C03F,
+                faction = 0x5653EA91, behavior = 0xBA9B803D, seat = 0x4AEAFC86 }
 -- The two selectors a weapon's record carries: its firing modes (WeaponData +144/+148/+152) and the
 -- functions its two inputs run (+184/+188, WeaponFunctionType). The names are the ones the datamined
 -- headers give these values; a value they leave unnamed is shown as the number it is, never guessed at.
@@ -11773,6 +11774,24 @@ MOD.FIRE_MODES = { [0] = '空槽（不显示）', [1] = '自动', [2] = '半自�
                    [5] = '安全', [6] = '不安全', [7] = '全射', [8] = '未使用' }
 MOD.FIRE_FUNCTIONS = { [0] = '无功能', [2] = '射速档位', [3] = '射击模式', [4] = '双弹药池',
                        [8] = '可编程弹药', [11] = '下挂／第二弹源' }
+-- The mount / faction / behaviour selectors (MountComponentData, FactionComponentData,
+-- BehaviorComponentData). The faction bits and the behaviour ids are the values the datamined tables
+-- give; the arm parts are every entity this build ships as an exosuit arm, including the two the
+-- mount table never puts on a suit (the 200-round right arm, the MK2 missile pod).
+MOD.MOUNT_SIDE = { [0] = '通用', [1] = '右侧', [2] = '左侧' }
+MOD.FACTION_NAMES = { [0] = '继承', [1] = '超级地球', [2] = '终结者', [4] = '光明族', [8] = '自动化军团' }
+MOD.MOUNT_NAMES = { [0x7BDEC47B] = '左臂', [0x47775624] = '右臂', [0x23CC0657] = '火炮', [0xCB79FA57] = '主炮',
+                    [0x409652FC] = '驾驶位机枪', [0x3ECFB64B] = '货架', [0x372F0418] = '炮塔' }
+MOD.ARM_ORDER = { '824B7E0C4C879EB5', '08F6089289C83D22', 'E5F64DCC3BFE9DD1', 'FF9878576A4C543B',
+                  '3E3A31261A124454', '65489809A8181B96', 'DF51FE8D62F294BE', '0736BEE2D6328726',
+                  '17C5D12D8D5DEE2C', '821D035AA47E3E75' }
+MOD.ARM_NAMES = {
+    ['824B7E0C4C879EB5'] = '爱国者导弹巢（火箭发射器）', ['08F6089289C83D22'] = '加特林',
+    ['E5F64DCC3BFE9DD1'] = '机炮 · 左臂', ['FF9878576A4C543B'] = '机炮 · 右臂（100 发）',
+    ['3E3A31261A124454'] = '机炮 · 右臂（200 发 · 游戏里没有任何机甲装它）',
+    ['65489809A8181B96'] = '护盾', ['DF51FE8D62F294BE'] = '霰弹枪', ['0736BEE2D6328726'] = '喷火器',
+    ['17C5D12D8D5DEE2C'] = '反坦克炮',
+    ['821D035AA47E3E75'] = '导弹巢 MK2（弹丸 354 · 游戏里没有任何机甲装它）' }
 local KINDS = {
     [T_WEAPON] = { name = 'weapon', stride = 1232, keyed = true, layouts = { { stride = 1240 } } },
     [T_MAGAZINE] = { name = 'magazine', stride = 160, keyed = true },
@@ -11832,6 +11851,12 @@ local KINDS = {
     -- carry (MountComponentData: 5 mounts of 24 bytes: +0 entity, +16 mount name)
     [TYPES.vehicle] = { name = 'vehicle', stride = 3704, keyed = true },
     [TYPES.mount] = { name = 'mount', stride = 120, keyed = true },
+    -- factions (FactionComponentData: +0 the faction bit) and the AI behaviour each entity runs
+    -- (BehaviorComponentData: +0 the behaviour id, +4 a constant 20.0, +8 flags)
+    [TYPES.faction] = { name = 'faction', stride = 152, keyed = true },
+    [TYPES.behavior] = { name = 'behaviour', stride = 12, keyed = true },
+    -- seats (SeatCollectionComponentData: +0 the animation a unit plays when it mounts)
+    [TYPES.seat] = { name = 'seat collection', stride = 424, keyed = true },
     -- energy shields (ShieldComponentData)
     [TYPES.shield] = { name = 'shield', stride = 344, keyed = true },
     -- hellpod racks (HellpodRackComponentData): a backpack stratagem's pod; 8 slots of 64 bytes, +0 the
@@ -12274,6 +12299,35 @@ local function read_field(f, original)
     if f.storage == 'grenade' then
         return KINDS[TYPES.throwable].read_entity(bytes(8))
     end
+    if f.storage == 'rackitem' then   -- the entity a hellpod slot drops (the same key space as a package)
+        local key = bytes(8)
+        if not key or #key < 8 then return nil end
+        local reg = MOD.refs.items()
+        return reg.by_bytes[key] or MOD.refs.register('items', key)
+    end
+    if f.storage == 'mountitem' then   -- the entity a mount slot carries (an arm, a gun, a rack)
+        local key = bytes(8)
+        if not key or #key < 8 then return nil end
+        local reg = MOD.refs.mounts()
+        return reg.by_bytes[key] or MOD.refs.register('mounts', key)
+    end
+    if f.storage == 'package' then   -- the package a stratagem loads when it is called
+        local key = bytes(8)
+        if not key or #key < 8 then return nil end
+        local reg = MOD.refs.packages()
+        return reg.by_bytes[key] or MOD.refs.register('packages', key)
+    end
+    if f.storage == 'entry' then   -- the loadout entry whose weapon brings a package of its own
+        local raw = bytes(4)
+        if not raw or #raw < 4 then return nil end
+        local id = u32(raw, 0)
+        local reg = MOD.refs.entries()
+        if id ~= 0 and not reg.by_id[id] then
+            local item = { id = id, label = '未命名的条目 #' .. id }
+            reg.list[#reg.list + 1], reg.by_id[id], reg.at[id] = item, item, #reg.list + 1
+        end
+        return id
+    end
     if f.storage == 'bit' then   -- one bit of a little-endian half word (a projectile +244 flags)
         local half = bytes(2)
         if not half or #half < 2 then return nil end
@@ -12310,6 +12364,10 @@ end
 
 local function encode(f, value)
     if f.storage == 'grenade' then return KINDS[TYPES.throwable].entity_bytes(value) end
+    if f.storage == 'rackitem' then local e = MOD.refs.items().by_id[value]; return e and e.bytes end
+    if f.storage == 'mountitem' then local e = MOD.refs.mounts().by_id[value]; return e and e.bytes end
+    if f.storage == 'package' then local e = MOD.refs.packages().by_id[value]; return e and e.bytes end
+    if f.storage == 'entry' then return u32_bytes(math.floor(value + 0.5) % 4294967296) end
     if f.storage == 'gun' then local g = MOD.enemy.gun_choices().by_id[value]; return g and g.key end
     if f.storage == 'f32' then return f32_bytes(value) end
     if f.storage == 'flag' then return value >= 0.5 and string.char(1) or string.char(0) end
@@ -12350,6 +12408,8 @@ local function write_field(f, value)
     elseif f.storage == 'bit' then bytes = string.char(0, 0)   -- filled per copy: its other bits stay
     else bytes = encode(f, value) end
     if not bytes then return false, f.storage == 'tier' and 'no demolition tier there' or f.storage == 'gun' and 'unknown weapon'
+                                    or f.storage == 'rackitem' and '此槽没有这个物品' or f.storage == 'package' and '没有这个资源包'
+                                    or f.storage == 'mountitem' and '列表里没有这个挂载件'
                                     or 'unknown grenade selection' end
     if f.storage == 'grenade' and value ~= 0 then
         local ok, why = KINDS[TYPES.throwable].ensure_launch()
@@ -13843,6 +13903,7 @@ local function resolve_gun(weapon, key)
         KINDS[T_PROJECTILE].swap_row(weapon, sources, shots, fire, extra)
         KINDS[TYPES.throwable].grenade_row(weapon, fire)
     end
+    MOD.ents.rows(weapon, key)
 end
 
 -- ---------------------------------------------------------------- stratagems
@@ -14096,6 +14157,8 @@ local function build_stratagems()
         for _, key in ipairs(keys) do sentry = sentry or sentries[key] end
         if sentry and sentry.sentry_defs then
             table.insert(sentry.sentry_defs, KINDS[TYPES.health].main_ids[id] and 1 or #sentry.sentry_defs + 1, def)
+            sentry.sentry_payloads = sentry.sentry_payloads or {}
+            for _, key in ipairs(keys) do sentry.sentry_payloads[#sentry.sentry_payloads + 1] = key end
             local bits = peek4(def.at + 104)
             log(string.format('stratagem %s: cooldown on %s (%.1f s)', id_hex(id), sentry.name, bits and bits_to_f32(bits) or -1))
             return nil
@@ -14877,6 +14940,7 @@ local function resolve_stratagem(entry)
         MOD.code.row(entry, def)
         if s.family ~= 'eagle' then MOD.callin_rows(entry, { def }) end
         if s.family ~= 'eagle' and MOD.extra.FAMILIES[s.family] then MOD.extra.row(entry, def) end
+        MOD.refs.stratagem_rows(entry, def, s and s.payloads)   -- the packages it loads, and its hellpod rack
     end
     if s.family == 'eagle' and s.rearm then
         add_row(entry, 'Stratagem', 'rearm', 'Eagle rearm time (s)', 'f32',
@@ -14958,7 +15022,7 @@ local function resolve_stratagem(entry)
             end
         end
     end
-    if s.vehicle then KINDS[TYPES.vehicle].rows(entry, s.vehicle, s.twins); return end
+    if s.vehicle then KINDS[TYPES.vehicle].rows(entry, s.vehicle, s.twins); MOD.ents.rows(entry, s.vehicle); return end
     -- a backpack (in its hellpod rack's first slot): its own rows; a shield (the Shield Generator Relay, a
     -- shield backpack)
     local rt = tables[TYPES.rack]
@@ -15021,6 +15085,24 @@ local function resolve_throwable(entry, placed)
             local row=add_row(entry,'粘附',r[1],r[2],'f32',{part(r[1],TYPES.sticky,sticky+r[3],'f32',100000)},-10000,10000,0.1,1)
             row.parts[1].field.signed=true;row.tip={'实验性：根据类型库和原始数据推断，尚未实机验证；不代表可以让所有手雷附着任意表面。'}
         end
+        -- the rest of the component (StickyComponent, 76 bytes): how it attaches, and what it does on impact
+        local function srow(id, label, off, storage, tip)
+            local r = add_row(entry, '粘附', id, label, storage, { part(id, TYPES.sticky, sticky + off, storage, 100000) },
+                    storage == 'f32' and -10000 or 0, storage == 'f32' and 10000 or 4294967295, 0.1, 1)
+            r.parts[1].field.signed = storage == 'f32'
+            r.tip = { tip }
+            return r
+        end
+        srow('sticky_mode', '附着方式（+0，枚举未解明）', 0, 'u8', '工具包只给了字段宽度，没给枚举含义；0 与 1 在现有数据里都出现过。')
+        srow('sticky_flag_a', '附着标记 1（+4）', 4, 'u8', '实验性：未解明的三字节标记之一。')
+        srow('sticky_flag_b', '附着标记 2（+5）', 5, 'u8', '实验性：未解明的三字节标记之一。')
+        srow('sticky_flag_c', '附着标记 3（+6）', 6, 'u8', '实验性：未解明的三字节标记之一。')
+        srow('sticky_hit_damage', '命中伤害行（+44）', 44, 'u32', '下面的「伤害」「状态效果」两节就是这一行指过去的。')
+        srow('sticky_hit_effect', '命中特效类型（+48）', 48, 'u32', '实验性：命中时播的特效编号。')
+        srow('sticky_surface', '表面命中类型（+52）', 52, 'u32', '实验性：贴在什么材质上用什么效果。')
+        srow('sticky_ability_a', '能力 A（+60）', 60, 'u32', '实验性：附着时触发的效果编号。')
+        srow('sticky_ability_b', '能力 B（+64）', 64, 'u32', '实验性：附着时触发的效果编号。')
+        srow('sticky_param', '附着力参数（+72）', 72, 'f32', '实验性：现有数据是 180 与 60（Melta），含义未定。')
     end
     local hit = sticky and damage(read_field(field_at(TYPES.sticky, sticky + 44, 'u32', 100000)))
     if hit then
@@ -15991,6 +16073,7 @@ local function resolve(weapon)
     weapon.rows, weapon.by_id, weapon.aliases, weapon.backpack, weapon.mines, weapon.legacy = {}, {}, nil, nil, nil, nil
     weapon.swaps = nil
     weapon.preset_ambiguous = nil
+    weapon.ents_rows = nil
     weapon.grenade_swap = nil
     if weapon.slot == 'Throwables' then resolve_throwable(weapon); return end
     -- a support weapon you place (the C4 Pack): the backpack that shares its loadout package (its
@@ -16011,6 +16094,7 @@ local function resolve(weapon)
         elseif weapon.enemy.blasts then MOD.enemy.blasts_resolve(weapon)
         elseif weapon.enemy.gun then resolve_gun(weapon, weapon.key); MOD.enemy.gun_tidy(weapon)
         else MOD.enemy.resolve(weapon) end
+        if not weapon.enemy.gun then MOD.ents.rows(weapon, weapon.key) end
         return
     end
     if weapon.passive then KINDS[TYPES.passive].resolve(weapon); return end
@@ -16057,6 +16141,9 @@ local function resolve(weapon)
         if weapon.sentry_defs[1] then MOD.code.row(weapon, weapon.sentry_defs[1]) end
         if weapon.sentry_defs[1] then MOD.callin_rows(weapon, weapon.sentry_defs) end
         if weapon.sentry_defs[1] then MOD.extra.row(weapon, weapon.sentry_defs[1]) end
+        for k, def in ipairs(weapon.sentry_defs or {}) do
+            MOD.refs.stratagem_rows(weapon, def, weapon.sentry_payloads, k > 1 and tostring(k) or '')
+        end
         unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
         -- Same payload lifetime field as upstream; preserve existing preset IDs and the zero-time option.
         local pt = tables[TYPES.payload]
@@ -17481,6 +17568,322 @@ function MOD.slot.row(weapon)
     table.insert(weapon.rows, at, row)
 end
 
+-- ---------------------------------------------------------------- hellpod racks and loadout packages
+-- A hellpod rack (stride 568) is the pod a stratagem lands with: +556 how many of its 8 slots drop, +552
+-- how many of those are picked at random, then 8 slots of 64 bytes whose +0 is the entity a slot drops.
+-- An emptied slot does not drop one fewer: the next one moves up.
+-- A loadout package (stride 32) is the set of models, effects and sounds an item brings: +8 the package
+-- id. StratagemSettings +168 loads one package when the stratagem is called, +248 the loadout entry whose
+-- weapon brings a package of its own (133 of the 153 rows fill neither).
+-- The three lists below are built once and shared by every page, so a slot holding something no catalogue
+-- names still reads back and can be written again (as its hex key).
+MOD.refs = { built = {} }
+
+function MOD.refs.hex(key) return string.format('%08X%08X', u32(key, 4), u32(key, 0)) end
+
+function MOD.refs.names()
+    local names = MOD.refs.built.names
+    if names then return names end
+    names = {}
+    for key, w in pairs(by_hash) do
+        if w.name and not names[key] then names[key] = w.name end
+    end
+    for _, w in ipairs(weapons) do   -- an item's own entity key, which is what a rack slot or a package holds
+        if w.key and w.name and not names[w.key] then names[w.key] = w.name end
+    end
+    local rt = tables[TYPES.rack]
+    if rt then
+        for _, w in pairs(by_hash) do
+            local s = w.stratagem
+            if s and s.payloads then
+                for _, key in ipairs(s.payloads) do
+                    local off = rt.index[key]
+                    local carried = off and api.read(rt.copies[1] + HEADER_BYTES + off, 8)
+                    if carried and #carried == 8 and (u32(carried, 0) + u32(carried, 4) ~= 0) and not names[carried] then
+                        names[carried] = w.name .. '（背包）'
+                    end
+                end
+            end
+        end
+    end
+    MOD.refs.built.names = names
+    return names
+end
+
+-- One list per kind: id 0 is 'nothing', then every key the tables hold, sorted by name for the picker.
+-- at[id] is the item's place in list, so the panel's arrows can step through it.
+function MOD.refs.list_of(name, collect)
+    local r = MOD.refs.built[name]
+    if r then return r end
+    r = { list = {}, by_id = {}, by_bytes = {}, at = {} }
+    r.list[1] = { id = 0, label = '（空）', bytes = string.rep('\0', 8) }
+    r.by_id[0], r.by_bytes[r.list[1].bytes], r.at[0] = r.list[1], 0, 1
+    collect(r, MOD.refs.names())
+    table.sort(r.list, function(a, b)
+        if a.id == 0 then return true end
+        if b.id == 0 then return false end
+        return a.label < b.label
+    end)
+    r.at = {}
+    for n, it in ipairs(r.list) do r.at[it.id] = n end
+    MOD.refs.built[name] = r
+    return r
+end
+
+function MOD.refs.items()
+    return MOD.refs.list_of('items', function(r, names)
+        local seen = { [r.list[1].bytes] = true }
+        local function add(key)
+            if not key or #key ~= 8 or seen[key] then return end
+            seen[key] = true
+            local id = #r.list
+            local item = { id = id, label = names[key] or MOD.refs.hex(key), bytes = key }
+            r.list[#r.list + 1], r.by_id[id], r.by_bytes[key] = item, item, id
+        end
+        for _, kind in ipairs({ TYPES.package, TYPES.loadout }) do
+            local t = tables[kind]
+            if t then for key in pairs(t.index) do add(key) end end
+        end
+        local rt = tables[TYPES.rack]
+        if rt then
+            for _, off in pairs(rt.index) do
+                for slot = 0, 7 do add(api.read(rt.copies[1] + HEADER_BYTES + off + slot * 64, 8)) end
+            end
+        end
+    end)
+end
+
+function MOD.refs.packages()
+    return MOD.refs.list_of('packages', function(r, names)
+        local t = tables[TYPES.package]
+        if not t then return end
+        for key, off in pairs(t.index) do
+            local pkg = api.read(t.copies[1] + HEADER_BYTES + off + 8, 8)
+            if pkg and #pkg == 8 and (u32(pkg, 0) + u32(pkg, 4) ~= 0) then
+                local item = r.by_id[r.by_bytes[pkg]]
+                if item then
+                    if names[key] and item.label == MOD.refs.hex(pkg) then item.label = names[key] end
+                else
+                    local id = #r.list
+                    item = { id = id, label = names[key] or MOD.refs.hex(pkg), bytes = pkg }
+                    r.list[#r.list + 1], r.by_id[id], r.by_bytes[pkg] = item, item, id
+                end
+            end
+        end
+    end)
+end
+
+function MOD.refs.entries()
+    return MOD.refs.list_of('entries', function(r, names)
+        local t = tables[TYPES.loadout]
+        if not t then return end
+        for key, off in pairs(t.index) do
+            local raw = api.read(t.copies[1] + HEADER_BYTES + off, 4)
+            local id = raw and u32(raw, 0) or 0
+            if id ~= 0 and not r.by_id[id] then
+                r.by_id[id] = { id = id, label = (names[key] and (names[key] .. ' · ') or '条目 ') .. '#' .. id }
+                r.list[#r.list + 1] = r.by_id[id]
+            end
+        end
+    end)
+end
+
+-- A value the catalogues do not name, added to the list so it stays readable and writable.
+function MOD.refs.register(name, key)
+    local r = MOD.refs[name]()
+    if r.by_bytes[key] then return r.by_bytes[key] end
+    local id = #r.list
+    local item = { id = id, label = MOD.refs.hex(key), bytes = key }
+    r.list[#r.list + 1], r.by_id[id], r.by_bytes[key], r.at[id] = item, item, id, #r.list
+    return id
+end
+
+-- ---------------------------------------------------------------- mounts, seats, factions, behaviour
+-- MountComponentData: five mounts of 24 bytes. +0 is the entity in the slot -- an exosuit arm, a tank's
+-- gun, a rack -- and swapping one is those 8 bytes and nothing else; +12 is the side it sits on
+-- (0 common, 1 right, 2 left); +8 / +16 are the mount point hashes (the same values across vehicles:
+-- a main gun is 0xCB79FA57, a coaxial 0xB8FB7C67); +20 / +21 are two flags.
+-- SeatCollectionComponentData +0: the animation a unit plays when it mounts, shared by its family.
+-- FactionComponentData +0: the faction bit. BehaviorComponentData +0: the behaviour id the AI runs.
+MOD.refs.mounts = function()
+    return MOD.refs.list_of('mounts', function(r, names)
+        local seen = { [r.list[1].bytes] = true }
+        local function add(key)
+            if not key or #key ~= 8 or seen[key] or (u32(key, 0) + u32(key, 4) == 0) then return end
+            seen[key] = true
+            local id = #r.list
+            local hex = MOD.refs.hex(key)
+            local item = { id = id, label = MOD.ARM_NAMES[hex] or names[key] or hex, bytes = key }
+            r.list[#r.list + 1], r.by_id[id], r.by_bytes[key] = item, item, id
+        end
+        local mt = tables[TYPES.mount]
+        if mt then
+            for _, off in pairs(mt.index) do
+                for m = 0, 4 do add(api.read(mt.copies[1] + HEADER_BYTES + off + m * 24, 8)) end
+            end
+        end
+        for _, hex in ipairs(MOD.ARM_ORDER) do add(hash_key(hex)) end
+        for _, w in ipairs(weapons) do add(w.key) end
+    end)
+end
+
+MOD.ents = {}
+
+-- A fixed list in the same shape as the registries above (here 0 is a value, not 'nothing').
+function MOD.ents.static(name, values, labels)
+    local r = MOD.refs.built[name]
+    if r then return r end
+    r = { list = {}, by_id = {}, by_bytes = {}, at = {} }
+    for n, v in ipairs(values) do
+        local item = { id = v, label = labels[v] or tostring(v) }
+        r.list[n], r.by_id[v], r.at[v] = item, item, n
+    end
+    MOD.refs.built[name] = r
+    return r
+end
+
+function MOD.ents.sides() return MOD.ents.static('mount sides', { 0, 1, 2 }, MOD.MOUNT_SIDE) end
+function MOD.ents.factions() return MOD.ents.static('factions', { 0, 1, 2, 4, 8 }, MOD.FACTION_NAMES) end
+
+-- The behaviour ids the table holds, each named after an entity that runs it (a turret's 645, the
+-- smoke launcher's 658), else by its number: the names the datamined headers leave out are not guessed.
+function MOD.ents.behaviours()
+    local r = MOD.refs.built.behaviours
+    if r then return r end
+    r = { list = {}, by_id = {}, by_bytes = {}, at = {} }
+    local bt = tables[TYPES.behavior]
+    local names = MOD.refs.names()
+    if bt then
+        local keys = {}
+        for key in pairs(bt.index) do keys[#keys + 1] = key end
+        table.sort(keys, function(a, b)
+            local na, nb = names[a] or '', names[b] or ''
+            if na ~= nb then return na < nb end
+            return MOD.refs.hex(a) < MOD.refs.hex(b)
+        end)
+        for _, key in ipairs(keys) do
+            local raw = api.read(bt.copies[1] + HEADER_BYTES + bt.index[key], 4)
+            local id = raw and #raw >= 4 and u32(raw, 0) or nil
+            if id and id > 0 and not r.by_id[id] then
+                local item = { id = id, label = (names[key] and (names[key] .. ' · ') or '') .. '#' .. id }
+                r.list[#r.list + 1], r.by_id[id], r.at[id] = item, item, #r.list
+            end
+        end
+    end
+    MOD.refs.built.behaviours = r
+    return r
+end
+
+function MOD.ents.pick(name)
+    if name == 'mountitem' then return MOD.refs.mounts() end
+    if name == 'mountside' then return MOD.ents.sides() end
+    if name == 'faction' then return MOD.ents.factions() end
+    if name == 'behavior' then return MOD.ents.behaviours() end
+end
+
+-- The rows these four tables give one entity: what it carries (each slot: the entity in it, the side it
+-- sits on, and once something is there its mount points and flags), the animation it mounts with, its
+-- faction, and the behaviour its AI runs.
+function MOD.ents.rows(entry, key)
+    if not entry or not key or entry.ents_rows then return end
+    entry.ents_rows = true
+    local function row(section, id, label, kind, offset, storage, min, max, small, big)
+        return add_row(entry, section, id, label, storage, { part(id, kind, offset, storage, 100000) }, min, max, small, big)
+    end
+    local mt = tables[TYPES.mount]
+    local at = mt and mt.index[key]
+    if at then
+        for m = 0, 4 do
+            local base, slot = at + m * 24, '槽 ' .. (m + 1)
+            local carried = read_field(field_at(TYPES.mount, base, 'mountitem', 100000))
+            local item = row('挂载', 'mount' .. (m + 1) .. '_item', slot .. ' 挂载件', TYPES.mount, base, 'mountitem', 0, 1000000, 1, 1)
+            item.choice = 'mountitem'
+            item.tip = { '这一槽装的是什么：机甲手臂、坦克炮、货架。换件只改这 8 字节，别的都不用动。',
+                         '外来件要靠「资源包（+168）」驻留（战备页把它的包填上），否则进游戏是紫色问号，开火会崩。',
+                         '右侧件装到左侧槽也装得上，但准星与装填按座位来；换完进游戏重开一局才读。' }
+            local side = row('挂载', 'mount' .. (m + 1) .. '_side', slot .. ' 左右侧', TYPES.mount, base + 12, 'u32', 0, 2, 1, 1)
+            side.choice = 'mountside'
+            side.allowed = { [0] = true, [1] = true, [2] = true, why = '左右侧只能取 0 通用 / 1 右侧 / 2 左侧' }
+            side.tip = { '0 通用、1 右侧、2 左侧：两侧互换时这一格要和挂载件一起改。' }
+            if carried and carried ~= 0 then
+                local a = row('挂载', 'mount' .. (m + 1) .. '_anchor_a', slot .. ' 挂点 A（+8）', TYPES.mount, base + 8, 'u32', 0, 4294967295, 1, 1)
+                a.tip = { '件挂在哪一类定位点上：同一类挂位在整张表里取值恒定，换成另一类会改变挂上去的位置与转向基准。',
+                          '这一格不影响能不能装，只影响挂在哪；拿不准就按「恢复」留原值。' }
+                local c = row('挂载', 'mount' .. (m + 1) .. '_anchor_c', slot .. ' 挂点名（+16）', TYPES.mount, base + 16, 'u32', 0, 4294967295, 1, 1)
+                c.tip = { '游戏用来认挂位的哈希编号：左臂、右臂、火炮、货架、驾驶位机枪各有各的值，不同挂位取值不同。',
+                          '面板给机甲 / 载具的子件取名时读的就是这一格；改之前先按「恢复」留个原值。' }
+                local f1 = row('挂载', 'mount' .. (m + 1) .. '_flag1', slot .. ' 标记 1（+20）', TYPES.mount, base + 20, 'u8', 0, 255, 1, 1)
+                f1.tip = { '全表 814 个是 1，语义未解，原值最安全。' }
+                local f2 = row('挂载', 'mount' .. (m + 1) .. '_flag2', slot .. ' 标记 2（+21）', TYPES.mount, base + 21, 'u8', 0, 255, 1, 1)
+                f2.tip = { '全表只有 6 个 1，语义未解。' }
+            end
+        end
+    end
+    local st = tables[TYPES.seat]
+    local seat = st and st.index[key]
+    if seat then
+        local r = row('座位', 'seat_transition', '上下具动画编号（+0）', TYPES.seat, seat, 'u32', 0, 1000000, 1, 10)
+        r.tip = { '单位上下载具时播的动画，同族共用一个（机甲 10、快速侦察车 33、重坦 43、风暴漩涡 44、侦察车 20）。',
+                  '座位与武器 / 挂载的绑定不在这张表里；改这里只换上下具动作。' }
+    end
+    local ft = tables[TYPES.faction]
+    local faction = ft and ft.index[key]
+    if faction then
+        local r = row('阵营', 'faction_bit', '阵营（+0）', TYPES.faction, faction, 'u32', 0, 8, 1, 1)
+        r.choice = 'faction'
+        r.allowed = { [0] = true, [1] = true, [2] = true, [4] = true, [8] = true,
+                      why = '阵营只能取 0 继承 / 1 超级地球 / 2 终结者 / 4 光明族 / 8 自动化军团' }
+        r.tip = { '0 继承、1 超级地球、2 终结者、4 光明族、8 自动化军团（这是位掩码，1 是自己的位）。',
+                  '把玩家装备改成敌方阵营，友军与哨戒炮会把它当敌人打；先备份再试。' }
+    end
+    local bt = tables[TYPES.behavior]
+    local behaviour = bt and bt.index[key]
+    if behaviour then
+        local r = row('AI 行为', 'behavior_id', 'AI 行为编号（+0）', TYPES.behavior, behaviour, 'u32', 0, 1000000, 1, 10)
+        r.choice = 'behavior'
+        r.tip = { '这个单位跑的 AI 行为编号：哨戒炮 645、风暴漩涡的烟幕件 658、40 毫米炮塔 670、主炮 655、机甲右臂机炮 172。',
+                  '同一个编号在不同单位上表现不同；+4（恒 20.0）与 +8 标志位不放出来，免得改坏。' }
+    end
+end
+
+-- A stratagem's two package slots, then the hellpod rack it lands with. A sentry owns one or two
+-- stratagems (the Rocket Sentry has two), so a second set is told apart by 'suffix'.
+function MOD.refs.stratagem_rows(entry, def, keys, suffix)
+    suffix = suffix or ''
+    local tag = suffix == '' and '' or (' · 第 ' .. suffix .. ' 段')
+    local function row(section, id, label, kind, offset, storage, min, max, tip)
+        local r = add_row(entry, section, id, label, storage, { part(id, kind, offset, storage, 100000) }, min, max, 1, 1)
+        r.tip = tip
+        return r
+    end
+    local pkg = row('资源驻留', 'load_package' .. suffix, '资源包（+168）' .. tag, def.kind, def.off + 168, 'package', 0, 100000,
+            { '物品的模型、贴图、音效都出自这个包；换包就是换外观。',
+              '一行最多接两个包：+168 是呼叫战备时加载的，+248 是武器自带的。',
+              '机甲那条链上 +168 是替换不是追加（工具包实测）。' })
+    pkg.choice = 'package'
+    local ent = row('资源驻留', 'load_entry' .. suffix, '装配条目（+248）' .. tag, def.kind, def.off + 248, 'entry', 0, 100000,
+            { 'LoadoutEntry：武器自带的那一套资源；153 行里只填了 37 行。' })
+    ent.choice = 'entry'
+    if suffix ~= '' or not keys then return end
+    local racks = tables[TYPES.rack]
+    local rack
+    for _, key in ipairs(keys) do
+        local off = racks and racks.index[key]
+        if off then rack = off break end
+    end
+    if not rack then return end
+    row('空投舱', 'rack_spawn', '投放件数（+556）', TYPES.rack, rack + 556, 'u32', 0, 8,
+            { '只生成前 N 个非空槽（0-8）；清空中间一个槽不会少一件，后面的会顶上来。',
+              '空投舱可能被好几个战备共用，改这里会连带改到它们。' })
+    row('空投舱', 'rack_random', '随机挑几件（+552）', TYPES.rack, rack + 552, 'u32', 0, 8,
+            { '从投放的件数里随机抽这么多件。' })
+    for slot = 0, 7 do
+        local r = row('空投舱', 'rack_slot' .. (slot + 1), '槽 ' .. (slot + 1), TYPES.rack, rack + slot * 64, 'rackitem', 0, 100000,
+                { '这个槽空投下来的是什么（nothing 表示该槽不放东西）。' })
+        r.choice = 'rackitem'
+    end
+end
+
 -- ---------------------------------------------------------------- scan client
 -- Once the tables are in: resolve every weapon, then apply the saved values, a slice per frame.
 local progress = nil
@@ -18084,6 +18487,46 @@ local function change(row, delta_sign, big, exact)
                 for n, v in ipairs(list) do if v == current then at = n end end
                 at = math.max(1, math.min(#list, at + delta_sign * (big and 10 or 1)))
                 target = list[at]
+            end
+            if target == current then return end
+            local p = row.parts[1]
+            local ok, why = write_field(p.field, target)
+            if ok then set_override(weapon, p, unless_default(target, default_of(p.field)))
+            else ui.message = { text = why, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'mountitem' or row.choice == 'mountside'
+           or row.choice == 'faction' or row.choice == 'behavior' then
+            -- the mounts a page carries, the side each sits on, and the two selector fields
+            local reg = MOD.ents.pick(row.choice)
+            local target = exact and math.floor(exact + 0.5)
+            if target == nil then   -- the panel's arrows step through the list
+                local at = reg.at[current] or 1
+                target = reg.list[math.max(1, math.min(#reg.list, at + delta_sign * (big and 10 or 1)))].id
+            elseif not reg.by_id[target] then
+                ui.message = { text = '列表里没有这个条目', till = api.now() + 4 }
+                return
+            end
+            if target == current then return end
+            local p = row.parts[1]
+            local ok, why = write_field(p.field, target)
+            if ok then set_override(weapon, p, unless_default(target, default_of(p.field)))
+            else ui.message = { text = why, till = api.now() + 4 } end
+            ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'rackitem' or row.choice == 'package' or row.choice == 'entry' then
+            -- the lists built from the tables: an item a hellpod slot drops, a loadout package, an entry
+            local reg = row.choice == 'rackitem' and MOD.refs.items()
+                     or row.choice == 'package' and MOD.refs.packages() or MOD.refs.entries()
+            local target = exact and math.floor(exact + 0.5)
+            if target == nil then   -- the panel's arrows step through the list
+                local at = reg.at[current] or 1
+                target = reg.list[math.max(1, math.min(#reg.list, at + delta_sign * (big and 10 or 1)))].id
+            elseif not reg.by_id[target] then
+                ui.message = { text = '列表里没有这个条目', till = api.now() + 4 }
+                return
             end
             if target == current then return end
             local p = row.parts[1]
@@ -21953,6 +22396,12 @@ if MOD.offline then
             elseif row.choice=='firemode' then choice_name=MOD.FIRE_MODES[v] or ('模式 ' .. tostring(v))
             elseif row.choice=='fntype' then choice_name=MOD.FIRE_FUNCTIONS[v] or ('未确认功能 ' .. tostring(v))
             elseif row.choice=='slot' then choice_name=v==1 and '主武器' or '副武器'
+            elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then
+                local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
+                local item=reg.by_id[v];choice_name=settings.tr(item and item.label or ('条目 '..tostring(v)))
+            elseif row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
+                local reg=MOD.ents.pick(row.choice);local it=reg and reg.by_id[v]
+                choice_name=settings.tr(it and it.label or ('条目 '..tostring(v)))
             elseif row.choice=='gun' then local g=MOD.enemy.gun_choices().by_id[v];choice_name=g and settings.tr(g.label) or ''
             elseif row.choice==true then
                 local shot=KINDS[T_PROJECTILE].by_id and KINDS[T_PROJECTILE].by_id[v]
@@ -22002,7 +22451,18 @@ if MOD.offline then
             if type(v)=='number' and v%1==0 and not MOD.FIRE_FUNCTIONS[v] then out[#out+1]={id=v,name='未确认的功能 '..v..'（原值）'} end
             return out
         end
+        if row and (row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior') then
+            local reg=MOD.ents.pick(row.choice);local out={}
+            for _,it in ipairs(reg and reg.list or {}) do out[#out+1]={id=it.id,name=settings.tr(it.label)} end
+            return out
+        end
         if row and row.choice=='slot' then return {{id=1,name='主武器'},{id=3,name='副武器'}} end
+        if row and (row.choice=='rackitem' or row.choice=='package' or row.choice=='entry') then
+            local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
+            local out={}
+            for _,it in ipairs(reg.list) do out[#out+1]={id=it.id,name=settings.tr(it.label)} end
+            return out
+        end
         if row and row.choice=='gun' then
             local out={};for _,g in ipairs(MOD.enemy.gun_choices().list)do out[#out+1]={id=g.id,name=settings.tr(g.label)}end;return out
         end
@@ -22023,7 +22483,10 @@ if MOD.offline then
         if row.choice=='weight' then assert(id==0 or id==1 or id==2,'护甲重量类型无效');return state.desktop.set(n,id)
         elseif row.choice=='apex_fire' then assert(id==2677 or id==2719,'请选择有效的尖峰开火动作');return state.desktop.set(n,id)
         elseif row.choice=='firemode' or row.choice=='fntype' then return state.desktop.set(n,id)
+        elseif row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
+            return state.desktop.set(n,id)
         elseif row.choice=='slot' then return state.desktop.set(n,id)
+        elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then return state.desktop.set(n,id)
         elseif row.choice=='gun' then
             assert(MOD.enemy.gun_choices().by_id[id],'找不到此武器')
             for _,p in ipairs(row.parts)do assert(write_field(p.field,id));set_override(ui.weapon,p,unless_default(id,default_of(p.field)))end

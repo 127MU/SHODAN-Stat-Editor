@@ -1,0 +1,75 @@
+SHODAN 4.1.0-fm1 魔改整合版 —— 射击模式自定义（补丁源码说明）
+================================================================
+
+基底：群友仓库 127MU/SHODAN-Stat-Editor，commit 89b6d25（= 4.1.0-r14 载荷的 app 树）
+本目录两个文件即打过补丁的源文件：
+  stat_editor.lua  1,339,382 B（LF）  → 封包时转 CRLF 得 1,361,680 B / 22,298 行
+  zh_params.lua       34,472 B（LF）  → 封包时转 CRLF 得 35,090 B
+
+改动共 6 处：
+1) stat_editor.lua:11772 之后：新增 MOD.FIRE_MODES（0…8 中文名）与 MOD.FIRE_FUNCTIONS
+   （0/2/3/4/8/11 中文名），不用 chunk 级 local，避开 LuaJIT 200 local 上限。
+2) stat_editor.lua:13557-13589（武器「开火」分节内、rpm 行之后）新增 7 行：
+   fire_mode / fire_mode_2 / fire_mode_3 → WeaponData +144/+148/+152（u32，allowed 0…8）
+   burst_rounds → +140（u32，1…60）
+   fire_key / fire_key_2 → +184/+188（u32，choice = fntype）
+   第 4 槽 +156 刻意不提供：全表恒 0，游戏也不显示，只在槽 3 的 help 里说明。
+3) stat_editor.lua:21926-21927 桌面桥 rows()：firemode / fntype 的显示文案。
+4) stat_editor.lua:21966-21975 桌面桥 choices()：firemode 给 0…8，fntype 给 0/2/3/4/8/11，
+   当前值不在表中时补一条「未确认的功能 N（原值）」，不编造语义。
+5) stat_editor.lua:21998 桌面桥 choose() 接受 firemode / fntype 走 set。
+6) stat_editor.lua:18004 change() 新增 firemode/fntype 分支：非法值不再假成功，
+   ui.message 直接显示 allowed.why（如「射击模式只能取 0 到 8」）。
+   —— 修的是 offline 分支 18172 不夹取、12338 的 why 被吞掉的问题。
+7) offline/zh_params.lua：6 条中文词条（射击模式 1（槽 1）…、连发发数（发／次）、
+   功能键输入 1/2）。
+
+依据：github.com/deepseekv41flash/hd2-datamined 的
+docs/tables/WEAPON-FIRE-MODES-26088801.md + refs/weapon_data_fields.json，
+并在本机真实 generated_entities.dl_bin 上核对过（武器块 type 0x88E4DBB1 @ 26,463,468，
+stride 1240、374 行）：
+  AR-23 [1,2,3] burst 3 fn (0,3)；VG-70 [1,4,7] burst 7 fn (3,2)；
+  MG-43 [1,0,0,0] fn (0,2)；APW-1 [2] burst 1。
+
+验证：真 LuaJIT 无头探针遍历 106 把武器，射击行全部注册、中文标签正确、
+写入与越界校验均按预期；封包后 266 文件哈希表 0 不一致；Huskar QA exit 0、
+33 张截图、error 空、game_writes 0。
+---------------------------------------------------------------
+SHODAN 4.1.0-fm2 —— 追加：空投舱吊架 / 跨包资源驻留 / 粘附组件字段
+===============================================================
+基底同上（127MU 仓库 89b6d25）。本目录 stat_editor.lua 已含 fm1 + fm2 全部改动（22,547 行 LF，
+封包时转 CRLF 得 1,375,746 B）。zh_params.lua 本轮未改。
+
+改动 8) 空投舱 + 跨包驻留（新块 MOD.refs，不新增 chunk 级 local）
+   stat_editor.lua:17535-17640  MOD.refs 表：hex / names（含武器实体键名）/ list_of /
+       items（package 表键 ∪ loadout 表键 ∪ rack 槽物品键，共 567 项）/
+       packages（package 表每行 +8 去重，307 项）/ entries（loadout 每行 +0，185 个 id）/
+       register（读到未命名键就追加，避免 read_field 判不可编辑）
+   stat_editor.lua:17658-17710  MOD.refs.stratagem_rows(entry, def, keys, suffix)：
+       分节「资源驻留」两行 load_package（+168，8 字节包 id）、load_entry（+248，4 字节 entry id）；
+       分节「空投舱」rack_spawn（+556 投放件数）、rack_random（+552 随机挑几件）、
+       rack_slot1..8（rack 记录 + slot*64，8 字节物品键）。suffix 用于有两段战备的哨戒炮。
+   stat_editor.lua:12273-12290  read_field 三个新 storage：rackitem / package / entry
+   stat_editor.lua:12329-12331 encode 同上；write_field 的报错串补两条
+   stat_editor.lua:14901  resolve_stratagem 调 stratagem_rows(entry, def, s and s.payloads)
+   stat_editor.lua:14119-14120 + 16100  哨戒炮/固定炮分支：build_stratagems 的 add() 把 stratagem def
+       吞掉（insert 到 sentry_defs 后 return nil），所以额外收集 sentry.sentry_payloads，
+       再在 weapon.slot=='Stratagems' 分支里按 sentry_defs 调 stratagem_rows。
+       —— 这是「新行不出现」的根因：哨戒炮根本不走 resolve_stratagem。
+改动 9) 粘附组件补 10 行（resolve_throwable 内，原 6 行之后）
+   stat_editor.lua:15054-15064  sticky_mode(+0 u8)、sticky_flag_a/b/c(+4/+5/+6)、
+       sticky_hit_damage(+44)、sticky_hit_effect(+48)、sticky_surface(+52)、
+       sticky_ability_a/b(+60/+64)、sticky_param(+72 f32)。tip 均标实验性。
+改动 10) 桌面桥：rows() 文案（:22187 附近）、choices()（:22240 附近）、choose()（:22312 附近）、
+   change() 新分支（:18308-18330），非法值不再假成功，直接 ui.message 显示原因。
+
+依据：hd2-datamined 的 MOUNT-SEATS / POD-RACK / CROSS-PACKAGE 文档 + 本机真实表核对
+（generated_entities.dl_bin 47,259,396 B；rack 0xA98BB156 = 144 桶×16 + 73 行×568；
+package 0x7A858691 = 1100 桶 + 551 行×32；loadout 0x4F2CF417 = 398 桶 + 224 行×32；
+战备行 +168 非零 114 行全部命中 package 键集，+248 非零 37 行 31 行命中 entry 集）。
+
+验证（真 LuaJIT 无头探针，载 lua51.dll）：Stratagems 142 条中 64 条有 rack、142 条有资源驻留、
+142 条有装配条目；Mechas 29 条中 9 条有驻留；Throwables 24 条中 12 条有粘附。
+rack 选择列表 567 项、package 307 项，set/choose/reset 全部实测生效。
+封包后 266 文件哈希表 0 不一致；Huskar QA exit 0、33 张截图、error 空、game_writes 0。
+
