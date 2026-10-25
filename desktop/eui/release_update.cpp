@@ -38,23 +38,54 @@ ReleaseUpdate parseReleaseUpdate(const std::string& json,const std::string& curr
  if(result.url!="https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/"+result.version)throw std::runtime_error("发行版链接与项目地址不匹配");
  result.newer=releaseNewer(result.version,current);return result;
 }
-ReleaseUpdate checkReleaseUpdate(const std::string& current){
- try{
+namespace {
+ReleaseResponse requestRelease(bool api){
   Handle session(WinHttpOpen(L"SHODAN-Stat-Editor-Update/1.0",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0));
   WinHttpSetTimeouts(session.value,2500,3000,3000,3000);
-  Handle connection(WinHttpConnect(session.value,L"api.github.com",INTERNET_DEFAULT_HTTPS_PORT,0));
-  Handle request(WinHttpOpenRequest(connection.value,L"GET",L"/repos/127MU/SHODAN-Stat-Editor/releases/latest",nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE));
+  Handle connection(WinHttpConnect(session.value,api?L"api.github.com":L"github.com",INTERNET_DEFAULT_HTTPS_PORT,0));
+  Handle request(WinHttpOpenRequest(connection.value,L"GET",api?L"/repos/127MU/SHODAN-Stat-Editor/releases/latest":L"/127MU/SHODAN-Stat-Editor/releases/latest",nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE));
   DWORD redirects=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;WinHttpSetOption(request.value,WINHTTP_OPTION_REDIRECT_POLICY,&redirects,sizeof redirects);
-  const wchar_t* headers=L"Accept: application/vnd.github+json\r\nX-GitHub-Api-Version: 2022-11-28\r\n";
+  const wchar_t* headers=api?L"Accept: application/vnd.github+json\r\nX-GitHub-Api-Version: 2022-11-28\r\n":L"Accept: text/html\r\n";
   if(!WinHttpSendRequest(request.value,headers,DWORD(-1),WINHTTP_NO_REQUEST_DATA,0,0,0)||!WinHttpReceiveResponse(request.value,nullptr))throw std::runtime_error("检查更新失败，请检查网络后重试");
   DWORD status=0,size=sizeof status;
-  if(!WinHttpQueryHeaders(request.value,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&size,WINHTTP_NO_HEADER_INDEX)||status!=200)
-   throw std::runtime_error(status==403||status==429?"GitHub 请求过于频繁，请稍后重试":"暂时无法获取 GitHub 发行版，请稍后重试");
+  if(!WinHttpQueryHeaders(request.value,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&size,WINHTTP_NO_HEADER_INDEX))throw std::runtime_error("无法读取发行版响应状态");
+  ReleaseResponse response;response.status=status;
+  if(status==301||status==302||status==303||status==307||status==308){
+   DWORD bytes=0;WinHttpQueryHeaders(request.value,WINHTTP_QUERY_LOCATION,WINHTTP_HEADER_NAME_BY_INDEX,nullptr,&bytes,WINHTTP_NO_HEADER_INDEX);
+   if(!bytes||bytes>16384)throw std::runtime_error("发行版地址无效");
+   std::wstring location(bytes/sizeof(wchar_t)+1,L'\0');
+   if(!WinHttpQueryHeaders(request.value,WINHTTP_QUERY_LOCATION,WINHTTP_HEADER_NAME_BY_INDEX,location.data(),&bytes,WINHTTP_NO_HEADER_INDEX))throw std::runtime_error("无法读取发行版地址");
+   for(wchar_t c:location){if(!c)break;if(c>127)throw std::runtime_error("发行版地址格式无效");response.location+=char(c);}
+   return response;
+  }
+  if(status!=200||!api)return response;
   std::string json;char buffer[16384];DWORD read=0;
   while(true){if(!WinHttpReadData(request.value,buffer,sizeof buffer,&read))throw std::runtime_error("读取发行版信息失败，请稍后重试");if(!read)break;
    if(json.size()+read>1024*1024)throw std::runtime_error("发行版信息过大，已停止读取");json.append(buffer,read);
   }
-  return parseReleaseUpdate(json,current);
+  response.body=std::move(json);return response;
+}
+}
+ReleaseUpdate releaseFromLocation(const std::string& location,const std::string& current){
+ const std::string prefix="https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/";
+ const auto url=location.size()&&location.front()=='/'?"https://github.com"+location:location;
+ if(url.compare(0,prefix.size(),prefix)!=0)throw std::runtime_error("发行版链接与项目地址不匹配");
+ ReleaseUpdate result;result.version=url.substr(prefix.size());result.url=url;std::array<unsigned,4> parts{};
+ if(!versionParts(result.version,parts))throw std::runtime_error("最新正式发行版的版本号无法识别");
+ result.newer=releaseNewer(result.version,current);return result;
+}
+ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& provided){
+ const ReleaseFetch fetch=provided?provided:ReleaseFetch(requestRelease);
+ // One startup check cycle: the public Latest release redirect, then at most
+ // one API fallback. No timer, automatic retries or API token is required.
+ try{
+  const auto page=fetch(false);
+  if(page.status==301||page.status==302||page.status==303||page.status==307||page.status==308)return releaseFromLocation(page.location,current);
+ }catch(const std::exception&){}
+ try{
+  const auto api=fetch(true);
+  if(api.status!=200)throw std::runtime_error(api.status==403||api.status==429?"暂时无法检查更新：GitHub 访问受限，可稍后手动重试":"暂时无法获取正式发行版，请稍后手动重试");
+  return parseReleaseUpdate(api.body,current);
  }catch(const std::exception& e){ReleaseUpdate result;result.error=e.what();return result;}
 }
 }

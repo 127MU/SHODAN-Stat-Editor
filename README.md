@@ -136,14 +136,14 @@ D:\steam\steamapps\common\Helldivers 2
 
 ## 构建与开发
 
-桌面界面使用 C++17 和 EUI-NEO，后端通过进程内 LuaJIT 读取和处理游戏数据。运行发行包不需要单独安装 Python。
+桌面界面使用 C++17、Qt Quick 和 HuskarUI，后端通过进程内 LuaJIT 读取和处理游戏数据。运行发行包自带 Qt，不需要单独安装 Qt 或 Python。
 
-本地构建说明见 [desktop/eui/BUILD.md](desktop/eui/BUILD.md)，MCP 接口细节见 [desktop/eui/MCP.md](desktop/eui/MCP.md)。打包使用明确的运行文件清单，测试应使用隔离配置和临时输出，避免改动真实游戏文件。
+本地构建说明见 [desktop/huskar/BUILD.md](desktop/huskar/BUILD.md)，MCP 接口细节见 [desktop/eui/MCP.md](desktop/eui/MCP.md)。打包使用明确的运行文件清单，测试使用隔离配置和临时输出，避免改动真实游戏文件。
 
 ## 来源与许可
 
 - 核心：[SHODAN-HORAI / SHODAN-Stat-Editor](https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor)。
-- 桌面界面：[EUI-NEO](https://github.com/sudoevolve/EUI-NEO)。
+- 桌面界面、图标与主题：[HuskarUI](https://github.com/mengps/HuskarUI)。
 - 部分字段研究参考：[hd2-datamined](https://github.com/deepseekv41flash/hd2-datamined)。研究结论需要按游戏 build 核对。
 
 项目许可为 GPL-3.0，详见 [LICENSE](LICENSE)。第三方运行库的许可说明随发行包保留。

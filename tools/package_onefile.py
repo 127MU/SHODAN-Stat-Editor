@@ -8,6 +8,7 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--release',type=Path,required=True)
     p.add_argument('--compiler-bin',type=Path,required=True)
+    p.add_argument('--icon',type=Path,default=ROOT/'offline/launcher/sseo.ico')
     a=p.parse_args()
     work=a.release.parent/'onefile-build';work.mkdir(parents=True,exist_ok=True)
     env=os.environ.copy();env['PATH']=str(a.compiler_bin.resolve())+';'+env.get('PATH','')
@@ -41,7 +42,7 @@ def main():
     if result.returncode:
         raise RuntimeError((work/'makecab.log').read_bytes()[-2000:].decode('utf8',errors='replace'))
     def resource_path(path):return str(path.resolve()).replace('\\','/')
-    rc='1 ICON "'+resource_path(ROOT/'offline/launcher/sseo.ico')+'"\n'
+    rc='1 ICON "'+resource_path(a.icon)+'"\n'
     rc+='1 24 "'+resource_path(ROOT/'desktop/eui/application.manifest')+'"\n'
     for rid,name in [(101,'payload.cab'),(102,'checksums.txt'),(103,'build.txt')]:
         rc+=str(rid)+' RCDATA "'+resource_path(work/name)+'"\n'
