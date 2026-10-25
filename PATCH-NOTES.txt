@@ -1,4 +1,4 @@
-SHODAN 数值编辑器 4.1.0-fm3 —— 魔改整合补丁说明（锚点版）
+SHODAN 数值编辑器 4.1.0-fm4 —— 魔改整合补丁说明（锚点版）
 ==========================================================
 
 基底：127MU/SHODAN-Stat-Editor main = be765e49（含 PR #10 射击模式、r15 的不可变默认值修复）
@@ -82,3 +82,35 @@ SHODAN 数值编辑器 4.1.0-fm3 —— 魔改整合补丁说明（锚点版）
    本补丁只改 Lua 面板与词典。
  - 挂点名(+16) / 挂点 A(+8) 是游戏内部认挂位的哈希，不同挂位取值不同；
    面板只给已确认的名字，未确认的显示十六进制，不编造。
+
+【F】2026-10-26 资源层驻留（对应工具包 6.9）：面板自己写 data/<载体>.patch_N，不占引擎的包口（fm4）
+ 新增 offline/res_patch.lua（纯 Lua 5.1，无外部依赖）：
+   DSAR 读取与解压（自带 LZ4 block 解码，处理重叠 match）、bundles.nxa 索引、
+   按 fragment 拼包、Package 容器解析（0xF0000011，HEADER 0x48 / TYPE 0x20 / ENTRY 0x50）、
+   子集重建（toc 绝对偏移 + 16 对齐 / gpu 64 对齐 / stream 连续 / entry_index 重排 / type num_files 回填）、
+   补丁槽位 <host>.patch_N（取最高位 + 1，永不填洞——中间留洞会让后面所有补丁失效）、
+   账本 <profile>/residency.txt、删除后把同 host 更高的槽位整体下移。
+ 面板接线（src/stat_editor.lua）：
+   F1 17852 之前新增 MOD.resident：carrier = 9ba626afa44a3aa3（注册表包，开局必被加载，补丁必被合并）、
+      ctx()（root = SHODAN_OFFLINE_GAME 去掉末尾 /game，profile = data_dir(StatEditor)）、
+      package_name()（读 +168 的包键，转成 16 位小写十六进制，就是 bundles.nxa 里的包名）、
+      state_of()（带 memo 缓存，避免每帧重读账本）、act()（0 不装 / 1 完整 / 2 仅轻资源 / 3 移除）。
+   F2 stratagem_rows 内「资源包（+168）」之后新增一行 Resident (patch, no slot)（storage 为 virtual，
+      不写任何字节，因此永远不会污染游戏文件），只在 suffix 为空时生成，避免哨戒炮两段重复。
+   F3 row_value() 顶部：resomode 直接返回补丁状态（default 同值，故不会误报「已修改」）。
+   F4 change() 的 grenade 分支之前新增 resomode 分支（exact 用精确值，否则 clamp(current+delta_sign, 0, 3)）；
+      失败原因写进 ui.message 显示 5 秒，并在 set() 里抛错，不再出现假成功。
+   F5 桌面桥 rows() / choices() / choose()：四个选项（未安装 / 完整（含贴图）/ 仅轻资源 / 移除补丁）。
+   F6 state.desktop.set() 增加显式分支：成功返回「已写入 <载体>.patch_N：N 个条目，X MB」原文，
+      不再返回「数值已保存，写入游戏后生效」这句对补丁说谎的话。
+   F7 offline/host.lua rawset 块新增 rawset(_G,SHODAN_OFFLINE_GAME, game)：面板原先拿不到游戏目录。
+ 修正 install()：升级同一个包时复用原槽位并先删旧文件（旧做法取最高位加一，会把旧补丁留在原地，
+  同一个文件被两个补丁各合并一次；切到「仅轻资源」时旧的 .gpu_resources / .stream 也会残留）。
+
+【验证（全部实跑）】
+ 1) srkit 反向解析面板写出的补丁：full 10 条 / light 6 条，toc + gpu + stream 与源包逐字节一致，
+    matched 全中、bad 0、repairs 0。
+ 2) 面板探针（真 LuaJIT + 硬链接假数据树）：0→1（patch_52，10 条 3.5 MB）→2（同一槽位，6 条 0.9 MB，
+    sidecar 已删）→3（文件全删、状态回 0）；反复切换始终复用 patch_52，不会长出 patch_53。
+ 3) host 自带 QA 闸门：EXIT=0、无 failure.txt、0 未译项。
+ 4) 真实游戏目录未被写入：探针的 game folder.txt 指向硬链接假树，收尾核对真实 data 下无 patch_52/53。
