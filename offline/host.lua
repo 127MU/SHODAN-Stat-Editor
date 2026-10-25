@@ -111,7 +111,7 @@ local function main()
     local shipped=I.shipped_originals(exe_dir,game)
     local shipped_count=0;for _ in pairs(shipped or {}) do shipped_count=shipped_count+1 end
     log('verified shipped originals: '..shipped_count)
-    local originals, ours, problems, count = I.originals(game,shipped)
+    local originals, ours, problems, count, observed = I.originals(game,shipped)
     -- Validated legacy originals remain usable if copying into originals is denied.
     -- The official writer still requires a successful disk backup before game writes.
     for name,data in pairs(I.compat_originals or {}) do
@@ -457,7 +457,7 @@ local function main()
         local marked={};for name in pairs(pending) do marked[#marked+1]=name end;table.sort(marked)
         assert(marker:write(table.concat(marked,'\n')));assert(marker:close())
         end
-        local done, why = I.write_files(game, writes, originals)
+        local done, why = I.write_files(game, writes, originals, false, observed)
         bar.busy = nil
         if not done then
             log('install failed: ' .. tostring(why))
@@ -491,7 +491,7 @@ local function main()
         busy('Restoring the game\'s files...')
         local names = {}
         for name in pairs(writes) do names[#names + 1] = name end
-        local done, why = I.write_files(game, writes, originals, true)
+        local done, why = I.write_files(game, writes, originals, true, observed)
         bar.busy = nil
         if not done then say('Not restored: ' .. tostring(why), WARN); return end
         write_succeeded=true

@@ -262,11 +262,12 @@ end
 -- name -> sealed original for every generated_*.dl_bin, and which of them are ours now (written by an install).
 -- A game file that is not ours is the original, and replaces a kept one that differs (the game was updated).
 function M.originals(game,shipped)
-    local list, out, ours, problems = load_list(), {}, {}, {}
+    local list, out, ours, problems, observed = load_list(), {}, {}, {}, {}
     local names = M.list_files(game, 'generated_*.dl_bin')
     local changed = false
     for _, name in ipairs(names) do
         local current = read(game .. '/' .. name)
+        observed[name] = current and hash_of(current) or false
         local kept = read(M.originals_dir .. '/' .. name)
         if current and list[name] and list[name][hash_of(current)] then
             if shipped and shipped[name] then out[name],ours[name]=shipped[name],true
@@ -282,19 +283,27 @@ function M.originals(game,shipped)
     for name,cipher in pairs(shipped or {}) do
         if out[name] or read(game..'/'..name) then out[name]=cipher end
     end
-    return out, ours, problems, #names
+    return out, ours, problems, #names, observed
 end
 
 -- ---------------------------------------------------------------- writing
 -- writes: name -> bytes (a changed file, or the original for one going back); originals: name -> original bytes.
--- A game file another tool changed after this editor read it (neither its original nor written by an install,
--- issue #90) is never written over: skip_changed (Restore) leaves it be and returns its name, Install stops.
-function M.write_files(game, writes, originals, skip_changed)
+-- Compare with the bytes observed at load, separately from the canonical restore
+-- baseline: a pre-existing mod is not a change made after opening this editor.
+-- Without a snapshot, retain the upstream original/installed-file guard.
+-- skip_changed (Restore) leaves changed files be; Install stops.
+function M.write_files(game, writes, originals, skip_changed, observed)
     if M.game_running() then return nil, 'Helldivers 2 is running: close it first.' end
     local list, changed = load_list(), {}
     for name in pairs(writes) do
         local current = read(game .. '/' .. name)
-        if current and current ~= originals[name] and not (list[name] and list[name][hash_of(current)]) then
+        local changed_since_open
+        if observed and observed[name] ~= nil then
+            changed_since_open = (current and hash_of(current) or false) ~= observed[name]
+        else
+            changed_since_open = current and current ~= originals[name] and not (list[name] and list[name][hash_of(current)])
+        end
+        if changed_since_open then
             changed[#changed + 1] = name
         end
     end
@@ -339,8 +348,10 @@ function M.write_files(game, writes, originals, skip_changed)
             os.remove(s.tmp)
         elseif s.data == originals[s.name] then
             list[s.name] = nil
+            if observed then observed[s.name] = hash_of(s.data) end
         else
             list[s.name] = { [hash_of(s.data)] = true }
+            if observed then observed[s.name] = hash_of(s.data) end
         end
     end
     save_list(list)

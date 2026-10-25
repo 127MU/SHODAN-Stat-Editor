@@ -1099,10 +1099,20 @@ void settingsContent(eui::Ui& ui,float w,float h){
  for(int i=0;i<3;++i){const std::string key=keys[i];const bool enabled=m.tweaks[key].yes();
   button(ui,"settings.tweak."+key,std::string(labels[i])+" · "+(enabled?"已启用":"已关闭"),24,760+extra+i*50,w-48,[key,enabled]{safe([&]{m.tweaks=m.backend->call("tweaks",{key,!enabled});m.message="设置已保存，写入游戏后生效";refreshRows();});},enabled,40);
  }
+ panel(ui,"settings.project",0,958+extra,w,156);
+ text(ui,"settings.project.title","项目地址",24,974+extra,w-48,32,22);
+ text(ui,"settings.project.url","github.com/127MU/SHODAN-Stat-Editor",24,1010+extra,w-48,28,14,true);
+ button(ui,"settings.project.open","打开 GitHub",24,1054+extra,150,[]{safe([]{
+  const auto result=ShellExecuteW(glfwGetWin32Window(glfwGetCurrentContext()),L"open",L"https://github.com/127MU/SHODAN-Stat-Editor",nullptr,nullptr,SW_SHOWNORMAL);
+  if(reinterpret_cast<INT_PTR>(result)<=32)throw std::runtime_error("无法打开浏览器，请复制项目地址后手动打开");
+ });},true,40);
+ button(ui,"settings.project.copy","复制地址",186,1054+extra,130,[]{
+  glfwSetClipboardString(glfwGetCurrentContext(),"https://github.com/127MU/SHODAN-Stat-Editor");m.message="项目地址已复制";
+ },false,40);
 }
 void settingsPage(eui::Ui& ui,float w,float h){
  components::scrollView(ui,"settings.scroll").theme(theme()).size(w,h).bind(m.settingsScroll).onChange([](float v){m.settingsScroll.set(v);app::requestUpdate();}).contentKey("settings-"+std::to_string(m.fontPixels)+":"+std::to_string(m.mcp.enabled())+":"+std::to_string(m.pendingFontPixels)+":"+std::to_string(m.dark)+":"+std::to_string(m.sidebarMode)+":"+std::to_string(m.tweaks["bounce"].yes())+":"+std::to_string(m.tweaks["reticle"].yes())+":"+std::to_string(m.tweaks["foliage"].yes())).content([&](eui::Ui& content,float cw,float vh){
-  content.stack("settings.canvas").size(cw,cw<650?1010:934).content([&]{settingsContent(content,cw,1010);}).build();
+  content.stack("settings.canvas").size(cw,1114+(cw<650?76:0)).content([&]{settingsContent(content,cw,1114);}).build();
  }).build();
 }
 void codeDialog(eui::Ui& ui,const eui::Screen& screen){
