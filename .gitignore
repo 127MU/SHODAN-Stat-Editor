@@ -15,5 +15,6 @@ __pycache__/
 *.pyc
 
 # EUI desktop compiler outputs
+build/
 desktop/eui/*.lib
 desktop/eui/*.exp

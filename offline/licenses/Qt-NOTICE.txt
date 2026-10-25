@@ -1,0 +1,15 @@
+This application dynamically links the unmodified Qt 6.8.3 libraries under
+the GNU Lesser General Public License version 3. The LGPL and GPL texts are
+included in this directory. Qt is copyright The Qt Company Ltd. and other
+contributors. Qt is a trademark of The Qt Company Ltd.
+
+Corresponding Qt source, including the modules used by this application:
+https://download.qt.io/archive/qt/6.8/6.8.3/single/
+https://code.qt.io/cgit/qt/qtbase.git/tag/?h=v6.8.3
+https://code.qt.io/cgit/qt/qtdeclarative.git/tag/?h=v6.8.3
+https://code.qt.io/cgit/qt/qtsvg.git/tag/?h=v6.8.3
+
+The DLLs remain separate in the Windows ZIP and the single-file launcher's
+extracted runtime directory. Use the ZIP distribution for replacing or
+debugging the dynamically linked Qt libraries. The application source and
+build instructions are supplied with the corresponding source archive.

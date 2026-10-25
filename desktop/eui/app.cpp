@@ -45,7 +45,7 @@ struct ModImportResult {std::vector<ManagedMod> mods;std::vector<std::string> er
 struct McpResult {Value value;bool updateMods=false;std::vector<ManagedMod> mods;};
 struct Model {
  std::future<shodan::ReleaseUpdate> releaseWork;shodan::ReleaseUpdate release;
- bool releaseAutoStarted=false,releasePrompt=false;std::string releaseStatus="启动后自动检查正式发行版";
+ bool releaseAutoStarted=false,releasePrompt=false;int releaseStarts=0;std::string releaseStatus="每次启动自动检查一次正式发行版";
  int fontPixels=18,pendingFontPixels=0,sidebarMode=0;bool sidebarModeOpen=false;eui::Signal<float> settingsScroll{0};
  eui::Signal<float> navScroll{0};float navWidth=0,navVelocity=0,frameDelta=0.016f;bool qaResizeAnimationObserved=false;
  shodan::McpServer mcp;std::set<std::string> mcpMethods;
@@ -229,8 +229,17 @@ components::DialogStyle dialogStyle(){auto s=components::DialogStyle(theme());s.
 void safe(const std::function<void()>& fn){try{fn();}catch(const std::exception& e){m.message=e.what();m.error=e.what();}}
 void checkRelease(){
  if(m.releaseWork.valid())return;
+ ++m.releaseStarts;
  m.releaseStatus="正在检查 GitHub 正式发行版…";
- m.releaseWork=std::async(std::launch::async,[]{auto result=shodan::checkReleaseUpdate(shodan::version);app::requestUpdate();return result;});
+ m.releaseWork=std::async(std::launch::async,[]{
+  shodan::ReleaseFetch fetch;
+  if(std::getenv("SHODAN_EUI_QA"))if(const char* mode=std::getenv("SHODAN_UPDATE_QA"))fetch=[mode=std::string(mode)](bool api){
+   if(mode=="failed")return shodan::ReleaseResponse{403,{},{}};
+   const auto version=mode=="newer"?"v9999.0.0":"v"+std::string(shodan::version);
+   return shodan::ReleaseResponse{302,{},"https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/"+version};
+  };
+  auto result=shodan::checkReleaseUpdate(shodan::version,fetch);app::requestUpdate();return result;
+ });
 }
 void refreshRows(){++m.rowsRevision;m.rows=m.backend->call("rows").array;m.edits.clear();m.error.clear();}
 void flushEdits();
@@ -619,17 +628,20 @@ McpResult executeMcp(const shodan::McpRequest& request,std::vector<ManagedMod> m
   else out.value=m.backend->call(method.c_str(),a["args"].array);
  }return out;
 }
-void tickMcp(){
+void tickRelease(){
  using namespace std::chrono_literals;
- if(m.backend&&!m.releaseAutoStarted){
+ if(!m.releaseAutoStarted){
   m.releaseAutoStarted=true;
-  if(!std::getenv("SHODAN_EUI_QA")&&!std::getenv("SHODAN_STARTUP_SMOKE"))checkRelease();
+  if((!std::getenv("SHODAN_EUI_QA")&&!std::getenv("SHODAN_STARTUP_SMOKE"))||(std::getenv("SHODAN_EUI_QA")&&std::getenv("SHODAN_UPDATE_QA")))checkRelease();
  }
  if(m.releaseWork.valid()&&m.releaseWork.wait_for(0ms)==std::future_status::ready){
   m.release=m.releaseWork.get();m.releasePrompt=m.release.newer;
   m.releaseStatus=!m.release.error.empty()?m.release.error:m.release.newer?"发现新版本："+m.release.version:"当前已是最新正式发行版";
   app::requestUpdate();
  }
+}
+void tickMcp(){
+ using namespace std::chrono_literals;
  if(m.mcpWork.valid()&&m.mcpWork.wait_for(0ms)==std::future_status::ready){
   auto request=m.mcpRequest;m.mcpRequest.reset();m.busy=false;m.operationResult=false;
   try{auto result=m.mcpWork.get();if(result.updateMods){auto previous=m.mods;m.mods=std::move(result.mods);try{saveMods();}catch(...){m.mods=std::move(previous);throw;}}
@@ -787,7 +799,7 @@ void tick(){
  if(m.operation.valid()&&m.operation.wait_for(0ms)==std::future_status::ready){
   m.busy=false;safe([&]{m.message=m.operation.get();if(m.page!=4)refreshRows();});m.operationResult=true;
  }
- tickMcp();
+ tickRelease();tickMcp();
 }
 float fieldPitch(const Value& row){return 104.0f+(row["shared"].array.empty()?0.0f:30.0f)+(row["inline_note"].str().empty()?0.0f:28.0f);}
 void field(eui::Ui& ui,const Value& r,float y,float w,bool armor=false){
@@ -1440,6 +1452,25 @@ void qaDropZip(const std::filesystem::path& path,int count=1){
 void qaTick(eui::Ui& ui){
  const char* target=std::getenv("SHODAN_EUI_QA");if(!target)return;
  app::requestUpdate();
+ if(const char* updateMode=std::getenv("SHODAN_UPDATE_QA")){
+  static int frames=0,popupFrames=0;static bool dismissed=false;static auto ready=std::chrono::steady_clock::now()+std::chrono::milliseconds(700);
+  if(!m.backend||m.releaseWork.valid()||std::chrono::steady_clock::now()<ready)return;
+  const bool newer=std::string(updateMode)=="newer",failed=std::string(updateMode)=="failed";
+  const auto folder=std::filesystem::u8path(target);
+  try{
+   if(m.releaseStarts!=1)throw std::runtime_error("Startup update check was not exactly once");
+   if(!dismissed){
+    if(m.releasePrompt!=newer||m.release.error.empty()==failed)throw std::runtime_error("Unexpected startup update result");
+    if(newer){auto* later=ui.find("release.update.secondary.bg");if(!later||!later->onClick)throw std::runtime_error("Automatic update dialog missing");if(++popupFrames<30)return;capture(folder/"update-popup.bmp");later->onClick();}
+    dismissed=true;
+   }
+   if(++frames<20)return;
+   if(m.releasePrompt||m.releaseWork.valid())throw std::runtime_error("Update check restarted after dismissal");
+   std::ofstream(folder/"update-report.json")<<"{\"startup_checks\":1,\"newer_popup\":"<<(newer?"true":"false")<<",\"failed\":"<<(failed?"true":"false")<<",\"game_writes\":0}";
+   requestWindowClose(glfwGetCurrentContext());
+  }catch(const std::exception& e){std::ofstream(folder/"failure.txt")<<e.what();requestWindowClose(glfwGetCurrentContext());}
+  return;
+ }
  if(std::getenv("SHODAN_MCP_QA")){
   static int step=0;static auto due=std::chrono::steady_clock::now()+std::chrono::seconds(2);
   static int autoArmor=0;static std::string autoArmorKey;static double autoArmorBefore=0;
