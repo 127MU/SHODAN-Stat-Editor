@@ -58,7 +58,7 @@ QtObject {
     signal loaded()
     signal selectionReady()
     signal rowUpdated(var row)
-    signal updateFound(string version,string url)
+    signal updateFound(string version,string url,string notes,string downloadUrl)
     signal operationProgress(string message,int done,int total)
 
     function call(method,args,done,failed){
@@ -117,7 +117,7 @@ QtObject {
         }
         function onInitialized(data){store.catalogs=data.catalogs;store.armor=data.armor;store.groups=data.armorGroups;store.game=data.game;store.status="数据已就绪";store.loaded()}
         function onStartupError(text){store.fatalError=text;store.error(text);if(QaMode)Backend.finishQa(text)}
-        function onUpdateAvailable(version,url){store.updateFound(version,url)}
+        function onUpdateAvailable(version,url,notes,downloadUrl){store.updateFound(version,url,notes,downloadUrl)}
         function onProgress(text,done,total){store.operationProgress(text,done,total)}
         function onExternalChange(){store.refreshRows();if(store.module==="armor")store.refreshArmor();if(store.module==="mods")store.refreshMods()}
     }

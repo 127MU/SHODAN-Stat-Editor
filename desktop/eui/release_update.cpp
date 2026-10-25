@@ -34,8 +34,20 @@ ReleaseUpdate parseReleaseUpdate(const std::string& json,const std::string& curr
  if(!yyjson_is_bool(draft)||!yyjson_is_bool(prerelease))throw std::runtime_error("GitHub 未返回有效发行版");
  if(yyjson_get_bool(draft)||yyjson_get_bool(prerelease))return {};
  ReleaseUpdate result;result.version=string(root,"tag_name");result.url=string(root,"html_url");
+ result.notes=string(root,"body");
  std::array<unsigned,4> parts{};if(!versionParts(result.version,parts))return {};
  if(result.url!="https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/"+result.version)throw std::runtime_error("发行版链接与项目地址不匹配");
+ const std::string prefix="https://github.com/127MU/SHODAN-Stat-Editor/releases/download/"+result.version+"/";
+ const auto version=result.version.front()=='v'?result.version.substr(1):result.version;
+ const auto preferred="SHODAN_"+version+".exe";
+ auto* assets=yyjson_obj_get(root,"assets");size_t index,max;yyjson_val* asset;
+ yyjson_arr_foreach(assets,index,max,asset){
+  const auto name=string(asset,"name"),url=string(asset,"browser_download_url");
+  if(url.compare(0,prefix.size(),prefix)==0 && name.size()>4 && name.substr(name.size()-4)==".exe"){
+   if(result.downloadUrl.empty() || name==preferred)result.downloadUrl=url;
+   if(name==preferred)break;
+  }
+ }
  result.newer=releaseNewer(result.version,current);return result;
 }
 namespace {
@@ -77,10 +89,19 @@ ReleaseUpdate releaseFromLocation(const std::string& location,const std::string&
 ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& provided){
  const ReleaseFetch fetch=provided?provided:ReleaseFetch(requestRelease);
  // One startup check cycle: the public Latest release redirect, then at most
- // one API fallback. No timer, automatic retries or API token is required.
+ // one API request when needed (new release notes/assets, or redirect fallback).
  try{
   const auto page=fetch(false);
-  if(page.status==301||page.status==302||page.status==303||page.status==307||page.status==308)return releaseFromLocation(page.location,current);
+  if(page.status==301||page.status==302||page.status==303||page.status==307||page.status==308){
+   auto latest=releaseFromLocation(page.location,current);
+   if(!latest.newer)return latest;
+   try{
+    const auto api=fetch(true);
+    if(api.status==200){auto detail=parseReleaseUpdate(api.body,current);if(detail.newer)return detail;}
+   }catch(const std::exception&){}
+   latest.notes="暂时无法获取更新日志，请点击“查看发行版”查看完整说明。";
+   return latest;
+  }
  }catch(const std::exception&){}
  try{
   const auto api=fetch(true);

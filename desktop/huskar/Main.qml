@@ -83,6 +83,8 @@ HusWindow {
     property var progressPercent:"auto"
     property string updateUrl:""
     property string updateVersion:""
+    property string updateNotes:""
+    property string updateDownloadUrl:""
     property bool effectUnavailable:false
     function applyWindowEffect(){
         if(!window.initialized || !appearance.restored)return
@@ -110,6 +112,12 @@ HusWindow {
     property string locationTitle:workspace.module==="home"?"首页":workspace.module==="settings"?"设置":workspace.module==="tweaks"?"游戏参数":workspace.module==="presets"?"全局预设":workspace.module==="mods"?"Mod 管理":workspace.destinations.find(x=>x.key===workspace.module)?.name || "工作台"
     function closeQaDialogs(){if(QaMode)armorDialog.close()}
     function qaOpenPresets(){if(QaMode)equipmentPresets.open()}
+    function qaUpdatePreview(){
+        if(!QaMode)return false
+        workspace.updateFound("v99.0.0","https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/v99.0.0","更新日志\n\n修复启动空白与被动勾选。\n新增同类条目分组。", "https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v99.0.0/SHODAN_99.0.0.exe")
+        return true
+    }
+    function qaCloseUpdate(){if(QaMode)updateDialog.close()}
     function qaClosePresets(){if(QaMode)equipmentPresets.close()}
     function qaSliderTest(){
         if(!QaMode || workspace.module!=="settings")return false
@@ -169,7 +177,7 @@ HusWindow {
     Connections {
         target:workspace
         function onError(text){message("操作未完成",text)}
-        function onUpdateFound(version,url){updateVersion=version;updateUrl=url;updateDialog.open()}
+        function onUpdateFound(version,url,notes,downloadUrl){updateVersion=version;updateUrl=url;updateNotes=notes || "该发行版未提供更新日志。";updateDownloadUrl=downloadUrl || "";updateDialog.open()}
         function onOperationProgress(text,done,total){progressText=text;progressPercent=total>0?Math.round(done*100/total):"auto"}
         function onModuleChanged(){focusOut();Qt.callLater(window.syncNavigation)}
         function onLoaded(){Qt.callLater(window.syncNavigation)}
@@ -497,8 +505,24 @@ HusWindow {
         onCancel:close()
     }
     HusModal {
-        id:updateDialog;title:"发现新版本 "+window.updateVersion;description:"当前版本："+Backend.version+"\n前往发行版页面查看说明并下载。";width:600;modal:true;confirmText:"前往下载";cancelText:"稍后再说"
-        onConfirm:{Backend.openUrl(window.updateUrl);close()}
+        id:updateDialog;title:"发现新版本 "+window.updateVersion;width:Math.min(760,window.width-80);modal:true;cancelText:"稍后再说"
+        bodyDelegate:ColumnLayout {
+            width:updateDialog.width-48;spacing:16
+            HusText {text:"当前版本："+Backend.version;color:HusTheme.Primary.colorTextSecondary}
+            Flickable {
+                Layout.fillWidth:true;Layout.preferredHeight:Math.min(380,window.height*0.45)
+                clip:true;contentHeight:releaseNotes.implicitHeight;boundsBehavior:Flickable.StopAtBounds
+                ScrollBar.vertical:HusScrollBar{}
+                SmoothWheel{}
+                HusText {id:releaseNotes;objectName:"updateReleaseNotes";width:parent.width-16;text:window.updateNotes;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+            }
+            RowLayout {
+                Layout.fillWidth:true
+                HusButton {text:"查看发行版";onClicked:Backend.openUrl(window.updateUrl)}
+                Item {Layout.fillWidth:true}
+                HusButton {objectName:"updateDirectDownload";text:"直接下载";type:HusButton.Type_Primary;enabled:window.updateDownloadUrl.length>0;onClicked:Backend.openUrl(window.updateDownloadUrl)}
+            }
+        }
         onCancel:close()
     }
     Loader { active:QaMode;source:Qt.resolvedUrl("QaRunner.qml");onLoaded:item.run(window,workspace,appearance) }

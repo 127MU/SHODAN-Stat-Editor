@@ -65,7 +65,7 @@ ColumnLayout {
                 implicitHeight:112
                 RowLayout {
                     Layout.fillWidth:true;Layout.margins:14
-                    HusCheckBox { text:modelData.zh || modelData.name;checked:!!(store.armorProfile.enabled || {})[String(modelData.id)];onClicked:store.armorChange(modelData.id,checked,null,null) }
+                    HusCheckBox { objectName:"passive_"+modelData.id;text:modelData.zh || modelData.name;checked:!!(store.armorProfile.enabled || {})[String(modelData.id)];onClicked:store.armorChange(modelData.id,checked,null,null) }
                 }
                 RowLayout {
                     Layout.fillWidth:true;Layout.leftMargin:14;Layout.rightMargin:14;Layout.bottomMargin:12

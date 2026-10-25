@@ -8,7 +8,17 @@ include(FetchContent)
 set(BUILD_HUSKARUI_GALLERY OFF CACHE BOOL "" FORCE)
 set(INSTALL_HUSKARUI_IN_DEFAULT_LOCATION OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(huskar GIT_REPOSITORY https://github.com/mengps/HuskarUI.git GIT_TAG d760773ee0f440284965fe443f765caeb66d8114)
-FetchContent_MakeAvailable(huskar)
+FetchContent_GetProperties(huskar)
+if(NOT huskar_POPULATED)
+ FetchContent_Populate(huskar)
+endif()
+# Strict OpenGL drivers require identical uniform blocks in both shader stages.
+# Apply before qt_add_shaders so clean builds and local dependency overrides agree.
+include(${CMAKE_CURRENT_SOURCE_DIR}/PatchShaderUniforms.cmake)
+shodan_patch_shader_uniforms(${huskar_SOURCE_DIR}/src/shaders/husliquidglass)
+shodan_patch_shader_uniforms(${huskar_SOURCE_DIR}/gallery/shaders/effect1)
+shodan_patch_shader_uniforms(${huskar_SOURCE_DIR}/gallery/shaders/effect2)
+add_subdirectory(${huskar_SOURCE_DIR} ${huskar_BINARY_DIR})
 # Only the existing JSON/ZIP helpers are reused; no EUI renderer is linked.
 FetchContent_Declare(eui_helpers GIT_REPOSITORY https://github.com/sudoevolve/EUI-NEO.git GIT_TAG 1647709068e36834ab26da5a97ef4ad98aa34c9d)
 FetchContent_GetProperties(eui_helpers)
@@ -24,7 +34,7 @@ qt_add_executable(shodan_huskar main.cpp controller.cpp controller.h
  ${eui_helpers_SOURCE_DIR}/3rd/yyjson-0.12.0/src/yyjson.c)
 configure_file(${huskar_SOURCE_DIR}/gallery/qml/Controls/GradientFlowEffect.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml COPYONLY)
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml PROPERTIES QT_RESOURCE_ALIAS GalleryFlow.qml)
-qt_add_resources(shodan_huskar ui PREFIX "/shodan" FILES Main.qml Workspace.qml HomePage.qml CatalogPage.qml EditorPage.qml FieldEditor.qml MaterialCard.qml SmoothWheel.qml ArmorPage.qml SettingsPage.qml GameTweaksPage.qml QaRunner.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml)
+qt_add_resources(shodan_huskar ui PREFIX "/shodan" FILES CatalogGroups.js GroupedCatalog.qml Main.qml Workspace.qml HomePage.qml CatalogPage.qml EditorPage.qml FieldEditor.qml MaterialCard.qml SmoothWheel.qml ArmorPage.qml SettingsPage.qml GameTweaksPage.qml QaRunner.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml)
 qt_add_shaders(shodan_huskar gallery_flow PREFIX "/Gallery/shaders" BASE "${huskar_SOURCE_DIR}/gallery/shaders" FILES "${huskar_SOURCE_DIR}/gallery/shaders/effect2.vert" "${huskar_SOURCE_DIR}/gallery/shaders/effect2.frag")
 target_include_directories(shodan_huskar PRIVATE ../eui ../eui/lua
  ${eui_helpers_SOURCE_DIR}/include ${eui_helpers_SOURCE_DIR}/3rd/yyjson-0.12.0/src

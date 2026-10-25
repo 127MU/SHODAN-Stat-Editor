@@ -45,6 +45,7 @@ public:
  Q_INVOKABLE void finishQa(QString error);
  Q_INVOKABLE bool qaEdit(QString objectName,QString text,bool enter);
  Q_INVOKABLE bool qaDrag(QString objectName);
+ Q_INVOKABLE bool qaCheck(QString objectName,bool click=false);
  Q_INVOKABLE bool qaWheel(QString objectName);
 signals:
  void readyChanged();
@@ -53,7 +54,7 @@ signals:
  void progress(QString message,int done,int total);
  void startupError(QString error);
  void updateChanged();
- void updateAvailable(QString version,QString url);
+ void updateAvailable(QString version,QString url,QString notes,QString downloadUrl);
  void mcpChanged();
  void externalChange();
 private:

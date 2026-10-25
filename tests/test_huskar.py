@@ -19,13 +19,14 @@ def main():
         raise
     report=json.loads((out/'report.json').read_text(encoding='utf8'))
     assert code==0 and report['error']=='',(code,report)
-    assert len(list(out.glob('*.png')))>=33,'Missing page or window effect captures'
+    captures=len(list(out.glob('*.png')))
+    assert captures>=38,'Missing page, grouping, sentinel, release notes or window effect captures'
     log=(out/'profile/Logs/huskar-startup.log').read_text(encoding='utf8',errors='replace')
     assert 'Icon font registered=1 family=HuskarUI-Icons' in log,'HuskarUI icon font was not initialized'
     from PIL import Image
     dark=Image.open(out/'10-dark.png').convert('RGB').resize((100,60))
     assert sum(min(rgb)>180 for rgb in dark.get_flattened_data())<1800,'Light surfaces remain after dark mode switch'
-    problems=[line for line in log.splitlines() if any(x in line for x in ['ReferenceError:','TypeError:','Binding loop','Unable to assign','Cannot anchor','failed to load component'])]
+    problems=[line for line in log.splitlines() if any(x in line for x in ['ReferenceError:','TypeError:','Binding loop','Unable to assign','Cannot anchor','failed to load component','Failed to link shader','Failed to build graphics pipeline','Fail to build reflection'])]
     assert not problems,'\n'.join(problems[:20])
     # Reopen the exact same profile and compare the actual restored preferences.
     env['SHODAN_HUSKAR_RESTORE_QA']='1'
@@ -36,6 +37,6 @@ def main():
         raise
     restored=json.loads((out/'report.json').read_text(encoding='utf8'))
     assert restored_code==0 and restored['error']=='',restored
-    print(json.dumps(dict(captures=33,restart_settings=True,slider_drag=True,card_materials=True,window_effects=True,enter_and_blur=True,preset_roundtrip=True,invalid_value_rejected=True,theme_tokens=True,custom_background=True,game_writes=0)))
+    print(json.dumps(dict(captures=captures,armor_check=True,grouped_catalog=True,sentinel_values=True,restart_settings=True,slider_drag=True,card_materials=True,window_effects=True,enter_and_blur=True,preset_roundtrip=True,invalid_value_rejected=True,theme_tokens=True,custom_background=True,game_writes=0)))
 
 if __name__=='__main__':main()

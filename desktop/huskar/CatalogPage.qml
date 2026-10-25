@@ -2,11 +2,13 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import HuskarUI.Basic
+import "CatalogGroups.js" as CatalogGroups
 
 ColumnLayout {
     id: page
     required property var store
     signal hiddenRequested()
+    property var grouped:CatalogGroups.build(store.library,store.catalogs[store.tab] || [],store.tab)
     spacing:18
     RowLayout {
         Layout.fillWidth:true
@@ -37,9 +39,15 @@ ColumnLayout {
             onAccepted:if(text.toLowerCase()==="mu7" && !store.modsUnlocked)page.hiddenRequested()
         }
     }
+    GroupedCatalog {
+        Layout.fillWidth:true;Layout.fillHeight:true
+        visible:page.grouped.length>0
+        store:page.store;groups:page.grouped
+    }
     GridView {
         id: library
         objectName:"catalogGrid"
+        visible:page.grouped.length===0
         Layout.fillWidth:true
         Layout.fillHeight:true
         clip:true

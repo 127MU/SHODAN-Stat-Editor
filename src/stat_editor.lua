@@ -12255,13 +12255,20 @@ local function read_field(f, original)
     end
     local entry = tables[f.kind]
     if not entry then return nil end
-    local original_read=original and MOD.offline and f.storage~='tier' and rawget(_G,'SHODAN_OFFLINE_DEFAULT_READ')
+    local original_read=original and MOD.offline and rawget(_G,'SHODAN_OFFLINE_DEFAULT_READ')
     local address=entry.copies[1]+HEADER_BYTES+f.offset
     local function bytes(size)
         if original_read then return original_read(address,size) end
         return api.read(address,size)
     end
     if f.storage == 'tier' then   -- a destruction level: its template pointer and type, read as the threshold
+        if original_read then
+            local raw=bytes(12)
+            local tiers=tables[TYPES.destruction_tiers]
+            local rel=raw and #raw==12 and tiers and tiers.index[u32(raw,8)]
+            local threshold=rel and original_read(tiers.copies[1]+HEADER_BYTES+rel+4,4)
+            return threshold and #threshold==4 and u32(threshold,0) or nil
+        end
         return KINDS[TYPES.destruction].threshold(api.read(entry.copies[1] + HEADER_BYTES + f.offset, 12))
     end
     if f.storage == 'grenade' then
@@ -12273,7 +12280,7 @@ local function read_field(f, original)
         return math.floor((half:byte(1) + half:byte(2) * 256) / 2 ^ f.bit) % 2
     end
     if f.storage == 'gun' then   -- an enemy's weapon: the chosen entity's number (MOD.enemy.gun_choices)
-        return MOD.enemy.gun_id(api.read(entry.copies[1] + HEADER_BYTES + f.offset, 8))
+        return MOD.enemy.gun_id(bytes(8))
     end
     if f.storage == 'flag' then   -- a bool byte
         local b = bytes(1)
@@ -14863,8 +14870,9 @@ local function resolve_stratagem(entry)
         add_row(entry, 'Stratagem', 'cooldown', 'Cooldown (s)', 'f32',
                 { part('cooldown', def.kind, def.off + 104, 'f32', 100000) }, 0, 10000, 1, 10)
         if read_field(field_at(def.kind, def.off + 80, 'u32', 999)) then
-            add_row(entry, 'Stratagem', 'uses', s.family == 'eagle' and 'Uses per rearm' or 'Uses per mission', 'u32',
+            local uses=add_row(entry, 'Stratagem', 'uses', s.family == 'eagle' and 'Uses per rearm' or 'Uses per mission', 'u32',
                     { part('uses', def.kind, def.off + 80, 'u32', 999) }, 0, 999, 1, 5)
+            uses.inline_note='4294967295（0xFFFFFFFF）表示不限使用次数。'
         end
         MOD.code.row(entry, def)
         if s.family ~= 'eagle' then MOD.callin_rows(entry, { def }) end
@@ -15292,7 +15300,8 @@ function MOD.boosters.resolve(entry)
         for _, group in ipairs(stratagem_groups) do
             local off = tables[group] and tables[group].index[b[5]]
             if off then
-                add_row(entry, 'Stratagem', 'uses', 'Uses per mission', 'u32', { part('uses', group, off + 80, 'u32', 999) }, 0, 999, 1, 5)
+                local uses=add_row(entry, 'Stratagem', 'uses', 'Uses per mission', 'u32', { part('uses', group, off + 80, 'u32', 999) }, 0, 999, 1, 5)
+                uses.inline_note='4294967295（0xFFFFFFFF）表示不限使用次数。'
                 break
             end
         end
@@ -16076,7 +16085,7 @@ local function resolve(weapon)
                 local health_parts = { part('arm_health', TYPES.health, at, 'u32', 10000000) }
                 local armor_parts = { part('arm_armor', TYPES.health, at + 280, 'u32', 100) }
                 local zone_hp = default_of(field_at(TYPES.health, at + 520 + 232, 'u32', 10000000))
-                if zone_hp and zone_hp > 0 then
+                if zone_hp and zone_hp > 0 and zone_hp ~= 0xFFFFFFFF then
                     table.insert(health_parts, 1, part('arm_zone_health', TYPES.health, at + 520 + 232, 'u32', 10000000))
                     table.insert(armor_parts, 1, part('arm_zone_armor', TYPES.health, at + 520 + 216, 'u32', 100))
                 end

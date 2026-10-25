@@ -29,8 +29,15 @@ int main(int argc,char** argv){
   bool rejected=false;try{shodan::releaseFromLocation(location,"4.1.0-r8");}catch(const std::runtime_error&){rejected=true;}assert(rejected);
  }
  int requests=0;
- auto web=shodan::checkReleaseUpdate("4.1.0-r8",[&](bool api){++requests;assert(!api);return shodan::ReleaseResponse{302,{},"/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r9"};});
- assert(web.newer&&web.error.empty()&&requests==1);
+ auto web=shodan::checkReleaseUpdate("4.1.0-r8",[&](bool api){++requests;return api?shodan::ReleaseResponse{403,{},{}}:shodan::ReleaseResponse{302,{},"/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r9"};});
+ assert(web.newer&&web.error.empty()&&requests==2&&!web.notes.empty());
+ requests=0;
+ auto same=shodan::checkReleaseUpdate("4.1.0-r9",[&](bool api){++requests;assert(!api);return shodan::ReleaseResponse{302,{},"/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r9"};});
+ assert(!same.newer&&requests==1);
+ const std::string detailed=R"({"draft":false,"prerelease":false,"tag_name":"v4.1.0-r9","html_url":"https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r9","body":"## Changes\n- Fix startup","assets":[{"name":"bad.exe","browser_download_url":"https://example.com/bad.exe"},{"name":"SHODAN_4.1.0-r9.exe","browser_download_url":"https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v4.1.0-r9/SHODAN_4.1.0-r9.exe"}]})";
+ requests=0;
+ auto detail=shodan::checkReleaseUpdate("4.1.0-r8",[&](bool api){++requests;return api?shodan::ReleaseResponse{200,detailed,{}}:shodan::ReleaseResponse{302,{},"/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r9"};});
+ assert(detail.newer&&detail.notes=="## Changes\n- Fix startup"&&detail.downloadUrl=="https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v4.1.0-r9/SHODAN_4.1.0-r9.exe"&&requests==2);
  requests=0;
  auto fallback=shodan::checkReleaseUpdate("4.1.0-r8",[&](bool api){++requests;return api?shodan::ReleaseResponse{200,json("v4.1.0-r9"),{}}:shodan::ReleaseResponse{503,{},{}};});
  assert(fallback.newer&&fallback.error.empty()&&requests==2);
