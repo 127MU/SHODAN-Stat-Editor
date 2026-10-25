@@ -220,7 +220,7 @@ void scrollDropdown(eui::Ui& ui,const std::string& id,float width,float height,f
  .onChange([&state](float v){state.offset.set(v);app::requestUpdate();}).step(44).scrollbarWidth(7).scrollbarGap(4)
  .contentKey(id+":"+std::to_string(labels.size())+":"+std::to_string(selected)).content([=](eui::Ui& content,float cw,float vh){
   content.stack(id+".canvas").size(cw,float(labels.size()*44)).content([&]{for(size_t i=0;i<labels.size();++i)
-   button(content,id+".option."+std::to_string(i),labels[i],0,float(i*44),cw,[openCallback=std::function<void(bool)>(onOpen),changeCallback=std::function<void(int)>(onChange),i]{changeCallback(int(i));openCallback(false);app::requestUpdate();},int(i)==selected,40);
+   button(content,id+".option."+std::to_string(i),labels[i],0,float(i*44),cw,[onOpen,onChange,i]{onChange(int(i));onOpen(false);app::requestUpdate();},int(i)==selected,40);
   }).build();
  }).build();
  if(auto* scroll=ui.find(id+".scroll"))scroll->composeOnScrollOffsetChange=true;
