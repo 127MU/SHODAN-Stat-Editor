@@ -45,3 +45,34 @@ EXO-ARM 相关文档，并在本机明文表上逐条核对过。
 ## 五、补丁锚点
 
 见同目录 PATCH-NOTES.txt（每个 hunk 的行号与含义）。
+
+## 4.1.0-fm4：资源层驻留（补丁方案）
+
+在群友 4.1.0-r15（127MU/SHODAN-Stat-Editor）之上，把群友工具包里的「资源层驻留」（6.9 节）做进面板。
+
+## 新增功能
+
+- 战备条目「资源驻留」分节下多一行 **资源常驻（补丁，不占口）**，四档：
+  - 未安装
+  - 完整（含贴图）：整个包连同贴图、模型、音效一起写进补丁
+  - 仅轻资源：只写轻资源，体积小；缺贴图的件会变紫问号
+  - 移除补丁：删掉补丁文件，资源还回资源包口
+- 补丁写在游戏目录：`data/9ba626afa44a3aa3.patch_N`（注册表包永远被加载，所以补丁一定被合并）。
+  槽位编号永远取「最高位 + 1」，不填洞（中间留洞会让后面的补丁全部失效）；移除时后面的槽位整体下移。
+- 账本 `residency.txt` 存在配置目录，面板据此显示当前状态；重启游戏后生效。
+
+## 实现
+
+- `offline/res_patch.lua`：DSAR 解压（自带 LZ4 block）、bundles.nxa 索引、按 fragment 拼包、
+  Package 容器解析与子集重建（toc 绝对偏移 + 16 对齐、gpu 64 对齐、entry_index 重排、type num_files 回填）、
+  槽位与账本管理。纯 Lua 5.1，无外部依赖。
+- `src/stat_editor.lua`：新增 `MOD.resident`（ctx / package_name / state_of / act），
+  `stratagem_rows` 加行，`row_value` / `change` / `state.desktop.set` / `rows` / `choices` / `choose` 各接一处。
+- `offline/host.lua`：把 `I.find_game` 的结果通过 `SHODAN_OFFLINE_GAME` 交给面板。
+
+## 验证
+
+- srkit 反向解析：full 10 条 / light 6 条，与源包逐字节一致（matched 全中、bad 0）。
+- 真 LuaJIT 探针：0→1→2→3 全通，槽位复用正确，sidecar 会随模式切换清理。
+- host 自带 QA 闸门：EXIT=0、无 failure.txt、0 未译项。
+- 真实游戏目录零写入（探针跑在硬链接假数据树上）。

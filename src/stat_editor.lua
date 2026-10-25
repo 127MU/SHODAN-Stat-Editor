@@ -16759,6 +16759,7 @@ end
 -- A row's value (the mean of its parts); default = true: the game's own value instead.
 local function row_value(row, default)
     local get = default and default_of or read_field
+    if row.choice == 'resomode' then return MOD.resident.state_of(row) end
     if row.choice == 'grenade' and not default and row.parts[1].field.pending_value ~= nil then
         return row.parts[1].field.pending_value
     end
@@ -17856,6 +17857,89 @@ function MOD.ents.rows(entry, key)
     end
 end
 
+MOD.resident = { carrier = '9ba626afa44a3aa3' }   -- the registry package: always loaded, so a patch there is merged
+MOD.resident.LABELS = { [0] = '未安装', [1] = '完整（含贴图）', [2] = '仅轻资源', [3] = '移除补丁' }
+MOD.resident.TIP = {
+    '等价于工具包的「资源层驻留」：把这一条的包写进游戏目录的补丁文件，不占引擎的包口也能常驻。',
+    '补丁文件放在游戏目录里，名字是载体包名加上补丁序号；载体用注册表包，它每次开局都会被加载，补丁因此一定被合并。改完要重启游戏。',
+    '完整：贴图、模型、音效全都带上；仅轻资源：只写轻资源，贴图缺失的件会变成紫问号。',
+    '移除补丁会把文件删掉，资源还回给上面的资源包口。',
+}
+
+function MOD.resident.module()
+    if MOD.resident.loaded ~= nil then return MOD.resident.loaded or nil end
+    if not MOD.offline then MOD.resident.loaded = false return nil end
+    local ok, module = pcall(require, 'res_patch')
+    if not ok or type(module) ~= 'table' then
+        log('resource residency: ' .. tostring(module))
+        MOD.resident.loaded = false
+        return nil
+    end
+    MOD.resident.loaded = module
+    return module
+end
+
+function MOD.resident.ctx()
+    local cached = MOD.resident.cache
+    if cached then return cached end
+    local module = MOD.resident.module()
+    if not module then return nil, '读不到资源驻留模块（offline/res_patch.lua）' end
+    local game = rawget(_G, 'SHODAN_OFFLINE_GAME')
+    if type(game) ~= 'string' or game == '' then return nil, '只有离线版能写补丁：拿不到游戏目录' end
+    local root = game:gsub('[/\\]game[/\\]?$', ''):gsub('[/\\]+$', '')
+    if not module.file_size(root .. '/bundles.nxa') then
+        return nil, '这个游戏目录里没有 bundles.nxa：' .. root
+    end
+    cached = { root = root, profile = data_dir('StatEditor') }
+    MOD.resident.cache = cached
+    return cached
+end
+
+function MOD.resident.package_name(row)
+    local target = row.package_row
+    local field = target and target.parts and target.parts[1] and target.parts[1].field
+    local value = field and read_field(field)
+    if type(value) ~= 'number' or value == 0 then return nil end
+    local item = MOD.refs.packages().by_id[value]
+    if not item or not item.bytes then return nil end
+    return MOD.refs.hex(item.bytes):lower()
+end
+
+function MOD.resident.state_of(row)
+    local package = MOD.resident.package_name(row)
+    if not package then return 0 end
+    local memo = MOD.resident.memo
+    if memo and memo[package] then return memo[package] end
+    local ctx = MOD.resident.ctx()
+    if not ctx then return 0 end
+    local module = MOD.resident.module()
+    local ok, value = pcall(module.state, ctx, MOD.resident.carrier, package)
+    if not ok or type(value) ~= 'number' then return 0 end
+    MOD.resident.memo = memo or {}
+    MOD.resident.memo[package] = value
+    return value
+end
+
+function MOD.resident.act(row, mode)
+    local module = MOD.resident.module()
+    if not module then return false, '读不到资源驻留模块（offline/res_patch.lua）' end
+    local ctx, why = MOD.resident.ctx()
+    if not ctx then return false, why end
+    local package = MOD.resident.package_name(row)
+    if not package then return false, '这一条还没有资源包（+168 是 0），先在上面填一个' end
+    MOD.resident.memo = nil
+    if mode == 3 then
+        local ok, err = module.remove(ctx, MOD.resident.carrier, package)
+        if not ok then return false, '移除补丁失败：' .. tostring(err) end
+        return true, '已移除补丁 ' .. package .. '（重启游戏后生效）'
+    end
+    local wanted = mode == 1 and 'full' or 'light'
+    local info, err = module.install(ctx, MOD.resident.carrier, package, wanted)
+    if not info then return false, '写补丁失败：' .. tostring(err) end
+    local size = ((tonumber(info.toc) or 0) + (tonumber(info.gpu) or 0) + (tonumber(info.stream) or 0)) / 1048576
+    return true, string.format('已写入 %s.patch_%d：%d 个条目，%.1f MB，%s；重启游戏后生效',
+        MOD.resident.carrier, info.index, info.entries, size, wanted == 'full' and '含贴图' or '仅轻资源')
+end
 -- A stratagem's two package slots, then the hellpod rack it lands with. A sentry owns one or two
 -- stratagems (the Rocket Sentry has two), so a second set is told apart by 'suffix'.
 function MOD.refs.stratagem_rows(entry, def, keys, suffix)
@@ -17874,6 +17958,13 @@ function MOD.refs.stratagem_rows(entry, def, keys, suffix)
     local ent = row('资源驻留', 'load_entry' .. suffix, '装配条目（+248）' .. tag, def.kind, def.off + 248, 'entry', 0, 100000,
             { 'LoadoutEntry：武器自带的那一套资源；153 行里只填了 37 行。' })
     ent.choice = 'entry'
+    if suffix == '' then
+        local reso = add_row(entry, '资源驻留', 'resomode', 'Resident (patch, no slot)', 'virtual',
+                { part('resomode', def.kind, 0, 'virtual', 3) }, 0, 3, 1, 1)
+        reso.choice = 'resomode'
+        reso.package_row = pkg
+        reso.tip = MOD.resident.TIP
+    end
     if suffix ~= '' or not keys then return end
     local racks = tables[TYPES.rack]
     local rack
@@ -18443,6 +18534,14 @@ local function change(row, delta_sign, big, exact)
         return
     end
     if row.choice then
+        if row.choice == 'resomode' then
+            local target = exact and math.floor(exact + 0.5) or math.max(0, math.min(3, current + delta_sign))
+            local ok, why = MOD.resident.act(row, target)
+            ok = ok
+            ui.message = { text = why, till = api.now() + 5 }
+            ui.version = ui.version + 1
+            return
+        end
         if row.choice == 'grenade' then
             local spec = KINDS[TYPES.throwable]
             local target = exact and math.floor(exact + 0.5) or spec.step(current, delta_sign * (big and 10 or 1))
@@ -22424,6 +22523,7 @@ if MOD.offline then
             elseif row.choice=='apex_fire' then choice_name=v==2719 and '站立开火（参考 Mod）' or '原始开火动作'
             elseif row.choice=='firemode' then choice_name=MOD.FIRE_MODES[v] or ('模式 ' .. tostring(v))
             elseif row.choice=='fntype' then choice_name=MOD.FIRE_FUNCTIONS[v] or ('未确认功能 ' .. tostring(v))
+            elseif row.choice=='resomode' then choice_name=MOD.resident.LABELS[v] or tostring(v)
             elseif row.choice=='slot' then choice_name=v==1 and '主武器' or '副武器'
             elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then
                 local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
@@ -22455,6 +22555,12 @@ if MOD.offline then
         value=assert(tonumber(value),'请输入有效数值')
         assert(value==value and math.abs(value)~=math.huge,'请输入有限数值')
         if row.choice=='weight' then assert(value==0 or value==1 or value==2,'护甲重量只能选择轻型、中型或重型') end
+        if row.choice=='resomode' then
+            local ok, why = MOD.resident.act(row, math.floor(value + 0.5))
+            if not ok then error(settings.tr(why),0) end
+            save_config()
+            return why
+        end
         ui.message=nil;change(row,0,false,value)
         if ui.message then error(settings.tr(ui.message.text),0) end
         save_config()
@@ -22485,6 +22591,9 @@ if MOD.offline then
             for _,it in ipairs(reg and reg.list or {}) do out[#out+1]={id=it.id,name=settings.tr(it.label)} end
             return out
         end
+        if row and row.choice=='resomode' then
+            return {{id=0,name=MOD.resident.LABELS[0]},{id=1,name=MOD.resident.LABELS[1]},{id=2,name=MOD.resident.LABELS[2]},{id=3,name=MOD.resident.LABELS[3]}}
+        end
         if row and row.choice=='slot' then return {{id=1,name='主武器'},{id=3,name='副武器'}} end
         if row and (row.choice=='rackitem' or row.choice=='package' or row.choice=='entry') then
             local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
@@ -22511,7 +22620,7 @@ if MOD.offline then
         id=assert(tonumber(id),'请选择有效的条目 ID')
         if row.choice=='weight' then assert(id==0 or id==1 or id==2,'护甲重量类型无效');return state.desktop.set(n,id)
         elseif row.choice=='apex_fire' then assert(id==2677 or id==2719,'请选择有效的尖峰开火动作');return state.desktop.set(n,id)
-        elseif row.choice=='firemode' or row.choice=='fntype' then return state.desktop.set(n,id)
+        elseif row.choice=='firemode' or row.choice=='fntype' or row.choice=='resomode' then return state.desktop.set(n,id)
         elseif row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
             return state.desktop.set(n,id)
         elseif row.choice=='slot' then return state.desktop.set(n,id)
