@@ -110,7 +110,13 @@ Timer {
             else if(step===70){ensure(Backend.qaCheck("save_preset_name",true),"无法点击预设保存")}
             else if(step===71){ensure(store.presets.some(x=>x.name==="全局预设保存测试"),"点击保存后全局预设未落盘");Backend.capture("47-global-preset-saved");window.renamePreset("full",store.presets.find(x=>x.name==="全局预设保存测试").id)}
             else if(step===72){ensure(Backend.qaEdit("preset_name_input","回车重命名测试",true),"预设回车无法提交")}
-            else if(step===73){ensure(store.presets.some(x=>x.name==="回车重命名测试"),"回车重命名后预设未更新");Backend.capture("48-global-preset-renamed");Backend.finishQa("")}
+            else if(step===73){ensure(store.presets.some(x=>x.name==="回车重命名测试"),"回车重命名后预设未更新");Backend.capture("48-global-preset-renamed");window.qaShowExtraWarning()}
+            else if(step===74){ensure(window.qaWarningCanContinue(),"警告仍在禁止继续");Backend.capture("49-extra-warning-choice");ensure(Backend.qaCheck("review_cancel",true),"警告取消按钮无法点击")}
+            else if(step===75){ensure(window.qaWarningAccepted===0,"取消警告后仍应用操作");window.qaShowExtraWarning()}
+            else if(step===76){ensure(Backend.qaCheck("review_continue",true),"警告继续按钮无法点击")}
+            else if(step===77){ensure(window.qaWarningAccepted===1,"确认继续未执行操作");Backend.capture("50-extra-warning-confirmed");store.openModule("records")}
+            else if(step===78){const arcs=store.library.filter(x=>String(x.id).startsWith("F4"));ensure(arcs.length===16,"电弧记录入口未覆盖全部 16 条");store.select(arcs.find(x=>x.id==="F40000000000000F"))}
+            else if(step===79){ensure(store.rows.some(x=>x.flag && String(x.label).includes("电弧排除发射者")),"电弧排除发射者开关未显示");Backend.capture("51-arc-emitter-exclusion");Backend.finishQa("")}
             step++
         }catch(e){Backend.finishQa(String(e))}
     }

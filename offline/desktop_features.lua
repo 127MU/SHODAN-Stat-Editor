@@ -148,7 +148,9 @@ function M.attach(B,C)
             error('此预设的 '..#warnings..' 项参数均无法识别，已停止读取以免清空当前修改。请使用创建预设时的版本重新导出。首项：'..warnings[1],0)
         end
         if C.validate_values then C.validate_values(bundle,fields) end
-        return fields,warnings,accepted
+        local skipped=#warnings
+        if C.preset_warnings then for _,warning in ipairs(C.preset_warnings(bundle,fields))do warnings[#warnings+1]=warning end end
+        return fields,warnings,accepted,skipped
     end
     local function describe(w,p,before,after,index)
         return {equipment=C.name and C.name(w) or C.tr(w.name),parameter=C.tr(p.row and p.row.label or p.id),
@@ -160,7 +162,7 @@ function M.attach(B,C)
         return all
     end
     local function compare(bundle,allow_missing)
-        local desired,warnings,accepted=validate(bundle,allow_missing);local out,seen={},{};local registry=current_registry();local index=M.shared_index(registry)
+        local desired,warnings,accepted,skipped=validate(bundle,allow_missing);local out,seen={},{};local registry=current_registry();local index=M.shared_index(registry)
         for _,w in pairs(registry) do
             if (bundle.kind=='full' and (not C.in_scope or C.in_scope(w))) or w.hash==bundle.weapon then
                 for _,row in ipairs(w.rows or {}) do for _,p in ipairs(row.parts) do
@@ -174,7 +176,7 @@ function M.attach(B,C)
             end
         end
         table.sort(out,function(a,b)return a.equipment..a.parameter<b.equipment..b.parameter end)
-        return {name=bundle.name,entries=out,count=#out,kind=bundle.kind,warnings=warnings,skipped=#warnings,accepted=accepted}
+        return {name=bundle.name,entries=out,count=#out,kind=bundle.kind,warnings=warnings,skipped=skipped,accepted=accepted}
     end
     function B.preset_info(slot)
         local w=assert(C.selected());local values=P.weapon_preset(w,slot)
