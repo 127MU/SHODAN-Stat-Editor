@@ -355,4 +355,28 @@ assert(os.remove(path(0)))
 local gone,gone_why=M.patch_entry(ctx,host,'pkg_dup',DUP_ID,T1)
 assert(gone==nil and gone_why:find('补丁文件读不到',1,true))
 ''')
+ def test_entry_updates_preserve_other_changes_and_residency(self):
+  self.check("""assert(M.update_entry(ctx,host,'pkg_two','res',C_ID,T2,NEW_C))
+assert(M.update_entry(ctx,host,'pkg_two','res',D_ID,T3,'SECOND_EDIT'))
+assert(M.patch_entry(ctx,host,'pkg_two',C_ID,T2)==NEW_C)
+assert(M.patch_entry(ctx,host,'pkg_two',D_ID,T3)=='SECOND_EDIT')
+assert(M.revert_entry(ctx,host,'pkg_two',C_ID,T2))
+assert(M.patch_entry(ctx,host,'pkg_two',D_ID,T3)=='SECOND_EDIT')
+assert(M.install(ctx,host,'pkg_two','full'))
+assert(M.patch_entry(ctx,host,'pkg_two',D_ID,T3)=='SECOND_EDIT')
+assert(M.patch_entry(ctx,host,'pkg_two',C_ID,T2)=='type_two_light')
+assert(M.revert_entry(ctx,host,'pkg_two',D_ID,T3))
+assert(M.state(ctx,host,'pkg_two')==1)
+assert(M.patch_entry(ctx,host,'pkg_two',D_ID,T3)=='type_three_light')""")
+ def test_last_entry_removal_only_removes_resource_patch(self):
+  self.check("""assert(M.update_entry(ctx,host,'pkg_two','res',C_ID,T2,NEW_C))
+assert(M.revert_entry(ctx,host,'pkg_two',C_ID,T2))
+assert(M.entry_of(ctx,host,'pkg_two')==nil)
+assert(M.file_size(path(0))==nil)""")
+ def test_unreadable_patch_is_not_discarded_by_update(self):
+  self.check("""assert(M.update_entry(ctx,host,'pkg_two','res',C_ID,T2,NEW_C))
+local before=snapshot();local read=M.read_file
+M.read_file=function(p)if p==path(0)then return nil,'blocked read'end;return read(p)end
+local ok,why=M.update_entry(ctx,host,'pkg_two','res',D_ID,T3,'SECOND_EDIT')
+M.read_file=read;assert(not ok and why:find('blocked read',1,true));assert(snapshot()==before)""")
 if __name__=='__main__':unittest.main()

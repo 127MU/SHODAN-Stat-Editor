@@ -43,6 +43,19 @@ class ArmoryTests(unittest.TestCase):
         local roundtrip=A.parse(saved)
         assert(roundtrip[7] and not next(roundtrip[7].enabled))
         ''')
+    def test_cleared_groups_not_counted_but_keep_empty_override(self):
+        lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
+        lua.execute("""local A=require('armory');A.refresh({1,7,42})
+        A.profiles={[999]={enabled={},own=true,configured=true},[42]={enabled={},own=true,configured=true}}
+        local groups,rows=A.count();assert(groups==0 and rows==0 and not A.touches())
+        A.profiles[999].enabled[7]=true
+        groups,rows=A.count();assert(groups==1 and rows==1)
+        local stacks=A.selection({}, {}, {1,7,42});assert(#stacks[42]==0)
+        A.profiles=A.parse(A.serialize());groups,rows=A.count();assert(groups==1 and rows==1)
+        stacks=A.selection({}, {}, {1,7,42});assert(#stacks[42]==0)
+        A.profiles[999].enabled={};A.profiles[42].own=false
+        groups,rows=A.count();assert(groups==1 and rows==0)
+        """)
     def test_numeric_import_checks_entire_plan_before_writing(self):
         lua=LuaRuntime();lua.execute("package.path="+repr(str(ROOT/'offline/?.lua').replace('\\','/'))+"..';'..package.path")
         lua.execute(r'''local ffi=require('ffi')

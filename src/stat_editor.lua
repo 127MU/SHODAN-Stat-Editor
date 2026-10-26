@@ -18073,6 +18073,7 @@ function MOD.resident.act(row, mode)
     if not packages then return false, why end
     if #packages == 0 then return false, why end
     MOD.resident.memo, MOD.resident.cat = nil, nil
+    if MOD.sm then MOD.sm.cache = nil end
     if mode == 3 then
         local done, failed = {}, {}
         for _, package in ipairs(packages) do
@@ -18444,7 +18445,7 @@ function MOD.sm.note(row)
 end
 
 -- Why this row cannot be applied, or nil: the same gate the residency rows go through, plus the recipe.
-function MOD.sm.blocked(row)
+function MOD.sm.blocked(row, removing)
     local patch, machine = MOD.sm.patch_module(), MOD.sm.module()
     if not patch then return '资源补丁模块版本过旧：需要带 entries_of_type / install_with 的 res_patch' end
     if not machine then return '读不到状态机模块（offline/state_machine.lua）' end
@@ -18454,8 +18455,8 @@ function MOD.sm.blocked(row)
     if not package then return '这一条还没有资源包（+168 是 0），先在上面填一个' end
     local info = MOD.sm.info(package, MOD.sm.pick_of(row))
     if not info.id then return info.why or '读不到状态机资源' end
-    if not info.plan then return '这个状态机的配方算不出来' end
-    if info.count == 0 then
+    if not removing and not info.plan then return '这个状态机的配方算不出来' end
+    if not removing and info.count == 0 then
         if info.plan.template == 'none' then
             if #info.entries > 1 then
                 return '这份状态机里没有可用的部署状态：把「状态机资源」换成另一份再试'
@@ -18476,16 +18477,16 @@ function MOD.sm.act(row, mode)
     if os.getenv('SHODAN_QA_OUTPUT') or os.getenv('SHODAN_HUSKAR_QA') then
         return false, '测试模式禁止修改游戏资源补丁'
     end
-    local why, info = MOD.sm.blocked(row)
+    local why, info = MOD.sm.blocked(row, mode == 2)
     if why and mode == 1 then return false, why end
     if why and info == nil then return false, why end
     local patch, machine = MOD.sm.patch_module(), MOD.sm.module()
     local ctx = MOD.sm.ctx()
     local package = MOD.sm.package_of(row)
     if not ctx or not package then return false, why or '读不到资源包' end
-    MOD.sm.cache = nil
+    MOD.sm.cache, MOD.resident.memo = nil, nil
     if mode == 2 then
-        local ok, err = patch.revert(ctx, MOD.sm.carrier, package)
+        local ok, err = patch.revert_entry(ctx, MOD.sm.carrier, package, info.id, MOD.sm.TYPE)
         if not ok then return false, '移除补丁失败：' .. tostring(err) end
         return true, string.format('已移除 %s 的状态机补丁；重启游戏后生效', package)
     end
@@ -18494,9 +18495,7 @@ function MOD.sm.act(row, mode)
     if not new_bytes then return false, '改写状态机失败：' .. tostring(failed) end
     local today = patch.state(ctx, MOD.sm.carrier, package)
     local wanted = today == 1 and 'full' or today == 2 and 'light' or 'res'
-    local overrides = {}
-    overrides[MOD.sm.TYPE .. ':' .. info.id] = new_bytes
-    local wrote, err = patch.install_with(ctx, MOD.sm.carrier, package, wanted, overrides)
+    local wrote, err = patch.update_entry(ctx, MOD.sm.carrier, package, wanted, info.id, MOD.sm.TYPE, new_bytes)
     if not wrote then return false, '写补丁失败：' .. tostring(err) end
     local parts = {}
     for _, step in ipairs(plan.changes or {}) do

@@ -101,7 +101,7 @@ function M.count()
         local p = M.profiles[id]
         if p then
             local n = chosen(p)
-            if n > 0 or p.own == false or p.configured then
+            if n > 0 or p.own == false then
                 groups = groups + 1
                 rows = rows + n
             end
