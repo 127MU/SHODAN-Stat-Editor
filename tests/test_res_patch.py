@@ -52,11 +52,33 @@ assert(M.file_size(path(0,'.stream'))==nil and M.file_size(path(0,'.gpu_resource
  def test_unreadable_original_never_overwritten(self):
   self.lua.execute("""assert(M.install(ctx,host,name,'full'));local before=snapshot();local read=M.read_file
 M.read_file=function(p)if p==path(0)then return nil,'injected read failure'end;return read(p)end
-local ok,why=M.install(ctx,host,name,'light');assert(not ok and why=='injected read failure');M.read_file=read;unchanged(before)""")
+local ok,why=M.install(ctx,host,name,'light');assert(not ok and why:find('injected read failure',1,true));M.read_file=read;unchanged(before)""")
  def test_exception_rolls_back_replacement(self):
   self.lua.execute("""assert(M.install(ctx,host,name,'full'));local before=snapshot();local write=M.write_file;local failed=false
 M.write_file=function(p,b)if p==M.ledger_path(ctx) and not failed then failed=true;error('injected exception')end;return write(p,b)end
 assert(not M.install(ctx,host,name,'light'));unchanged(before)""")
  def test_invalid_mode_never_writes(self):
   self.lua.execute("local before=snapshot();assert(not M.install(ctx,host,name,'unknown'));unchanged(before)")
+ def test_high_slots_preserved_and_owned_removal_compacts(self):
+  self.lua.execute("""for i=0,79 do assert(M.write_file(path(i),'foreign '..i))end
+local info=assert(M.install(ctx,host,name,'light'));assert(info.index==80)
+assert(M.read_file(path(79))=='foreign 79')
+assert(M.install(ctx,host,name,'full').index==80)
+assert(M.remove(ctx,host,name));assert(M.read_file(path(79))=='foreign 79')
+assert(M.file_size(path(80))==nil)""")
+ def test_hole_preflight_does_not_decode_bundles(self):
+  self.lua.execute("""assert(M.write_file(path(80),'foreign'));ctx.set=nil
+local ok,why=M.install(ctx,host,name,'full')
+assert(not ok and why:find('不连续',1,true),tostring(why))
+assert(ctx.set==nil and ctx.error==nil)""")
+ def test_lz4_fast_matches_reference_and_rejects_bad_input(self):
+  self.lua.execute("""local src=string.char(0x10)..'a'..string.char(1,0)
+..string.rep(string.char(0x0f,1,0,0),8000)..string.char(0x50)..'hello'
+local size=5+8000*19+5
+local expected=assert(M._string_lz4(src,size));local actual=assert(M.lz4_block(src,size))
+assert(actual==expected and actual==string.rep('a',size-5)..'hello')
+for _,bad in ipairs({string.char(0x0f),string.char(0,0,0),string.char(0,1,0),string.char(0xf0,255)})do
+local ok,value=pcall(M.lz4_block,bad,32);assert(ok and value==nil)
+end
+assert(not M.lz4_block(src,size-1));assert(not M.lz4_block(src,size+1))""")
 if __name__=='__main__':unittest.main()

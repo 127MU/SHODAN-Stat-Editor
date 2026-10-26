@@ -139,7 +139,61 @@ local function lz4_block(src, out_size)
     return table.concat(parts)
 end
 
+-- LuaJIT can decode into one bounded buffer. The string fallback repeatedly
+-- copies a 256 KiB history for every match, which dominates large resource packs.
+local has_ffi, ffi = pcall(require, 'ffi')
+local string_lz4 = lz4_block
+if has_ffi then
+    lz4_block = function(src, out_size)
+        if not out_size then return string_lz4(src, out_size) end
+        if out_size < 0 or out_size ~= math.floor(out_size) then return nil, 'LZ4 解压长度无效' end
+        local out = ffi.new('uint8_t[?]', math.max(1, out_size))
+        local input = ffi.cast('const uint8_t *', src)
+        local i, done, n = 0, 0, #src
+        local function length(value)
+            if value == 15 then
+                while true do
+                    if i >= n then return nil end
+                    local extra = tonumber(input[i]); i = i + 1
+                    value = value + extra
+                    if extra ~= 255 then break end
+                end
+            end
+            return value
+        end
+        while i < n do
+            local token = tonumber(input[i]); i = i + 1
+            local literals = length(math.floor(token / 16))
+            if not literals or i + literals > n or done + literals > out_size then
+                return nil, 'LZ4 原始数据段超出边界'
+            end
+            if literals > 0 then ffi.copy(out + done, input + i, literals) end
+            i, done = i + literals, done + literals
+            if i == n then break end
+            if i + 2 > n then return nil, 'LZ4 匹配偏移字段不完整' end
+            local offset = tonumber(input[i]) + tonumber(input[i+1]) * 256; i = i + 2
+            if offset == 0 or offset > done then return nil, 'LZ4 匹配位置超出数据块起点' end
+            local match = length(token % 16)
+            if not match or done + match + 4 > out_size then return nil, 'LZ4 匹配段超出边界' end
+            match = match + 4
+            -- Never pass overlapping ranges to memcpy: seed from history, then
+            -- double the copied prefix to expand overlapping LZ4 matches safely.
+            local copied = math.min(offset, match)
+            ffi.copy(out + done, out + done - offset, copied)
+            while copied < match do
+                local count = math.min(copied, match - copied)
+                ffi.copy(out + done + copied, out + done, count)
+                copied = copied + count
+            end
+            done = done + match
+        end
+        if done ~= out_size then return nil, 'LZ4 解压长度不匹配' end
+        return ffi.string(out, done)
+    end
+end
 M.lz4_block = lz4_block
+M._string_lz4 = string_lz4 -- independent reference for codec regression tests
+
 
 -- ---------------------------------------------------------------- DSAR chunks
 
@@ -568,18 +622,23 @@ local function used_numbers(root, host)
     local handle = io.open(root .. '/bundles.nxa', 'rb')
     if not handle then return nil end
     handle:close()
-    local used, highest = {}, -1
-    for index = 0, 63 do
-        local base = root .. '/' .. patch_name(host, index)
-        local size = M.file_size(base)
-        if size == nil then
-            size = M.file_size(base .. '.stream') or M.file_size(base .. '.gpu_resources')
-        end
-        if size ~= nil then
+    -- Enumerate real names: a fixed 0..63 probe ignored existing higher patches
+    -- and could overwrite them when compacting an owned patch.
+    local ok, installer = pcall(require, 'install')
+    if not ok or type(installer.list_files) ~= 'function' then return nil end
+    local names = installer.list_files(root, host .. '.patch_*')
+    local used, seen, highest = {}, {}, -1
+    for _, filename in ipairs(names) do
+        local suffix = filename:sub(#host + 1)
+        local number, tail = suffix:match('^%.patch_(%d+)(.*)$')
+        local index = tonumber(number)
+        if index and (tail == '' or tail == '.stream' or tail == '.gpu_resources') and not seen[index] then
+            seen[index] = true
             used[#used + 1] = index
-            highest = index
+            highest = math.max(highest, index)
         end
     end
+    table.sort(used)
     return used, highest
 end
 
@@ -754,7 +813,6 @@ local function slot_for(ctx, host, name)
     local used, highest = used_numbers(ctx.root, host)
     if not used then return nil, nil, nil, '找不到游戏资源目录：' .. ctx.root end
     if #used ~= highest + 1 then return nil, nil, nil, '补丁序号不连续，请先整理现有补丁；未修改任何文件' end
-    if highest >= 63 then return nil, nil, nil, '补丁槽位已满' end
     return entries, nil, highest + 1
 end
 
@@ -814,6 +872,8 @@ function M.install_with(ctx, host, name, mode, overrides)
             end
         end
     end
+    local entries, at, slot_index, slot_why = slot_for(ctx, host, name)
+    if not entries then return nil, slot_why end
     local set, why = bundle_set(ctx)
     if not set then return nil, why end
     if not set.packages[name] then return nil, '当前游戏中找不到资源包：' .. name end
@@ -849,15 +909,15 @@ function M.install_with(ctx, host, name, mode, overrides)
     local build_spec = picked and trimmed_spec(spec, blobs) or spec
     local toc, gpu, stream = build_package(build_spec, blobs)
 
-    local entries, at, index, slot_why = slot_for(ctx, host, name)
-    if not entries then return nil, slot_why end
-    return write_patch(ctx, host, name, mode, index, at, entries, toc, gpu, stream, #blobs)
+    return write_patch(ctx, host, name, mode, slot_index, at, entries, toc, gpu, stream, #blobs)
 end
 
 -- Writes one patch set and returns the slot it took, plus what went into it.
 function M.install(ctx, host, name, mode)
     if mode ~= 'full' and mode ~= 'light' then return nil, '无效的资源驻留模式' end
-    return M.install_with(ctx, host, name, mode, nil)
+    local overrides, why = M.saved_overrides(ctx, host, name)
+    if not overrides then return nil, why end
+    return M.install_with(ctx, host, name, mode, overrides)
 end
 
 -- Takes one patch set back out.  Later slots move down so the numbering stays continuous (a hole
@@ -986,5 +1046,50 @@ M._internal.patch_name = patch_name
 M._internal.used_numbers = used_numbers
 M._internal.override_for = override_for
 M._internal.trimmed_spec = trimmed_spec
+
+-- Recover only edited TOC resources from our current patch. Read it once and
+-- compare against source bytes; never turn an unreadable patch into an empty plan.
+function M.saved_overrides(ctx, host, name)
+    if not M.entry_of(ctx, host, name) then return {} end
+    local held, _, why = patch_set(ctx, host, name)
+    if not held then return nil, why end
+    local spec, why = package_head(held, name)
+    if not spec then return nil, why end
+    local set, why = bundle_set(ctx)
+    if not set then return nil, why end
+    local source, why = package_head(set, name)
+    if not source then return nil, why end
+    local originals = {}
+    for _, item in ipairs(source.entries) do originals[item.type_hex .. ':' .. item.id_hex] = item end
+    local overrides = {}
+    for _, item in ipairs(spec.entries) do
+        local key = item.type_hex .. ':' .. item.id_hex
+        local original = originals[key]
+        if not original then return nil, '已安装补丁含有当前原包中不存在的资源：' .. key end
+        local bytes, why = package_read(held, name, item.toc_at, item.toc_size)
+        if not bytes then return nil, why end
+        local baseline, why = package_read(set, name, original.toc_at, original.toc_size)
+        if not baseline then return nil, why end
+        if bytes ~= baseline then overrides[key] = bytes end
+    end
+    return overrides
+end
+
+function M.update_entry(ctx, host, name, mode, id, kind, bytes)
+    local overrides, why = M.saved_overrides(ctx, host, name)
+    if not overrides then return nil, why end
+    overrides[hex_key(kind) .. ':' .. hex_key(id)] = bytes
+    return M.install_with(ctx, host, name, mode, overrides)
+end
+
+function M.revert_entry(ctx, host, name, id, kind)
+    local entry = M.entry_of(ctx, host, name)
+    if not entry then return true end
+    local overrides, why = M.saved_overrides(ctx, host, name)
+    if not overrides then return nil, why end
+    overrides[hex_key(kind) .. ':' .. hex_key(id)] = nil
+    if entry.mode == 'res' and not next(overrides) then return M.remove(ctx, host, name) end
+    return M.install_with(ctx, host, name, entry.mode, overrides)
+end
 
 return M
