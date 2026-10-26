@@ -12460,6 +12460,18 @@ local function part(id, kind, offset, storage, limit)
     return { id = id, field = field_at(kind, offset, storage, limit) }
 end
 
+-- ArcInfo +100 is the emitter-exclusion flag in the current 104-byte layout.
+-- Preserve the stored default: most stock arc types already enable it.
+function MOD.arc_self_row(entry,section,prefix,arc)
+    if KINDS[TYPES.arc].stride~=104 then return end
+    local p=part(prefix..'exclude_self',TYPES.arc,arc+100,'flag',1)
+    local original=default_of(p.field)
+    if original~=0 and original~=1 then return end
+    local row=add_row(entry,section,prefix..'exclude_self','电弧排除发射者（实验）','flag',{p},0,1,1,1)
+    row.tip={'控制当前电弧是否排除发射者；不代表队友免伤，也不消除弹丸直击或其他爆炸伤害。',
+             '投掷物的发射者归属与游戏内效果仍需实机验证。部分电弧原值已开启；共用此电弧记录的效果会一起受影响。'}
+end
+
 local function read_text(address)
     local bytes = address and address > 65536 and api.read(address, 96)
     local text = bytes and bytes:match('^([^%z]*)%z')
@@ -13213,6 +13225,7 @@ local function resolve_gun(weapon, key)
     end
     local damage_to = #weapon.rows
     if arow then
+        MOD.arc_self_row(weapon,'Arc','arc_',arow)
         add_row(weapon, 'Arc', 'arc_range', 'Range (m)', 'f32', { part('arc_range', TYPES.arc, arow + 8, 'f32', 100000) },
                 0, 1000, 1, 5)
         add_row(weapon, 'Arc', 'arc_chain', 'Chain length', 'u32', { MOD.solo(part('arc_chain', TYPES.arc, arow + 28, 'u32', 1000)) },
@@ -13368,6 +13381,7 @@ local function resolve_gun(weapon, key)
                             0, 20, 1, 1)
                     add_row(weapon, section, pre .. 'split', 'Chain split', 'u32', { MOD.solo(part(pre .. 'split', TYPES.arc, arc + 32, 'u32', 1000)) },
                             0, 20, 1, 1)
+                    MOD.arc_self_row(weapon,section,pre,arc)
                     local aid = read_field(field_at(TYPES.arc, arc + 36, 'u32', 100000))
                     local arow = aid and tables[T_DAMAGE] and tables[T_DAMAGE].index[aid]
                     if arow then
@@ -13774,7 +13788,7 @@ local function resolve_gun(weapon, key)
                 p.field.allowed={[2677]=true,[2719]=true,why='请选择有效的尖峰开火动作'}
                 local row=add_row(weapon,'Handling','apex_fire_ability','Apex firing action','u32',{p},2677,2719,1,1)
                 row.choice='apex_fire'
-                row.tip={'参考 AMW20 尖峰站立开火 Mod：开火能力由 2677 切换为 2719。仅修改开火动作，不修改射速、伤害或弹药。此方案尚未在本机对局验证。'}
+                row.tip={'开火能力由 2677 切换为 2719，仅修改开火动作，不修改射速、伤害或弹药。此选项尚未在本机对局验证。'}
             end
         end
         MOD.spin_rows(weapon, data, record(TYPES.windup))
@@ -14996,6 +15010,7 @@ local function resolve_throwable(entry, placed)
         if not deep then return true end
         local arc = tables[TYPES.arc] and tables[TYPES.arc].index[read_field(field_at(T_EXPLOSION, xrow + 120, 'u32', 100000)) or -1]
         if arc then
+            MOD.arc_self_row(entry,'Arc','arc_',arc)
             add_row(entry, 'Arc', 'arc_range', 'Range (m)', 'f32', { part('arc_range', TYPES.arc, arc + 8, 'f32', 100000) }, 0, 1000, 1, 5)
             add_row(entry, 'Arc', 'arc_chain', 'Chain length', 'u32', { MOD.solo(part('arc_chain', TYPES.arc, arc + 28, 'u32', 1000)) }, 0, 20, 1, 1)
             add_row(entry, 'Arc', 'arc_split', 'Chain split', 'u32', { MOD.solo(part('arc_split', TYPES.arc, arc + 32, 'u32', 1000)) }, 0, 20, 1, 1)
@@ -16202,9 +16217,9 @@ end
 -- Records (CarbonAnime, PR #58): the projectile, explosion and status records themselves, by id. Their names: a
 -- projectile's the game's name of its round (MOD.round_names), else the first weapon that fires it; an explosion's
 -- the first weapon that sets it off, else the round that does; a status's its own (Burning, Gas, stuns).
-MOD.records = { pages = {}, list = nil, cache = nil, ready = false, KINDS = { T_PROJECTILE, T_EXPLOSION, T_STATUS },
-                WORD = { [T_PROJECTILE] = 'Projectile', [T_EXPLOSION] = 'Explosion', [T_STATUS] = 'Status' },
-                PREFIX = { [T_PROJECTILE] = 'F1', [T_EXPLOSION] = 'F2', [T_STATUS] = 'F3' } }
+MOD.records = { pages = {}, list = nil, cache = nil, ready = false, KINDS = { T_PROJECTILE, T_EXPLOSION, T_STATUS, TYPES.arc },
+                WORD = { [T_PROJECTILE] = 'Projectile', [T_EXPLOSION] = 'Explosion', [T_STATUS] = 'Status', [TYPES.arc] = '电弧' },
+                PREFIX = { [T_PROJECTILE] = 'F1', [T_EXPLOSION] = 'F2', [T_STATUS] = 'F3', [TYPES.arc] = 'F4' } }
 -- the fuse rows' notes (PR #80 by CarbonAnime): a blast proximity works only with the blast angle (+136) at 360
 -- (tested in game: the crossbow at 80 and 6 m does not burst in flight, the GL-21 at 360 and 6 m does), and a radius
 -- smaller than one step of the round is stepped over
@@ -16232,7 +16247,7 @@ end
 -- round that sets it off). Built once per resolve.
 function MOD.records.users()
     if MOD.records.cache then return MOD.records.cache end
-    local shots, blasts, rounds = {}, {}, {}
+    local shots, blasts, rounds, arcs = {}, {}, {}, {}
     local function add(map, id, name)
         if not id or id <= 0 then return end
         local list = map[id] or {}
@@ -16255,14 +16270,15 @@ function MOD.records.users()
             end
         end
     end
-    local shot_at, blast_at = locate(T_PROJECTILE), locate(T_EXPLOSION)
+    local shot_at, blast_at, arc_at = locate(T_PROJECTILE), locate(T_EXPLOSION), locate(TYPES.arc)
     for _, w in ipairs(weapons) do
         if #w.rows > 0 and not w.name:match('^%(') then   -- not the '(Not Used)' dummies
             for _, shot in ipairs(w.own_shots or {}) do add(shots, shot.id, w.name) end
             for _, row in ipairs(w.rows) do
                 for _, q in ipairs(row.parts) do
                     if q.field.kind == T_PROJECTILE then add(shots, shot_at(q.field.offset), w.name)
-                    elseif q.field.kind == T_EXPLOSION then add(blasts, blast_at(q.field.offset), w.name) end
+                    elseif q.field.kind == T_EXPLOSION then add(blasts, blast_at(q.field.offset), w.name)
+                    elseif q.field.kind == TYPES.arc then add(arcs, arc_at(q.field.offset), w.name) end
                 end
             end
         end
@@ -16274,14 +16290,15 @@ function MOD.records.users()
             if x and x > 0 and not rounds[x] then rounds[x] = name end
         end
     end
-    MOD.records.cache = { shots = shots, blasts = blasts, rounds = rounds }
+    MOD.records.cache = { shots = shots, blasts = blasts, rounds = rounds, arcs = arcs }
     return MOD.records.cache
 end
 -- A record's name (English), or nil.
 function MOD.records.name(kind, id)
     local u = MOD.records.users()
     if kind == T_PROJECTILE then return MOD.round_names and MOD.round_names[id] or (u.shots[id] or {})[1]
-    elseif kind == T_EXPLOSION then return (u.blasts[id] or {})[1] or u.rounds[id] end
+    elseif kind == T_EXPLOSION then return (u.blasts[id] or {})[1] or u.rounds[id]
+    elseif kind == TYPES.arc then return (u.arcs[id] or {})[1] end
     if state.lang and state.lang() == 'zh-Hans' and MOD.status.by[id] then return MOD.status.by[id].name end
     return KINDS[T_STATUS].names[id] or KINDS[T_STATUS].stuns[id]
 end
@@ -16422,6 +16439,12 @@ function MOD.records.rows(page)
             bitrow.after = { b[3] }
             bitrow.after_h = #bitrow.after * 16 + 6
         end
+    elseif kind == TYPES.arc then
+        MOD.arc_self_row(page,'Arc','arc_',at)
+        num('Arc','arc_range','Range (m)',8,'f32',1000,1,5)
+        add_row(page,'Arc','arc_chain','Chain length','u32',{MOD.solo(part('arc_chain',kind,at+28,'u32',1000))},0,20,1,1)
+        add_row(page,'Arc','arc_split','Chain split','u32',{MOD.solo(part('arc_split',kind,at+32,'u32',1000))},0,20,1,1)
+        hurt(36,'Arc','Arc')
     elseif kind == T_EXPLOSION then
         hurt(4, 'Explosion', 'Explosion')
         for _, r in ipairs({ { 'inner', 'Inner radius (m)', 16 }, { 'outer', 'Outer radius (m)', 20 },
@@ -16465,6 +16488,7 @@ function MOD.records.unnamed(page)
         if outer then return string.format('Unnamed: %gm blast', outer) end
         return 'Unnamed explosion'
     end
+    if page.kind == TYPES.arc then return '未命名电弧' end
     local duration = value('duration')
     return duration and string.format('Unnamed: %gs effect', duration) or 'Unnamed status effect'
 end
@@ -16472,10 +16496,11 @@ end
 -- A record page's title and note: 'Projectile #12 · 10g Sabot', 'Fired by: ...'.
 function MOD.records.title(page)
     local name = MOD.records.name(page.kind, page.id)
+    if page.kind==TYPES.arc and name and state.tr then name=state.tr(name) end
     if not name and state.lang and state.lang() == 'zh-Hans' then name = MOD.records.unnamed(page) end
     page.name = MOD.records.WORD[page.kind] .. ' #' .. page.id .. (name and (' · ' .. name) or '')
     local u = MOD.records.users()
-    local users = page.kind == T_PROJECTILE and u.shots[page.id] or page.kind == T_EXPLOSION and u.blasts[page.id]
+    local users = page.kind == T_PROJECTILE and u.shots[page.id] or page.kind == T_EXPLOSION and u.blasts[page.id] or page.kind == TYPES.arc and u.arcs[page.id]
     if page.kind == T_STATUS then page.note = ''
     elseif not users then page.note = 'Not used by any weapon or stratagem in this list.'
     else
@@ -16498,7 +16523,7 @@ function MOD.records.page(kind, id)
 end
 function MOD.records.find(hash)
     if type(hash) ~= 'string' or #hash ~= 16 then return nil end
-    local mark, digits = hash:match('^(F[123])(%x+)$')
+    local mark, digits = hash:match('^(F[1234])(%x+)$')
     if not mark then return nil end
     for kind, prefix in pairs(MOD.records.PREFIX) do
         if prefix == mark then return MOD.records.page(kind, tonumber(digits, 16)) end
@@ -16706,13 +16731,13 @@ do
 state.row_value = function(row, default) return row_value(row, default) end
 -- the record pages, for the headless tests: one page of a kind ('projectile', 'explosion', 'status') by id,
 state.records_page = function(what, id)
-    local kind = what == 'explosion' and T_EXPLOSION or (what == 'status' and T_STATUS or T_PROJECTILE)
+    local kind = what == 'arc' and TYPES.arc or what == 'explosion' and T_EXPLOSION or (what == 'status' and T_STATUS or T_PROJECTILE)
     local ok, page = pcall(MOD.records.page, kind, id)
     return ok and page or nil
 end
 -- the same page read again while its table is gone (a rescan): 'before:during:after:kept'
 state.records_keep = function(what, id)
-    local kind = what == 'explosion' and T_EXPLOSION or (what == 'status' and T_STATUS or T_PROJECTILE)
+    local kind = what == 'arc' and TYPES.arc or what == 'explosion' and T_EXPLOSION or (what == 'status' and T_STATUS or T_PROJECTILE)
     local page = MOD.records.page(kind, id)
     if not page then return 'no page' end
     local before = #page.rows
@@ -16727,7 +16752,7 @@ state.records_keep = function(what, id)
 end
 -- every record page of a kind, in id order (the same rows the panel draws for each)
 state.records_all = function(what)
-    local kind = what == 'explosion' and T_EXPLOSION or (what == 'status' and T_STATUS or T_PROJECTILE)
+    local kind = what == 'arc' and TYPES.arc or what == 'explosion' and T_EXPLOSION or (what == 'status' and T_STATUS or T_PROJECTILE)
     local list = {}
     for _, id in ipairs(MOD.records.ids(kind)) do
         local ok, page = pcall(MOD.records.page, kind, id)
@@ -21882,7 +21907,7 @@ if MOD.offline then
             local choice_name=''
             if row.choice=='weight' then choice_name=settings.tr(MOD.kits.NAMES[v] or '?')
             elseif row.choice=='status' then choice_name=type(v)=='number' and settings.tr(MOD.status.name(v)) or ''
-            elseif row.choice=='apex_fire' then choice_name=v==2719 and '站立开火（参考 Mod）' or '原始开火动作'
+            elseif row.choice=='apex_fire' then choice_name=v==2719 and '站立开火' or '原始开火动作'
             elseif row.choice=='slot' then choice_name=v==1 and '主武器' or '副武器'
             elseif row.choice=='gun' then local g=MOD.enemy.gun_choices().by_id[v];choice_name=g and settings.tr(g.label) or ''
             elseif row.choice==true then
@@ -21920,7 +21945,7 @@ if MOD.offline then
     function state.desktop.choices(n)
         local row=ui.weapon and ui.weapon.rows[n]
         if row and row.choice=='weight' then return {{id=0,name='轻型'},{id=1,name='中型'},{id=2,name='重型'}} end
-        if row and row.choice=='apex_fire' then return {{id=2677,name='原始开火动作'},{id=2719,name='站立开火（参考 Mod）'}} end
+        if row and row.choice=='apex_fire' then return {{id=2677,name='原始开火动作'},{id=2719,name='站立开火'}} end
         if row and row.choice=='slot' then return {{id=1,name='主武器'},{id=3,name='副武器'}} end
         if row and row.choice=='gun' then
             local out={};for _,g in ipairs(MOD.enemy.gun_choices().list)do out[#out+1]={id=g.id,name=settings.tr(g.label)}end;return out
