@@ -12699,7 +12699,7 @@ KINDS[TYPES.custom].projectile = function(key)
                     for x = fd, fd + nd - 1 do
                         if peek4(d + at[3] + x * 12) == 0 and peek4(d + at[3] + x * 12 + 4) == 4 then
                             value_at = at[4] + (peek4(d + at[3] + x * 12 + 8) or 0)
-                            value = peek4(d + value_at)
+                            value = default_of(field_at(TYPES.deltas,value_at,'u32',100000))
                             break
                         end
                     end
@@ -12733,7 +12733,7 @@ KINDS[TYPES.custom].feeds = function(key, own)
                     local offset, size = peek4(d + at[3] + x * 12) or 0, peek4(d + at[3] + x * 12 + 4) or 0
                     local data = at[4] + (peek4(d + at[3] + x * 12 + 8) or 0)
                     for w = 0, size - 4, 4 do
-                        local value = peek4(d + data + w)
+                        local value = default_of(field_at(TYPES.deltas,data+w,'u32',100000))
                         if own[offset + w] and value == own[offset + w] then out[offset + w] = data + w end
                     end
                 end
@@ -13808,8 +13808,22 @@ local function resolve_gun(weapon, key)
     end
     stock(nil, true)
     if rounds then
-        add_row(weapon, 'Ammo', 'rounds_capacity', 'Rounds loaded', 'f32',
-                { part('rounds_capacity', T_ROUNDS, rounds + 72, 'f32', 100000) }, 1, 999, 1, 5)
+        local first=part('rounds_capacity',T_ROUNDS,rounds+72,'f32',100000)
+        local second=part('rounds_capacity_2',T_ROUNDS,rounds+76,'f32',100000)
+        local second_default=default_of(second.field)
+        local dual=second_default and second_default>0
+        local tube=weapon.hash=='D323DE60855898AC' or weapon.hash=='41EAC4A03987FAA0' or weapon.hash=='4F749E2EE26F532D'
+        local capacity=add_row(weapon,'Ammo','rounds_capacity',dual and (tube and '弹管 1 容量（发）' or '弹药池 1 容量（发）') or 'Rounds loaded',
+                              'f32',{first},1,999,1,5)
+        if dual then
+            add_row(weapon,'Ammo','rounds_capacity_2',tube and '弹管 2 容量（发）' or '弹药池 2 容量（发）','f32',{second},1,999,1,5)
+            capacity.inline_note=function()
+                return string.format('%s合计：%g + %g = %g 发；原始合计：%g 发。',tube and '双弹管' or '双弹药池',
+                    read_field(first.field) or 0,read_field(second.field) or 0,(read_field(first.field) or 0)+(read_field(second.field) or 0),
+                    (default_of(first.field) or 0)+(default_of(second.field) or 0))
+            end
+            capacity.tip={'分别编辑两侧容量；显示的原值是各侧容量，合计会随两侧输入实时更新。'}
+        end
         local function rnd(id, label, offset)
             add_row(weapon, 'Ammo', id, label, 'u32', { part(id, T_ROUNDS, rounds + offset, 'u32', 100000) }, 0, 9999, 1, 10)
         end
@@ -18265,7 +18279,7 @@ end
 
 MOD.resident.PICK_TIP = {
     '这一条记录的粒子、贴图与音效在哪个资源包里。留空时自动取检测到的第一个包；装补丁时检测到的包会全部写上。',
-    '资源包是物品自带的（选武器就是选它的包）。包装错，进对局仍然只有伤害、没有特效。',
+    '资源包负责粒子、贴图和音效的加载，不会改变发射的射弹。切换射弹请使用「更换射弹」。',
 }
 
 -- Two rows on any page whose ids can point outside its own package: the package itself, then the patch.
@@ -22883,6 +22897,17 @@ if MOD.offline then
             if type(note)=='function' then local ok,text=pcall(note,shared_with(ui.weapon,row));note=ok and text or '' end
             if type(note)=='string' and note~='' then help[#help+1]=settings.tr(note) end
             local inline_note=row.inline_note or ''
+            if type(inline_note)=='function' then local ok,text=pcall(inline_note);inline_note=ok and text or '' end
+            local projectile_conflict=false
+            if row.choice==true then
+                local seen,count,changed={},0,false
+                for _,p in ipairs(row.parts) do
+                    local current,original=read_field(p.field),default_of(p.field)
+                    if current~=original then changed=true end
+                    if current and current>0 and not seen[current] then seen[current]=true;count=count+1 end
+                end
+                projectile_conflict=changed and count>1
+            end
             if row.label=='Explosive damage taken (x)' and d==3.4028234663852886e38 then
                 inline_note='原始值是 32 位浮点数最大有限值（0x7F7FFFFF）。此记录使用特殊边界值，游戏内含义尚未确认，不能直接按普通伤害倍率解释。'
             end
@@ -22909,7 +22934,7 @@ if MOD.offline then
             end
             out[#out+1]={id=n,label=settings.tr(row.label):gsub(' %(x%)$','（倍率）'):gsub(' %(%+%)$','（加值）'):gsub('（x）','（倍率）'):gsub('（%+）','（加值）'),section=settings.tr(row.section or ''),
                 value=v,original=d,text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage)),default_text=row.code and MOD.code.text(d) or settings.tr(fmt(d,row.storage)),code=not not row.code,
-                choice=not not row.choice,choice_kind=type(row.choice)=='string' and row.choice or '',choice_name=choice_name,flag=row.storage=='flag' or row.storage=='bit',min=nil,max=nil,
+                projectile_source=row.choice==true,projectile_conflict=projectile_conflict,choice=not not row.choice,choice_kind=type(row.choice)=='string' and row.choice or '',choice_name=choice_name,flag=row.storage=='flag' or row.storage=='bit',min=nil,max=nil,
                 note=settings.tr(type(note)=='string' and note or ''),inline_note=settings.tr(inline_note),help=help,faction_only=faction_only,changed=(v~=d and not faction_only) or ui.weapon.enemy and MOD.enemy.pinned(row) or false,
                 shared=impact.shared(ui.weapon,row.parts,settings.tr,index)}
         end

@@ -67,7 +67,7 @@ def main():
     sources+=list((ROOT/'offline').glob('*.lua'))+list((ROOT/'offline/originals').glob('*'))+list((ROOT/'offline/licenses').glob('*.txt'))
     sources+=[f for folder in ('desktop/huskar','desktop/eui') for f in (ROOT/folder).rglob('*') if f.is_file() and f.suffix in ('.cpp','.h','.qml','.js','.cmake','.def','.txt','.md','.manifest')]
     sources+=[ROOT/'tools'/n for n in ('package_huskar.py','package_lab.py','package_eui.py','package_onefile.py')]
-    sources+=[ROOT/'tests'/name for name in ('test_huskar.py','test_huskar_shaders.py','test_parameter_audit.py','parameter_audit_regression.lua','test_release_update.cpp','test_startup_update.py','test_search_context_extra.py','search_context_extra_regression.lua','test_original_mapping.py','test_foreign_snapshot.py','test_switch_reset.py','test_res_patch.py','test_chinese_choices.py','test_resident_donors.py','test_weapon_calibre.py','test_foreign_core_tails.py','test_gl52_self_exclusion.py')]
+    sources+=[ROOT/'tests'/name for name in ('test_huskar.py','test_huskar_shaders.py','test_parameter_audit.py','parameter_audit_regression.lua','test_release_update.cpp','test_startup_update.py','test_search_context_extra.py','search_context_extra_regression.lua','test_original_mapping.py','test_foreign_snapshot.py','test_switch_reset.py','test_res_patch.py','test_chinese_choices.py','test_resident_donors.py','test_weapon_calibre.py','test_foreign_core_tails.py','test_gl52_self_exclusion.py','test_dual_tube_projectiles.py')]
     with zipfile.ZipFile(a.output_root/(release.name+'_Source.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for f in sorted(set(sources)):
             if f.is_file():z.write(f,release.name+'_Source/'+f.relative_to(ROOT).as_posix())

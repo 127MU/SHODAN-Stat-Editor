@@ -116,7 +116,11 @@ Timer {
             else if(step===76){ensure(Backend.qaCheck("review_continue",true),"警告继续按钮无法点击")}
             else if(step===77){ensure(window.qaWarningAccepted===1,"确认继续未执行操作");Backend.capture("50-extra-warning-confirmed");store.openModule("records")}
             else if(step===78){const arcs=store.library.filter(x=>String(x.id).startsWith("F4"));ensure(arcs.length===16,"电弧记录入口未覆盖全部 16 条");store.select(arcs.find(x=>x.id==="F40000000000000F"))}
-            else if(step===79){ensure(store.rows.some(x=>x.flag && String(x.label).includes("电弧排除发射者")),"电弧排除发射者开关未显示");Backend.capture("51-arc-emitter-exclusion");Backend.finishQa("")}
+            else if(step===79){ensure(store.rows.some(x=>x.flag && String(x.label).includes("电弧排除发射者")),"电弧排除发射者开关未显示");Backend.capture("51-arc-emitter-exclusion");store.openModule("equipment")}
+            else if(step===80){store.select(store.library.find(x=>x.id==="D323DE60855898AC"))}
+            else if(step===81){ensure(store.rows.filter(x=>String(x.label).startsWith("弹管 ") && x.original===8).length===2,"野炊两根弹管原值不是 8+8");ensure(store.rows.some(x=>String(x.inline_note || "").includes("8 + 8 = 16")),"双弹管总容量未显示");Backend.capture("52-cookout-dual-tubes");const p=store.rows.find(x=>x.projectile_source);store.call("choose",[p.id,220],()=>store.refreshRows())}
+            else if(step===82){ensure(store.rows.some(x=>x.projectile_source && x.value===220),"射弹切换未更新");Backend.capture("53-projectile-current-source");ensure(Backend.qaCheck("restore_projectile",true),"恢复原配射弹按钮无法点击")}
+            else if(step===83){ensure(store.rows.some(x=>x.projectile_source && x.value===352 && !x.projectile_conflict),"恢复原配射弹未恢复野炊引用");Backend.capture("54-projectile-restored");Backend.finishQa("")}
             step++
         }catch(e){Backend.finishQa(String(e))}
     }
