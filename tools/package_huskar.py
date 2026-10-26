@@ -4,7 +4,7 @@ import argparse, hashlib, json, os, shutil, subprocess, sys, zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '4.1.0-r21'
+VERSION = '4.1.0-r22'
 
 def main():
     p = argparse.ArgumentParser()

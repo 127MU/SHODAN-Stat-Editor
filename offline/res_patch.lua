@@ -406,13 +406,62 @@ local function read_side(set, spec, suffix, at, size, what)
     return package_read(set, spec.name .. suffix, at, size)
 end
 
-local function package_slices(set, name, spec, keep_streams)
+-- An override map comes from the panel, so an id may arrive in either case and with or without 0x.
+local function hex_key(id_hex)
+    return (tostring(id_hex):gsub('^0[xX]', '')):lower()
+end
+
+-- Override keys are '<type_hex>:<id_hex>'.  A bare id is accepted only when the package holds it
+-- once: a real package reuses one id for four entries (bones, animations, the state machine, a mesh),
+-- and a bare id there would put one blob in all four places.  So a repeated id is a refusal, never a
+-- guess.  The count comes from the whole package, not from the subset being rebuilt.
+local function override_index(overrides, spec)
+    if overrides == nil then return {} end
+    local counts = {}
+    for _, entry in ipairs(spec.entries) do
+        counts[entry.id_hex] = (counts[entry.id_hex] or 0) + 1
+    end
+    local index = {}
+    for key, bytes in pairs(overrides) do
+        if type(key) ~= 'string' or type(bytes) ~= 'string' then
+            return nil, '资源覆盖内容必须是按资源 ID 给出的字节串'
+        end
+        local type_hex, id_hex = string.match(key, '^([^:]+):(.+)$')
+        if type_hex then
+            index[hex_key(type_hex) .. ':' .. hex_key(id_hex)] = bytes
+        else
+            local id = hex_key(key)
+            if (counts[id] or 0) > 1 then
+                return nil, '资源编号 ' .. id .. ' 在包里出现多次，请用 类型:编号 指定'
+            end
+            index['*:' .. id] = bytes
+        end
+    end
+    return index
+end
+
+-- The toc bytes one entry is to carry: the ones for its type and id, otherwise the ones a bare id gave
+-- it (only reachable when that id is unique in the package).
+local function override_for(index, type_hex, id_hex)
+    id_hex = hex_key(id_hex)
+    return index[hex_key(type_hex) .. ':' .. id_hex] or index['*:' .. id_hex]
+end
+
+-- keep_streams keeps the heavy side files too.  overrides maps '<type>:<id>' to the toc bytes that
+-- replace the ones the package holds; the streams of such an entry still come from the package.
+local function package_slices(set, name, spec, keep_streams, overrides)
+    local index, index_why = override_index(overrides, spec)
+    if not index then return nil, index_why end
     local blobs = {}
     for _, entry in ipairs(spec.entries) do
         local heavy = entry.gpu_size > 0 or entry.stream_size > 0
         if keep_streams or not heavy then
-            local toc, why = package_read(set, name, entry.toc_at, entry.toc_size)
-            if not toc then return nil, why end
+            local why
+            local toc = override_for(index, entry.type_hex, entry.id_hex)
+            if toc == nil then
+                toc, why = package_read(set, name, entry.toc_at, entry.toc_size)
+                if not toc then return nil, why end
+            end
             local gpu, stream = '', ''
             if keep_streams and entry.gpu_size > 0 then
                 gpu, why = read_side(set, spec, GPU_SUFFIX, entry.gpu_at, entry.gpu_size, 'gpu resources')
@@ -572,12 +621,15 @@ function M.entry_of(ctx, host, name)
     return nil
 end
 
--- 0: not resident, 1: everything, 2: the light resources only.
+-- 0: not resident, 1: everything, 2: the light resources only.  A 'res' patch holds edits of a few
+-- resources instead of residency, so the panel must not report it as a resident package.
 function M.state(ctx, host, name)
     local entry = M.entry_of(ctx, host, name)
     if not entry then return 0 end
     if M.file_size(ctx.root .. '/' .. patch_name(host, entry.index)) == nil then return 0 end
-    return entry.mode == 'full' and 1 or 2
+    if entry.mode == 'full' then return 1 end
+    if entry.mode == 'res' then return 0 end
+    return 2
 end
 
 -- ---------------------------------------------------------------- installing
@@ -590,6 +642,51 @@ local function bundle_set(ctx)
     ctx.set = set
     return set
 end
+
+-- Every entry of one type inside a package, for the panel's picker.  The directory is enough here;
+-- no resource bytes are read.
+function M.entries_of_type(ctx, name, type_hex)
+    local set, why = bundle_set(ctx)
+    if not set then return nil, why end
+    if not set.packages[name] then return nil, '当前游戏中找不到资源包：' .. name end
+    local spec, head_why = package_head(set, name)
+    if not spec then return nil, head_why end
+    local wanted = hex_key(type_hex)
+    local list = {}
+    for _, entry in ipairs(spec.entries) do
+        if hex_key(entry.type_hex) == wanted then
+            list[#list + 1] = { id_hex = entry.id_hex, type_hex = entry.type_hex,
+                                toc_size = entry.toc_size,
+                                gpu_size = entry.gpu_size, stream_size = entry.stream_size }
+        end
+    end
+    return list
+end
+
+-- The toc bytes of one entry: what the panel shows, and what an edit starts from.  type_hex is
+-- optional for the older callers; pass it whenever the id is not unique, because one id can carry the
+-- bones, the animations, the state machine and the mesh of the same entity.
+function M.read_entry(ctx, name, id_hex, type_hex)
+    local set, why = bundle_set(ctx)
+    if not set then return nil, why end
+    if not set.packages[name] then return nil, '当前游戏中找不到资源包：' .. name end
+    local spec, head_why = package_head(set, name)
+    if not spec then return nil, head_why end
+    local wanted = hex_key(id_hex)
+    local wanted_type = type_hex ~= nil and hex_key(type_hex) or nil
+    for _, entry in ipairs(spec.entries) do
+        if entry.id_hex == wanted and (wanted_type == nil or entry.type_hex == wanted_type) then
+            return package_read(set, name, entry.toc_at, entry.toc_size)
+        end
+    end
+    if wanted_type then
+        return nil, '当前资源包中找不到这条资源：' .. wanted_type .. ':' .. wanted
+    end
+    return nil, '当前资源包中找不到这条资源：' .. tostring(id_hex)
+end
+
+-- The ledger entry of one package, so the panel can show which slot holds it.
+function M.patch_of(ctx, host, name) return M.entry_of(ctx, host, name) end
 
 local function remove_files(root, host, index)
     local base = root .. '/' .. patch_name(host, index)
@@ -630,60 +727,137 @@ local function transaction(ctx, host, indexes, action)
     return nil, why
 end
 
--- Writes one patch set and returns the slot it took, plus what went into it.
-function M.install(ctx, host, name, mode)
-    if mode ~= 'full' and mode ~= 'light' then return nil, '无效的资源驻留模式' end
-    local set, why = bundle_set(ctx)
-    if not set then return nil, why end
-    if not set.packages[name] then return nil, '当前游戏中找不到资源包：' .. name end
-    local spec, head_why = package_head(set, name)
-    if not spec then return nil, head_why end
-    local blobs, slice_why = package_slices(set, name, spec, mode == 'full')
-    if not blobs then return nil, slice_why end
-    if #blobs == 0 then return nil, '此资源包没有可以写入常驻补丁的资源' end
-    local toc, gpu, stream = build_package(spec, blobs)
+-- The spec a 'res' patch is built from: only the types that carry a blob, so the twelve texture
+-- types of a real package cannot smuggle eleven empty ones into a patch of one state machine.
+local function trimmed_spec(spec, blobs)
+    local present = {}
+    for _, blob in ipairs(blobs) do present[blob.entry.type_hex] = true end
+    local types = {}
+    for _, item in ipairs(spec.types) do
+        if present[item.type_hex] then types[#types + 1] = item end
+    end
+    return { name = spec.name, magic = spec.magic, unknown = spec.unknown,
+             trailing = spec.trailing, types = types, entries = spec.entries }
+end
 
-    -- Replacing a resident package keeps its slot: taking a new one would leave the old patch
-    -- behind, and the loader would merge both copies of the same files.
+-- The slot this package takes: the one its ledger entry already owns, otherwise the next free
+-- number.  Rebuilding a resident package keeps its slot, because taking a new one would leave the
+-- old patch behind and the loader would merge both copies, the lower number's original bytes
+-- winning over the edit.
+local function slot_for(ctx, host, name)
     local entries = M.read_ledger(ctx)
-    local existing
-    for at, entry in ipairs(entries) do
-        if entry.host == host and entry.name == name then existing = at break end
+    local at, existing = nil, nil
+    for index, entry in ipairs(entries) do
+        if entry.host == host and entry.name == name then at, existing = index, entry break end
     end
-    local index
-    if existing then
-        index = entries[existing].index
-    else
-        local used, highest = used_numbers(ctx.root, host)
-        if not used then return nil, '找不到游戏资源目录：' .. ctx.root end
-        if #used ~= highest + 1 then return nil, '补丁序号不连续，请先整理现有补丁；未修改任何文件' end
-        if highest >= 63 then return nil, '补丁槽位已满' end
-        index = highest + 1
-    end
+    if existing then return entries, at, existing.index end
+    local used, highest = used_numbers(ctx.root, host)
+    if not used then return nil, nil, nil, '找不到游戏资源目录：' .. ctx.root end
+    if #used ~= highest + 1 then return nil, nil, nil, '补丁序号不连续，请先整理现有补丁；未修改任何文件' end
+    if highest >= 63 then return nil, nil, nil, '补丁槽位已满' end
+    return entries, nil, highest + 1
+end
+
+-- Writes the three files of one patch set, drops the side files a rebuild no longer needs, reads the
+-- patch back to prove the bytes landed, and only then records the slot in the ledger.  Everything
+-- runs inside a transaction, so a failure puts the previous patch back.
+local function write_patch(ctx, host, name, mode, index, at, entries, toc, gpu, stream, count)
     return transaction(ctx, host, { index }, function()
     local base = ctx.root .. '/' .. patch_name(host, index)
     local ok, write_why = M.write_file(base, toc)
     if not ok then return nil, write_why end
     if #gpu > 0 then
-        ok, write_why = M.write_file(base .. '.gpu_resources', gpu)
+        ok, write_why = M.write_file(base .. GPU_SUFFIX, gpu)
         if not ok then os.remove(base) return nil, write_why end
     end
     if #stream > 0 then
-        ok, write_why = M.write_file(base .. '.stream', stream)
-        if not ok then os.remove(base) os.remove(base .. '.gpu_resources') return nil, write_why end
+        ok, write_why = M.write_file(base .. STREAM_SUFFIX, stream)
+        if not ok then os.remove(base) os.remove(base .. GPU_SUFFIX) return nil, write_why end
     end
 
-    for _, suffix in ipairs({ '.gpu_resources', '.stream' }) do
-        if (suffix == '.gpu_resources' and #gpu == 0) or (suffix == '.stream' and #stream == 0) then
+    for _, suffix in ipairs({ GPU_SUFFIX, STREAM_SUFFIX }) do
+        if (suffix == GPU_SUFFIX and #gpu == 0) or (suffix == STREAM_SUFFIX and #stream == 0) then
             if M.file_size(base .. suffix) ~= nil and not os.remove(base .. suffix) then return nil, '无法清理旧资源：' .. base .. suffix end
         end
     end
-    if existing then table.remove(entries, existing) end
-    entries[#entries + 1] = { host = host, index = index, name = name, mode = mode, built = #blobs }
+
+    local landed = M.read_file(base)
+    if not landed or #landed ~= #toc then return nil, '补丁写入校验失败：' .. base end
+
+    if at then table.remove(entries, at) end
+    entries[#entries + 1] = { host = host, index = index, name = name, mode = mode, built = count }
     local saved, ledger_why = M.write_ledger(ctx, entries)
     if not saved then return nil, ledger_why end
-    return { index = index, entries = #blobs, toc = #toc, gpu = #gpu, stream = #stream, mode = mode }
+    return { index = index, entries = count, toc = #toc, gpu = #gpu, stream = #stream, mode = mode }
     end)
+end
+
+-- Writes one patch set and returns the slot it took, plus what went into it.  overrides maps
+-- '<type>:<id>' (or a bare id the package holds once) to the toc bytes that replace the ones the
+-- package holds, which is how a single edited resource (a state machine, say) travels without a
+-- second resident package.
+--   'full'  every entry, side streams included
+--   'light' the entries without side streams only
+--   'res'   only the overridden entries, and only the types they belong to
+-- A nil mode keeps the mode the package's ledger entry already has.
+function M.install_with(ctx, host, name, mode, overrides)
+    if mode == nil or mode == '' then
+        local known = M.entry_of(ctx, host, name)
+        mode = known and known.mode or nil
+    end
+    if mode ~= 'full' and mode ~= 'light' and mode ~= 'res' then return nil, '无效的资源驻留模式' end
+    if mode == 'res' and (overrides == nil or next(overrides) == nil) then return nil, '没有要写入的资源' end
+    if overrides ~= nil then
+        for key, bytes in pairs(overrides) do
+            if type(key) ~= 'string' or type(bytes) ~= 'string' then
+                return nil, '资源覆盖内容必须是按资源 ID 给出的字节串'
+            end
+        end
+    end
+    local set, why = bundle_set(ctx)
+    if not set then return nil, why end
+    if not set.packages[name] then return nil, '当前游戏中找不到资源包：' .. name end
+    local spec, head_why = package_head(set, name)
+    if not spec then return nil, head_why end
+    -- Resolved against the whole package, so a bare id whose id repeats everywhere is refused here
+    -- instead of quietly matching whichever entry came first.
+    local index, index_why = override_index(overrides, spec)
+    if not index then return nil, index_why end
+
+    local picked, resolved = nil, {}
+    for _, entry in ipairs(spec.entries) do
+        local bytes = override_for(index, entry.type_hex, entry.id_hex)
+        if bytes ~= nil then
+            resolved[entry.type_hex .. ':' .. entry.id_hex] = bytes
+            if mode == 'res' then
+                if entry.gpu_size > 0 or entry.stream_size > 0 then
+                    return nil, '这条资源带有独立数据流，不能单独写入资源补丁：'
+                        .. entry.type_hex .. ':' .. entry.id_hex
+                end
+                picked = picked or {}
+                picked[#picked + 1] = entry
+            end
+        end
+    end
+    if mode == 'res' and picked == nil then return nil, '这些资源不在此资源包中：' .. name end
+    local slice_spec = picked and { name = spec.name, magic = spec.magic, unknown = spec.unknown,
+                                    trailing = spec.trailing, types = spec.types,
+                                    entries = picked } or spec
+    local blobs, slice_why = package_slices(set, name, slice_spec, mode == 'full', resolved)
+    if not blobs then return nil, slice_why end
+    if #blobs == 0 then return nil, '此资源包没有可以写入常驻补丁的资源' end
+    local build_spec = picked and trimmed_spec(spec, blobs) or spec
+    local toc, gpu, stream = build_package(build_spec, blobs)
+
+    local entries, at, index, slot_why = slot_for(ctx, host, name)
+    if not entries then return nil, slot_why end
+    return write_patch(ctx, host, name, mode, index, at, entries, toc, gpu, stream, #blobs)
+end
+
+-- Writes one patch set and returns the slot it took, plus what went into it.
+function M.install(ctx, host, name, mode)
+    if mode ~= 'full' and mode ~= 'light' then return nil, '无效的资源驻留模式' end
+    return M.install_with(ctx, host, name, mode, nil)
 end
 
 -- Takes one patch set back out.  Later slots move down so the numbering stays continuous (a hole
@@ -742,7 +916,75 @@ function M.remove(ctx, host, name)
     end)
 end
 
+-- Takes our changes back out.  A 'res' patch exists only for them, so it goes away entirely and the
+-- later slots move down; a full or light patch stays resident and is rebuilt from the source
+-- package, which is what dropping the override means for it.
+function M.revert(ctx, host, name)
+    local entry = M.entry_of(ctx, host, name)
+    if not entry then return nil, '此资源包尚未安装常驻补丁，无需撤销' end
+    if entry.mode == 'res' then
+        local done, why = M.remove(ctx, host, name)
+        if not done then return nil, why end
+        return true
+    end
+    local info, why = M.install_with(ctx, host, name, entry.mode, {})
+    if not info then return nil, why end
+    return true
+end
+
+-- ---------------------------------------------------------------- reading our own patch
+
+-- A patch slot parsed as a container of its own, so what we wrote can be read back the same way the
+-- source package is read.  A patch lives in the game folder, not in the bundles, so it becomes a one
+-- package set in memory instead of going through bundle_index.
+local function patch_set(ctx, host, name)
+    local entry = M.entry_of(ctx, host, name)
+    if not entry then return nil, nil, '未安装' end
+    local base = patch_name(host, entry.index)
+    local bytes, why = M.read_file(ctx.root .. '/' .. base)
+    if not bytes then return nil, nil, '补丁文件读不到：' .. tostring(why) end
+    if #bytes < HEADER_SIZE then return nil, nil, '补丁文件长度不足：' .. base end
+    local set = { packages = {}, heads = {} }
+    set.packages[name] = { size = #bytes, items = { { off = 0, uoff = 0, bundle = 0 } } }
+    set.heads[0] = { cache = { [1] = bytes }, order = {}, chunks = { { uoff = 0, usize = #bytes } } }
+    return set, entry
+end
+
+-- The directory of one patch slot, so the panel can see which entries our patch holds.
+function M.patch_spec(ctx, host, name)
+    local set, _, why = patch_set(ctx, host, name)
+    if not set then return nil, why end
+    return package_head(set, name)
+end
+
+-- The toc bytes of one entry inside our own patch.  An id is only as ambiguous as what we wrote, but
+-- the rule stays the same as for a source package: a repeated id needs '<type>:<id>'.
+function M.patch_entry(ctx, host, name, id_hex, type_hex)
+    local set, _, why = patch_set(ctx, host, name)
+    if not set then return nil, why end
+    local spec, head_why = package_head(set, name)
+    if not spec then return nil, head_why end
+    local wanted = hex_key(id_hex)
+    local wanted_type = type_hex ~= nil and hex_key(type_hex) or nil
+    local hit, seen = nil, 0
+    for _, item in ipairs(spec.entries) do
+        if item.id_hex == wanted and (wanted_type == nil or item.type_hex == wanted_type) then
+            hit = hit or item
+            seen = seen + 1
+        end
+    end
+    if seen == 0 then
+        if wanted_type then return nil, '补丁中找不到这条资源：' .. type_hex .. ':' .. id_hex end
+        return nil, '补丁中找不到这条资源：' .. tostring(id_hex)
+    end
+    if seen > 1 and wanted_type == nil then
+        return nil, '资源编号 ' .. wanted .. ' 在补丁里出现多次，请用 类型:编号 指定'
+    end
+    return package_read(set, name, hit.toc_at, hit.toc_size)
+end
 M._internal.patch_name = patch_name
 M._internal.used_numbers = used_numbers
+M._internal.override_for = override_for
+M._internal.trimmed_spec = trimmed_spec
 
 return M
