@@ -4,10 +4,11 @@ local D=require('hostdata')
 local I=require('install')
 local guard=require('extra_stratagem_guard')
 local function node(id,target,original) return {id=id,name='战备'..id,target=target,original=original or 0} end
+local function duplicate_warning(nodes,change)local err,warnings=guard.validate(nodes,change);assert(not err,err);return table.concat(warnings,'\n')end
 assert(not guard.validate({node(1,3),node(2,0),node(3,0)}))
-assert(guard.validate({node(1,3),node(2,3),node(3,0)}):find('重复',1,true))
+assert(duplicate_warning({node(1,3),node(2,3),node(3,0)}):find('重复',1,true))
 assert(not guard.validate({node(1,3),node(2,3),node(3,0)},{id=2,target=0}))
-assert(guard.validate({node(1,3),node(2,4),node(3,5),node(4,5),node(5,0)}):find('重复',1,true))
+assert(duplicate_warning({node(1,3),node(2,4),node(3,5),node(4,5),node(5,0)}):find('重复',1,true))
 assert(guard.validate({node(1,2),node(2,1)}):find('循环',1,true))
 assert(not guard.validate({node(1,3,3),node(2,3,3),node(3,0)}),'Unchanged native extras must stay valid')
 
@@ -45,8 +46,8 @@ for _,item in ipairs(candidates)do
 end
 assert(contextual>0 and generic120>1,'Projectile donors/context were not included')
 
--- Simulate conflicting settings from an old preset or another writer, bypassing
--- the picker deliberately. Preview and Install must still stop before writes.
+-- Duplicate extras are warnings. Preview stays read-only; continuing can reach
+-- the writer. Cycles remain fatal. The test writer never touches game files.
 local sources,seen={},{}
 for _,entry in ipairs(B.items('Stratagems',''))do
  B.select(entry.id)
@@ -66,13 +67,31 @@ end
 assert(target)
 local a,b=ffi.cast('uint32_t*',sources[1].def.at+200),ffi.cast('uint32_t*',sources[2].def.at+200)
 local old_a,old_b=tonumber(a[0]),tonumber(b[0])
+
+local F=require('desktop_features')
+local function preset_value(source,value)
+ return {hash=source.entry.id,id=B.registry[source.entry.id].rows[source.row].parts[1].id,value=value}
+end
+local text=F.encode('full','重复附赠测试',nil,{preset_value(sources[1],target),preset_value(sources[2],target)},'equipment')
+local prospective=B.preset_inspect('full',text)
+assert(#prospective.warnings>0 and prospective.skipped==0,'Import preview must warn without treating duplicates as skipped values')
+assert(tonumber(a[0])==old_a and tonumber(b[0])==old_b,'Import preview applied values before confirmation')
+local imported=B.preset_import('full',0,text)
+assert(imported.id and tonumber(a[0])==old_a,'Confirmed import must store the preset without applying it')
+assert(#B.preset_compare('full',imported.id).warnings>0,'Saved preset load preview lost duplicate warning')
+local own_a=tonumber(ffi.cast('uint32_t*',sources[1].def.at)[0])
+local own_b=tonumber(ffi.cast('uint32_t*',sources[2].def.at)[0])
+local cyclic=F.encode('full','循环附赠测试',nil,{preset_value(sources[1],own_b),preset_value(sources[2],own_a)},'equipment')
+assert(not pcall(B.preset_inspect,'full',cyclic),'Cycle inside imported preset must still be blocked')
 a[0],b[0]=target,target
-assert(B.extra_validate():find('重复',1,true),'Duplicate extras not detected')
-local ok,why=pcall(B.install_preview)
-assert(not ok and tostring(why):find('重复',1,true),'Preview accepted duplicate extras')
+assert(not B.extra_validate(),'Duplicate extras still treated as a fatal error')
+assert(table.concat(B.extra_warnings(),'\n'):find('重复',1,true),'Duplicate warning missing')
 local writer=I.write_files;local writes=0
-I.write_files=function()writes=writes+1;error('Game writes forbidden')end
-B.install();assert(writes==0 and not B.write_succeeded(),'Duplicate extras reached game writer')
+I.write_files=function()writes=writes+1;return nil,'测试写入终止'end
+local preview=B.install_preview()
+assert(#preview.problems==0 and table.concat(preview.warnings,'\n'):find('重复',1,true),'Preview must allow explicit continuation')
+assert(writes==0,'Preview wrote game files')
+B.install();assert(writes==1 and not B.write_succeeded(),'Explicit continuation did not reach the mock writer')
 I.write_files=writer;a[0],b[0]=old_a,old_b
 assert(not B.extra_validate(),'Restoring extras did not clear conflict')
 local new_choices={}
@@ -87,4 +106,4 @@ for _,entry in ipairs(B.items('Mechas',''))do
  end
 end
 for _,kind in ipairs({'mountitem','mountside','faction','behavior'})do assert(new_choices[kind],'PR12 field missing: '..kind)end
-return {projectile_candidates=#candidates,contextual_candidates=contextual,matches_120=generic120,samples_120=table.concat(samples120,' | '),mount_choices=new_choices.mountitem,side_choices=new_choices.mountside,faction_choices=new_choices.faction,behavior_choices=new_choices.behavior,direct_duplicates=true,nested_duplicates=true,loops=true,preview_blocked=true,install_blocked=true,game_writes=0}
+return {projectile_candidates=#candidates,contextual_candidates=contextual,matches_120=generic120,samples_120=table.concat(samples120,' | '),mount_choices=new_choices.mountitem,side_choices=new_choices.mountside,faction_choices=new_choices.faction,behavior_choices=new_choices.behavior,direct_duplicates_warn=true,nested_duplicates_warn=true,loops_blocked=true,preview_read_only=true,explicit_continue_reaches_mock_writer=true,game_writes=0}

@@ -176,6 +176,9 @@ HusWindow {
         return (supported || fallback) && surface.a>=0.75 && (HusTheme.isDark?surface.r<0.2:surface.r>0.7)
     }
     function focusOut(){content.forceActiveFocus()}
+    property int qaWarningAccepted:0
+    function qaShowExtraWarning(){if(QaMode){review.title="重复附赠警告测试";review.data={entries:[],warnings:["两个战备附赠同一战备，同时携带可能导致任务加载崩溃。是否仍然继续？"]};review.loading=false;review.action=()=>window.qaWarningAccepted++;review.open()}}
+    function qaWarningCanContinue(){return QaMode && review.visible && review.confirmText==="仍然继续"}
     function message(title,text){info.title=title;info.description=String(text);info.open()}
     function preview(title,method,args,apply){
         focusOut();review.title=title;review.data={};review.loading=true;review.action=apply;review.open()
@@ -449,14 +452,23 @@ HusWindow {
     HusModal {
         id:review;width:Math.min(1000,window.width-100);modal:true;maskClosable:false
         property var data:({});property bool loading:false;property var action:null
-        confirmText:!loading && !(data.problems || []).length?"确认":"";cancelText:"取消"
+        confirmText:!loading && !(data.problems || []).length?((data.warnings || []).length?"仍然继续":"确认"):"";cancelText:"取消"
+        confirmButtonDelegate:HusButton { objectName:"review_continue";text:review.confirmText;type:HusButton.Type_Primary;onClicked:review.confirm() }
+        cancelButtonDelegate:HusButton { objectName:"review_cancel";text:review.cancelText;onClicked:review.cancel() }
         onConfirm:{close();if(action)action()}
         onCancel:close()
         bodyDelegate:ColumnLayout {
             width:review.width-48;spacing:14
             HusSpin { visible:review.loading;tip:"正在检查修改内容…" }
             HusText { Layout.fillWidth:true;text:(review.data.problems || []).join("\n");visible:!!text;wrapMode:Text.Wrap;color:HusTheme.Primary.colorError }
-            HusText { Layout.fillWidth:true;text:(review.data.warnings || []).join("\n");visible:!!text;wrapMode:Text.Wrap }
+            Flickable {
+                visible:(review.data.warnings || []).length>0
+                Layout.fillWidth:true;Layout.preferredHeight:visible?Math.min(160,warningText.implicitHeight):0
+                contentHeight:warningText.implicitHeight;clip:true;boundsBehavior:Flickable.StopAtBounds
+                ScrollBar.vertical:HusScrollBar{}
+                SmoothWheel{}
+                HusText { id:warningText;width:parent.width-16;text:(review.data.warnings || []).join("\n");wrapMode:Text.Wrap;color:HusTheme.Primary.colorWarning }
+            }
             HusText { text:"共 "+(review.data.entries || []).length+" 项变化 · 原值 → 待写入值" }
             ListView {
                 Layout.fillWidth:true;Layout.preferredHeight:Math.min(420,(review.data.entries || []).length*66);model:review.data.entries || [];clip:true;spacing:8;ScrollBar.vertical:HusScrollBar{}

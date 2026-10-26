@@ -51,11 +51,12 @@ ReleaseUpdate parseReleaseUpdate(const std::string& json,const std::string& curr
  result.newer=releaseNewer(result.version,current);return result;
 }
 namespace {
-ReleaseResponse requestRelease(bool api){
+ReleaseResponse requestReleasePath(bool api,const std::string& path){
   Handle session(WinHttpOpen(L"SHODAN-Stat-Editor-Update/1.0",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0));
   WinHttpSetTimeouts(session.value,2500,3000,3000,3000);
   Handle connection(WinHttpConnect(session.value,api?L"api.github.com":L"github.com",INTERNET_DEFAULT_HTTPS_PORT,0));
-  Handle request(WinHttpOpenRequest(connection.value,L"GET",api?L"/repos/127MU/SHODAN-Stat-Editor/releases/latest":L"/127MU/SHODAN-Stat-Editor/releases/latest",nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE));
+  const std::wstring widePath(path.begin(),path.end());
+  Handle request(WinHttpOpenRequest(connection.value,L"GET",widePath.c_str(),nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE));
   DWORD redirects=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;WinHttpSetOption(request.value,WINHTTP_OPTION_REDIRECT_POLICY,&redirects,sizeof redirects);
   const wchar_t* headers=api?L"Accept: application/vnd.github+json\r\nX-GitHub-Api-Version: 2022-11-28\r\n":L"Accept: text/html\r\n";
   if(!WinHttpSendRequest(request.value,headers,DWORD(-1),WINHTTP_NO_REQUEST_DATA,0,0,0)||!WinHttpReceiveResponse(request.value,nullptr))throw std::runtime_error("检查更新失败，请检查网络后重试");
@@ -70,13 +71,47 @@ ReleaseResponse requestRelease(bool api){
    for(wchar_t c:location){if(!c)break;if(c>127)throw std::runtime_error("发行版地址格式无效");response.location+=char(c);}
    return response;
   }
-  if(status!=200||!api)return response;
+  if(status!=200)return response;
   std::string json;char buffer[16384];DWORD read=0;
   while(true){if(!WinHttpReadData(request.value,buffer,sizeof buffer,&read))throw std::runtime_error("读取发行版信息失败，请稍后重试");if(!read)break;
    if(json.size()+read>1024*1024)throw std::runtime_error("发行版信息过大，已停止读取");json.append(buffer,read);
   }
   response.body=std::move(json);return response;
 }
+ReleaseResponse requestRelease(bool api){return requestReleasePath(api,api?"/repos/127MU/SHODAN-Stat-Editor/releases/latest":"/127MU/SHODAN-Stat-Editor/releases/latest");}
+std::string entities(std::string text){
+ for(const auto& pair:std::array<std::pair<const char*,const char*>,7>{{{"&lt;","<"},{"&gt;",">"},{"&quot;","\""},{"&apos;","'"},{"&#39;","'"},{"&nbsp;"," "},{"&amp;","&"}}}){
+  size_t at=0;while((at=text.find(pair.first,at))!=std::string::npos){text.replace(at,std::char_traits<char>::length(pair.first),pair.second);at+=std::char_traits<char>::length(pair.second);}
+ }return text;
+}
+}
+std::string releaseNotesFromFeed(const std::string& atom,const std::string& version){
+ std::array<unsigned,4> parts{};if(!versionParts(version,parts))return {};
+ const auto url="https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/"+version;
+ const std::regex entries("<entry>[\\s\\S]*?</entry>");
+ for(std::sregex_iterator i(atom.begin(),atom.end(),entries),end;i!=end;++i){
+  const auto entry=i->str();if(entry.find("href=\""+url+"\"")==std::string::npos&&entry.find("href='"+url+"'")==std::string::npos)continue;
+  std::smatch content;if(!std::regex_search(entry,content,std::regex("<content[^>]*>([\\s\\S]*?)</content>")))return {};
+  auto text=entities(content[1].str());
+  text=std::regex_replace(text,std::regex("<li[^>]*>"),"- ");
+  text=std::regex_replace(text,std::regex("</(?:p|li|h[1-6]|pre|div)>|<br\\s*/?>"),"\n");
+  text=entities(std::regex_replace(text,std::regex("<[^>]*>"),""));
+  const auto first=text.find_first_not_of(" \t\r\n");if(first==std::string::npos)return {};
+  return text.substr(first,text.find_last_not_of(" \t\r\n")-first+1);
+ }return {};
+}
+std::string releaseDownloadFromAssets(const std::string& html,const std::string& version){
+ std::array<unsigned,4> parts{};if(!versionParts(version,parts))return {};
+ const auto prefix="https://github.com/127MU/SHODAN-Stat-Editor/releases/download/"+version+"/";
+ const auto number=version.front()=='v'?version.substr(1):version;
+ const auto preferred="SHODAN_"+number+".exe";std::string chosen;
+ const std::regex links("href=[\"']([^\"']+)[\"']");
+ for(std::sregex_iterator i(html.begin(),html.end(),links),end;i!=end;++i){
+  auto url=entities((*i)[1].str());if(!url.empty()&&url.front()=='/')url="https://github.com"+url;
+  if(url.compare(0,prefix.size(),prefix)!=0)continue;
+  const auto name=url.substr(prefix.size());if(name.size()<5||name.substr(name.size()-4)!=".exe"||name.find('/')!=std::string::npos)continue;
+  if(chosen.empty()||name==preferred)chosen=url;if(name==preferred)break;
+ }return chosen;
 }
 ReleaseUpdate releaseFromLocation(const std::string& location,const std::string& current){
  const std::string prefix="https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/";
@@ -86,8 +121,9 @@ ReleaseUpdate releaseFromLocation(const std::string& location,const std::string&
  if(!versionParts(result.version,parts))throw std::runtime_error("最新正式发行版的版本号无法识别");
  result.newer=releaseNewer(result.version,current);return result;
 }
-ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& provided){
+ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& provided,const ReleasePageFetch& pages){
  const ReleaseFetch fetch=provided?provided:ReleaseFetch(requestRelease);
+ const ReleasePageFetch publicPage=pages?pages:(provided?ReleasePageFetch{}:ReleasePageFetch([](const std::string& path){return requestReleasePath(false,path);}));
  // One startup check cycle: the public Latest release redirect, then at most
  // one API request when needed (new release notes/assets, or redirect fallback).
  try{
@@ -97,9 +133,13 @@ ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& 
    if(!latest.newer)return latest;
    try{
     const auto api=fetch(true);
-    if(api.status==200){auto detail=parseReleaseUpdate(api.body,current);if(detail.newer)return detail;}
+    if(api.status==200){auto detail=parseReleaseUpdate(api.body,current);if(detail.newer){latest=detail;if(!latest.notes.empty()&&!latest.downloadUrl.empty())return latest;}}
    }catch(const std::exception&){}
-   latest.notes="暂时无法获取更新日志，请点击“查看发行版”查看完整说明。";
+   if(publicPage){
+    if(latest.notes.empty())try{const auto feed=publicPage("/127MU/SHODAN-Stat-Editor/releases.atom");if(feed.status==200)latest.notes=releaseNotesFromFeed(feed.body,latest.version);}catch(const std::exception&){}
+    if(latest.downloadUrl.empty())try{const auto assets=publicPage("/127MU/SHODAN-Stat-Editor/releases/expanded_assets/"+latest.version);if(assets.status==200)latest.downloadUrl=releaseDownloadFromAssets(assets.body,latest.version);}catch(const std::exception&){}
+   }
+   if(latest.notes.empty())latest.notes="暂时无法获取更新日志，请点击“查看发行版”查看完整说明。";
    return latest;
   }
  }catch(const std::exception&){}

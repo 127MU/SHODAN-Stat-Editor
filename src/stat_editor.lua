@@ -11798,7 +11798,9 @@ local KINDS = {
     [T_ROUNDS] = { name = 'rounds', stride = 136, keyed = true },
     [T_FIRE] = { name = 'fire mode', stride = 616, keyed = true },
     [T_PROJECTILE] = { name = 'projectile', stride = 272 },
-    [T_DAMAGE] = { name = 'damage', stride = 76, rows = {   -- id, label, offset, max, small / big step
+    -- Foreign editors may append hash-correction bytes after the declared rows.
+    -- Preserve that tail offline; the row count still bounds every editable field.
+    [T_DAMAGE] = { name = 'damage', stride = 76, tail = MOD.offline, rows = {   -- id, label, offset, max, small / big step
         { 'damage', 'Damage', 4, 100000, 1, 10 }, { 'durable', 'Durable damage', 8, 100000, 1, 10 },
         { 'ap_direct', 'Armor pen. (direct)', 12, 10, 1, 1 }, { 'ap_slight', 'Armor pen. (slight angle)', 16, 10, 1, 1 },
         { 'ap_large', 'Armor pen. (large angle)', 20, 10, 1, 1 }, { 'ap_extreme', 'Armor pen. (extreme angle)', 24, 10, 1, 1 },
@@ -12108,12 +12110,30 @@ local function parse_keyed(blob, stride, spec)
     return index, entries
 end
 
+-- Extra hash-correction tails do not belong to the hashmap or record array.
+-- Accept them offline only when all candidate paddings identify the same rows.
+function MOD.parse_keyed_tail(blob,stride,spec)
+    local index,info=parse_keyed(blob,stride,spec)
+    if index or not MOD.offline then return index,info end
+    local found,count
+    for padding=4,16,4 do
+        local candidate,n=parse_keyed(blob,stride,{slack=(spec and spec.slack or 0)+padding})
+        if candidate then
+            if found then
+                for key,at in pairs(candidate)do if found[key]~=at then return nil,'ambiguous foreign table tail' end end
+                for key,at in pairs(found)do if candidate[key]~=at then return nil,'ambiguous foreign table tail' end end
+            else found,count=candidate,n end
+        end
+    end
+    return found,count or info
+end
+
 -- Row table: u64 descriptor, u32 row count, u32 0, then rows that carry a u32 id (at +0
 -- unless `id_at`), then (`tail`) the strings and arrays the rows point to.
 local function parse_rows(blob, stride, spec)
     local rows = u32(blob, 8)
     local size = rows and 16 + rows * stride
-    if not rows or u32(blob, 12) ~= 0 or not (size == #blob or (spec and spec.tail and size <= #blob)) then
+    if not rows or u32(blob, 12) ~= 0 or not (size == #blob or ((MOD.offline or spec and spec.tail) and size <= #blob)) then
         return nil, 'row table size does not match this build'
     end
     local index, entries = {}, 0
@@ -13321,9 +13341,11 @@ local function resolve_gun(weapon, key)
     -- +20 outer, +24 shockwave radius), in `xsection` ('Explosion', or the shot's)
     local function projectile_rows(p, idp, section, xsection)
         local function proj(id, label, offset, max, small, big)
-            add_row(weapon, section, idp .. id, label, 'f32', { part(idp .. id, T_PROJECTILE, p + offset, 'f32', 100000) },
+            return add_row(weapon, section, idp .. id, label, 'f32', { part(idp .. id, T_PROJECTILE, p + offset, 'f32', 100000) },
                     0, max, small, big)
         end
+        local calibre=proj('calibre', 'Calibre (mm)', 24, 1000, 0.1, 1)
+        if calibre then calibre.inline_note='这是当前弹丸的口径，单位为毫米；与更换弹丸 ID、枪口模型和弹匣容量是不同参数。共用此弹丸的武器会一起受影响。' end
         add_row(weapon, section, idp .. 'pellets', 'Projectiles per shot', 'u32',
                 { part(idp .. 'pellets', T_PROJECTILE, p + 28, 'u32', 1000) }, 1, 100, 1, 5)
         if idp == '' and weapon.missile then
@@ -14775,7 +14797,7 @@ function MOD.extra.step(def, current, n)
     return to <= 0 and 0 or list[to].type
 end
 -- why `target` can't be `def`'s extra (itself, or a chain of extras back to it), or nil
-function MOD.extra.validate(change)
+function MOD.extra.validate(change,desired,reset)
     if not MOD.offline then return nil end
     local nodes,seen={},{}
     local _,by_type=MOD.extra.choices()
@@ -14791,12 +14813,30 @@ function MOD.extra.validate(change)
                 seen[id]=true
                 local c=by_type[id]
                 local name=c and c.name or ('Stratagem '..id)
-                nodes[#nodes+1]={id=id,name=MOD.extra.translate and MOD.extra.translate(name) or name,target=peek4(at+200) or 0,
-                    original=default_of(field_at(group,off+200,'u32',100000)) or 0}
+                local field=field_at(group,off+200,'u32',100000)
+                local original=default_of(field) or 0
+                local target=peek4(at+200) or 0
+                if reset==true or type(reset)=='table' and reset[field.key]then target=original end
+                if desired and desired[field.key]~=nil then target=desired[field.key] end
+                nodes[#nodes+1]={id=id,name=MOD.extra.translate and MOD.extra.translate(name) or name,target=target,original=original}
             end
         end
     end
     return require('extra_stratagem_guard').validate(nodes,change)
+end
+function MOD.extra.preset_warnings(bundle,desired)
+    if bundle.kind=='full' and bundle.editor=='enemy'then return {} end
+    local reset=bundle.kind=='full' and bundle.editor~='enemy' or {}
+    if bundle.kind=='weapon'then
+        local owner=by_hash[bundle.weapon]
+        for _,row in ipairs(owner and owner.rows or {})do
+            if row.choice=='stratagem'then for _,part in ipairs(row.parts)do reset[part.field.key]=true end end
+        end
+        if not next(reset)then return {} end
+    end
+    local err,warnings=MOD.extra.validate(nil,desired,reset)
+    assert(not err,err)
+    return warnings or {}
 end
 function MOD.extra.refused(def, target)
     local _, by_type = MOD.extra.choices()
@@ -14826,7 +14866,7 @@ function MOD.extra.row(entry, def)
         return by_type[t] and by_type[t].name or ('Stratagem ' .. t)
     end
     row.note = 'also in your loadout when you bring this one'
-    row.inline_note = '不要在配装中再次携带附赠战备，也不要让两个携带的战备附赠同一战备；重复可能导致进入任务时崩溃。编辑器会拦截可检测到的重复附赠，实际配装需在游戏中核对。'
+    row.inline_note = '重复携带同一附赠战备可能导致任务加载崩溃。检测到重复时会显示警告，由你选择是否继续导入或写入；实际配装需在游戏中核对。循环附赠仍会被拦截。'
     row.after = { '点击「选择配备」按名称选择；选择「无」取消附加配备。',
                   "It doesn't take a loadout slot, but the HUD's stratagem list can fill up." }
     row.after_h = #row.after * 16 + 6
@@ -18390,6 +18430,17 @@ local function handle_table(address, kind, payload, blob)
         spec.stride, spec.slack, spec.offsets = was[1], was[2], was[3]
     end
     local took = (api.now() - started) * 1000
+    if not index and MOD.offline and spec.keyed and not spec.parse then
+        parse=MOD.parse_keyed_tail
+        index,info=parse(blob,spec.stride,spec,address)
+        for _,layout in ipairs(not index and spec.layouts or {})do
+            local was={spec.stride,spec.slack,spec.offsets}
+            spec.stride,spec.slack,spec.offsets=layout.stride,layout.slack,layout.offsets
+            index,info=parse(blob,spec.stride,spec,address)
+            if index then break end
+            spec.stride,spec.slack,spec.offsets=was[1],was[2],was[3]
+        end
+    end
     if not index then
         log(spec.name .. ' table at ' .. hex(address) .. ' not usable yet: ' .. info)
         return
@@ -22743,6 +22794,7 @@ if MOD.offline then
     state.desktop={registry={}}
     MOD.extra.translate=function(text)return settings.tr(text)end
     function state.desktop.extra_validate() return MOD.extra.validate() end
+    function state.desktop.extra_warnings() local _,warnings=MOD.extra.validate();return warnings or {} end
     function state.desktop.editor_mode(enemy)
         if enemy~=nil then MOD.enemy.on=not not enemy end
         return MOD.enemy.on
@@ -22969,7 +23021,7 @@ if MOD.offline then
     require('desktop_features').attach(state.desktop,{
         name=MOD.desktop_name,editor=function()return MOD.enemy.on and 'enemy' or 'equipment' end,
         in_scope=function(w)return MOD.is_enemy_value(w.hash)==MOD.enemy.on end,
-        validate_values=MOD.validate_preset_values,record_pages=function()return MOD.records.pages end,preset_id=MOD.preset_id,presets=presets,by_hash=by_hash,selected=function()return ui.weapon end,
+        validate_values=MOD.validate_preset_values,preset_warnings=MOD.extra.preset_warnings,record_pages=function()return MOD.records.pages end,preset_id=MOD.preset_id,presets=presets,by_hash=by_hash,selected=function()return ui.weapon end,
         overrides=function()return overrides end,parts=MOD.parts_of,read=read_field,default=default_of,
         tr=settings.tr,number=number_text,write=MOD.write_text,path=function(name)return data_dir('StatEditor')..'/'..name end,
         file=function(field)

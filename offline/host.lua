@@ -549,7 +549,8 @@ local function main()
             state.writes=(state.writes or 0)+1;return true
         end
         B.install_preview=function()
-            local extra_error=B.extra_validate and B.extra_validate()
+            local extra_error,extra_warnings
+            if B.extra_validate then extra_error,extra_warnings=B.extra_validate() end
             assert(not extra_error,extra_error)
             local entries=B.pending_preview()
             for _,a in ipairs(AR.list) do
@@ -588,7 +589,7 @@ local function main()
             end
             table.sort(files)
             if not mod_management_enabled then for _,name in ipairs(files)do if managed[name]then errors[#errors+1]=name..' 正由已安装的 Mod 使用；请开启 Mod 管理后再修改此文件。' end end end
-            return {name='写入游戏预览',entries=entries,files=files,problems=errors,count=#entries}
+            return {name='写入游戏预览',entries=entries,files=files,problems=errors,warnings=extra_warnings or {},count=#entries}
         end
         B.managed_mods=function(inputs)
             local grouped={}
