@@ -49,15 +49,15 @@ end
 
 local function read_at(path, off, size)
     local handle = io.open(path, 'rb')
-    if not handle then return nil, 'cannot open ' .. path end
+    if not handle then return nil, '无法打开文件：' .. path end
     if off and off > 0 then
         local moved = handle:seek('set', off)
-        if not moved then handle:close() return nil, 'cannot seek ' .. path end
+        if not moved then handle:close() return nil, '无法定位文件读取位置：' .. path end
     end
     local data = size and handle:read(size) or handle:read('*a')
     handle:close()
-    if not data then return nil, 'cannot read ' .. path end
-    if size and #data < size then return nil, 'short read ' .. path end
+    if not data then return nil, '无法读取文件：' .. path end
+    if size and #data < size then return nil, '读取的文件数据不完整：' .. path end
     return data
 end
 
@@ -75,13 +75,13 @@ end
 function M.write_file(path, data)
     local temp = path .. '.tmp'
     local handle = io.open(temp, 'wb')
-    if not handle then return false, 'cannot write ' .. path end
+    if not handle then return false, '无法写入文件：' .. path end
     local wrote = handle:write(data)
     local closed = handle:close()
-    if not wrote or not closed then pcall(os.remove, temp) return false, 'cannot write ' .. path end
+    if not wrote or not closed then pcall(os.remove, temp) return false, '无法写入文件：' .. path end
     os.remove(path)
     local moved = os.rename(temp, path)
-    if not moved then pcall(os.remove, temp) return false, 'cannot replace ' .. path end
+    if not moved then pcall(os.remove, temp) return false, '无法替换文件：' .. path end
     return true
 end
 
@@ -102,7 +102,7 @@ local function lz4_block(src, out_size)
         local literals = math.floor(token / 16)
         if literals == 15 then
             while true do
-                if i > n then return nil, 'truncated literal length' end
+                if i > n then return nil, 'LZ4 原始数据长度字段不完整' end
                 local extra = src:byte(i)
                 i = i + 1
                 literals = literals + extra
@@ -110,19 +110,19 @@ local function lz4_block(src, out_size)
             end
         end
         if literals > 0 then
-            if i + literals - 1 > n then return nil, 'truncated literal run' end
+            if i + literals - 1 > n then return nil, 'LZ4 原始数据段不完整' end
             push(src:sub(i, i + literals - 1))
             i = i + literals
         end
         if i > n then break end
-        if i + 1 > n then return nil, 'truncated match offset' end
+        if i + 1 > n then return nil, 'LZ4 匹配偏移字段不完整' end
         local offset = src:byte(i) + src:byte(i + 1) * 256
         i = i + 2
-        if offset == 0 then return nil, 'invalid match offset 0' end
+        if offset == 0 then return nil, 'LZ4 匹配偏移不能为 0' end
         local match = token % 16
         if match == 15 then
             while true do
-                if i > n then return nil, 'truncated match length' end
+                if i > n then return nil, 'LZ4 匹配长度字段不完整' end
                 local extra = src:byte(i)
                 i = i + 1
                 match = match + extra
@@ -130,12 +130,12 @@ local function lz4_block(src, out_size)
             end
         end
         match = match + 4
-        if offset > #tail then return nil, 'match before the start of the block' end
+        if offset > #tail then return nil, 'LZ4 匹配位置超出数据块起点' end
         local pattern = tail:sub(#tail - offset + 1)
         local copies = math.ceil(match / #pattern)
         push(pattern:rep(copies):sub(1, match))
     end
-    if out_size and total ~= out_size then return nil, 'wanted ' .. out_size .. ', produced ' .. total end
+    if out_size and total ~= out_size then return nil, '解压长度不匹配：预期 ' .. out_size .. '，实际 ' .. total end
     return table.concat(parts)
 end
 
@@ -147,8 +147,8 @@ local CACHE_LIMIT = 12
 
 local function dsar_head(path)
     local head = read_at(path, 0, 32)
-    if not head then return nil, 'cannot read ' .. path end
-    if head:sub(1, 4) ~= 'DSAR' then return nil, 'not a DSAR container: ' .. path end
+    if not head then return nil, '无法读取文件：' .. path end
+    if head:sub(1, 4) ~= 'DSAR' then return nil, '文件不是有效的 DSAR 容器：' .. path end
     local count = le(head, 8, 4)
     local table_data, why = read_at(path, 32, count * 32)
     if not table_data then return nil, why end
@@ -175,10 +175,10 @@ local function chunk_data(head, index)
     local data = raw
     if chunk.comp == 3 then
         local unpacked, unpacked_why = lz4_block(raw, chunk.usize)
-        if not unpacked then return nil, 'LZ4 block failed in ' .. head.path .. ': ' .. tostring(unpacked_why) end
+        if not unpacked then return nil, 'LZ4 数据块解压失败，文件：' .. head.path .. ': ' .. tostring(unpacked_why) end
         data = unpacked
     elseif chunk.comp ~= 0 then
-        return nil, 'unknown DSAR compression ' .. tostring(chunk.comp) .. ' in ' .. head.path
+        return nil, '不支持的 DSAR 压缩类型：' .. tostring(chunk.comp) .. '，文件：' .. head.path
     end
     head.cache[index] = data
     head.order[#head.order + 1] = index
@@ -227,7 +227,7 @@ local function dsar_read(head, off, size)
             done = done + (to - from)
         end
     end
-    if done ~= size then return nil, 'wanted ' .. size .. ' bytes at ' .. off .. ', built ' .. done end
+    if done ~= size then return nil, '资源读取长度不匹配：偏移 ' .. off .. '，预期 ' .. size .. ' 字节，实际 ' .. done end
     return table.concat(out)
 end
 
@@ -245,7 +245,7 @@ local function bundle_index(data_root)
         data = payload
     end
     local count = le(data, 0x10, 4)
-    if count == 0 or count > 100000 then return nil, 'the bundle index holds no packages: ' .. path end
+    if count == 0 or count > 100000 then return nil, '资源索引中没有有效资源包：' .. path end
     local packages, names = {}, {}
     for index = 0, count - 1 do
         local at = 0x18 + index * 24
@@ -287,7 +287,7 @@ end
 local function package_read(set, name, off, size)
     if size <= 0 then return '' end
     local package = set.packages[name]
-    if not package then return nil, 'this game has no package ' .. name end
+    if not package then return nil, '当前游戏中找不到资源包：' .. name end
     local out, done = {}, 0
     local finish = off + size
     for index, item in ipairs(package.items) do
@@ -306,7 +306,7 @@ local function package_read(set, name, off, size)
         end
         if start >= finish then break end
     end
-    if done ~= size then return nil, 'wanted ' .. size .. ' bytes at ' .. off .. ', built ' .. done end
+    if done ~= size then return nil, '资源读取长度不匹配：偏移 ' .. off .. '，预期 ' .. size .. ' 字节，实际 ' .. done end
     return table.concat(out)
 end
 
@@ -333,10 +333,10 @@ end
 local function package_head(set, name)
     local header, why = package_read(set, name, 0, HEADER_SIZE)
     if not header then return nil, why end
-    if le(header, 0, 4) ~= MAGIC then return nil, 'not a package container: ' .. name end
+    if le(header, 0, 4) ~= MAGIC then return nil, '不是有效的资源包容器：' .. name end
     local types = le(header, 4, 4)
     local entries = le(header, 8, 4)
-    if types > 4096 or entries > 100000 then return nil, 'the package table of ' .. name .. ' looks wrong' end
+    if types > 4096 or entries > 100000 then return nil, '资源包目录结构异常：' .. name end
     local table_size = HEADER_SIZE + types * TYPE_SIZE + entries * ENTRY_SIZE
     local data, table_why = package_read(set, name, 0, table_size)
     if not data then return nil, table_why end
@@ -389,16 +389,16 @@ local function stream_length(set, spec, entry, toc)
     if length == 0 then return 0 end
     if entry.stream_at + entry.stream_size <= length then return entry.stream_size end
     if entry.type_hex == TYPE_TEXTURE then
-        if #toc < 0x14 then return nil, 'a texture in ' .. spec.name .. ' has a toc too small to read' end
+        if #toc < 0x14 then return nil, '资源包中的纹理目录数据不完整：' .. spec.name end
         return le(toc, 0x10, 4)
     end
-    return nil, 'a resource in ' .. spec.name .. ' declares a stream size that does not fit the archive'
+    return nil, '资源包声明的数据流大小与实际文件不符：' .. spec.name
 end
 
 local function read_side(set, spec, suffix, at, size, what)
     if size == 0 then return '' end
     local side = set.packages[spec.name .. suffix]
-    if not side then return nil, 'this game has no ' .. what .. ' for ' .. spec.name end
+    if not side then return nil, '资源包缺少配套文件：' .. spec.name .. '（' .. what .. '）' end
     if at + size > side.size then
         return nil, string.format('the %s of %s is %d bytes, but an entry wants %d bytes at %d',
             what, spec.name, side.size, size, at)
@@ -635,12 +635,12 @@ function M.install(ctx, host, name, mode)
     if mode ~= 'full' and mode ~= 'light' then return nil, '无效的资源驻留模式' end
     local set, why = bundle_set(ctx)
     if not set then return nil, why end
-    if not set.packages[name] then return nil, 'this game has no package ' .. name end
+    if not set.packages[name] then return nil, '当前游戏中找不到资源包：' .. name end
     local spec, head_why = package_head(set, name)
     if not spec then return nil, head_why end
     local blobs, slice_why = package_slices(set, name, spec, mode == 'full')
     if not blobs then return nil, slice_why end
-    if #blobs == 0 then return nil, 'this package holds nothing a patch can carry' end
+    if #blobs == 0 then return nil, '此资源包没有可以写入常驻补丁的资源' end
     local toc, gpu, stream = build_package(spec, blobs)
 
     -- Replacing a resident package keeps its slot: taking a new one would leave the old patch
@@ -655,7 +655,7 @@ function M.install(ctx, host, name, mode)
         index = entries[existing].index
     else
         local used, highest = used_numbers(ctx.root, host)
-        if not used then return nil, 'the game data folder was not found: ' .. ctx.root end
+        if not used then return nil, '找不到游戏资源目录：' .. ctx.root end
         if #used ~= highest + 1 then return nil, '补丁序号不连续，请先整理现有补丁；未修改任何文件' end
         if highest >= 63 then return nil, '补丁槽位已满' end
         index = highest + 1
@@ -694,7 +694,7 @@ function M.remove(ctx, host, name)
     for index, entry in ipairs(entries) do
         if entry.host == host and entry.name == name then at, found = index, entry break end
     end
-    if not found then return nil, 'nothing to take back: this package is not resident' end
+    if not found then return nil, '此资源包尚未安装常驻补丁，无需移除' end
     local used = used_numbers(ctx.root, host)
     if not used then return nil, '找不到游戏资源目录' end
     local owned = {}

@@ -1,6 +1,7 @@
 .pragma library
 
 function entryLabel(group, item) {
+    if (group.name === "护盾力场") return item.name
     if (item.name === group.name) return "本体参数"
     if (item.name.indexOf(group.name) === 0) {
         const suffix = item.name.slice(group.name.length).replace(/^[\s:：·-]+/, "")

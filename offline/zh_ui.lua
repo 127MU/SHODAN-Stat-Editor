@@ -1,5 +1,7 @@
 -- Plain-language labels for editor-only records that have no game localisation string.
 local labels={
+ ['Shield forcefield (Hexagon)']='护盾力场（六边形变体）',
+ ['Shield forcefield (Outcast)']='护盾力场（Outcast 内部变体）',
  ['Call-in code']='战备指令', ['Primary weapon']='主武器', ['Sidearm']='副武器',
  ['Support weapon']='支援武器', ['Weapons carried']='携带武器',
  ['All Terminids']='所有终结族', ['Default']='默认', ['Horde']='敌潮',

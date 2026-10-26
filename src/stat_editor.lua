@@ -16099,7 +16099,7 @@ local function resolve(weapon)
     weapon.preset_ambiguous = nil
     weapon.ents_rows = nil
     weapon.grenade_swap = nil
-    if weapon.slot == 'Throwables' then resolve_throwable(weapon); return end
+    if weapon.slot == 'Throwables' then resolve_throwable(weapon); MOD.resident.page_rows(weapon); return end
     -- a support weapon you place (the C4 Pack): the backpack that shares its loadout package (its
     -- charges), the charge (health, throw distance) and its explosion
     if weapon.slot == 'Support' and KINDS[TYPES.package].placed(weapon.key) then
@@ -16109,6 +16109,7 @@ local function resolve(weapon)
         end
         if not KINDS[TYPES.seeking].silo_rows(weapon) then unit_rows(weapon, weapon.key, 'Charge', 'charge_') end
         resolve_throwable(weapon, true)
+        MOD.resident.page_rows(weapon)
         return
     end
     if weapon.booster then MOD.boosters.resolve(weapon); return end
@@ -16227,6 +16228,7 @@ local function resolve(weapon)
     if not weapon.mounted and (weapon.slot == 'Primary' or weapon.slot == 'Secondary') then
         MOD.slot.row(weapon)
     end
+    MOD.resident.page_rows(weapon)   -- where its effects' package lives, for a swapped id
 end
 
 -- The shots a weapon fires besides its projectile, read as the game had them: a second ammo type
@@ -16605,6 +16607,7 @@ function MOD.records.rows(page)
         hurt(44, name, name, 6)   -- no forces: a status has none
         num(name, 'duration', name .. ' duration (s)', 40, 'f32', 600, 0.5, 5)
     end
+    MOD.resident.page_rows(page)   -- where this record's effects live, by package
 end
 -- An unnamed record still needs something readable beside its number. Use the loaded
 -- values as a description, without claiming to know which weapon or effect it belongs to.
@@ -17948,18 +17951,25 @@ function MOD.resident.package_name(row)
 end
 
 function MOD.resident.state_of(row)
-    local package = MOD.resident.package_name(row)
-    if not package then return 0 end
-    local memo = MOD.resident.memo
-    if memo and memo[package] then return memo[package] end
+    local packages = MOD.resident.targets(row)
+    if not packages or #packages == 0 then return 0 end
     local ctx = MOD.resident.ctx()
     if not ctx then return 0 end
     local module = MOD.resident.module()
-    local ok, value = pcall(module.state, ctx, MOD.resident.carrier, package)
-    if not ok or type(value) ~= 'number' then return 0 end
-    MOD.resident.memo = memo or {}
-    MOD.resident.memo[package] = value
-    return value
+    local memo, result = MOD.resident.memo or {}, 1
+    for _, package in ipairs(packages) do
+        local value = memo[package]
+        if value == nil then
+            local ok
+            ok, value = pcall(module.state, ctx, MOD.resident.carrier, package)
+            if not ok or type(value) ~= 'number' then return 0 end
+            memo[package] = value
+        end
+        if value == 0 then return 0 end
+        if value == 2 then result = 2 end
+    end
+    MOD.resident.memo = memo
+    return result
 end
 
 function MOD.resident.act(row, mode)
@@ -17975,21 +17985,251 @@ function MOD.resident.act(row, mode)
     if not module then return false, '读不到资源驻留模块（offline/res_patch.lua）' end
     local ctx, why = MOD.resident.ctx()
     if not ctx then return false, why end
-    local package = MOD.resident.package_name(row)
-    if not package then return false, '这一条还没有资源包（+168 是 0），先在上面填一个' end
-    MOD.resident.memo = nil
+    local packages, why = MOD.resident.targets(row)
+    if not packages then return false, why end
+    if #packages == 0 then return false, why end
+    MOD.resident.memo, MOD.resident.cat = nil, nil
     if mode == 3 then
-        local ok, err = module.remove(ctx, MOD.resident.carrier, package)
-        if not ok then return false, '移除补丁失败：' .. tostring(err) end
-        return true, '已移除补丁 ' .. package .. '（重启游戏后生效）'
+        local done, failed = {}, {}
+        for _, package in ipairs(packages) do
+            local ok, err = module.remove(ctx, MOD.resident.carrier, package)
+            if ok then done[#done + 1] = package else failed[#failed + 1] = package .. '（' .. tostring(err) .. '）' end
+        end
+        if #failed > 0 then return false, '移除补丁失败：' .. table.concat(failed, '；') end
+        return true, string.format('已移除 %d 个补丁（%s）；重启游戏后生效', #done, table.concat(done, ', '))
     end
     local wanted = mode == 1 and 'full' or 'light'
-    local info, err = module.install(ctx, MOD.resident.carrier, package, wanted)
-    if not info then return false, '写补丁失败：' .. tostring(err) end
-    local size = ((tonumber(info.toc) or 0) + (tonumber(info.gpu) or 0) + (tonumber(info.stream) or 0)) / 1048576
-    return true, string.format('已写入 %s.patch_%d：%d 个条目，%.1f MB，%s；重启游戏后生效',
-        MOD.resident.carrier, info.index, info.entries, size, wanted == 'full' and '含贴图' or '仅轻资源')
+    local notes, failed, size = {}, {}, 0
+    for _, package in ipairs(packages) do
+        local info, err = module.install(ctx, MOD.resident.carrier, package, wanted)
+        if not info then
+            failed[#failed + 1] = package .. '（' .. tostring(err) .. '）'
+        else
+            size = size + (tonumber(info.toc) or 0) + (tonumber(info.gpu) or 0) + (tonumber(info.stream) or 0)
+            notes[#notes + 1] = string.format('%s.patch_%d（%d 个条目）', MOD.resident.carrier, info.index, info.entries)
+        end
+    end
+    if #failed > 0 then return false, '写补丁失败：' .. table.concat(failed, '；') end
+    return true, string.format('已写入 %s，共 %.1f MB（%s）；重启游戏后生效',
+        table.concat(notes, '、'), size / 1048576, wanted == 'full' and '含贴图' or '仅轻资源')
 end
+-- ---------------------------------------------------------------- where a page's effects live
+rawset(state, 'resident', MOD.resident)   -- QA: the detector on the state table, next to the rest
+-- A weapon's tracers, blast particles, materials and sounds are not in its own table row: they sit in the
+-- loadout package of the item that owns the record it points at, and a package only streams in when
+-- someone in the match carries that item. Point a weapon at another weapon's projectile (the swap row) or
+-- an explosion at another blast record, and the numbers change while the package does not: the shot deals
+-- its damage, breaks terrain, and plays no effect and no sound. res_patch writes a package into the carrier
+-- package (always loaded), so those effects stay resident without anyone carrying the original item.
+function MOD.resident.item_package(key)
+    local t = key and tables[TYPES.package]
+    local off = t and t.index[key]
+    if not off then return nil end
+    local pkg = api.read(t.copies[1] + HEADER_BYTES + off + 8, 8)
+    if not pkg or #pkg ~= 8 or (u32(pkg, 0) + u32(pkg, 4) == 0) then return nil end
+    local list = MOD.refs.packages()
+    return list.by_bytes[pkg] or MOD.refs.register('packages', pkg)
+end
+
+-- Which item fires which projectile: an item's own rounds record (+64, and its other ammo type at +68),
+-- its fire mode (+0, the second firing mode at +576) and the charge stages (+4, +28, +52). The item keys
+-- are the package table's, so every key here can lead to the package that carries the effects. Built once.
+function MOD.resident.item_ids(key)
+    local ids = {}
+    local function add(kind, off)
+        local id = off and read_field(field_at(kind, off, 'u32', 100000))
+        if type(id) == 'number' and id > 0 then ids[#ids + 1] = id end
+    end
+    local rounds = tables[T_ROUNDS] and tables[T_ROUNDS].index[key]
+    if rounds then add(T_ROUNDS, rounds + 64); add(T_ROUNDS, rounds + 68) end
+    local fire = tables[T_FIRE] and tables[T_FIRE].index[key]
+    if fire then add(T_FIRE, fire); add(T_FIRE, fire + 576) end
+    local charge = tables[TYPES.charge] and tables[TYPES.charge].index[key]
+    if charge then for s = 1, 3 do add(TYPES.charge, charge + (s - 1) * 24 + 4) end end
+    return ids
+end
+
+-- Which item owns each projectile and which item sets each explosion off (a projectile's +144 / +156).
+function MOD.resident.catalog()
+    local cat = MOD.resident.cat
+    if cat then return cat end
+    cat = { shot = {}, blast = {}, owner = {}, items = 0 }
+    local pk, pt = tables[TYPES.package], tables[T_PROJECTILE]
+    if pk then
+        for key in pairs(pk.index) do
+            cat.items = cat.items + 1
+            for _, id in ipairs(MOD.resident.item_ids(key)) do
+                cat.owner[id] = cat.owner[id] or key
+                local list = cat.shot[id]
+                if not list then list = {}; cat.shot[id] = list end
+                list[#list + 1] = key
+                local at = pt and pt.index[id]
+                if at then
+                    for _, off in ipairs({ 144, 156 }) do
+                        local x = read_field(field_at(T_PROJECTILE, at + off, 'u32', 100000))
+                        if type(x) == 'number' and x > 0 then
+                            local bl = cat.blast[x]
+                            if not bl then bl = {}; cat.blast[x] = bl end
+                            bl[#bl + 1] = key
+                        end
+                    end
+                end
+            end
+        end
+    end
+    MOD.resident.cat = cat
+    return cat
+end
+
+-- The packages those items bring, as list ids (0 stands for 'nothing', never returned here).
+function MOD.resident.packages_of(keys, skip)
+    local seen, list = {}, {}
+    for _, key in ipairs(keys) do
+        if key ~= skip then
+            local pkg = MOD.resident.item_package(key)
+            if pkg and not seen[pkg] then seen[pkg] = true; list[#list + 1] = pkg end
+        end
+    end
+    return list
+end
+
+-- What a row names, when it names a record at all. The panel marks those rows itself: choice is true for a
+-- projectile swap, 'explosion' for an id that sets a blast off, 'shrapnel' for a blast's piece projectile,
+-- and a weapon page's explosion sections end in ' explosion id'. Nothing else can be trusted: a row's field
+-- kind is its page's own kind, so on a projectile page every number would look like a projectile id.
+function MOD.resident.ref_of(row)
+    local choice = row.choice
+    if choice == true then return 'shot' end
+    if choice == 'explosion' then return 'blast' end
+    if choice == 'shrapnel' then return 'shot' end
+    return nil   -- the id rows above are the only ones that name a record; a blast angle is not an id
+end
+
+function MOD.resident.ref_keys(cat, what, id)
+    return (what == 'shot' and cat.shot[id]) or (what == 'blast' and cat.blast[id]) or {}
+end
+
+function MOD.resident.ref_taker(cat, seen, keys)
+    return function(what, id)
+        for _, key in ipairs(MOD.resident.ref_keys(cat, what, id)) do
+            if not seen[key] then seen[key] = true; keys[#keys + 1] = key end
+        end
+    end
+end
+
+-- Every id on the page that now points away from the record the page itself came with.
+function MOD.resident.changed_refs(page, take)
+    for _, row in ipairs(page.rows or {}) do
+        local what = MOD.resident.ref_of(row)
+        local q = what and row.parts and row.parts[1]
+        if q then
+            local now, own = read_field(q.field), default_of(q.field)
+            if type(now) == 'number' and now > 0 and now ~= own then take(what, now) end
+        end
+    end
+end
+
+-- The packages a page needs when its projectile / explosion ids were changed away from its own. The page's
+-- own package is left out: it loads with the item anyway, so a patch of it would only cost space.
+function MOD.resident.changed_targets(page)
+    local cat = MOD.resident.catalog()
+    local keys, seen = {}, {}
+    MOD.resident.changed_refs(page, MOD.resident.ref_taker(cat, seen, keys))
+    return MOD.resident.packages_of(keys, page.key)
+end
+
+-- A record page names one record, so its packages are the ones of every item that owns it -- plus, when the
+-- record now points at another blast (a projectile's +144 / +156) or another piece (a blast's shrapnel),
+-- the packages of whatever owns that one.
+function MOD.resident.record_targets(page)
+    local cat = MOD.resident.catalog()
+    local keys, seen = {}, {}
+    local take = MOD.resident.ref_taker(cat, seen, keys)
+    take(page.kind == T_EXPLOSION and 'blast' or 'shot', page.id)
+    MOD.resident.changed_refs(page, take)
+    return MOD.resident.packages_of(keys, nil)
+end
+
+function MOD.resident.page_targets(page)
+    return page.record and MOD.resident.record_targets(page) or MOD.resident.changed_targets(page)
+end
+
+-- What act() writes: every detected package, plus the one picked by hand when it is not among them.
+function MOD.resident.targets(row)
+    local page = row.page
+    if not page then            -- a stratagem's own row: the +168 package it names
+        local package = MOD.resident.package_name(row)
+        if not package then return nil, '这一条还没有资源包（+168 是 0），先在上面填一个' end
+        return { package }
+    end
+    local list = MOD.resident.page_targets(page)
+    local chosen = row.package_row and read_field(row.package_row.parts[1].field)
+    if type(chosen) == 'number' and chosen > 0 then
+        local has = false
+        for _, v in ipairs(list) do if v == chosen then has = true end end
+        if not has then table.insert(list, 1, chosen) end
+    end
+    if #list == 0 then
+        return {}, '本页尚未检测到需要常驻的资源包。请先修改射弹或爆炸编号，或手动选择特效资源包。'
+    end
+    -- Detection and UI fields store picker IDs. res_patch takes actual package
+    -- filenames; never pass the numeric IDs across that boundary.
+    local reg, names, seen = MOD.refs.packages(), {}, {}
+    for _, id in ipairs(list) do
+        local item = reg.by_id[id]
+        if not item or not item.bytes then return nil, '无法识别资源包选项 #' .. tostring(id) end
+        local name = MOD.refs.hex(item.bytes):lower()
+        if not seen[name] then names[#names + 1] = name; seen[name] = true end
+    end
+    return names
+end
+
+function MOD.resident.auto_note(page)
+    local list = MOD.resident.page_targets(page)
+    if #list == 0 then
+        if page.record then return '这一条记录的资源包来自拥有它的物品；改过编号的武器页才会列出待常驻的包。' end
+        return '本页的射弹编号还是它自己的：特效随本武器一起加载，不需要补丁。'
+    end
+    local reg, names = MOD.refs.packages(), {}
+    for _, v in ipairs(list) do
+        local item = reg.by_id[v]
+        names[#names + 1] = item and settings.tr(item.label) or ('条目 ' .. tostring(v))
+    end
+    return string.format('检测到 %d 个需要常驻的资源包：%s', #list, table.concat(names, '、'))
+end
+
+MOD.resident.PICK_TIP = {
+    '这一条记录的粒子、贴图与音效在哪个资源包里。留空时自动取检测到的第一个包；装补丁时检测到的包会全部写上。',
+    '资源包是物品自带的（选武器就是选它的包）。包装错，进对局仍然只有伤害、没有特效。',
+}
+
+-- Two rows on any page whose ids can point outside its own package: the package itself, then the patch.
+function MOD.resident.page_rows(page)
+    if not MOD.offline or not page or not page.rows then return end
+    -- only a page that can name a projectile or an explosion: a status, damage or entity record names neither
+    if page.record and page.kind ~= T_PROJECTILE and page.kind ~= T_EXPLOSION then return end
+    MOD.resident.last = page   -- QA: the page whose rows were built last
+    for _, row in ipairs(page.rows) do if row.id == 'resomode' then return end end
+    local tag = 'res:' .. tostring(page.hash) .. ':'
+    local pkg = add_row(page, '资源驻留', 'res_package', '特效资源包', 'virtual',
+                        { part('res_package', 0, tag .. 'package', 'virtual', 100000) }, 0, 100000, 1, 10)
+    pkg.choice = 'package'
+    pkg.tip = MOD.resident.PICK_TIP
+    pkg.page = page
+    pkg.parts[1].field.default = 0
+    local mode = add_row(page, '资源驻留', 'resomode', '常驻资源（补丁，不占包口）', 'virtual',
+                         { part('resomode', 0, tag .. 'mode', 'virtual', 3) }, 0, 3, 1, 1)
+    mode.choice = 'resomode'
+    mode.page = page
+    mode.package_row = pkg
+    mode.tip = MOD.resident.TIP
+    mode.note = function() return MOD.resident.auto_note(page) end
+    local list = MOD.resident.page_targets(page)
+    if #list > 0 then pkg.parts[1].field.default = list[1] end
+    return mode
+end
+
+
 -- A stratagem's two package slots, then the hellpod rack it lands with. A sentry owns one or two
 -- stratagems (the Rocket Sentry has two), so a second set is told apart by 'suffix'.
 function MOD.refs.stratagem_rows(entry, def, keys, suffix)
@@ -22565,6 +22805,10 @@ if MOD.offline then
             local note=row.note
             if type(note)=='function' then local ok,text=pcall(note,shared_with(ui.weapon,row));note=ok and text or '' end
             if type(note)=='string' and note~='' then help[#help+1]=settings.tr(note) end
+            local inline_note=row.inline_note or ''
+            if row.label=='Explosive damage taken (x)' and d==3.4028234663852886e38 then
+                inline_note='原始值是 32 位浮点数最大有限值（0x7F7FFFFF）。此记录使用特殊边界值，游戏内含义尚未确认，不能直接按普通伤害倍率解释。'
+            end
             for _,line in ipairs(type(note)=='table' and note or {})do help[#help+1]=settings.tr(line) end
             for _,line in ipairs(row.after or {}) do help[#help+1]=settings.tr(line) end
             local choice_name=''
@@ -22589,7 +22833,7 @@ if MOD.offline then
             out[#out+1]={id=n,label=settings.tr(row.label):gsub(' %(x%)$','（倍率）'):gsub(' %(%+%)$','（加值）'):gsub('（x）','（倍率）'):gsub('（%+）','（加值）'),section=settings.tr(row.section or ''),
                 value=v,original=d,text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage)),default_text=row.code and MOD.code.text(d) or settings.tr(fmt(d,row.storage)),code=not not row.code,
                 choice=not not row.choice,choice_kind=type(row.choice)=='string' and row.choice or '',choice_name=choice_name,flag=row.storage=='flag' or row.storage=='bit',min=nil,max=nil,
-                note=settings.tr(type(note)=='string' and note or ''),inline_note=settings.tr(row.inline_note or ''),help=help,faction_only=faction_only,changed=(v~=d and not faction_only) or ui.weapon.enemy and MOD.enemy.pinned(row) or false,
+                note=settings.tr(type(note)=='string' and note or ''),inline_note=settings.tr(inline_note),help=help,faction_only=faction_only,changed=(v~=d and not faction_only) or ui.weapon.enemy and MOD.enemy.pinned(row) or false,
                 shared=impact.shared(ui.weapon,row.parts,settings.tr,index)}
         end
         return out
@@ -22960,5 +23204,15 @@ if MOD.offline and os.getenv('SHODAN_QA_OUTPUT') then
         current=function() return ui.weapon end,
         select=function(hash) select_weapon(by_hash[hash]) end,
         redraw=function() ui.signature=nil;panel_frame(api.now()) end,
+        view_section=function(word)   -- QA: jump the parameter list to the first group whose title matches
+            local w=ui.weapon
+            if not w then return false end
+            for n,row in ipairs(w.rows) do
+                if n==1 or row.section~=w.rows[n-1].section then
+                    if tostring(row.section):find(word,1,true) then click('section:'..n);ui.signature=nil;panel_frame(api.now());return n end
+                end
+            end
+            return false
+        end,
     }
 end
