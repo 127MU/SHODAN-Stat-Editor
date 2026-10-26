@@ -12292,6 +12292,31 @@ function MOD.numeric_bounds(f)
     if f.storage=='u32' then return 0,4294967295 end
     return -3.4028234663852886e38,3.4028234663852886e38
 end
+-- Stable IDs for Guard Dog presets; never derive IDs from table enumeration order.
+MOD.dogs = { list = {}, by_id = {}, by_bytes = {} }
+function MOD.dogs.add(id, raw, label, note)
+    local bytes = ''
+    for n = 16, 2, -2 do bytes = bytes .. string.char(tonumber(raw:sub(n-1,n),16)) end
+    local it = {id=id,bytes=bytes,label=label,raw=raw,note=note or '原生护卫犬武器；仍受当前无人机的补弹行为限制。'}
+    MOD.dogs.list[#MOD.dogs.list+1]=it;MOD.dogs.by_id[id]=it;MOD.dogs.by_bytes[bytes]=id
+end
+MOD.dogs.add(1, 'A32621E3BDE13379', '护卫犬原装步枪')
+MOD.dogs.add(2, 'A0532C3616528CBF', '护卫犬 K-9 原装电弧武器')
+MOD.dogs.add(3, '65CD4325BA23F3C6', '热狗原装喷火器')
+MOD.dogs.add(4, '2C66C201B2543D2C', '漫游车原装激光武器')
+MOD.dogs.add(5, 'B729A2BA153BCAED', '狗息原装毒气武器')
+MOD.dogs.add(6, '263817187B7CE092', '护卫犬步枪变体')
+MOD.dogs.add(7, '3D4970D1C4E640EE', '护卫犬武器变体')
+MOD.dogs.add(8, '7F6E4F4455D4A6C2', '护卫犬技能武器变体')
+MOD.dogs.add(9, '27EE1ED8F6FB6356', '护卫犬镰刀激光变体')
+MOD.dogs.add(10, '968211C0033DCE64', '护卫犬解放者变体')
+MOD.dogs.add(11, '11C27D3BABB38956', 'MG-43 机枪', '需加载对应武器资源；护卫犬实测可开火。补弹取决于搭载的无人机，不会随武器自动获得。')
+MOD.dogs.add(12, 'A8CFFB316F0B5C5F', 'AC-8 机炮', '需加载对应武器资源；护卫犬实测可开火。补弹取决于搭载的无人机，不会随武器自动获得。')
+MOD.dogs.add(13, 'CC786F6491FE7E65', 'StA-X3 黄蜂', '需加载对应武器资源；护卫犬实测可开火。补弹取决于搭载的无人机，不会随武器自动获得。')
+MOD.dogs.add(14, '35A61296619CC47E', 'LAS-99 类星体加农炮', '需加载对应武器资源；护卫犬实测可开火。补弹取决于搭载的无人机，不会随武器自动获得。')
+MOD.dogs.add(15, 'EEA5E3CEF1E12C14', 'PLAS-1 焦土', '需加载对应武器资源；护卫犬实测可开火。补弹取决于搭载的无人机，不会随武器自动获得。')
+MOD.dogs.add(16, '8365609B35EF6672', '穿梭舰重机枪', '热狗搭载实测可开火；需要场景已加载穿梭舰武器资源。')
+
 local function read_field(f, original)
     if f.storage == 'virtual' then   -- a value the editor keeps itself (no table field)
         if original then return f.default end
@@ -12325,6 +12350,7 @@ local function read_field(f, original)
         local reg = MOD.refs.items()
         return reg.by_bytes[key] or MOD.refs.register('items', key)
     end
+    if f.storage == 'dogweapon' then return MOD.dogs.by_bytes[bytes(8)] end
     if f.storage == 'mountitem' then   -- the entity a mount slot carries (an arm, a gun, a rack)
         local key = bytes(8)
         if not key or #key < 8 then return nil end
@@ -12383,6 +12409,7 @@ local function read_field(f, original)
 end
 
 local function encode(f, value)
+    if f.storage == 'dogweapon' then local e=MOD.dogs.by_id[value];return e and e.bytes end
     if f.storage == 'grenade' then return KINDS[TYPES.throwable].entity_bytes(value) end
     if f.storage == 'rackitem' then local e = MOD.refs.items().by_id[value]; return e and e.bytes end
     if f.storage == 'mountitem' then local e = MOD.refs.mounts().by_id[value]; return e and e.bytes end
@@ -12421,6 +12448,10 @@ local function write_field(f, value)
     if read_field(f) == nil then return false, 'current value implausible' end
     if type(value) == 'number' and not MOD.parse_number(value) then return false, 'not a finite number' end
     if f.allowed and not f.allowed[value] then return false, f.allowed.why end   -- (the Slot row: 1 or 3)
+    if f.storage=='package' or f.storage=='rackitem' or f.storage=='mountitem' then
+        local reg=f.storage=='package' and MOD.refs.packages() or f.storage=='rackitem' and MOD.refs.items() or MOD.refs.mounts()
+        if not reg.by_id[value]then return false,'旧版列表序号无法确定资源身份，请重新选择资源包或挂载件后保存；其他数值修改不受影响。'end
+    end
     default_of(f)
     if not MOD.offline and f.most and value > f.most then value = f.most end
     local bytes, done = nil, {}
@@ -15142,8 +15173,26 @@ local function resolve_stratagem(entry)
     -- a Guard Dog: its drone (health +0, spotting range +0, target search interval +0 / +4), then
     -- the gun it carries
     if s.drone then
+        MOD.dogs.ensure()
         unit_rows(entry, s.drone.drone, 'Drone', 'drone_')
-        if s.drone.gun then resolve_gun(entry, s.drone.gun) end
+        local mt=tables[TYPES.mount]
+        local at=mt and mt.index[s.drone.drone]
+        local gun=at and api.read(mt.copies[1]+HEADER_BYTES+at,8)
+        if at and MOD.dogs.by_bytes[gun] then
+            local r=add_row(entry,'无人机换装（实验性）','drone_weapon','无人机搭载武器（实验性）','dogweapon',
+                {part('drone_weapon',TYPES.mount,at,'dogweapon',100000)},1,281474976711655,1,1)
+            r.choice='dogweapon'
+            local raw=MOD.refs.hex(s.drone.drone)
+            local reload=raw=='A0FF2F9A0CA6992A' or raw=='979E9BC6D48D1FC6' or raw=='B9BAF571FC8F9959'
+            r.tip={reload and '当前无人机具备补弹行为。' or '当前无人机没有常规换弹行为，换成弹匣武器后可能打空停火。',
+                '仅替换首槽的武器实体引用，不修改挂点、动作或战备武器声明。',
+                '换装不自动安装资源补丁。请先确保供体武器资源已加载，否则可能出现缺模型或崩溃。',
+                '已排除实测无法可靠开火的 ARC-3 电弧发射器与 P-19 救世主；K-9 原装电弧武器不受此限制。',
+                '列表已排除蓄力需要松手发射的武器；未验证的候选标为实验性，不代表已确认可用。',
+                '换装后请在供体武器页面修改其参数；相关修改会共享给使用同一武器实体的装备。'}
+        end
+        -- Do not leave stat controls bound to the old gun after replacing its mount.
+        if gun and gun==s.drone.gun then resolve_gun(entry,gun) end
         return
     end
     -- the first payload that is a gun of its own (not a weapon listed elsewhere; strikes have
@@ -17049,7 +17098,7 @@ local function config_path()
 end
 
 local function number_text(v)
-    if math.abs(v - math.floor(v + 0.5)) < 1e-6 then return tostring(math.floor(v + 0.5)) end
+    if math.abs(v - math.floor(v + 0.5)) < 1e-6 then return string.format('%.0f',math.floor(v + 0.5)) end
     return (string.format('%.4f', v):gsub('0+$', ''):gsub('%.$', ''))
 end
 
@@ -17457,7 +17506,12 @@ function MOD.validate_preset_values(bundle, desired)
         local parts=owner and MOD.parts_of(owner,o.id,bundle.values)
         for _,p in ipairs(parts or {}) do
             local f,row=p.field,p.row
-            if f.storage=='gun' then
+            if f.storage=='package' or f.storage=='rackitem' or f.storage=='mountitem' then
+                local reg=f.storage=='package' and MOD.refs.packages() or f.storage=='rackitem' and MOD.refs.items() or MOD.refs.mounts()
+                assert(reg.by_id[o.value],'预设包含旧版列表序号或未知资源引用：'..o.id..'。请重新选择资源后保存预设。')
+            elseif f.storage=='dogweapon' then
+                assert(MOD.dogs.by_id[o.value],'预设包含无效的无人机武器编号：'..o.id)
+            elseif f.storage=='gun' then
                 assert(o.value%1==0 and MOD.enemy.gun_choices().by_id[o.value],'预设包含无效的武器编号：'..o.id)
             elseif f.storage=='grenade' then
                 assert(o.value%1==0 and KINDS[TYPES.throwable].entity_bytes(o.value),'预设包含无效的手雷编号：'..o.id)
@@ -17751,6 +17805,16 @@ end
 
 -- One list per kind: id 0 is 'nothing', then every key the tables hold, sorted by name for the picker.
 -- at[id] is the item's place in list, so the panel's arrows can step through it.
+-- A selector ID is derived from resource identity, never from pairs() order or
+-- translated label order. Split hex parsing to avoid Windows strtoul's 32-bit limit.
+function MOD.refs.stable_id(key)
+    if key==string.rep('\0',8)then return 0 end
+    local raw=MOD.refs.hex(key)
+    local hi=tonumber(raw:sub(1,6),16)*256+tonumber(raw:sub(7,8),16)
+    local lo=tonumber(raw:sub(9,14),16)*256+tonumber(raw:sub(15,16),16)
+    return (hi*65521+lo)%281474976710597+4294967296
+end
+
 function MOD.refs.list_of(name, collect)
     local r = MOD.refs.built[name]
     if r then return r end
@@ -17758,6 +17822,14 @@ function MOD.refs.list_of(name, collect)
     r.list[1] = { id = 0, label = '（空）', bytes = string.rep('\0', 8) }
     r.by_id[0], r.by_bytes[r.list[1].bytes], r.at[0] = r.list[1], 0, 1
     collect(r, MOD.refs.names())
+    if name=='items' or name=='packages' or name=='mounts' then
+        r.by_id,r.by_bytes={},{}
+        for _,it in ipairs(r.list)do
+            it.id=MOD.refs.stable_id(it.bytes)
+            assert(not r.by_id[it.id],'资源引用编号冲突：'..MOD.refs.hex(it.bytes))
+            r.by_id[it.id],r.by_bytes[it.bytes]=it,it.id
+        end
+    end
     for _, item in ipairs(r.list) do
         local aliases={};for label in pairs(item.aliases or {}) do aliases[#aliases+1]=label end
         table.sort(aliases, function(a,b)
@@ -17769,7 +17841,8 @@ function MOD.refs.list_of(name, collect)
     table.sort(r.list, function(a, b)
         if a.id == 0 then return true end
         if b.id == 0 then return false end
-        return a.label < b.label
+        if a.label~=b.label then return a.label<b.label end
+        return a.id<b.id
     end)
     r.at = {}
     for n, it in ipairs(r.list) do r.at[it.id] = n end
@@ -17841,7 +17914,8 @@ end
 function MOD.refs.register(name, key)
     local r = MOD.refs[name]()
     if r.by_bytes[key] then return r.by_bytes[key] end
-    local id = #r.list
+    local id = MOD.refs.stable_id(key)
+    assert(not r.by_id[id],'资源引用编号冲突：'..MOD.refs.hex(key))
     local item = { id = id, label = MOD.refs.label(key, MOD.refs.names(), name == 'packages' and '未命名资源包' or '未命名实体'), bytes = key }
     r.list[#r.list + 1], r.by_id[id], r.by_bytes[key], r.at[id] = item, item, id, #r.list
     return id
@@ -17874,6 +17948,69 @@ MOD.refs.mounts = function()
         for _, hex in ipairs(MOD.ARM_ORDER) do add(hash_key(hex)) end
         for _, w in ipairs(weapons) do add(w.key) end
     end)
+end
+
+-- Enumerate real firing components, not package shells, racks or projectile records.
+-- Keep the first 16 published IDs; other IDs derive from the entity hash and are
+-- exact Lua/JSON integers. Presets therefore survive table/catalogue reordering.
+function MOD.dogs.ensure()
+    if MOD.dogs.ready then return end
+    local excluded={['96DE9CD50F7306E6']=true,['3575AABC5F1F9326']=true}
+    local candidates={}
+    for _,kind in ipairs({T_FIRE,T_BEAM_WEAPON,TYPES.arc_weapon,T_SPRAY})do
+        for key in pairs(tables[kind] and tables[kind].index or {})do
+            if type(key)=='string' and #key==8 then candidates[key]=true end
+        end
+    end
+    MOD.dogs.excluded={}
+    local function blocked(key)
+        local raw=MOD.refs.hex(key)
+        if excluded[raw] then return '文档明确记录无法可靠开火' end
+        local charge=tables[TYPES.charge]
+        local at=charge and charge.index[key]
+        if at then
+            -- WeaponChargeComponentData +0xB8 AutoFireInSafety. Probe without
+            -- caching a u8 view over other charge fields.
+            local auto=read_field({kind=TYPES.charge,offset=at+184,storage='u8',limit=255},true)
+            if auto==0 then return '蓄力需要松开扳机，不适合无人机持续按住的输入' end
+            if auto~=1 then return '蓄力自动开火字段无法确认' end
+        end
+    end
+    for key in pairs(candidates)do
+        local why=blocked(key)
+        if why then MOD.dogs.excluded[MOD.refs.hex(key)]=why end
+    end
+    local list={}
+    for _,it in ipairs(MOD.dogs.list)do
+        if not MOD.dogs.excluded[it.raw]then list[#list+1]=it
+        else MOD.dogs.by_id[it.id]=nil;MOD.dogs.by_bytes[it.bytes]=nil end
+    end
+    MOD.dogs.list=list
+    local names=MOD.refs.names()
+    local ordered={};for key in pairs(candidates)do ordered[#ordered+1]=key end
+    table.sort(ordered,function(a,b)return MOD.refs.hex(a)<MOD.refs.hex(b)end)
+    for _,key in ipairs(ordered)do
+        local raw=MOD.refs.hex(key)
+        if not MOD.dogs.by_bytes[key] and not MOD.dogs.excluded[raw]then
+            local id=tonumber(raw:sub(1,6),16)*16777216+tonumber(raw:sub(7,12),16)+1000
+            assert(not MOD.dogs.by_id[id],'无人机武器编号冲突：'..raw..' / '..tostring(MOD.dogs.by_id[id] and MOD.dogs.by_id[id].raw)..' / '..tostring(id))
+            local label=MOD.refs.entity_name(key) or names[key] or ('未命名武器（实体 ID '..raw..'）')
+            MOD.dogs.add(id,raw,settings.tr(label)..'（实验性）',
+                '实验性：尚未验证此武器在无人机上的开火表现。需加载对应资源；换弹、冷却和锁定仍受搭载行为与武器自身规则限制。')
+        end
+    end
+    -- Original variants without a documented firing test are experimental too.
+    for _,it in ipairs(MOD.dogs.list)do
+        if it.id<=10 then
+            it.label=it.label..'（实验性）'
+            it.note='实验性：原生无人机武器，跨无人机搭载尚未验证；补弹取决于搭载行为。'
+        else
+            if it.id<=16 then it.note='文档实测记录：'..it.note end
+        end
+    end
+    table.sort(MOD.dogs.list,function(a,b)return a.label<b.label end)
+    MOD.dogs.at={};for i,it in ipairs(MOD.dogs.list)do MOD.dogs.at[it.id]=i end
+    MOD.dogs.ready=true
 end
 
 MOD.ents = {}
@@ -17924,6 +18061,7 @@ function MOD.ents.behaviours()
 end
 
 function MOD.ents.pick(name)
+    if name == 'dogweapon' then return MOD.dogs end
     if name == 'mountitem' then return MOD.refs.mounts() end
     if name == 'mountside' then return MOD.ents.sides() end
     if name == 'faction' then return MOD.ents.factions() end
@@ -19251,7 +19389,7 @@ local function change(row, delta_sign, big, exact)
             ui.version = ui.version + 1
             return
         end
-        if row.choice == 'mountitem' or row.choice == 'mountside'
+        if row.choice == 'dogweapon' or row.choice == 'mountitem' or row.choice == 'mountside'
            or row.choice == 'faction' or row.choice == 'behavior' then
             -- the mounts a page carries, the side each sits on, and the two selector fields
             local reg = MOD.ents.pick(row.choice)
@@ -23069,11 +23207,11 @@ end
 if MOD.offline then
     function MOD.desktop_name(w)
         local ref=rawget(_G,'SHODAN_OFFLINE_ZH_REFERENCE')
-        if w.enemy and ref and ref.entity_name then
+        if settings.lang=='zh-Hans' and (w.enemy or w.slot=='Mechas' and (w.parent or w.parents)) and ref and ref.entity_name then
             local id=w.hash
             if w.key then local parts={};for i=#w.key,1,-1 do parts[#parts+1]=string.format('%02X',w.key:byte(i))end;id=table.concat(parts)end
             local name=ref.entity_name(id)
-            if name then return name..(w.enemy.gun and '（武器参数）' or '') end
+            if name then return name..(w.enemy and w.enemy.gun and '（武器参数）' or '') end
         end
         return settings.tr(w.name)
     end
@@ -23141,6 +23279,7 @@ if MOD.offline then
         assert(w,'找不到此数据记录');select_weapon(w);return true
     end
     function state.desktop.rows()
+        if ui.weapon and ui.weapon.stratagem and ui.weapon.stratagem.drone then resolve(ui.weapon) end
         local out={}
         local impact=require('desktop_features');local index=impact.shared_index(by_hash)
         for n,row in ipairs(ui.weapon and ui.weapon.rows or {}) do
@@ -23189,7 +23328,7 @@ if MOD.offline then
             elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then
                 local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
                 local item=reg.by_id[v];choice_name=settings.tr(item and item.label or ('条目 '..tostring(v)))
-            elseif row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
+            elseif row.choice=='dogweapon' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
                 local reg=MOD.ents.pick(row.choice);local it=reg and reg.by_id[v]
                 choice_name=settings.tr(it and it.label or ('条目 '..tostring(v)))
             elseif row.choice=='gun' then local g=MOD.enemy.gun_choices().by_id[v];choice_name=g and settings.tr(g.label) or ''
@@ -23197,8 +23336,19 @@ if MOD.offline then
                 local shot=KINDS[T_PROJECTILE].by_id and KINDS[T_PROJECTILE].by_id[v]
                 choice_name=settings.tr(shot and shot.label or MOD.records.name(T_PROJECTILE,v) or '')
             end
-            out[#out+1]={id=n,label=settings.tr(row.label):gsub(' %(x%)$','（倍率）'):gsub(' %(%+%)$','（加值）'):gsub('（x）','（倍率）'):gsub('（%+）','（加值）'),section=settings.tr(row.section or ''),
-                value=v,original=d,text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage)),default_text=row.code and MOD.code.text(d) or settings.tr(fmt(d,row.storage)),code=not not row.code,
+            local reference=row.choice=='package' or row.choice=='rackitem' or row.choice=='mountitem' or row.choice=='dogweapon'
+            local default_text=row.code and MOD.code.text(d) or settings.tr(fmt(d,row.storage))
+            if reference then
+                local reg=row.choice=='package' and MOD.refs.packages() or row.choice=='rackitem' and MOD.refs.items() or MOD.ents.pick(row.choice)
+                local it=reg and reg.by_id[d];default_text=settings.tr(it and it.label or '未知资源引用')
+                for _,o in ipairs(overrides)do
+                    if o.hash==ui.weapon.hash and o.id==row.id and reg and not reg.by_id[o.value]then
+                        inline_note='此项保存的是旧版临时列表序号，无法确定原资源。请重新选择一次后保存；其他数值修改保留。'
+                    end
+                end
+            end
+            out[#out+1]={reference=reference,id=n,label=settings.tr(row.label):gsub(' %(x%)$','（倍率）'):gsub(' %(%+%)$','（加值）'):gsub('（x）','（倍率）'):gsub('（%+）','（加值）'),section=settings.tr(row.section or ''),
+                value=v,original=d,text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage)),default_text=default_text,code=not not row.code,
                 projectile_source=row.choice==true,projectile_conflict=projectile_conflict,choice=not not row.choice,choice_kind=type(row.choice)=='string' and row.choice or '',choice_name=choice_name,flag=row.storage=='flag' or row.storage=='bit',min=nil,max=nil,
                 note=settings.tr(type(note)=='string' and note or ''),inline_note=settings.tr(inline_note),help=help,faction_only=faction_only,changed=(v~=d and not faction_only) or ui.weapon.enemy and MOD.enemy.pinned(row) or false,
                 shared=impact.shared(ui.weapon,row.parts,settings.tr,index)}
@@ -23253,9 +23403,9 @@ if MOD.offline then
             if type(v)=='number' and v%1==0 and not MOD.FIRE_FUNCTIONS[v] then out[#out+1]={id=v,name='未确认的功能 '..v..'（原值）'} end
             return out
         end
-        if row and (row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior') then
+        if row and (row.choice=='dogweapon' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior') then
             local reg=MOD.ents.pick(row.choice);local out={}
-            for _,it in ipairs(reg and reg.list or {}) do out[#out+1]={id=it.id,name=settings.tr(it.label)} end
+            for _,it in ipairs(reg and reg.list or {}) do out[#out+1]={id=it.id,name=settings.tr(it.label),description=it.note and (it.note..' 实体 ID：'..it.raw) or nil} end
             return out
         end
         if row and row.choice=='resomode' then
@@ -23308,7 +23458,7 @@ if MOD.offline then
         elseif row.choice=='apex_fire' then assert(id==2677 or id==2719,'请选择有效的尖峰开火动作');return state.desktop.set(n,id)
         elseif row.choice=='firemode' or row.choice=='fntype' or row.choice=='resomode' then return state.desktop.set(n,id)
         elseif row.choice=='smmode' or row.choice=='smres' then return state.desktop.set(n,id)
-        elseif row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
+        elseif row.choice=='dogweapon' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
             return state.desktop.set(n,id)
         elseif row.choice=='slot' then return state.desktop.set(n,id)
         elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then return state.desktop.set(n,id)
@@ -23519,13 +23669,13 @@ if MOD.offline and os.getenv('SHODAN_QA_OUTPUT') then
         end,
         translation_inventory=function()
             local out,seen={},{}
-            local function add(kind,raw,hash)
-                if type(raw)=='string' and raw~='' and not seen[raw] then
-                    seen[raw]=true;out[#out+1]={kind,raw,settings.tr(raw),hash or ''}
+            local function add(kind,raw,hash,display)
+                if type(raw)=='string' and raw~='' and not seen[kind=='name' and tostring(hash)..raw or raw] then
+                    seen[kind=='name' and tostring(hash)..raw or raw]=true;out[#out+1]={kind,raw,display or settings.tr(raw),hash or ''}
                 end
             end
             local function scan(page)
-                add('name',page.name,page.hash);add('note',page.note)
+                add('name',page.name,page.key and MOD.refs.hex(page.key) or page.hash,MOD.desktop_name(page));add('note',page.note)
                 for _,row in ipairs(page.rows or {}) do
                     add('label',row.label);add('section',row.section);add('note',row.note)
                     for _,tip in ipairs(row.tip or {}) do add('hint',tip) end

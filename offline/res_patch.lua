@@ -691,6 +691,21 @@ function M.state(ctx, host, name)
     return 2
 end
 
+-- Distinguish a genuinely deleted patch set from access-denied or partial sets.
+-- Only ENOENT for all three files permits rebuilding a stale ledger entry.
+local function missing_patch(ctx, host, index)
+    local root = io.open(ctx.root .. '/bundles.nxa', 'rb')
+    if not root then return false end
+    root:close()
+    local base = ctx.root .. '/' .. patch_name(host,index)
+    for _, suffix in ipairs({'','.gpu_resources','.stream'}) do
+        local f, _, code = io.open(base .. suffix,'rb')
+        if f then f:close();return false end
+        if code ~= 2 then return false end
+    end
+    return true
+end
+
 -- ---------------------------------------------------------------- installing
 
 local function bundle_set(ctx)
@@ -809,7 +824,9 @@ local function slot_for(ctx, host, name)
     for index, entry in ipairs(entries) do
         if entry.host == host and entry.name == name then at, existing = index, entry break end
     end
-    if existing then return entries, at, existing.index end
+    if existing and not missing_patch(ctx,host,existing.index) then return entries, at, existing.index end
+    -- Keep the ledger intact until the replacement has been written successfully.
+    if existing then table.remove(entries,at) end
     local used, highest = used_numbers(ctx.root, host)
     if not used then return nil, nil, nil, '找不到游戏资源目录：' .. ctx.root end
     if #used ~= highest + 1 then return nil, nil, nil, '补丁序号不连续，请先整理现有补丁；未修改任何文件' end
@@ -929,6 +946,12 @@ function M.remove(ctx, host, name)
         if entry.host == host and entry.name == name then at, found = index, entry break end
     end
     if not found then return nil, '此资源包尚未安装常驻补丁，无需移除' end
+    if missing_patch(ctx,host,found.index) then
+        table.remove(entries,at)
+        local ok,why=M.write_ledger(ctx,entries)
+        if not ok then return nil,why end
+        return found
+    end
     local used = used_numbers(ctx.root, host)
     if not used then return nil, '找不到游戏资源目录' end
     local owned = {}
@@ -1050,7 +1073,8 @@ M._internal.trimmed_spec = trimmed_spec
 -- Recover only edited TOC resources from our current patch. Read it once and
 -- compare against source bytes; never turn an unreadable patch into an empty plan.
 function M.saved_overrides(ctx, host, name)
-    if not M.entry_of(ctx, host, name) then return {} end
+    local entry=M.entry_of(ctx,host,name)
+    if not entry or missing_patch(ctx,host,entry.index) then return {} end
     local held, _, why = patch_set(ctx, host, name)
     if not held then return nil, why end
     local spec, why = package_head(held, name)

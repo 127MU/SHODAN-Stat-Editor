@@ -379,4 +379,22 @@ local before=snapshot();local read=M.read_file
 M.read_file=function(p)if p==path(0)then return nil,'blocked read'end;return read(p)end
 local ok,why=M.update_entry(ctx,host,'pkg_two','res',D_ID,T3,'SECOND_EDIT')
 M.read_file=read;assert(not ok and why:find('blocked read',1,true));assert(snapshot()==before)""")
+ def test_deleted_patch_ledger_rebuilds_at_next_real_slot(self):
+  self.check("""assert(M.install(ctx,host,'pkg_a','full'))
+for _,suffix in ipairs({'','.gpu_resources','.stream'})do assert(os.remove(path(0,suffix)))end
+-- The old ledger can refer to a slot from a different installation.
+local entries=M.read_ledger(ctx);entries[1].index=248;assert(M.write_ledger(ctx,entries))
+local rebuilt=assert(M.install(ctx,host,'pkg_a','full'))
+assert(rebuilt.index==0 and M.entry_of(ctx,host,'pkg_a').index==0)
+assert(M.patch_entry(ctx,host,'pkg_a',A_ID)==SRC_A)
+assert(M.file_size(path(248))==nil)""")
+ def test_partial_patch_set_is_not_treated_as_deleted(self):
+  self.check("""assert(M.install(ctx,host,'pkg_a','full'));assert(os.remove(path(0)))
+local before=snapshot();local ok,why=M.install(ctx,host,'pkg_a','full')
+assert(not ok and why:find('补丁文件读不到',1,true));assert(snapshot()==before)""")
+ def test_deleted_entry_removal_does_not_move_foreign_patch(self):
+  self.check("""assert(M.install(ctx,host,'pkg_two','light'));assert(os.remove(path(0)))
+assert(M.write_file(path(1),'FOREIGN_PATCH'))
+assert(M.remove(ctx,host,'pkg_two'))
+assert(M.read_file(path(1))=='FOREIGN_PATCH' and not M.entry_of(ctx,host,'pkg_two'))""")
 if __name__=='__main__':unittest.main()

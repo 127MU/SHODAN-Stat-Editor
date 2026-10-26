@@ -48,7 +48,7 @@ ColumnLayout {
         HusButton {
             Layout.fillWidth:true
             visible:!!field.row.choice || !!field.row.code
-            text:field.row.code?String(field.row.text)+" · 录入指令":(field.row.choice_name || "选择条目")+" · #"+field.row.value
+            text:field.row.code?String(field.row.text)+" · 录入指令":(field.row.choice_name || "选择条目")+(field.row.reference?"":" · #"+field.row.value)
             onClicked:field.choose(field.row)
         }
         HusSwitch {
