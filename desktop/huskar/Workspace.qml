@@ -21,6 +21,7 @@ QtObject {
     property string module: "home"
     property string screen: "catalog"
     property string search: ""
+    property bool catalogOnlyModified:false
     property string game: ""
     property string status: "正在读取游戏数据…"
     property string fatalError: ""
@@ -52,7 +53,7 @@ QtObject {
     property var library: {
         let q=search.trim().toLowerCase()
         const compact=q.replace(/[^a-z0-9\u3400-\u9fff]/g,"")
-        return (catalogs[tab] || []).filter(x=>!q || (x.search || x.name || "").toLowerCase().indexOf(q)>=0 || (x.search || x.name || "").toLowerCase().replace(/[^a-z0-9\u3400-\u9fff]/g,"").indexOf(compact)>=0)
+        return (catalogs[tab] || []).filter(x=>(!catalogOnlyModified || x.changed) && (!q || (x.search || x.name || "").toLowerCase().indexOf(q)>=0 || (x.search || x.name || "").toLowerCase().replace(/[^a-z0-9\u3400-\u9fff]/g,"").indexOf(compact)>=0))
     }
     signal error(string text)
     signal loaded()
@@ -81,7 +82,17 @@ QtObject {
         setTab(d.tab)
         if(key==="player" && library.length)select(library[0])
     }
-    function setTab(key){tab=key;search="";screen="catalog";rows=[]}
+    function refreshCatalog(key){
+        if(!Backend.ready || !catalogs[key])return
+        call("items",[key,""],function(items){
+            const previous={};for(const item of catalogs[key] || [])previous[item.id]=item
+            const next=Object.assign({},catalogs)
+            next[key]=items.map(x=>Object.assign({},previous[x.id] || {},x))
+            catalogs=next
+        })
+    }
+    onScreenChanged:if(screen==="catalog" && module!=="home")refreshCatalog(tab)
+    function setTab(key){tab=key;search="";screen="catalog";rows=[];refreshCatalog(key)}
     function select(item){
         if(!item || !item.id)return
         if(current.id)slotByItem[current.id]=slot
@@ -95,6 +106,13 @@ QtObject {
     }
     function applyRows(updated){
         rows=updated
+        // Update the current owner immediately; refresh all shared owners when
+        // returning to the catalog or opening the global search.
+        if(current.id && catalogs[tab]){
+            const next=Object.assign({},catalogs)
+            next[tab]=catalogs[tab].map(x=>x.id===current.id?Object.assign({},x,{changed:updated.some(r=>r.changed)}):x)
+            catalogs=next
+        }
         // FieldEditor updates its local row after edits. Replacing the model
         // alone does not update that local copy when section delegates survive.
         for(const item of updated)rowUpdated(item)

@@ -98,8 +98,9 @@ HusWindow {
     property var searchOptions:{
         const categories={Primary:"主武器参数",Secondary:"副武器参数",Support:"支援武器参数",Throwables:"投掷物参数",Boosters:"强化增益",Stratagems:"战备参数",Mechas:"载具与机甲参数",Attachments:"武器配件",Records:"数据记录",Helldiver:"潜兵数值",ArmorWeight:"护甲类型参数",Terminids:"终结族参数",Automatons:"机器人参数",Illuminate:"光能族参数",SEAF:"超级地球部队参数",Spawning:"敌人生成参数"}
         const out=[];for(let tab of Object.keys(workspace.catalogs))for(let item of workspace.catalogs[tab]){
+            if(searchDialog.onlyModified && !item.changed)continue
             const category=categories[tab] || tab
-            out.push({label:"【"+category+"】 "+item.name,value:tab+":"+item.id,tab:tab,id:item.id,search:(item.search || item.name)+" "+category})
+            out.push({label:(item.changed?"【已修改】 ":"")+"【"+category+"】 "+item.name,value:tab+":"+item.id,tab:tab,id:item.id,search:(item.search || item.name)+" "+category})
         }return out
     }
     function selectSearch(option){
@@ -134,6 +135,9 @@ HusWindow {
     function qaResourcePreview(row){if(QaMode){choices(row);choiceDialog.query="05656B4B5B893AB8"}}
     function qaResourceTranslated(){return choiceDialog.items.some(x=>x.raw==="05656B4B5B893AB8" && x.name.indexOf("固定重机枪")>=0)}
     function qaCloseChoices(){if(QaMode)choiceDialog.close()}
+    function qaOpenModifiedSearch(){if(QaMode){searchDialog.onlyModified=true;searchDialog.open()}}
+    function qaModifiedSearchValid(){return QaMode && window.searchOptions.length>0 && window.searchOptions.every(x=>x.label.startsWith("【已修改】"))}
+    function qaCloseSearch(){if(QaMode)searchDialog.close()}
     function qaCatalogAligned(){
         if(!QaMode)return false
         function find(item){
@@ -374,7 +378,13 @@ HusWindow {
     Component { id:settingsPage;SettingsPage { store:workspace;preferences:appearance;effectUnavailable:window.effectUnavailable;onMessage:(title,text)=>window.message(title,text) } }
     HusModal {
         id:searchDialog;title:"搜索全部数据";width:620;modal:true;cancelText:"关闭";onCancel:close()
-        bodyDelegate:HusAutoComplete { width:560;placeholderText:"名称 / 型号 / ID";iconSource:HusIcon.SearchOutlined;options:window.searchOptions;defaultPopupMaxHeight:360;showToolTip:true;filterOption:(input,option)=>!!input && option.search.toLowerCase().indexOf(input.toLowerCase().replace(/[-\s]/g,""))>=0;onSelect:option=>window.selectSearch(option) }
+        property bool onlyModified:false
+        onOpened:{for(const key of Object.keys(workspace.catalogs))workspace.refreshCatalog(key)}
+        bodyDelegate:ColumnLayout {
+            width:560;spacing:12
+            HusCheckBox { objectName:"global_only_modified";text:"仅已修改";checked:searchDialog.onlyModified;onClicked:searchDialog.onlyModified=checked }
+            HusAutoComplete { Layout.fillWidth:true;placeholderText:"名称 / 型号 / ID";iconSource:HusIcon.SearchOutlined;options:window.searchOptions;defaultPopupMaxHeight:360;showToolTip:true;filterOption:(input,option)=>(!!input || searchDialog.onlyModified) && option.search.toLowerCase().indexOf(input.toLowerCase().replace(/[-\s]/g,""))>=0;onSelect:option=>window.selectSearch(option) }
+        }
     }
     Component {
         id:globalPresetsPage

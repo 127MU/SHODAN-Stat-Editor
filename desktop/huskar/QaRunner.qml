@@ -120,7 +120,13 @@ Timer {
             else if(step===80){store.select(store.library.find(x=>x.id==="D323DE60855898AC"))}
             else if(step===81){ensure(store.rows.filter(x=>String(x.label).startsWith("弹管 ") && x.original===8).length===2,"野炊两根弹管原值不是 8+8");ensure(store.rows.some(x=>String(x.inline_note || "").includes("8 + 8 = 16")),"双弹管总容量未显示");Backend.capture("52-cookout-dual-tubes");const p=store.rows.find(x=>x.projectile_source);store.call("choose",[p.id,220],()=>store.refreshRows())}
             else if(step===82){ensure(store.rows.some(x=>x.projectile_source && x.value===220),"射弹切换未更新");Backend.capture("53-projectile-current-source");ensure(Backend.qaCheck("restore_projectile",true),"恢复原配射弹按钮无法点击")}
-            else if(step===83){ensure(store.rows.some(x=>x.projectile_source && x.value===352 && !x.projectile_conflict),"恢复原配射弹未恢复野炊引用");Backend.capture("54-projectile-restored");Backend.finishQa("")}
+            else if(step===83){ensure(store.rows.some(x=>x.projectile_source && x.value===352 && !x.projectile_conflict),"恢复原配射弹未恢复野炊引用");Backend.capture("54-projectile-restored")}
+            else if(step===84){const field=store.rows.find(x=>!x.choice && !x.flag && !x.code && typeof x.value==="number" && x.value===x.original);ensure(!!field,"修改筛选测试缺少数值字段");row=field;store.call("set",[field.id,field.value+1],()=>store.refreshRows())}
+            else if(step===85){store.screen="catalog"}
+            else if(step===86){ensure(Backend.qaCheck("catalog_only_modified",true),"无法开启仅已修改筛选")}
+            else if(step===87){ensure(store.catalogOnlyModified && store.library.length>0 && store.library.every(x=>x.changed),"分类列表混入未修改条目");store.search="野炊"}
+            else if(step===88){ensure(store.library.some(x=>x.id==="D323DE60855898AC") && store.library.every(x=>x.changed),"名称搜索与修改筛选不兼容");Backend.capture("55-modified-catalog-search");store.catalogOnlyModified=false;window.qaOpenModifiedSearch()}
+            else if(step===89){ensure(window.qaModifiedSearchValid(),"全局搜索未按已修改筛选");Backend.capture("56-modified-global-search");window.qaCloseSearch();waiting=true;store.call("reset",[row.id],()=>{Backend.finishQa("")})}
             step++
         }catch(e){Backend.finishQa(String(e))}
     }
