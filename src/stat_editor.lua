@@ -14777,10 +14777,24 @@ end
 -- why `target` can't be `def`'s extra (itself, or a chain of extras back to it), or nil
 function MOD.extra.validate(change)
     if not MOD.offline then return nil end
-    local nodes={}
-    for _,c in ipairs(MOD.extra.choices())do
-        nodes[#nodes+1]={id=c.type,name=MOD.extra.translate and MOD.extra.translate(c.name) or c.name,target=peek4(c.def.at+200) or 0,
-            original=default_of(field_at(c.def.kind,c.def.off+200,'u32',100000)) or 0}
+    local nodes,seen={},{}
+    local _,by_type=MOD.extra.choices()
+    -- The picker contains named/selectable equipment, not every StratagemInfo.
+    -- Native extra chains can end in hidden rows (e.g. another sentry variant).
+    -- Validate against the complete table so those rows are not treated as missing.
+    for _,group in ipairs(stratagem_groups)do
+        local entry=tables[group]
+        for _,off in pairs(entry.index)do
+            local at=entry.copies[1]+HEADER_BYTES+off
+            local id=peek4(at)
+            if id and id>0 and not seen[id]then
+                seen[id]=true
+                local c=by_type[id]
+                local name=c and c.name or ('Stratagem '..id)
+                nodes[#nodes+1]={id=id,name=MOD.extra.translate and MOD.extra.translate(name) or name,target=peek4(at+200) or 0,
+                    original=default_of(field_at(group,off+200,'u32',100000)) or 0}
+            end
+        end
     end
     return require('extra_stratagem_guard').validate(nodes,change)
 end
@@ -17592,6 +17606,16 @@ MOD.refs = { built = {} }
 
 function MOD.refs.hex(key) return string.format('%08X%08X', u32(key, 4), u32(key, 0)) end
 
+-- Resource labels come from stable 64-bit entity IDs, never from editable values.
+function MOD.refs.entity_name(key)
+    local ref = settings.lang == 'zh-Hans' and rawget(_G, 'SHODAN_OFFLINE_ZH_REFERENCE')
+    if ref and ref.resource_name and key and #key == 8 then return ref.resource_name(MOD.refs.hex(key)) end
+end
+
+function MOD.refs.label(key, names, kind)
+    return MOD.refs.entity_name(key) or names[key] or ((kind or '未命名实体') .. '（ID ' .. MOD.refs.hex(key) .. '）')
+end
+
 function MOD.refs.names()
     local names = MOD.refs.built.names
     if names then return names end
@@ -17617,6 +17641,14 @@ function MOD.refs.names()
             end
         end
     end
+    for _, t in pairs(tables) do
+        for key in pairs(t.index or {}) do
+            if type(key) == 'string' and #key == 8 then
+                local name = MOD.refs.entity_name(key)
+                if name then names[key] = name end
+            end
+        end
+    end
     MOD.refs.built.names = names
     return names
 end
@@ -17630,6 +17662,14 @@ function MOD.refs.list_of(name, collect)
     r.list[1] = { id = 0, label = '（空）', bytes = string.rep('\0', 8) }
     r.by_id[0], r.by_bytes[r.list[1].bytes], r.at[0] = r.list[1], 0, 1
     collect(r, MOD.refs.names())
+    for _, item in ipairs(r.list) do
+        local aliases={};for label in pairs(item.aliases or {}) do aliases[#aliases+1]=label end
+        table.sort(aliases, function(a,b)
+            local ta,tb=settings.tr(a),settings.tr(b)
+            return ta==tb and a<b or ta<tb
+        end)
+        if #aliases>0 then item.label=aliases[1] end
+    end
     table.sort(r.list, function(a, b)
         if a.id == 0 then return true end
         if b.id == 0 then return false end
@@ -17648,7 +17688,7 @@ function MOD.refs.items()
             if not key or #key ~= 8 or seen[key] then return end
             seen[key] = true
             local id = #r.list
-            local item = { id = id, label = names[key] or MOD.refs.hex(key), bytes = key }
+            local item = { id = id, label = MOD.refs.label(key, names), bytes = key }
             r.list[#r.list + 1], r.by_id[id], r.by_bytes[key] = item, item, id
         end
         for _, kind in ipairs({ TYPES.package, TYPES.loadout }) do
@@ -17673,10 +17713,12 @@ function MOD.refs.packages()
             if pkg and #pkg == 8 and (u32(pkg, 0) + u32(pkg, 4) ~= 0) then
                 local item = r.by_id[r.by_bytes[pkg]]
                 if item then
-                    if names[key] and item.label == MOD.refs.hex(pkg) then item.label = names[key] end
+                    if names[key] and item.label:find('未命名资源包', 1, true) then item.label = names[key] end
+                    if names[key] then item.aliases[names[key]] = true end
                 else
                     local id = #r.list
-                    item = { id = id, label = names[key] or MOD.refs.hex(pkg), bytes = pkg }
+                    item = { id = id, label = names[key] or ('未命名资源包（ID ' .. MOD.refs.hex(pkg) .. '）'), bytes = pkg, aliases = {} }
+                    if names[key] then item.aliases[names[key]] = true end
                     r.list[#r.list + 1], r.by_id[id], r.by_bytes[pkg] = item, item, id
                 end
             end
@@ -17704,7 +17746,7 @@ function MOD.refs.register(name, key)
     local r = MOD.refs[name]()
     if r.by_bytes[key] then return r.by_bytes[key] end
     local id = #r.list
-    local item = { id = id, label = MOD.refs.hex(key), bytes = key }
+    local item = { id = id, label = MOD.refs.label(key, MOD.refs.names(), name == 'packages' and '未命名资源包' or '未命名实体'), bytes = key }
     r.list[#r.list + 1], r.by_id[id], r.by_bytes[key], r.at[id] = item, item, id, #r.list
     return id
 end
@@ -17724,7 +17766,7 @@ MOD.refs.mounts = function()
             seen[key] = true
             local id = #r.list
             local hex = MOD.refs.hex(key)
-            local item = { id = id, label = MOD.ARM_NAMES[hex] or names[key] or hex, bytes = key }
+            local item = { id = id, label = MOD.refs.entity_name(key) or MOD.ARM_NAMES[hex] or names[key] or ('未命名挂载件（ID ' .. hex .. '）'), bytes = key }
             r.list[#r.list + 1], r.by_id[id], r.by_bytes[key] = item, item, id
         end
         local mt = tables[TYPES.mount]
@@ -17863,7 +17905,7 @@ MOD.resident.TIP = {
     '等价于工具包的「资源层驻留」：把这一条的包写进游戏目录的补丁文件，不占引擎的包口也能常驻。',
     '补丁文件放在游戏目录里，名字是载体包名加上补丁序号；载体用注册表包，它每次开局都会被加载，补丁因此一定被合并。改完要重启游戏。',
     '完整：贴图、模型、音效全都带上；仅轻资源：只写轻资源，贴图缺失的件会变成紫问号。',
-    '移除补丁会把文件删掉，资源还回给上面的资源包口。',
+    '移除补丁后，该资源仍需通过正常的配装资源包加载。',
 }
 
 function MOD.resident.module()
@@ -22606,7 +22648,13 @@ if MOD.offline then
         if row and (row.choice=='rackitem' or row.choice=='package' or row.choice=='entry') then
             local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
             local out={}
-            for _,it in ipairs(reg.list) do out[#out+1]={id=it.id,name=settings.tr(it.label)} end
+            for _,it in ipairs(reg.list) do
+                local aliases={};for label in pairs(it.aliases or {}) do aliases[#aliases+1]=settings.tr(label) end;table.sort(aliases)
+                local name=#aliases>0 and aliases[1] or settings.tr(it.label)
+                local description=it.bytes and ('资源 ID：'..MOD.refs.hex(it.bytes)) or ''
+                if #aliases>1 then description=description..'\n关联实体：'..table.concat(aliases,'、') end
+                out[#out+1]={id=it.id,name=name,description=description,raw=it.bytes and MOD.refs.hex(it.bytes) or ''}
+            end
             return out
         end
         if row and row.choice=='gun' then

@@ -32,7 +32,9 @@ Timer {
                 Backend.writeText(QaDirectory+"/restored-appearance.json",JSON.stringify(actual))
                 ensure(JSON.stringify(actual)===JSON.stringify(expected),"重启后设置不一致")
                 ensure(window.qaWindowEffectValid(expected.windowEffect),"重启后窗口效果未恢复")
-                Backend.finishQa("");return
+                waiting=true
+                store.call("full_presets",[],function(items){try{ensure(items.some(x=>x.name==="回车重命名测试"),"重启后全局预设丢失");Backend.finishQa("")}catch(e){Backend.finishQa(String(e))}})
+                return
             }
             if(step===0){ensure(store.module==="home","默认没有显示首页");ensure(Backend.capture("01-home"),"首页截图失败");store.openModule("equipment")}
             else if(step===1){ensure(store.library.length>0,"装备库为空");Backend.capture("02-library");store.search="ar-11";ensure(store.library.length>0,"搜索无结果")}
@@ -99,7 +101,16 @@ Timer {
             else if(step===61){store.openModule("equipment");store.select(store.library[0])}
             else if(step===62){flagRow=store.rows.find(x=>x.flag && typeof x.original==="number");ensure(!!flagRow,"没有开关字段");ensure(Backend.qaCheck("toggle_"+flagRow.id,true),"无法点击开关")}
             else if(step===63){waiting=true;store.call("rows",[],function(rows){try{ensure(rows.find(x=>x.id===qa.flagRow.id).value!==qa.flagRow.original,"开关修改未保存");ensure(Backend.qaCheck("toggle_"+qa.flagRow.id)!==(qa.flagRow.original>=0.5),"开关修改后界面状态错误");Backend.capture("44-flag-changed");ensure(Backend.qaCheck("reset_"+qa.flagRow.id,true),"无法点击恢复");qa.waiting=false}catch(e){Backend.finishQa(String(e))}})}
-            else if(step===64){waiting=true;store.call("rows",[],function(rows){try{ensure(rows.find(x=>x.id===qa.flagRow.id).value===qa.flagRow.original,"恢复后后台仍是修改值");ensure(Backend.qaCheck("toggle_"+qa.flagRow.id)===(qa.flagRow.original>=0.5),"后台已恢复但开关界面未恢复");Backend.capture("45-flag-reset");ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");Backend.finishQa("")}catch(e){Backend.finishQa(String(e))}})}
+            else if(step===64){waiting=true;store.call("rows",[],function(rows){try{ensure(rows.find(x=>x.id===qa.flagRow.id).value===qa.flagRow.original,"恢复后后台仍是修改值");ensure(Backend.qaCheck("toggle_"+qa.flagRow.id)===(qa.flagRow.original>=0.5),"后台已恢复但开关界面未恢复");Backend.capture("45-flag-reset");ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");qa.waiting=false;if(qa.flagOnly)Backend.finishQa("")}catch(e){Backend.finishQa(String(e))}})}
+            else if(step===65){store.openModule("stratagem");store.select(store.library[0])}
+            else if(step===66){const resource=store.rows.find(x=>x.choice_kind==="package");ensure(!!resource,"资源包选择入口缺失");window.qaResourcePreview(resource)}
+            else if(step===67){ensure(window.qaResourceTranslated(),"资源包选择缺少对照表中文名称");Backend.capture("46-resource-chinese");window.qaCloseChoices();store.openModule("presets")}
+            else if(step===68){ensure(Backend.qaCheck("new_global_preset",true),"无法点击新建预设")}
+            else if(step===69){ensure(Backend.qaEdit("preset_name_input","全局预设保存测试",false),"预设名称无法输入")}
+            else if(step===70){ensure(Backend.qaCheck("save_preset_name",true),"无法点击预设保存")}
+            else if(step===71){ensure(store.presets.some(x=>x.name==="全局预设保存测试"),"点击保存后全局预设未落盘");Backend.capture("47-global-preset-saved");window.renamePreset("full",store.presets.find(x=>x.name==="全局预设保存测试").id)}
+            else if(step===72){ensure(Backend.qaEdit("preset_name_input","回车重命名测试",true),"预设回车无法提交")}
+            else if(step===73){ensure(store.presets.some(x=>x.name==="回车重命名测试"),"回车重命名后预设未更新");Backend.capture("48-global-preset-renamed");Backend.finishQa("")}
             step++
         }catch(e){Backend.finishQa(String(e))}
     }

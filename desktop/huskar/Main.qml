@@ -131,6 +131,8 @@ HusWindow {
         return matches.some(x=>x.tab==="Support" && x.label.indexOf("支援武器参数")>=0) && matches.some(x=>x.tab==="Stratagems" && x.label.indexOf("战备参数")>=0)
     }
     function qaProjectilePreview(row){if(QaMode){choices(row);choiceDialog.query="120"}}
+    function qaResourcePreview(row){if(QaMode){choices(row);choiceDialog.query="05656B4B5B893AB8"}}
+    function qaResourceTranslated(){return choiceDialog.items.some(x=>x.raw==="05656B4B5B893AB8" && x.name.indexOf("固定重机枪")>=0)}
     function qaCloseChoices(){if(QaMode)choiceDialog.close()}
     function qaCatalogAligned(){
         if(!QaMode)return false
@@ -377,7 +379,7 @@ HusWindow {
             RowLayout {
                 Layout.fillWidth:true;HusText { text:"全局预设";font.pixelSize:30;font.bold:true;Layout.fillWidth:true }
                 HusButton { text:"导入";onClicked:window.importPreset("full",0) }
-                HusButton { text:"新建预设";type:HusButton.Type_Primary;onClicked:{nameDialog.callback=name=>workspace.call("full_preset",["new",0,name],()=>workspace.refreshPresets());nameDialog.open()} }
+                HusButton { objectName:"new_global_preset";text:"新建预设";type:HusButton.Type_Primary;onClicked:{nameDialog.callback=name=>workspace.call("full_preset",["new",0,name],()=>workspace.refreshPresets());nameDialog.open()} }
             }
             ListView {
                 Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:16;model:workspace.presets;ScrollBar.vertical:HusScrollBar{}
@@ -534,9 +536,16 @@ HusWindow {
     }
     HusModal {
         id:nameDialog;title:"预设名称";width:460;modal:true;confirmText:"保存";cancelText:"取消";property var callback:null
-        bodyDelegate:HusInput { id:nameInput;width:400;placeholderText:"输入预设名称";onAccepted:if(nameDialog.callback && text.trim()){nameDialog.callback(text);nameDialog.close()} }
-        onOpened:{nameInput.text="";nameInput.forceActiveFocus()}
-        onConfirm:if(callback && nameInput.text.trim()){callback(nameInput.text);close()}
+        property string inputValue:""
+        function submit(){const value=inputValue.trim();if(callback && value){callback(value);close()}}
+        confirmButtonDelegate:HusButton { objectName:"save_preset_name";text:nameDialog.confirmText;type:HusButton.Type_Primary;onClicked:nameDialog.confirm() }
+        bodyDelegate:HusInput {
+            id:presetNameInput;width:400;objectName:"preset_name_input";placeholderText:"输入预设名称";text:nameDialog.inputValue
+            onTextChanged:nameDialog.inputValue=text
+            onAccepted:nameDialog.submit()
+            Connections { target:nameDialog;function onOpened(){nameDialog.inputValue="";presetNameInput.forceActiveFocus()} }
+        }
+        onConfirm:submit()
         onCancel:close()
     }
     HusModal {

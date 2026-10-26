@@ -1,6 +1,6 @@
 -- Reviewed editor parameter labels. Internal coefficients are not presented as percentages.
 local labels={
- ["Resident (patch, no slot)"]="资源常驻（补丁，不占口）",
+ ["Resident (patch, no slot)"]="资源驻留（独立补丁）",
  ["Lock-on distance (m)"]="锁定距离（米）",["Lock-on time (s)"]="锁定所需时间（秒）",
  ["Target loss delay (experimental, s)"]="目标丢失延迟（实验性，秒）",["Lock loss delay (experimental, s)"]="锁定丢失延迟（实验性，秒）",
  ["Guidance proportional gain (experimental)"]="制导比例增益 P（实验性）",["Guidance integral gain (experimental)"]="制导积分增益 I（实验性）",

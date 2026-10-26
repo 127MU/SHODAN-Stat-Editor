@@ -11,6 +11,25 @@ assert(guard.validate({node(1,3),node(2,4),node(3,5),node(4,5),node(5,0)}):find(
 assert(guard.validate({node(1,2),node(2,1)}):find('循环',1,true))
 assert(not guard.validate({node(1,3,3),node(2,3,3),node(3,0)}),'Unchanged native extras must stay valid')
 
+-- Hidden StratagemInfo #51 is a valid chain target although absent from the picker.
+local hidden_checked=false
+for _,item in ipairs(B.items('Stratagems',''))do
+ if item.name:find('A/FLAM-40',1,true)then
+  B.select(item.id)
+  for n,row in ipairs(B.registry[item.id].rows)do if row.choice=='stratagem'then
+   local ptr=ffi.cast('uint32_t*',row.def.at+200);local old=tonumber(ptr[0]);ptr[0]=51
+   assert(not B.extra_validate(),'Valid hidden extra #51 was treated as missing')
+   local eagle=false
+   for _,choice in ipairs(B.choices(n))do
+    if choice.name:find('飞鹰',1,true) and not choice.disabled then eagle=true end
+   end
+   assert(eagle,'Unrelated Eagle choices were disabled by hidden extra #51')
+   ptr[0]=old;hidden_checked=true
+  end end
+ end
+end
+assert(hidden_checked,'Flame sentry regression fixture missing')
+
 -- Candidate names must use the same donor identity shown after choosing.
 B.editor_mode(false)
 local primary=B.items('Primary','');B.select(primary[1].id)
