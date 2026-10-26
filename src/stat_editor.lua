@@ -16238,7 +16238,9 @@ local function resolve(weapon)
         if weapon.sentry_defs[1] then MOD.callin_rows(weapon, weapon.sentry_defs) end
         if weapon.sentry_defs[1] then MOD.extra.row(weapon, weapon.sentry_defs[1]) end
         for k, def in ipairs(weapon.sentry_defs or {}) do
-            MOD.refs.stratagem_rows(weapon, def, weapon.sentry_payloads, k > 1 and tostring(k) or '')
+            local suffix = k > 1 and tostring(k) or ''
+            MOD.refs.stratagem_rows(weapon, def, weapon.sentry_payloads, suffix)
+            MOD.sm.page_rows(weapon, def, suffix)
         end
         unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
         -- Same payload lifetime field as upstream; preserve existing preset IDs and the zero-time option.
@@ -16858,6 +16860,7 @@ end
 local function row_value(row, default)
     local get = default and default_of or read_field
     if row.choice == 'resomode' then return MOD.resident.state_of(row) end
+    if row.choice == 'smmode' then return MOD.sm.state_of(row) end
     if row.choice == 'grenade' and not default and row.parts[1].field.pending_value ~= nil then
         return row.parts[1].field.pending_value
     end
@@ -18311,6 +18314,226 @@ function MOD.resident.page_rows(page)
 end
 
 
+-- ---------------------------------------------------------------- turret state machines
+-- A sentry or emplacement carried in a vehicle's mount slot never runs its deploy step: the hull asks for the
+-- item and it starts in the folded pose its machine's first layer names. That one u32 (the layer's
+-- DefaultState) is the whole setting, plus turning off the sweep layer some bodies carry (its clip winds the
+-- pose back). The parser and the recipe live in offline/state_machine.lua; this is the panel side: one row for
+-- which machine, one for the patch. Community notes, build 26088801.
+MOD.sm = { carrier = '9ba626afa44a3aa3' }      -- the registry package: always loaded, so its patch is merged
+MOD.sm.TYPE = 'a486d4045106165c'               -- state_machine, as the package container spells it
+MOD.sm.LABELS = { [0] = '未安装', [1] = '写入状态机补丁', [2] = '移除补丁' }
+MOD.sm.TIP = {
+    '炮塔与工事被当成载具挂件用时不会跑部署流程，一直停在折叠姿态；这里改的是它自己资源包里那条状态机的默认层。',
+    '默认状态按状态名认（展开态、部署过渡态），不按层号记；有扫视层的壳体一起关掉，否则姿态会卷回去。',
+    '写进资源包补丁（和「资源驻留」同一个载体），重启游戏后生效；一个包里可能有两三份状态机（迫击炮的气体与电磁），按资源编号选。',
+}
+
+function MOD.sm.module()
+    if MOD.sm.loaded ~= nil then return MOD.sm.loaded or nil end
+    if not MOD.offline then MOD.sm.loaded = false return nil end
+    local ok, module = pcall(require, 'state_machine')
+    if not ok or type(module) ~= 'table' then
+        log('state machine: ' .. tostring(module))
+        MOD.sm.loaded = false
+        return nil
+    end
+    MOD.sm.loaded = module
+    return module
+end
+
+-- The container side is res_patch: the game's own bytes, and whatever our patch holds.
+function MOD.sm.patch_module()
+    if MOD.sm.patch_loaded ~= nil then return MOD.sm.patch_loaded or nil end
+    local module = MOD.resident.module()
+    if not module or type(module.entries_of_type) ~= 'function' or type(module.install_with) ~= 'function' then
+        if module then log('state machine: res_patch is older than this build') end
+        MOD.sm.patch_loaded = false
+        return nil
+    end
+    MOD.sm.patch_loaded = module
+    return module
+end
+
+function MOD.sm.ctx() return MOD.resident.ctx() end
+
+-- Which machine this row works on: the picker's number is the machine's place in the package's list (a 64 bit
+-- resource id does not fit a Lua number), 0 or unset takes the first one.
+function MOD.sm.pick_of(row)
+    local pick = row and row.pick_row
+    local field = pick and pick.parts and pick.parts[1] and pick.parts[1].field
+    local value = field and read_field(field)
+    if type(value) ~= 'number' then return 0 end
+    return math.floor(value + 0.5)
+end
+
+function MOD.sm.package_of(row)
+    return row and MOD.resident.package_name(row) or nil
+end
+
+-- Everything the rows show about one package, read once: the machines it holds, the game's own bytes of the
+-- chosen one, the recipe's plan, and whether our patch already carries a changed copy.
+function MOD.sm.info(package, pick, fresh)
+    if not package then return { why = '这一条还没有资源包（+168 是 0）' } end
+    local cache = MOD.sm.cache
+    if not cache or fresh then cache = {} MOD.sm.cache = cache end
+    local key = package .. ':' .. tostring(pick or 0)
+    local info = cache[key]
+    if info then return info end
+    info = { package = package, pick = pick or 0, entries = {} }
+    cache[key] = info
+    local patch, machine, ctx = MOD.sm.patch_module(), MOD.sm.module(), MOD.sm.ctx()
+    if not patch then info.why = '资源补丁模块版本过旧：需要带 entries_of_type / install_with 的 res_patch' return info end
+    if not machine then info.why = '读不到状态机模块（offline/state_machine.lua）' return info end
+    if not ctx then info.why = '只有离线版能写补丁：拿不到游戏目录' return info end
+    local list, why = patch.entries_of_type(ctx, package, MOD.sm.TYPE)
+    if not list then info.why = tostring(why) return info end
+    info.entries = list
+    if #list == 0 then info.why = '这个资源包里没有状态机资源' return info end
+    local index = info.pick
+    if index < 1 or index > #list then index = 1 end
+    info.index = index
+    info.id = tostring(list[index].id_hex or ''):lower()
+    if info.id == '' then info.why = '状态机资源的编号读不出来' return info end
+    -- The type matters: a real package reuses one id for bones, animations, the machine and a mesh,
+    -- so an id-only read hands back whichever entry the directory lists first.
+    local bytes, read_why = patch.read_entry(ctx, package, info.id, MOD.sm.TYPE)
+    if not bytes then info.why = '读不到状态机资源：' .. tostring(read_why) return info end
+    info.bytes = bytes
+    local sm, parse_why = machine.parse(bytes)
+    if not sm then info.why = '状态机解析失败：' .. tostring(parse_why) return info end
+    info.sm = sm
+    local plan = machine.recipe(sm)
+    info.plan = plan
+    info.preview = machine.preview(sm, plan) or {}
+    info.count = plan and plan.count or 0
+    if type(patch.patch_entry) == 'function' then
+        local held = patch.patch_entry(ctx, MOD.sm.carrier, package, info.id, MOD.sm.TYPE)
+        if held then info.written = held ~= bytes end
+    end
+    return info
+end
+
+function MOD.sm.entry_label(info, index)
+    local entry = info and info.entries and info.entries[index]
+    if not entry then return nil end
+    return string.format('状态机 %d/%d（%d 字节）', index, #info.entries, tonumber(entry.toc_size) or 0)
+end
+
+function MOD.sm.state_of(row)
+    local info = MOD.sm.info(MOD.sm.package_of(row), MOD.sm.pick_of(row))
+    if info.written then return 1 end
+    return 0
+end
+
+-- One line, because the panel shows a row's note as a single string.
+function MOD.sm.note(row)
+    local info = MOD.sm.info(MOD.sm.package_of(row), MOD.sm.pick_of(row))
+    if not info.id then return info.why or '读不到状态机资源' end
+    local lines = {}
+    for _, line in ipairs(info.preview) do lines[#lines + 1] = line end
+    if info.written then lines[#lines + 1] = '补丁里已经是改后的状态机' end
+    if #info.entries > 1 then
+        lines[#lines + 1] = string.format('这个包里有 %d 份状态机，当前第 %d 份', #info.entries, info.index)
+        if info.count == 0 and info.plan and info.plan.template == 'none' then
+            lines[#lines + 1] = '换一份再试（迫击炮的部署态在第 2 份）'
+        end
+    end
+    if info.plan and info.plan.warn then lines[#lines + 1] = info.plan.warn end
+    return table.concat(lines, '；')
+end
+
+-- Why this row cannot be applied, or nil: the same gate the residency rows go through, plus the recipe.
+function MOD.sm.blocked(row)
+    local patch, machine = MOD.sm.patch_module(), MOD.sm.module()
+    if not patch then return '资源补丁模块版本过旧：需要带 entries_of_type / install_with 的 res_patch' end
+    if not machine then return '读不到状态机模块（offline/state_machine.lua）' end
+    local ctx = MOD.sm.ctx()
+    if not ctx then return '只有离线版能写补丁：拿不到游戏目录' end
+    local package = MOD.sm.package_of(row)
+    if not package then return '这一条还没有资源包（+168 是 0），先在上面填一个' end
+    local info = MOD.sm.info(package, MOD.sm.pick_of(row))
+    if not info.id then return info.why or '读不到状态机资源' end
+    if not info.plan then return '这个状态机的配方算不出来' end
+    if info.count == 0 then
+        if info.plan.template == 'none' then
+            if #info.entries > 1 then
+                return '这份状态机里没有可用的部署状态：把「状态机资源」换成另一份再试'
+            end
+            return '这份状态机里没有可用的部署状态，不是标准配方，未自动改动'
+        end
+        return '这个状态机的默认状态已经是展开态，不需要改'
+    end
+    local ok, installer = pcall(require, 'install')
+    if not ok or type(installer.game_running) ~= 'function' then return '无法检查游戏运行状态' end
+    if installer.game_running() then return '请先关闭游戏，再修改资源补丁' end
+    return nil, info
+end
+
+function MOD.sm.act(row, mode)
+    if mode == 0 then return true, '未更改状态机补丁' end
+    if mode ~= 1 and mode ~= 2 then return false, '无效的状态机补丁模式' end
+    if os.getenv('SHODAN_QA_OUTPUT') or os.getenv('SHODAN_HUSKAR_QA') then
+        return false, '测试模式禁止修改游戏资源补丁'
+    end
+    local why, info = MOD.sm.blocked(row)
+    if why and mode == 1 then return false, why end
+    if why and info == nil then return false, why end
+    local patch, machine = MOD.sm.patch_module(), MOD.sm.module()
+    local ctx = MOD.sm.ctx()
+    local package = MOD.sm.package_of(row)
+    if not ctx or not package then return false, why or '读不到资源包' end
+    MOD.sm.cache = nil
+    if mode == 2 then
+        local ok, err = patch.revert(ctx, MOD.sm.carrier, package)
+        if not ok then return false, '移除补丁失败：' .. tostring(err) end
+        return true, string.format('已移除 %s 的状态机补丁；重启游戏后生效', package)
+    end
+    local plan = info.plan
+    local new_bytes, failed = machine.apply(info.bytes, plan)
+    if not new_bytes then return false, '改写状态机失败：' .. tostring(failed) end
+    local today = patch.state(ctx, MOD.sm.carrier, package)
+    local wanted = today == 1 and 'full' or today == 2 and 'light' or 'res'
+    local overrides = {}
+    overrides[MOD.sm.TYPE .. ':' .. info.id] = new_bytes
+    local wrote, err = patch.install_with(ctx, MOD.sm.carrier, package, wanted, overrides)
+    if not wrote then return false, '写补丁失败：' .. tostring(err) end
+    local parts = {}
+    for _, step in ipairs(plan.changes or {}) do
+        parts[#parts + 1] = string.format('层%d %d→%d', step.layer, step.from, step.to)
+    end
+    return true, string.format('已写入 %s.patch_%s 的 %s（%s）；重启游戏后生效',
+        MOD.sm.carrier, tostring(wrote.index), info.id, table.concat(parts, '、'))
+end
+
+-- Two rows on a sentry or emplacement page: the machine inside its own package, then the patch.
+function MOD.sm.page_rows(weapon, def, suffix)
+    if not MOD.offline or not weapon then return end
+    suffix = suffix or ''
+    for _, row in ipairs(weapon.rows or {}) do if row.id == 'smmode' .. suffix then return end end
+    local pkg = weapon.by_id and weapon.by_id['load_package' .. suffix]
+    pkg = pkg and pkg.row
+    if not pkg then return end
+    local tag = 'sm:' .. tostring(def and def.off or '') .. ':' .. suffix .. ':'
+    local pick = add_row(weapon, '状态机', 'smres' .. suffix, '状态机资源', 'virtual',
+                         { part('smres', 0, tag .. 'res', 'virtual', 16) }, 0, 16, 1, 1)
+    pick.choice = 'smres'
+    pick.package_row = pkg
+    pick.pick_row = pick
+    pick.tip = MOD.sm.TIP
+    pick.parts[1].field.default = 1
+    local mode = add_row(weapon, '状态机', 'smmode' .. suffix, '炮塔展开（状态机补丁）', 'virtual',
+                         { part('smmode', 0, tag .. 'mode', 'virtual', 2) }, 0, 2, 1, 1)
+    mode.choice = 'smmode'
+    mode.package_row = pkg
+    mode.pick_row = pick
+    mode.tip = MOD.sm.TIP
+    mode.note = function() return MOD.sm.note(mode) end
+    return mode
+end
+
+rawset(state, 'sm', MOD.sm)               -- QA: the turret machines, next to resident
+
 -- A stratagem's two package slots, then the hellpod rack it lands with. A sentry owns one or two
 -- stratagems (the Rocket Sentry has two), so a second set is told apart by 'suffix'.
 function MOD.refs.stratagem_rows(entry, def, keys, suffix)
@@ -18922,6 +19145,20 @@ local function change(row, delta_sign, big, exact)
             ok = ok
             ui.message = { text = why, till = api.now() + 5 }
             ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'smmode' then
+            local target = exact and math.floor(exact + 0.5) or math.max(0, math.min(2, current + delta_sign))
+            local ok, why = MOD.sm.act(row, target)
+            ok = ok
+            ui.message = { text = why, till = api.now() + 5 }
+            ui.version = ui.version + 1
+            return
+        end
+        if row.choice == 'smres' then
+            local p = row.parts[1]
+            local target = exact and math.floor(exact + 0.5) or math.max(0, math.min(16, current + delta_sign))
+            if write_field(p.field, target) then ui.version = ui.version + 1 end
             return
         end
         if row.choice == 'grenade' then
@@ -22922,6 +23159,10 @@ if MOD.offline then
             elseif row.choice=='firemode' then choice_name=MOD.FIRE_MODES[v] or ('模式 ' .. tostring(v))
             elseif row.choice=='fntype' then choice_name=MOD.FIRE_FUNCTIONS[v] or ('未确认功能 ' .. tostring(v))
             elseif row.choice=='resomode' then choice_name=MOD.resident.LABELS[v] or tostring(v)
+            elseif row.choice=='smmode' then choice_name=MOD.sm.LABELS[v] or tostring(v)
+            elseif row.choice=='smres' then
+                local info=MOD.sm.info(MOD.sm.package_of(row),0)
+                choice_name=MOD.sm.entry_label(info,v) or ('状态机 '..tostring(v))
             elseif row.choice=='slot' then choice_name=v==1 and '主武器' or '副武器'
             elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then
                 local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
@@ -22959,6 +23200,12 @@ if MOD.offline then
             save_config()
             return why
         end
+        if row.choice=='smmode' then
+            local ok, why = MOD.sm.act(row, math.floor(value + 0.5))
+            if not ok then error(settings.tr(why),0) end
+            save_config()
+            return why
+        end
         ui.message=nil;change(row,0,false,value)
         if ui.message then error(settings.tr(ui.message.text),0) end
         save_config()
@@ -22991,6 +23238,19 @@ if MOD.offline then
         end
         if row and row.choice=='resomode' then
             return {{id=0,name=MOD.resident.LABELS[0]},{id=1,name=MOD.resident.LABELS[1]},{id=2,name=MOD.resident.LABELS[2]},{id=3,name=MOD.resident.LABELS[3]}}
+        end
+        if row and row.choice=='smmode' then
+            return {{id=0,name=MOD.sm.LABELS[0]},{id=1,name=MOD.sm.LABELS[1]},{id=2,name=MOD.sm.LABELS[2]}}
+        end
+        if row and row.choice=='smres' then
+            local info=MOD.sm.info(MOD.sm.package_of(row),0)
+            local out={}
+            for index, entry in ipairs(info.entries or {}) do
+                out[#out+1]={id=index,name=MOD.sm.entry_label(info,index) or ('状态机 '..index),
+                             description='资源 ID：'..tostring(entry.id_hex)}
+            end
+            if #out==0 then out[1]={id=1,name='（这个资源包里没有状态机）'} end
+            return out
         end
         if row and row.choice=='slot' then return {{id=1,name='主武器'},{id=3,name='副武器'}} end
         if row and (row.choice=='rackitem' or row.choice=='package' or row.choice=='entry') then
@@ -23025,6 +23285,7 @@ if MOD.offline then
         if row.choice=='weight' then assert(id==0 or id==1 or id==2,'护甲重量类型无效');return state.desktop.set(n,id)
         elseif row.choice=='apex_fire' then assert(id==2677 or id==2719,'请选择有效的尖峰开火动作');return state.desktop.set(n,id)
         elseif row.choice=='firemode' or row.choice=='fntype' or row.choice=='resomode' then return state.desktop.set(n,id)
+        elseif row.choice=='smmode' or row.choice=='smres' then return state.desktop.set(n,id)
         elseif row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
             return state.desktop.set(n,id)
         elseif row.choice=='slot' then return state.desktop.set(n,id)
