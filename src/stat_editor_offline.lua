@@ -12605,7 +12605,7 @@ KINDS[TYPES.custom].projectile = function(key)
                     for x = fd, fd + nd - 1 do
                         if peek4(d + at[3] + x * 12) == 0 and peek4(d + at[3] + x * 12 + 4) == 4 then
                             value_at = at[4] + (peek4(d + at[3] + x * 12 + 8) or 0)
-                            value = peek4(d + value_at)
+                            value = default_of(field_at(TYPES.deltas,value_at,'u32',100000))
                             break
                         end
                     end
@@ -12639,7 +12639,7 @@ KINDS[TYPES.custom].feeds = function(key, own)
                     local offset, size = peek4(d + at[3] + x * 12) or 0, peek4(d + at[3] + x * 12 + 4) or 0
                     local data = at[4] + (peek4(d + at[3] + x * 12 + 8) or 0)
                     for w = 0, size - 4, 4 do
-                        local value = peek4(d + data + w)
+                        local value = default_of(field_at(TYPES.deltas,data+w,'u32',100000))
                         if own[offset + w] and value == own[offset + w] then out[offset + w] = data + w end
                     end
                 end
@@ -13679,8 +13679,22 @@ local function resolve_gun(weapon, key)
     end
     stock(nil, true)
     if rounds then
-        add_row(weapon, 'Ammo', 'rounds_capacity', 'Rounds loaded', 'f32',
-                { part('rounds_capacity', T_ROUNDS, rounds + 72, 'f32', 100000) }, 1, 999, 1, 5)
+        local first=part('rounds_capacity',T_ROUNDS,rounds+72,'f32',100000)
+        local second=part('rounds_capacity_2',T_ROUNDS,rounds+76,'f32',100000)
+        local second_default=default_of(second.field)
+        local dual=second_default and second_default>0
+        local tube=weapon.hash=='D323DE60855898AC' or weapon.hash=='41EAC4A03987FAA0' or weapon.hash=='4F749E2EE26F532D'
+        local capacity=add_row(weapon,'Ammo','rounds_capacity',dual and (tube and '弹管 1 容量（发）' or '弹药池 1 容量（发）') or 'Rounds loaded',
+                              'f32',{first},1,999,1,5)
+        if dual then
+            add_row(weapon,'Ammo','rounds_capacity_2',tube and '弹管 2 容量（发）' or '弹药池 2 容量（发）','f32',{second},1,999,1,5)
+            capacity.inline_note=function()
+                return string.format('%s合计：%g + %g = %g 发；原始合计：%g 发。',tube and '双弹管' or '双弹药池',
+                    read_field(first.field) or 0,read_field(second.field) or 0,(read_field(first.field) or 0)+(read_field(second.field) or 0),
+                    (default_of(first.field) or 0)+(default_of(second.field) or 0))
+            end
+            capacity.tip={'分别编辑两侧容量；显示的原值是各侧容量，合计会随两侧输入实时更新。'}
+        end
         local function rnd(id, label, offset)
             add_row(weapon, 'Ammo', id, label, 'u32', { part(id, T_ROUNDS, rounds + offset, 'u32', 100000) }, 0, 9999, 1, 10)
         end

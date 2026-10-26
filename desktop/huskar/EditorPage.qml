@@ -6,6 +6,7 @@ import HuskarUI.Basic
 ColumnLayout {
     id:page
     required property var store
+    property var projectile:store.rows.find(x=>x.projectile_source) || null
     property string section:""
     property string query:""
     property bool changedOnly:false
@@ -29,6 +30,16 @@ ColumnLayout {
         }
         HusButton { text:"装备预设";onClicked:page.presetsRequested() }
         HusButton { text:"恢复本项";onClicked:store.call("reset",[],()=>store.refreshRows()) }
+    }
+    RowLayout {
+        visible:!!page.projectile
+        Layout.fillWidth:true
+        ColumnLayout {
+            Layout.fillWidth:true
+            HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:page.projectile ? (page.projectile.projectile_conflict ? "射弹引用不一致，请重新选择射弹或恢复原配" : "当前发射：#"+page.projectile.value+" · "+page.projectile.choice_name) : "" }
+            HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary;text:page.projectile && page.projectile.value!==page.projectile.original ? "本页伤害等参数仍属于原配射弹。特效资源包只加载资源，不会改变发射类型。" : "特效资源包只加载资源；更换发射类型请使用「更换射弹」。" }
+        }
+        HusButton { objectName:"restore_projectile";visible:!!page.projectile && (page.projectile.changed || page.projectile.projectile_conflict);text:"恢复原配射弹";onClicked:store.call("reset",[page.projectile.id],()=>store.refreshRows()) }
     }
     RowLayout {
         Layout.fillWidth:true

@@ -20,7 +20,7 @@ def main():
     report=json.loads((out/'report.json').read_text(encoding='utf8'))
     assert code==0 and report['error']=='',(code,report)
     captures=len(list(out.glob('*.png')))
-    assert captures>=51,'Missing page, extra warning choice, grouping, resize, switch restore, preset dialog, sentinel, release notes, projectile context or window effect captures'
+    assert captures>=54,'Missing page, extra warning choice, grouping, resize, switch restore, preset dialog, sentinel, release notes, projectile context or window effect captures'
     log=(out/'profile/Logs/huskar-startup.log').read_text(encoding='utf8',errors='replace')
     assert 'Icon font registered=1 family=HuskarUI-Icons' in log,'HuskarUI icon font was not initialized'
     from PIL import Image
