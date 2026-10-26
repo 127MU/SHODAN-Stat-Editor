@@ -17927,6 +17927,11 @@ end
 function MOD.ents.rows(entry, key)
     if not entry or not key or entry.ents_rows then return end
     entry.ents_rows = true
+    local MOUNT = '挂载（实验性功能）'   -- upstream reports mount-point edits are unstable on some vehicles
+    -- The supply FRV's rack rides the same mount table as everything else, and rewriting its anchor hashes has
+    -- been seen to drop or misplace the rack, so mount-point editing stays off on that vehicle (upstream, 2026-10-26).
+    local mount_name = tostring(entry.name or ''):lower()
+    local no_mount_points = mount_name:find('supply frv', 1, true) ~= nil or mount_name:find('补给型', 1, true) ~= nil
     local function row(section, id, label, kind, offset, storage, min, max, small, big)
         return add_row(entry, section, id, label, storage, { part(id, kind, offset, storage, 100000) }, min, max, small, big)
     end
@@ -17936,25 +17941,30 @@ function MOD.ents.rows(entry, key)
         for m = 0, 4 do
             local base, slot = at + m * 24, '槽 ' .. (m + 1)
             local carried = read_field(field_at(TYPES.mount, base, 'mountitem', 100000))
-            local item = row('挂载', 'mount' .. (m + 1) .. '_item', slot .. ' 挂载件', TYPES.mount, base, 'mountitem', 0, 1000000, 1, 1)
+            local item = row(MOUNT, 'mount' .. (m + 1) .. '_item', slot .. ' 挂载件', TYPES.mount, base, 'mountitem', 0, 1000000, 1, 1)
             item.choice = 'mountitem'
             item.tip = { '这一槽装的是什么：机甲手臂、坦克炮、货架。换件只改这 8 字节，别的都不用动。',
                          '外来件要靠「资源包（+168）」驻留（战备页把它的包填上），否则进游戏是紫色问号，开火会崩。',
                          '右侧件装到左侧槽也装得上，但准星与装填按座位来；换完进游戏重开一局才读。' }
-            local side = row('挂载', 'mount' .. (m + 1) .. '_side', slot .. ' 左右侧', TYPES.mount, base + 12, 'u32', 0, 2, 1, 1)
+            if no_mount_points then
+                item.tip[#item.tip + 1] = '补给型载具不开放挂点修改：这一型的挂位与补给架绑定，改了会让架子错位或消失。'
+            end
+            local side = row(MOUNT, 'mount' .. (m + 1) .. '_side', slot .. ' 左右侧', TYPES.mount, base + 12, 'u32', 0, 2, 1, 1)
             side.choice = 'mountside'
             side.allowed = { [0] = true, [1] = true, [2] = true, why = '左右侧只能取 0 通用 / 1 右侧 / 2 左侧' }
             side.tip = { '0 通用、1 右侧、2 左侧：两侧互换时这一格要和挂载件一起改。' }
-            if carried and carried ~= 0 then
-                local a = row('挂载', 'mount' .. (m + 1) .. '_anchor_a', slot .. ' 挂点 A（+8）', TYPES.mount, base + 8, 'u32', 0, 4294967295, 1, 1)
+            if carried and carried ~= 0 and not no_mount_points then
+                local a = row(MOUNT, 'mount' .. (m + 1) .. '_anchor_a', slot .. ' 挂点 A（+8）', TYPES.mount, base + 8, 'u32', 0, 4294967295, 1, 1)
                 a.tip = { '件挂在哪一类定位点上：同一类挂位在整张表里取值恒定，换成另一类会改变挂上去的位置与转向基准。',
-                          '这一格不影响能不能装，只影响挂在哪；拿不准就按「恢复」留原值。' }
-                local c = row('挂载', 'mount' .. (m + 1) .. '_anchor_c', slot .. ' 挂点名（+16）', TYPES.mount, base + 16, 'u32', 0, 4294967295, 1, 1)
+                          '这一格不影响能不能装，只影响挂在哪；拿不准就按「恢复」留原值。',
+                          '载具挂点是实验性功能：上游反馈部分载具改完挂点后出现挂位错位或部件不显示，改前备份、改后进游戏实测。' }
+                local c = row(MOUNT, 'mount' .. (m + 1) .. '_anchor_c', slot .. ' 挂点名（+16）', TYPES.mount, base + 16, 'u32', 0, 4294967295, 1, 1)
                 c.tip = { '游戏用来认挂位的哈希编号：左臂、右臂、火炮、货架、驾驶位机枪各有各的值，不同挂位取值不同。',
-                          '面板给机甲 / 载具的子件取名时读的就是这一格；改之前先按「恢复」留个原值。' }
-                local f1 = row('挂载', 'mount' .. (m + 1) .. '_flag1', slot .. ' 标记 1（+20）', TYPES.mount, base + 20, 'u8', 0, 255, 1, 1)
+                          '面板给机甲 / 载具的子件取名时读的就是这一格；改之前先按「恢复」留个原值。',
+                          '同「挂点 A」：实验性功能，改前备份、改后实测。' }
+                local f1 = row(MOUNT, 'mount' .. (m + 1) .. '_flag1', slot .. ' 标记 1（+20）', TYPES.mount, base + 20, 'u8', 0, 255, 1, 1)
                 f1.tip = { '全表 814 个是 1，语义未解，原值最安全。' }
-                local f2 = row('挂载', 'mount' .. (m + 1) .. '_flag2', slot .. ' 标记 2（+21）', TYPES.mount, base + 21, 'u8', 0, 255, 1, 1)
+                local f2 = row(MOUNT, 'mount' .. (m + 1) .. '_flag2', slot .. ' 标记 2（+21）', TYPES.mount, base + 21, 'u8', 0, 255, 1, 1)
                 f2.tip = { '全表只有 6 个 1，语义未解。' }
             end
         end
@@ -18328,6 +18338,7 @@ MOD.sm.TIP = {
     '炮塔与工事被当成载具挂件用时不会跑部署流程，一直停在折叠姿态；这里改的是它自己资源包里那条状态机的默认层。',
     '默认状态按状态名认（展开态、部署过渡态），不按层号记；有扫视层的壳体一起关掉，否则姿态会卷回去。',
     '写进资源包补丁（和「资源驻留」同一个载体），重启游戏后生效；一个包里可能有两三份状态机（迫击炮的气体与电磁），按资源编号选。',
+    '状态机补丁是实验性功能：上游反馈少数工事 / 载具组合写入后依旧折叠、展开回卷或部件错位；改前按「恢复」留原值，改后进游戏实测，异常就在同一栏选「移除补丁」。',
 }
 
 function MOD.sm.module()
@@ -18514,14 +18525,14 @@ function MOD.sm.page_rows(weapon, def, suffix)
     pkg = pkg and pkg.row
     if not pkg then return end
     local tag = 'sm:' .. tostring(def and def.off or '') .. ':' .. suffix .. ':'
-    local pick = add_row(weapon, '状态机', 'smres' .. suffix, '状态机资源', 'virtual',
+    local pick = add_row(weapon, '状态机（实验性功能）', 'smres' .. suffix, '状态机资源', 'virtual',
                          { part('smres', 0, tag .. 'res', 'virtual', 16) }, 0, 16, 1, 1)
     pick.choice = 'smres'
     pick.package_row = pkg
     pick.pick_row = pick
     pick.tip = MOD.sm.TIP
     pick.parts[1].field.default = 1
-    local mode = add_row(weapon, '状态机', 'smmode' .. suffix, '炮塔展开（状态机补丁）', 'virtual',
+    local mode = add_row(weapon, '状态机（实验性功能）', 'smmode' .. suffix, '炮塔展开（状态机补丁）', 'virtual',
                          { part('smmode', 0, tag .. 'mode', 'virtual', 2) }, 0, 2, 1, 1)
     mode.choice = 'smmode'
     mode.package_row = pkg
