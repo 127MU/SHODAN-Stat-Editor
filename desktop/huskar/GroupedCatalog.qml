@@ -62,7 +62,7 @@ ListView {
                         spacing:0
                         RowLayout {
                             Layout.fillWidth:true;Layout.margins:14
-                            HusText {Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap;text:card.modelData.entries.length>1?card.modelData.entries.length+" 个关联条目":card.modelData.changed?"已修改":"原版参数";color:HusTheme.Primary.colorTextSecondary}
+                            HusText {Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap;text:card.modelData.entries.length>1?card.modelData.entries.length+" 个关联条目"+(card.modelData.changed?" · 已修改":""):card.modelData.changed?"已修改":"原版参数";color:HusTheme.Primary.colorTextSecondary}
                             HusButton {
                                 text:card.modelData.entries.length>1?(card.opened?"收起":"展开"):"编辑"
                                 contentItem:RowLayout {

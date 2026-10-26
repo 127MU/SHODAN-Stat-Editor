@@ -13973,11 +13973,11 @@ function MOD.tweaks.collect(defs)
     local B, F = MOD.tweaks.bounce, MOD.tweaks.foliage
     B.rows = {}
     for id, def in pairs(defs) do
-        local b = api.read(def.at + 368, 1)
-        local flags = B.original[id] or (b and b:byte())
+        -- Probe immutable bytes without registering a typed field in the shared cache.
+        local flags = B.original[id] or read_field({kind=def.kind, offset=def.off+368, storage='u8', limit=255}, true)
         if flags and math.floor(flags / 2) % 2 == 1 then
             B.original[id] = flags
-            B.rows[#B.rows + 1] = { kind = def.kind, off = def.off + 368, size = 1, game = flags, want = flags - 2 }
+            B.rows[#B.rows + 1] = { kind = def.kind, off = def.off + 368, size = 1, game = flags, want = flags - 2, mask = 2 }
         end
     end
     local R, wt = MOD.tweaks.reticle, tables[T_WEAPON]
@@ -14014,7 +14014,16 @@ function MOD.tweaks.apply()
             local t = tables[r.kind]
             for _, copy in ipairs(t and t.copies or {}) do
                 local at = copy + HEADER_BYTES + r.off
-                if api.read(at, r.size) ~= bytes then api.write(at, bytes) end
+                local current = api.read(at, r.size)
+                if r.mask and current and #current == 1 then
+                    -- Own only deploy_on_navmesh_only. Other navigation bits may
+                    -- belong to a separate editor setting or an installed Mod.
+                    local live = current:byte()
+                    local have = math.floor(live / r.mask) % 2
+                    local want = math.floor(value / r.mask) % 2
+                    bytes = string.char(live + (want - have) * r.mask)
+                end
+                if current ~= bytes then api.write(at, bytes) end
             end
         end
     end

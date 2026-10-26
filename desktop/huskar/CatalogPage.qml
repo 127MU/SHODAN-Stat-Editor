@@ -33,6 +33,7 @@ ColumnLayout {
             })
         }
         Item { Layout.fillWidth:true }
+        HusCheckBox { objectName:"catalog_only_modified";text:"仅已修改";checked:store.catalogOnlyModified;onClicked:store.catalogOnlyModified=checked }
         HusInput {
             Layout.preferredWidth:Math.min(340,page.width*0.35)
             placeholderText:"搜索名称、型号或 ID"
