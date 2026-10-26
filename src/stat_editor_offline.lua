@@ -12605,7 +12605,8 @@ KINDS[TYPES.custom].projectile = function(key)
                     for x = fd, fd + nd - 1 do
                         if peek4(d + at[3] + x * 12) == 0 and peek4(d + at[3] + x * 12 + 4) == 4 then
                             value_at = at[4] + (peek4(d + at[3] + x * 12 + 8) or 0)
-                            value = default_of(field_at(TYPES.deltas,value_at,'u32',100000))
+                            -- Probe immutable bytes without caching an integer view of a possibly floating-point delta.
+                            value = read_field({kind=TYPES.deltas,offset=value_at,storage='u32',limit=100000},true)
                             break
                         end
                     end
@@ -12639,7 +12640,8 @@ KINDS[TYPES.custom].feeds = function(key, own)
                     local offset, size = peek4(d + at[3] + x * 12) or 0, peek4(d + at[3] + x * 12 + 4) or 0
                     local data = at[4] + (peek4(d + at[3] + x * 12 + 8) or 0)
                     for w = 0, size - 4, 4 do
-                        local value = default_of(field_at(TYPES.deltas,data+w,'u32',100000))
+                        -- Other component deltas include floats: a temporary probe must not claim their cached type.
+                        local value = read_field({kind=TYPES.deltas,offset=data+w,storage='u32',limit=100000},true)
                         if own[offset + w] and value == own[offset + w] then out[offset + w] = data + w end
                     end
                 end
