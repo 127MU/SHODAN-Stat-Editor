@@ -1,5 +1,7 @@
 -- Plain-language labels for editor-only records that have no game localisation string.
 local labels={
+ ['Shield forcefield (Hexagon)']='护盾力场（六边形变体）',
+ ['Shield forcefield (Outcast)']='护盾力场（Outcast 内部变体）',
  ['Call-in code']='战备指令', ['Primary weapon']='主武器', ['Sidearm']='副武器',
  ['Support weapon']='支援武器', ['Weapons carried']='携带武器',
  ['All Terminids']='所有终结族', ['Default']='默认', ['Horde']='敌潮',
@@ -53,6 +55,45 @@ local labels={
  ['Explosion (expiry)']='寿命结束时的爆炸',
  ['Explosion (expiry) shrapnel']='寿命结束时的爆炸：破片',
 }
+labels["SEAF primary weapon"]="超级地球武装部队主武器"
+labels["SEAF sidearm"]="超级地球武装部队副武器"
+labels["Acid spray"]="酸液喷射"
+labels["Assaultfist"]="突击拳击"
+labels["Blunt swipe"]="钝击横扫"
+labels["Chainsaw"]="链锯攻击"
+labels["Charge destruction"]="冲锋破坏"
+labels["Charge hit infantry"]="冲锋命中步兵"
+labels["Charge hit vehicle"]="冲锋命中载具"
+labels["Claw"]="爪击"
+labels["Dash stun"]="冲刺眩晕"
+labels["Dive"]="俯冲攻击"
+labels["Headbutt"]="头槌"
+labels["Melee"]="近战攻击"
+labels["Melee crush"]="近战碾压"
+labels["Obstacle"]="障碍物攻击"
+labels["Obstacle crush"]="碾碎障碍物"
+labels["Obstacle large"]="大型障碍物攻击"
+labels["Overhead slash"]="下劈"
+labels["Pounce"]="猛扑"
+labels["Punch"]="拳击"
+labels["Quick slash"]="快速斩击"
+labels["Scream"]="尖啸"
+labels["Shove"]="推击"
+labels["Stab"]="刺击"
+labels["Staff explosion"]="法杖爆炸"
+labels["Stomp"]="踩踏"
+labels["Stomp shockwave"]="踩踏冲击波"
+labels["Swipe and claw"]="横扫与爪击"
+labels["Sync kill"]="处决攻击"
+labels["Tentacle impact"]="触手冲击"
+labels["Tongue"]="舌击"
+labels["Front left wheel hub"]="左前轮毂"
+labels["Front right wheel hub"]="右前轮毂"
+labels["Back left wheel hub"]="左后轮毂"
+labels["Back right wheel hub"]="右后轮毂"
+labels["MORGUNSON HOLO-SIGHT"]="莫枪森全息瞄具"
+labels["P-34 Breacher"]="P-34 爆破者"
+labels["0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s."]="0：立即引爆。RL-77 延迟 0.2 秒；P-34 爆破者先粘附并燃烧，延迟 1 秒。"
 local lower={};for k,v in pairs(labels) do lower[k:lower()]=v end
 local M={}
 function M.translate(text,recurse)
@@ -76,6 +117,25 @@ function M.translate(text,recurse)
   end
  end
  if not recurse then return end
+ local tier=text:match('^SEAF MK(%d+)$')
+ if tier then return '超级地球武装部队 MK'..tier end
+ local carried=text:match('^(.-)（背包）$')
+ if carried then local name=recurse(carried);if name~=carried then return name..'（背包）' end end
+ local base,id=text:match('^(.-) · #(%d+)$')
+ if base then return recurse(base)..' · #'..id end
+ local attack=text:match('^Attack: (.+)$')
+ if attack then return '攻击：'..recurse(attack) end
+ local qualifiers={['stun rounds']='眩晕弹',['uncharged']='未蓄力',['charged']='蓄力',
+  ['partial charge']='部分蓄力',['full charge']='完全蓄力'}
+ local subject,qual=text:match('^(.-) %(([^()]+)%)$')
+ if subject and qualifiers[qual] then return recurse(subject)..'（'..qualifiers[qual]..'）' end
+ for english,chinese in pairs(labels) do
+  if english:find('wheel hub',1,true) and text:sub(1,#english)==english then
+   local suffix=text:sub(#english+1)
+   if suffix==' health' then return chinese..'生命值' end
+   if suffix==' armor' then return chinese..'装甲等级' end
+  end
+ end
  local name=text:match('^Status effects %((.+)%)$')
  if name then return '状态效果（'..recurse(name)..'）' end
  name=text:match('^(.+) explosion shrapnel$')
