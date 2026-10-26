@@ -199,7 +199,7 @@ HusWindow {
         choiceDialog.close()
         if(Number(item.id)===0)return
         residency.row=row;residency.mode=item.id
-        residency.title=row.choice_kind==="smmode"?"确认修改状态机补丁":"确认修改资源驻留补丁"
+        residency.title=row.choice_kind==="smmode"?"确认修改状态机补丁（实验性功能）":"确认修改资源驻留补丁"
         residency.description="此操作会立即"+((row.choice_kind==="smmode"?Number(item.id)===2:Number(item.id)===3)?"移除":"写入")+"当前条目的资源驻留补丁（"+(item.name || item.label)+"）。请先关闭游戏，完成后重启游戏生效。"
         residency.open()
     }
