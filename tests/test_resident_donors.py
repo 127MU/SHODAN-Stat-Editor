@@ -40,8 +40,8 @@ def main():
     local count=#targets
     -- Aggregate state must cover every automatic target, even with no manual selection.
     local get_module,get_ctx=R.module,R.ctx;local state=1
-    R.module=function()return {state=function(_,_,name)assert(set.packages[name]);return state end}end
-    R.ctx=function()return {}end
+    R.module=function()return setmetatable({state=function(_,_,name)assert(set.packages[name]);return state end},{__index=patch})end
+    R.ctx=function()return ctx end
     R.memo=nil;assert(R.state_of(mode)==1,'Installed auto-donor packages display as not installed')
     state=2;R.memo=nil;assert(R.state_of(mode)==2,'Light residency state lost')
     state=0;R.memo=nil;assert(R.state_of(mode)==0,'Missing residency state lost')

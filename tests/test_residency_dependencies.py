@@ -33,6 +33,34 @@ assert(#names==2 and names[2]==donor and #missing==0)
 local _,unknown=M.resolve_resources(ctx,{},{{id_hex=asset,type_hex=particle}},{12345})
 assert(#unknown==1 and unknown[1]:find('12345',1,true))''')
 
+    def test_full_row_scan_preserves_u64_and_types(self):
+        self.lua.execute('''local a='f123456789abcdef';local b='f123456789abcdee'
+addpkg('cccccccccccccccc',{{a,particle,'a'},{b,bank,'b'},{a,bank,'same ID, different type'}})
+local hits=assert(M.scan_resources(ctx,{'enum'..rawhex(a)..rawhex(b)..rawhex(a),string.rep('\\0',8)}))
+assert(#hits==3,'Do not round u64 IDs or collapse resource types')
+local seen={};for _,h in ipairs(hits)do seen[h.type_hex..':'..h.id_hex]=true end
+assert(seen[particle..':'..a] and seen[bank..':'..a] and seen[bank..':'..b])
+assert(not seen[particle..':'..b])
+-- A completed index is reused without rereading every package.
+ctx.set.heads={}
+assert(#M.scan_resources(ctx,{rawhex(a)})==2)''')
+
+    def test_failed_index_is_not_cached(self):
+        self.lua.execute('''ctx.set.names[#ctx.set.names+1]='dddddddddddddddd'
+local hits,why=M.scan_resources(ctx,{rawhex(asset)})
+assert(not hits and why);assert(ctx.resource_index==nil)
+table.remove(ctx.set.names)
+assert(#M.scan_resources(ctx,{rawhex(asset)})==2)''')
+
+    def test_empty_inventory_is_not_treated_as_complete(self):
+        self.lua.execute('''ctx.set.names={}
+local hits,why=M.scan_resources(ctx,{rawhex(asset)})
+assert(not hits and why:find('清单为空',1,true));assert(ctx.resource_index==nil)''')
+
+    def test_unknown_candidate_is_not_claimed_to_be_an_event(self):
+        self.lua.execute('''local _,missing=assert(M.resolve_resources(ctx,{}, {}, {12345}))
+assert(#missing==1 and missing[1]:find('候选哈希',1,true))''')
+
     def test_sidecar_and_hole_are_not_installed(self):
         self.lua.execute('''assert(M.install(ctx,host,name,'full'));os.remove(path(0,'.gpu_resources'));assert(M.state(ctx,host,name)==0)
 assert(M.install(ctx,host,name,'full'));assert(M.install(ctx,host,donor,'full'));os.remove(path(0))
