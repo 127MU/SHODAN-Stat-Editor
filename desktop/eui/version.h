@@ -1,2 +1,2 @@
 #pragma once
-namespace shodan {inline constexpr const char* version="4.1.0-r24";}
+namespace shodan {inline constexpr const char* version="4.1.0-r25";}

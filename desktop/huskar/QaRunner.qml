@@ -12,7 +12,9 @@ Timer {
     property var row
     property real original:0
     property int inputRetries:0
+    property int wheelPhase:0
     property bool flagOnly:Backend.setting("qaFlagReset",false)
+    property bool appearanceOnly:Backend.setting("qaAppearanceOnly",false)
     property bool flagStarted:false
     property var flagRow
     interval:850;repeat:true
@@ -22,9 +24,43 @@ Timer {
         waiting=true
         store.call("rows",[],function(rows){try{const actual=rows.find(x=>x.id===qa.row.id).value;ensure(actual===expected,"输入没有保存：预期 "+expected+"，实际 "+actual);qa.waiting=false}catch(e){Backend.finishQa(String(e))}})
     }
+    function runAppearance(){
+        if(QaRestoreMode){
+            const expected=JSON.parse(Backend.readText(QaDirectory+"/appearance.json"))
+            ensure(JSON.stringify(window.qaAppearanceSnapshot())===JSON.stringify(expected),"外观设置重启后不一致")
+            ensure(!!preferences.customAppearance,"个人主题未持久化")
+            Backend.finishQa("");return
+        }
+        if(step===0)store.openModule("settings")
+        else if(step===1){Backend.capture("appearance-01-settings");preferences.previousAppearance=preferences.snapshot();preferences.restore({dark:true,themeMode:"dark",cardMaterial:"glass",accent:"#9d75f0"})}
+        else if(step===2){ensure(HusTheme.isDark && preferences.cardMaterial==="glass","深色主题预设未应用");Backend.capture("appearance-02-dark");preferences.undo()}
+        else if(step===3){ensure(!preferences.dark,"主题撤销未生效");preferences.restore({dark:false,themeMode:"light",cardMaterial:"frost",accent:"#128268"})}
+        else if(step===4){ensure(preferences.accent==="#128268","主题配色未更新");const path=Backend.qaBackground(QaDirectory+"/palette.png");ensure(!!path,"测试背景未保存");preferences.backgroundImage=path;preferences.backgroundMode="image";preferences.autoAccent=true;window.qaSettingsSection(1)}
+        else if(step===5){
+            const color=preferences.accent
+            ensure(parseInt(color.substr(3,2),16)>parseInt(color.substr(1,2),16),"背景取色未采用主色")
+            ensure(Backend.backgroundAccent(QaDirectory+"/missing.png",false)==="","无效图片未拒绝")
+            Backend.capture("appearance-03-background");ensure(Backend.qaDrag("setting_backgroundOpacity"),"背景透明度无法拖动")
+        }
+        else if(step===6){ensure(preferences.backgroundOpacity>=0.7,"背景滑条未即时提交");window.qaSettingsSection(0);preferences.cardMaterial="frost"}
+        else if(step===7){ensure(Backend.qaDrag("setting_frostOpacity"),"磨砂透明度无法拖动")}
+        else if(step===8){ensure(preferences.frostOpacity>0.65,"材质滑条未生效");Backend.capture("appearance-04-frost");preferences.cardMaterial="glass";preferences.glassRefraction=0.14;preferences.glassHighlight=2.6;preferences.glassOpacity=0.28}
+        else if(step===9){ensure(window.qaGlassBound(),"玻璃折射参数没有连接到原生材质");Backend.capture("appearance-05-glass");window.qaSettingsSection(2)}
+        else if(step===10){Backend.capture("appearance-06-motion");preferences.motion=false;preferences.hoverEffects=false;preferences.saveCustom();preferences.accent="#a65e00";preferences.useCustom()}
+        else if(step===11){ensure(!preferences.motion && !preferences.hoverEffects && preferences.autoAccent,"个人主题没有恢复动效与自动取色");window.qaSettingsSection(3)}
+        else if(step===12){Backend.capture("appearance-07-window");window.qaSettingsSection(4)}
+        else if(step===13){Backend.capture("appearance-08-project");window.width=980;window.height=700;window.qaSettingsSection(0)}
+        else if(step===14){Backend.capture("appearance-09-narrow-preview");window.width=1480;window.height=960;preferences.motion=true;window.qaSettingsSection(2)}
+        else if(step>=15 && step<=22){ensure(window.qaEntranceReset(),"上一段动画未归位");preferences.pageEffect=step-15;preferences.previewPageEffect()}
+        else if(step===23){preferences.pageEffect=5;preferences.previewPageEffect();preferences.motion=false;ensure(window.qaEntranceReset(),"关闭动画后页面没有归位");ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存外观快照");store.openModule("vehicle")}
+        else if(step===24){ensure(window.qaGroupPopup("open"),"无法展开关联浮层")}
+        else if(step===25){ensure(window.qaGroupPopup("check"),"关联浮层推动了原网格");Backend.capture("appearance-10-group-popup");window.qaGroupPopup("close");Backend.finishQa("")}
+        step++
+    }
     onTriggered:{
         if(!Backend.ready || waiting || Object.keys(store.callbacks).length)return
         try{
+            if(appearanceOnly){runAppearance();return}
             if(flagOnly && !flagStarted){flagStarted=true;step=61}
             if(QaRestoreMode){
                 const expected=JSON.parse(Backend.readText(QaDirectory+"/appearance.json"))
@@ -62,8 +98,13 @@ Timer {
             else if(step===22){ensure(store.rows.length>0,"战备参数为空");Backend.capture("14-stratagems");store.openModule("records")}
             else if(step===23){store.select(store.library[0])}
             else if(step===24){ensure(store.rows.length>0,"数据记录为空");Backend.capture("15-records");const path=Backend.qaBackground(AssetRoot+"shodan.png");ensure(!!path,"自定义图片未保存");preferences.backgroundImage=path;preferences.backgroundMode="image";preferences.backgroundOpacity=0.25;store.openModule("settings")}
-            else if(step===25){Backend.capture("16-image-settings");ensure(window.qaSliderTest(),"无法拖动背景滑块");ensure(window.qaWheelTest(),"无法发送滚轮事件");preferences.accent="#722ed1"}
-            else if(step===26){ensure(preferences.backgroundOpacity>=0.7,"滑块拖动没有提交数值");ensure(window.qaWheelMoved(),"滚轮没有滚动页面");Backend.capture("17-theme");Backend.toggleMcp()}
+            else if(step===25){
+                if(wheelPhase===0){Backend.capture("16-image-settings");ensure(window.qaSliderTest(),"无法拖动背景滑块");wheelPhase=1;return}
+                if(wheelPhase===1){ensure(preferences.backgroundOpacity>=0.7,"滑块拖动没有提交数值");window.qaSettingsSection(0);wheelPhase=2;return}
+                if(wheelPhase===2){ensure(window.qaWheelTest(),"无法发送滚轮事件");wheelPhase=3;return}
+                ensure(window.qaWheelMoved(),"滚轮没有滚动页面");preferences.accent="#722ed1"
+            }
+            else if(step===26){ensure(preferences.backgroundOpacity>=0.7,"滑块拖动没有提交数值");Backend.capture("17-theme");Backend.toggleMcp()}
             else if(step===27){ensure(Backend.mcpEnabled,"MCP 未开启");Backend.toggleMcp()}
             else if(step===28){ensure(Backend.themeComponents().length>20,"主题组件清单不完整");store.openModule("settings")}
             else if(step===29){Backend.capture("18-appearance-settings");ensure(window.qaThemeTest(),"主题设置未生效")}

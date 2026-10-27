@@ -8,6 +8,12 @@ QtObject {
     property string cardMaterial:"solid"
     property var cardBackdrop:null
     property bool cardMotion:true
+    property bool hoverEffects:true
+    property real frostOpacity:0.48
+    property real glassOpacity:0.18
+    property real materialBlur:3
+    property real glassRefraction:0.095
+    property real glassHighlight:2.1
     property var catalogs: ({})
     property var armor: []
     property var groups: []

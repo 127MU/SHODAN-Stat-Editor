@@ -685,7 +685,21 @@ end
 function M.state(ctx, host, name)
     local entry = M.entry_of(ctx, host, name)
     if not entry then return 0 end
-    if M.file_size(ctx.root .. '/' .. patch_name(host, entry.index)) == nil then return 0 end
+    -- A ledger is not evidence that the engine can read this patch. Earlier holes
+    -- stop the merge, and missing sidecars leave graphics/audio unavailable.
+    for n = 0, entry.index do
+        if M.file_size(ctx.root .. '/' .. patch_name(host, n)) == nil then return 0 end
+    end
+    local spec = M.patch_spec(ctx, host, name)
+    if not spec then return 0 end
+    local gpu, stream = 0, 0
+    for _, resource in ipairs(spec.entries) do
+        if resource.gpu_size > 0 then gpu = math.max(gpu, resource.gpu_at + resource.gpu_size) end
+        if resource.stream_size > 0 then stream = math.max(stream, resource.stream_at + resource.stream_size) end
+    end
+    local base = ctx.root .. '/' .. patch_name(host, entry.index)
+    if gpu > 0 and (M.file_size(base .. GPU_SUFFIX) or 0) < gpu then return 0 end
+    if stream > 0 and (M.file_size(base .. STREAM_SUFFIX) or 0) < stream then return 0 end
     if entry.mode == 'full' then return 1 end
     if entry.mode == 'res' then return 0 end
     return 2
@@ -779,6 +793,7 @@ local function transaction(ctx, host, indexes, action)
         before[#before + 1] = { path = path, bytes = bytes }
     end
     remember(M.ledger_path(ctx))
+    remember(ctx.profile .. '/residency_dependencies.txt')
     for _, index in ipairs(indexes) do
         local base = ctx.root .. '/' .. patch_name(host, index)
         for _, suffix in ipairs({ '', '.gpu_resources', '.stream' }) do remember(base .. suffix) end
@@ -824,7 +839,14 @@ local function slot_for(ctx, host, name)
     for index, entry in ipairs(entries) do
         if entry.host == host and entry.name == name then at, existing = index, entry break end
     end
-    if existing and not missing_patch(ctx,host,existing.index) then return entries, at, existing.index end
+    if existing and not missing_patch(ctx,host,existing.index) then
+        for n = 0, existing.index do
+            if M.file_size(ctx.root .. '/' .. patch_name(host,n)) == nil then
+                return nil,nil,nil,'补丁序号不连续，当前驻留补丁不会被加载；未修改任何文件'
+            end
+        end
+        return entries, at, existing.index
+    end
     -- Keep the ledger intact until the replacement has been written successfully.
     if existing then table.remove(entries,at) end
     local used, highest = used_numbers(ctx.root, host)
@@ -1097,6 +1119,178 @@ function M.saved_overrides(ctx, host, name)
         if bytes ~= baseline then overrides[key] = bytes end
     end
     return overrides
+end
+
+-- Resolve actual table references rather than assuming that a weapon's declared
+-- loadout package contains its projectile's particles and audio. Read only TOCs
+-- and the HIRC object directory (skip the potentially enormous sound DATA chunk).
+function M.resolve_resources(ctx, preferred, resources, events)
+    local set, why = bundle_set(ctx)
+    if not set then return nil, why end
+    local wanted, audio, found, providers = {}, {}, {}, {}
+    for _, r in ipairs(resources or {}) do wanted[hex_key(r.type_hex)..':'..hex_key(r.id_hex)] = true end
+    for _, id in ipairs(events or {}) do if id > 0 then audio[id] = true end end
+    local signature={}
+    for _,name in ipairs(preferred or {})do signature[#signature+1]='p:'..name end
+    for key in pairs(wanted)do signature[#signature+1]=key end
+    for id in pairs(audio)do signature[#signature+1]='a:'..id end
+    table.sort(signature);signature=table.concat(signature,',')
+    ctx.resolution_cache=ctx.resolution_cache or {}
+    local cached=ctx.resolution_cache[signature]
+    if cached then return cached.names,cached.unresolved end
+    local function bank_events(name, entry)
+        local ids = {}
+        -- Stingray's bank wrapper is 16 bytes; an unwrapped bank is accepted too.
+        local head = package_read(set,name,entry.toc_at,math.min(entry.toc_size,24))
+        local at = head and head:sub(1,4)=='BKHD' and 0 or 16
+        if not head or head:sub(at+1,at+4)~='BKHD' then return ids end
+        while at+8<=entry.toc_size do
+            local chunk = package_read(set,name,entry.toc_at+at,8)
+            if not chunk then break end
+            local size = le(chunk,4,4)
+            if at+8+size>entry.toc_size then break end
+            if chunk:sub(1,4)=='HIRC' then
+                if size<4 or size>16777216 then break end
+                local data=package_read(set,name,entry.toc_at+at+8,size)
+                if not data then break end
+                local p=4
+                for _=1,le(data,0,4) do
+                    if p+9>#data then break end
+                    local kind,n=data:byte(p+1),le(data,p+1,4)
+                    if n<4 or p+5+n>#data then break end
+                    if kind==4 then ids[le(data,p+5,4)]=true end -- CAkEvent
+                    p=p+5+n
+                end
+                break
+            end
+            at=at+8+size
+        end
+        return ids
+    end
+    local inspected={}
+    local function inspect(name)
+        if inspected[name] then return true end
+        inspected[name]=true
+        local spec,err=package_head(set,name)
+        if not spec then return nil,err end
+        local have={}
+        for _,e in ipairs(spec.entries) do
+            local key=e.type_hex..':'..e.id_hex
+            if wanted[key] then have[key]=true end
+            if next(audio) and e.type_hex=='535a7bd3e650d799' then
+                for id in pairs(bank_events(name,e)) do if audio[id] then have['audio:'..id]=true end end
+            end
+        end
+        providers[name]={have=have,cost=#spec.entries}
+        return true
+    end
+    local names,selected={},{}
+    for _,name in ipairs(preferred or {}) do
+        local ok,err=inspect(name);if not ok then return nil,err end
+        if not selected[name] then names[#names+1]=name;selected[name]=true end
+        for key in pairs(providers[name].have) do found[key]=true end
+    end
+    local function missing()
+        for key in pairs(wanted) do if not found[key] then return true end end
+        for id in pairs(audio) do if not found['audio:'..id] then return true end end
+    end
+    if missing() then
+        -- A resource can have several providers. Find the smallest complete
+        -- package instead of blindly copying every weapon that uses the record.
+        for _,name in ipairs(set.names or {}) do
+            if name:match('^%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x$') then
+                local ok,err=inspect(name);if not ok then return nil,err end
+            end
+        end
+        while missing() do
+            local best,score,cost
+            for name,p in pairs(providers) do if not selected[name] then
+                local n=0;for key in pairs(p.have) do if not found[key] then n=n+1 end end
+                if n>0 and (not best or n>score or n==score and (p.cost<cost or p.cost==cost and name<best)) then
+                    best,score,cost=name,n,p.cost
+                end
+            end end
+            if not best then break end
+            selected[best]=true;names[#names+1]=best
+            for key in pairs(providers[best].have) do found[key]=true end
+        end
+    end
+    local unresolved={}
+    for key in pairs(wanted) do if not found[key] then unresolved[#unresolved+1]='资源 '..key end end
+    for id in pairs(audio) do if not found['audio:'..id] then unresolved[#unresolved+1]='音效事件 '..id end end
+    table.sort(unresolved)
+    ctx.resolution_cache[signature]={names=names,unresolved=unresolved}
+    return names, unresolved
+end
+
+-- Carry edited resources into every newly installed copy of the same typed ID.
+-- All package writes and the ledger roll back together if any package fails.
+function M.group(ctx, key, signature)
+    for line in (M.read_file(ctx.profile..'/residency_dependencies.txt') or ''):gmatch('[^\r\n]+') do
+        local owner,sig,packages=line:match('^(%S+)\t([^\t]+)\t(.+)$')
+        if owner==key and (signature==nil or signature==sig)then
+            local names={};for name in packages:gmatch('%x+')do names[#names+1]=name end
+            return names
+        end
+    end
+end
+
+function M.install_many(ctx, host, names, mode, group, signature)
+    if mode~='full' and mode~='light' then return nil,'无效的资源驻留模式' end
+    if type(names)~='table' or #names==0 then return nil,'没有需要安装的资源包' end
+    local used,highest=used_numbers(ctx.root,host)
+    if not used or #used~=highest+1 then return nil,'补丁序号不连续；未修改任何文件' end
+    local global,entries={},M.read_ledger(ctx)
+    table.sort(entries,function(a,b)return a.index<b.index end)
+    for _,entry in ipairs(entries) do if entry.host==host then
+        local edits,err=M.saved_overrides(ctx,host,entry.name)
+        if not edits then return nil,err end
+        for key,bytes in pairs(edits) do global[key]=bytes end
+    end end
+    local indexes,queue,requested={},{},{}
+    for _,name in ipairs(names)do requested[name]=true end
+    -- A later resident copy can otherwise undo an edit in an earlier slot.
+    -- Repair overlapping owned copies, never rewrite foreign patch archives.
+    for _,entry in ipairs(entries)do if entry.host==host then
+        local spec=M.patch_spec(ctx,host,entry.name)
+        local overlap=false
+        for _,e in ipairs(spec and spec.entries or {})do
+            if global[e.type_hex..':'..e.id_hex] then overlap=true;break end
+        end
+        if overlap and not requested[entry.name]then queue[#queue+1]={name=entry.name,mode=entry.mode,existing=true}end
+        if overlap or requested[entry.name]then indexes[#indexes+1]=entry.index end
+    end end
+    for _,name in ipairs(names)do queue[#queue+1]={name=name,mode=mode}end
+    for n=highest+1,highest+#names do indexes[#indexes+1]=n end
+    return transaction(ctx,host,indexes,function()
+        local infos={}
+        for _,job in ipairs(queue) do
+            local name=job.name
+            local set,err=bundle_set(ctx);if not set then return nil,err end
+            local spec,err
+            if job.mode=='res' then spec,err=M.patch_spec(ctx,host,name)
+            else spec,err=package_head(set,name) end
+            if not spec then return nil,err end
+            local edits={}
+            for _,e in ipairs(spec.entries) do
+                local key=e.type_hex..':'..e.id_hex
+                if global[key] then edits[key]=global[key] end
+            end
+            local info,err=M.install_with(ctx,host,name,job.mode,edits)
+            if not info then return nil,name..'（'..tostring(err)..'）' end
+            if not job.existing then infos[#infos+1]=info end
+        end
+        if group then
+            local lines={}
+            for line in (M.read_file(ctx.profile..'/residency_dependencies.txt') or ''):gmatch('[^\r\n]+')do
+                if line:match('^(%S+)\t')~=group then lines[#lines+1]=line end
+            end
+            lines[#lines+1]=group..'\t'..signature..'\t'..table.concat(names,' ')
+            local ok,err=M.write_file(ctx.profile..'/residency_dependencies.txt',table.concat(lines,'\n')..'\n')
+            if not ok then return nil,err end
+        end
+        return infos
+    end)
 end
 
 function M.update_entry(ctx, host, name, mode, id, kind, bytes)

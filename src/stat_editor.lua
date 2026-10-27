@@ -18102,11 +18102,13 @@ function MOD.ents.rows(entry, key)
             side.tip = { '0 通用、1 右侧、2 左侧：两侧互换时这一格要和挂载件一起改。' }
             if carried and carried ~= 0 then
                 if not no_mount_points then
-                local a = row(MOUNT, 'mount' .. (m + 1) .. '_anchor_a', slot .. ' 挂点 A（实验性，+8）', TYPES.mount, base + 8, 'u32', 0, 4294967295, 1, 1)
+                local a = row(MOUNT, 'mount' .. (m + 1) .. '_anchor_a', slot .. ' 附着节点哈希（实验性，+8）', TYPES.mount, base + 8, 'u32', 0, 4294967295, 1, 1)
+                a.hash32 = true
                 a.tip = { '件挂在哪一类定位点上：同一类挂位在整张表里取值恒定，换成另一类会改变挂上去的位置与转向基准。',
                           '这一格不影响能不能装，只影响挂在哪；拿不准就按「恢复」留原值。',
                           '载具挂点是实验性功能：上游反馈部分载具改完挂点后出现挂位错位或部件不显示，改前备份、改后进游戏实测。' }
                 local c = row(MOUNT, 'mount' .. (m + 1) .. '_anchor_c', slot .. ' 挂点名（实验性，+16）', TYPES.mount, base + 16, 'u32', 0, 4294967295, 1, 1)
+                c.hash32 = true
                 c.tip = { '游戏用来认挂位的哈希编号：左臂、右臂、火炮、货架、驾驶位机枪各有各的值，不同挂位取值不同。',
                           '面板给机甲 / 载具的子件取名时读的就是这一格；改之前先按「恢复」留个原值。',
                           '同「挂点 A」：实验性功能，改前备份、改后实测。' }
@@ -18150,7 +18152,8 @@ MOD.resident.LABELS = { [0] = '未安装', [1] = '完整（含贴图）', [2] = 
 MOD.resident.TIP = {
     '等价于工具包的「资源层驻留」：把这一条的包写进游戏目录的补丁文件，不占引擎的包口也能常驻。',
     '补丁文件放在游戏目录里，名字是载体包名加上补丁序号；载体用注册表包，它每次开局都会被加载，补丁因此一定被合并。改完要重启游戏。',
-    '完整：贴图、模型、音效全都带上；仅轻资源：只写轻资源，贴图缺失的件会变成紫问号。',
+    '完整：写入来源包及独立贴图、流数据，并检查射弹和爆炸的粒子及音效事件来源。仅轻资源会缺少依赖，不适用于跨包特效。',
+    '驻留让资源可被引用，不会替换射弹、枪口特效或射击音效事件。无法确认的音效事件会在安装结果中列出，仍需实机验证。',
     '移除补丁后，该资源仍需通过正常的配装资源包加载。',
 }
 
@@ -18195,10 +18198,13 @@ end
 
 function MOD.resident.state_of(row)
     local packages = MOD.resident.targets(row)
-    if not packages or #packages == 0 then return 0 end
+    if not packages then return 0 end
     local ctx = MOD.resident.ctx()
     if not ctx then return 0 end
     local module = MOD.resident.module()
+    local group,signature=MOD.resident.plan(row,packages)
+    if module.group then packages=module.group(ctx,group,signature) or packages end
+    if #packages==0 then return 0 end
     local memo, result = MOD.resident.memo or {}, 1
     for _, package in ipairs(packages) do
         local value = memo[package]
@@ -18230,10 +18236,12 @@ function MOD.resident.act(row, mode)
     if not ctx then return false, why end
     local packages, why = MOD.resident.targets(row)
     if not packages then return false, why end
-    if #packages == 0 then return false, why end
     MOD.resident.memo, MOD.resident.cat = nil, nil
     if MOD.sm then MOD.sm.cache = nil end
     if mode == 3 then
+        local group=MOD.resident.plan(row,packages)
+        packages=module.group(ctx,group) or packages
+        if #packages==0 then return false,'本页没有已登记的资源驻留补丁' end
         local done, failed = {}, {}
         for _, package in ipairs(packages) do
             local ok, err = module.remove(ctx, MOD.resident.carrier, package)
@@ -18242,20 +18250,28 @@ function MOD.resident.act(row, mode)
         if #failed > 0 then return false, '移除补丁失败：' .. table.concat(failed, '；') end
         return true, string.format('已移除 %d 个补丁（%s）；重启游戏后生效', #done, table.concat(done, ', '))
     end
-    local wanted = mode == 1 and 'full' or 'light'
+    if mode == 2 then
+        return false, '跨包特效需要贴图和声音流，不能使用仅轻资源模式。请选择「完整（含贴图）」。'
+    end
+    local group,signature,resources,events=MOD.resident.plan(row,packages)
+    local resolved,unresolved=module.resolve_resources(ctx,packages,resources,events)
+    if not resolved then return false,unresolved end
+    for _,message in ipairs(unresolved)do
+        if message:sub(1,#'资源 ')=='资源 ' then return false,'找不到必需的特效资源，未安装：'..table.concat(unresolved,'；') end
+    end
+    packages=resolved
+    if #packages==0 then return false,'没有找到需要驻留的资源；未修改任何文件' end
+    local wanted = 'full'
     local notes, failed, size = {}, {}, 0
-    for _, package in ipairs(packages) do
-        local info, err = module.install(ctx, MOD.resident.carrier, package, wanted)
-        if not info then
-            failed[#failed + 1] = package .. '（' .. tostring(err) .. '）'
-        else
+    local infos,err=module.install_many(ctx,MOD.resident.carrier,packages,wanted,group,signature)
+    if not infos then return false,'写补丁失败：'..tostring(err) end
+    for _,info in ipairs(infos) do
             size = size + (tonumber(info.toc) or 0) + (tonumber(info.gpu) or 0) + (tonumber(info.stream) or 0)
             notes[#notes + 1] = string.format('%s.patch_%d（%d 个条目）', MOD.resident.carrier, info.index, info.entries)
-        end
     end
-    if #failed > 0 then return false, '写补丁失败：' .. table.concat(failed, '；') end
     return true, string.format('已写入 %s，共 %.1f MB（%s）；重启游戏后生效',
-        table.concat(notes, '、'), size / 1048576, wanted == 'full' and '含贴图' or '仅轻资源')
+        table.concat(notes, '、'), size / 1048576, '含贴图和流数据')
+        ..(#unresolved>0 and ('。尚未定位的音效事件：'..table.concat(unresolved,'；')..'。不保证这些音效生效，请实机验证。') or '')
 end
 -- ---------------------------------------------------------------- where a page's effects live
 rawset(state, 'resident', MOD.resident)   -- QA: the detector on the state table, next to the rest
@@ -18278,10 +18294,13 @@ end
 -- Which item fires which projectile: an item's own rounds record (+64, and its other ammo type at +68),
 -- its fire mode (+0, the second firing mode at +576) and the charge stages (+4, +28, +52). The item keys
 -- are the package table's, so every key here can lead to the package that carries the effects. Built once.
-function MOD.resident.item_ids(key)
+function MOD.resident.item_ids(key, current)
     local ids = {}
     local function add(kind, off)
-        local id = off and read_field(field_at(kind, off, 'u32', 100000))
+        -- Reverse ownership must come from the pristine baseline, never from a
+        -- weapon the user has already pointed at somebody else's projectile.
+        local f=off and field_at(kind, off, 'u32', 100000)
+        local id=f and (current and read_field(f) or default_of(f))
         if type(id) == 'number' and id > 0 then ids[#ids + 1] = id end
     end
     local rounds = tables[T_ROUNDS] and tables[T_ROUNDS].index[key]
@@ -18310,7 +18329,7 @@ function MOD.resident.catalog()
                 local at = pt and pt.index[id]
                 if at then
                     for _, off in ipairs({ 144, 156 }) do
-                        local x = read_field(field_at(T_PROJECTILE, at + off, 'u32', 100000))
+                        local x = default_of(field_at(T_PROJECTILE, at + off, 'u32', 100000))
                         if type(x) == 'number' and x > 0 then
                             local bl = cat.blast[x]
                             if not bl then bl = {}; cat.blast[x] = bl end
@@ -18379,7 +18398,80 @@ function MOD.resident.changed_targets(page)
     local cat = MOD.resident.catalog()
     local keys, seen = {}, {}
     MOD.resident.changed_refs(page, MOD.resident.ref_taker(cat, seen, keys))
+    for _,row in ipairs(page.rows or {})do
+        if row.choice=='mountitem' or row.choice=='dogweapon' then
+            local field=row.parts[1].field
+            local value=read_field(field)
+            if value~=default_of(field) then
+                local reg=MOD.ents.pick(row.choice);local item=reg.by_id[value]
+                if item and item.bytes and not seen[item.bytes] then seen[item.bytes]=true;keys[#keys+1]=item.bytes end
+            end
+        end
+    end
     return MOD.resident.packages_of(keys, page.key)
+end
+
+-- Follow the actual current projectile/explosion chain, including fragments and
+-- mounted weapons. Resource hashes are byte strings; never round a u64 via Lua.
+function MOD.resident.dependencies(page)
+    local resources,events,seen,seen_res,seen_audio={},{},{},{},{}
+    local function number(kind,at)
+        return read_field(field_at(kind,at,'u32',4294967295))
+    end
+    local function resource(kind,at,type_hex)
+        local t=tables[kind]
+        local bytes=t and api.read(t.copies[1]+HEADER_BYTES+at,8)
+        if bytes and #bytes==8 and (u32(bytes,0)~=0 or u32(bytes,4)~=0)then
+            local id=MOD.refs.hex(bytes):lower();local key=type_hex..':'..id
+            if not seen_res[key]then seen_res[key]=true;resources[#resources+1]={type_hex=type_hex,id_hex=id}end
+        end
+    end
+    local function audio(kind,at)
+        local id=number(kind,at)
+        if id and id>0 and not seen_audio[id]then seen_audio[id]=true;events[#events+1]=id end
+    end
+    local take
+    take=function(what,id)
+        local mark=what..':'..tostring(id)
+        if seen[mark]then return end;seen[mark]=true
+        local kind=what=='shot' and T_PROJECTILE or T_EXPLOSION
+        local t=tables[kind];local at=t and t.index[id]
+        if not at then return end
+        if what=='shot'then
+            for _,off in ipairs({72,80,96,104,112,120})do resource(kind,at+off,'a8193123526fad64')end
+            resource(kind,at+128,'e0a48d0be9a7453f')
+            for _,off in ipairs({204,208,212,216})do audio(kind,at+off)end
+            for _,off in ipairs({144,156})do local x=number(kind,at+off);if x and x>0 then take('blast',x)end end
+        else
+            resource(kind,at+56,'a8193123526fad64')
+            for _,off in ipairs({64,108,112})do audio(kind,at+off)end
+            if (number(kind,at+80) or 0)>0 then local x=number(kind,at+84);if x and x>0 then take('shot',x)end end
+        end
+    end
+    if page then
+        if page.record then take(page.kind==T_EXPLOSION and 'blast' or 'shot',page.id)end
+        MOD.resident.changed_refs(page,take)
+        for _,row in ipairs(page.rows or {})do
+            if row.choice=='mountitem' or row.choice=='dogweapon' then
+                local value=read_field(row.parts[1].field)
+                if value~=default_of(row.parts[1].field)then
+                    local item=MOD.ents.pick(row.choice).by_id[value]
+                    if item then for _,id in ipairs(MOD.resident.item_ids(item.bytes,true))do take('shot',id)end end
+                end
+            end
+        end
+    end
+    return resources,events
+end
+
+function MOD.resident.plan(row,packages)
+    local resources,events=MOD.resident.dependencies(row.page)
+    local parts={}
+    for _,name in ipairs(packages)do parts[#parts+1]='p:'..name end
+    for _,r in ipairs(resources)do parts[#parts+1]=r.type_hex..':'..r.id_hex end
+    for _,id in ipairs(events)do parts[#parts+1]='a:'..id end
+    table.sort(parts)
+    return tostring(row.page and row.page.hash or ('package:'..tostring(packages[1]))),table.concat(parts,','),resources,events
 end
 
 -- A record page names one record, so its packages are the ones of every item that owns it -- plus, when the
@@ -18414,7 +18506,7 @@ function MOD.resident.targets(row)
         if not has then table.insert(list, 1, chosen) end
     end
     if #list == 0 then
-        return {}, '本页尚未检测到需要常驻的资源包。请先修改射弹或爆炸编号，或手动选择特效资源包。'
+        return {}, '未按装备归属检测到来源包；完整安装时会继续按实际粒子和音效引用查找。'
     end
     -- Detection and UI fields store picker IDs. res_patch takes actual package
     -- filenames; never pass the numeric IDs across that boundary.
@@ -18432,6 +18524,9 @@ function MOD.resident.auto_note(page)
     local list = MOD.resident.page_targets(page)
     if #list == 0 then
         if page.record then return '这一条记录的资源包来自拥有它的物品；改过编号的武器页才会列出待常驻的包。' end
+        local changed=false
+        MOD.resident.changed_refs(page,function()changed=true end)
+        if changed then return '已更换射弹或爆炸，但无法按装备归属反查来源包。完整安装时会继续查找实际粒子和音效引用。' end
         return '本页的射弹编号还是它自己的：特效随本武器一起加载，不需要补丁。'
     end
     local reg, names = MOD.refs.packages(), {}
@@ -18443,7 +18538,7 @@ function MOD.resident.auto_note(page)
 end
 
 MOD.resident.PICK_TIP = {
-    '这一条记录的粒子、贴图与音效在哪个资源包里。留空时自动取检测到的第一个包；装补丁时检测到的包会全部写上。',
+    '手动指定的资源包会和自动检测的来源包一起驻留。安装时另查射弹、爆炸粒子和音效事件实际所在包，补齐漏掉的来源。',
     '资源包负责粒子、贴图和音效的加载，不会改变发射的射弹。切换射弹请使用「更换射弹」。',
 }
 
@@ -23338,6 +23433,12 @@ if MOD.offline then
             end
             local reference=row.choice=='package' or row.choice=='rackitem' or row.choice=='mountitem' or row.choice=='dogweapon'
             local default_text=row.code and MOD.code.text(d) or settings.tr(fmt(d,row.storage))
+            local value_text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage))
+            if row.hash32 then
+                value_text=string.format('0x%08X',v)
+                default_text=type(d)=='number' and string.format('0x%08X',d) or '未知'
+                inline_note='32 位名称哈希，不是倍率或普通数量。可输入 0x 开头的十六进制或十进制整数；未解析的节点名保留哈希，不猜测名称。'
+            end
             if reference then
                 local reg=row.choice=='package' and MOD.refs.packages() or row.choice=='rackitem' and MOD.refs.items() or MOD.ents.pick(row.choice)
                 local it=reg and reg.by_id[d];default_text=settings.tr(it and it.label or '未知资源引用')
@@ -23348,7 +23449,7 @@ if MOD.offline then
                 end
             end
             out[#out+1]={reference=reference,id=n,label=settings.tr(row.label):gsub(' %(x%)$','（倍率）'):gsub(' %(%+%)$','（加值）'):gsub('（x）','（倍率）'):gsub('（%+）','（加值）'),section=settings.tr(row.section or ''),
-                value=v,original=d,text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage)),default_text=default_text,code=not not row.code,
+                value=v,original=d,text=value_text,default_text=default_text,code=not not row.code,
                 projectile_source=row.choice==true,projectile_conflict=projectile_conflict,choice=not not row.choice,choice_kind=type(row.choice)=='string' and row.choice or '',choice_name=choice_name,flag=row.storage=='flag' or row.storage=='bit',min=nil,max=nil,
                 note=settings.tr(type(note)=='string' and note or ''),inline_note=settings.tr(inline_note),help=help,faction_only=faction_only,changed=(v~=d and not faction_only) or ui.weapon.enemy and MOD.enemy.pinned(row) or false,
                 shared=impact.shared(ui.weapon,row.parts,settings.tr,index)}
@@ -23365,6 +23466,7 @@ if MOD.offline then
         assert(not row.code,'请使用战备指令录入接口')
         value=assert(tonumber(value),'请输入有效数值')
         assert(value==value and math.abs(value)~=math.huge,'请输入有限数值')
+        if row.hash32 then assert(value>=0 and value<=4294967295 and value==math.floor(value),'名称哈希必须是 0～0xFFFFFFFF 的整数') end
         if row.choice=='weight' then assert(value==0 or value==1 or value==2,'护甲重量只能选择轻型、中型或重型') end
         if row.choice=='resomode' then
             local ok, why = MOD.resident.act(row, math.floor(value + 0.5))
@@ -23409,7 +23511,7 @@ if MOD.offline then
             return out
         end
         if row and row.choice=='resomode' then
-            return {{id=0,name=MOD.resident.LABELS[0]},{id=1,name=MOD.resident.LABELS[1]},{id=2,name=MOD.resident.LABELS[2]},{id=3,name=MOD.resident.LABELS[3]}}
+            return {{id=0,name=MOD.resident.LABELS[0]},{id=1,name=MOD.resident.LABELS[1]},{id=3,name=MOD.resident.LABELS[3]}}
         end
         if row and row.choice=='smmode' then
             return {{id=0,name=MOD.sm.LABELS[0]},{id=1,name=MOD.sm.LABELS[1]},{id=2,name=MOD.sm.LABELS[2]}}

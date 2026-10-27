@@ -5,7 +5,11 @@ import HuskarUI.Basic
 HusCard {
     id:card
     required property var store
-    HoverHandler { id:glassHover;enabled:card.store.cardMaterial==="glass" }
+    // Native HusCard's outer shadow is clipped by scrolling viewports. Keep
+    // feedback inside the card's bounds instead, so no hard shadow edge remains.
+    hoverable:false
+    showShadow:false
+    HoverHandler { id:glassHover;enabled:card.store.cardMotion && card.store.hoverEffects }
     bgDelegate:Item {
         id:surface
         property rect sampleRect:{
@@ -27,34 +31,28 @@ HusCard {
                 sourceItem:card.store.cardBackdrop
                 sourceRect:surface.sampleRect
                 radiusBg.all:card.radiusBg.all
-                refraction:card.store.cardMaterial==="glass"?0.095:0
+                refraction:card.store.cardMaterial==="glass"?card.store.glassRefraction:0
                 bevelDepth:card.store.cardMaterial==="glass"?0.18:0.11
                 bevelWidth:0.09
-                frost:card.store.cardMaterial==="glass"?0.02:3
-                specularIntensity:card.store.cardMaterial==="glass"?2.1:0
+                frost:card.store.cardMaterial==="glass"?0.02:card.store.materialBlur
+                specularIntensity:card.store.cardMaterial==="glass"?card.store.glassHighlight:0
                 animated:card.store.cardMaterial==="glass" && card.store.cardMotion
                 magnify:glassHover.hovered?1.06:1.02
                 tiltX:glassHover.hovered?(glassHover.point.position.y/Math.max(1,card.height)-0.5)*14:0
                 tiltY:glassHover.hovered?(glassHover.point.position.x/Math.max(1,card.width)-0.5)*14:0
-                Behavior on tiltX { NumberAnimation { duration:180;easing.type:Easing.OutCubic } }
-                Behavior on tiltY { NumberAnimation { duration:180;easing.type:Easing.OutCubic } }
-                Behavior on magnify { NumberAnimation { duration:180;easing.type:Easing.OutCubic } }
-                SequentialAnimation on refraction {
-                    running:card.store.cardMaterial==="glass" && card.store.cardMotion && card.visible
-                    loops:Animation.Infinite
-                    NumberAnimation { from:0.075;to:0.115;duration:1900;easing.type:Easing.InOutSine }
-                    NumberAnimation { from:0.115;to:0.075;duration:1900;easing.type:Easing.InOutSine }
-                    onRunningChanged:if(!running)glassEffect.refraction=card.store.cardMaterial==="glass"?0.095:0
-                }
+                Behavior on tiltX { enabled:card.store.cardMotion;NumberAnimation { duration:HusTheme.Primary.durationFast;easing.type:Easing.OutCubic } }
+                Behavior on tiltY { enabled:card.store.cardMotion;NumberAnimation { duration:HusTheme.Primary.durationFast;easing.type:Easing.OutCubic } }
+                Behavior on magnify { enabled:card.store.cardMotion;NumberAnimation { duration:HusTheme.Primary.durationFast;easing.type:Easing.OutCubic } }
             }
         }
         HusFrame {
             anchors.fill:parent
             padding:0
-            colorBg:HusThemeFunctions.alpha(card.colorBg,card.store.cardMaterial==="solid"?1:card.store.cardMaterial==="frost"?0.48:(HusTheme.isDark?0.24:0.16))
+            colorBg:HusThemeFunctions.alpha(card.colorBg,card.store.cardMaterial==="solid"?1:card.store.cardMaterial==="frost"?card.store.frostOpacity:card.store.glassOpacity)
             radiusBg.all:card.radiusBg.all
-            borderBg.color:card.store.cardMaterial==="glass"?HusThemeFunctions.alpha(HusTheme.Primary.colorTextBase,0.42):card.borderBg.color
+            borderBg.color:glassHover.hovered?HusThemeFunctions.alpha(HusTheme.Primary.colorPrimary,0.65):card.store.cardMaterial==="glass"?HusThemeFunctions.alpha(HusTheme.Primary.colorTextBase,0.42):card.borderBg.color
             borderBg.width:card.borderBg.width
+            Behavior on borderBg.color { enabled:card.store.cardMotion;ColorAnimation { duration:HusTheme.Primary.durationFast } }
         }
     }
 }

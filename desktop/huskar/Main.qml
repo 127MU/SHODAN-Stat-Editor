@@ -8,7 +8,7 @@ HusWindow {
     id:window
     width:1480;height:960;minimumWidth:980;minimumHeight:680
     title:"SHODAN 数值编辑器 · "+Backend.version
-    Workspace { id:workspace;cardMaterial:appearance.cardMaterial;cardBackdrop:backgroundLayer;cardMotion:appearance.motion }
+    Workspace { id:workspace;cardMaterial:appearance.cardMaterial;cardBackdrop:backgroundLayer;cardMotion:appearance.motion;hoverEffects:appearance.hoverEffects;frostOpacity:appearance.frostOpacity;glassOpacity:appearance.glassOpacity;materialBlur:appearance.materialBlur;glassRefraction:appearance.glassRefraction;glassHighlight:appearance.glassHighlight }
     QtObject {
         id:appearance
         property bool restored:false
@@ -26,9 +26,38 @@ HusWindow {
         property int radius:Backend.setting("radius",8)
         property int duration:Backend.setting("duration",160)
         property int pageEffect:Backend.setting("pageEffect",1)
+        property int easingType:Backend.setting("easingType",Easing.OutCubic)
         property int windowEffect:Backend.setting("windowEffect",0)
         property bool onTop:Backend.setting("onTop",false)
         property real windowOpacity:Backend.setting("windowOpacity",1)
+        property bool autoAccent:Backend.setting("autoAccent",false)
+        property bool hoverEffects:Backend.setting("hoverEffects",true)
+        property real frostOpacity:Backend.setting("frostOpacity",0.48)
+        property real glassOpacity:Backend.setting("glassOpacity",0.18)
+        property real materialBlur:Backend.setting("materialBlur",3)
+        property real glassRefraction:Backend.setting("glassRefraction",0.095)
+        property real glassHighlight:Backend.setting("glassHighlight",2.1)
+        property var customAppearance:Backend.setting("customAppearance",null)
+        property var previousAppearance:null
+        readonly property var appearanceKeys:["dark","themeMode","accent","cardMaterial","fontSize","radius","motion","duration","pageEffect","easingType","autoAccent","hoverEffects","frostOpacity","glassOpacity","materialBlur","glassRefraction","glassHighlight"]
+        function snapshot(){const out={};for(const key of appearanceKeys)out[key]=appearance[key];return out}
+        function restore(values){
+            if(!values)return
+            restored=false
+            for(const key of appearanceKeys)if(values[key]!==undefined)appearance[key]=values[key]
+            restored=true
+            for(const key of appearanceKeys)Backend.saveSetting(key,appearance[key])
+            apply();updateAutoAccent()
+        }
+        function resetAppearance(){
+            previousAppearance=snapshot()
+            restore({dark:false,themeMode:"light",accent:"#1677ff",cardMaterial:"solid",fontSize:16,radius:8,motion:true,duration:160,pageEffect:1,easingType:Easing.OutCubic,autoAccent:false,hoverEffects:true,frostOpacity:0.48,glassOpacity:0.18,materialBlur:3,glassRefraction:0.095,glassHighlight:2.1})
+        }
+        function saveCustom(){customAppearance=snapshot();Backend.saveSetting("customAppearance",customAppearance)}
+        function useCustom(){if(customAppearance){previousAppearance=snapshot();restore(customAppearance)}}
+        function undo(){if(previousAppearance){const old=previousAppearance;previousAppearance=snapshot();restore(old)}}
+        function previewPageEffect(){window.enterPage()}
+        function updateAutoAccent(){if(restored && autoAccent && backgroundImage){const color=Backend.backgroundAccent(backgroundImage,HusTheme.isDark);if(color)accent=color}}
         function apply(){
             HusTheme.animationEnabled=false
             HusTheme.darkMode=themeMode==="system"?HusTheme.System:dark?HusTheme.Dark:HusTheme.Light
@@ -43,7 +72,7 @@ HusWindow {
             doc.__style__.fontPrimarySize="@fontSizeBase-2"
             doc.__style__.fontPrimaryHeight="$multiply(@fontSizeBase-2, @fontLineHeightBase-2)"
             const path=Backend.storeTheme(JSON.stringify(doc));if(path)HusTheme.installIndexTheme(path)
-            Qt.callLater(function(){HusTheme.animationEnabled=appearance.motion;window.applyWindowEffect()})
+            Qt.callLater(function(){HusTheme.animationEnabled=appearance.motion;window.applyWindowEffect();appearance.updateAutoAccent()})
         }
         function save(key,v,refreshTheme){
             if(!restored)return
@@ -58,28 +87,39 @@ HusWindow {
         onCardMaterialChanged:save("cardMaterial",cardMaterial)
         onCompactChanged:save("compact",compact)
         onBackgroundModeChanged:save("backgroundMode",backgroundMode)
-        onBackgroundImageChanged:save("backgroundImage",backgroundImage)
+        onBackgroundImageChanged:{save("backgroundImage",backgroundImage);updateAutoAccent()}
         onBackgroundOpacityChanged:save("backgroundOpacity",backgroundOpacity)
         onImageFitChanged:save("imageFit",imageFit)
         onAccentChanged:save("accent",accent,true)
         onThemeModeChanged:{if(restored && (themeMode==="dark" || themeMode==="light"))dark=themeMode==="dark";save("themeMode",themeMode,true)}
-        onMotionChanged:{save("motion",motion);HusTheme.animationEnabled=motion}
+        onMotionChanged:{save("motion",motion);HusTheme.animationEnabled=motion;if(restored && !motion)window.resetPageEntrance()}
         onFontSizeChanged:save("fontSize",fontSize,true)
         onRadiusChanged:save("radius",radius,true)
         onDurationChanged:save("duration",duration,true)
         onPageEffectChanged:save("pageEffect",pageEffect)
+        onEasingTypeChanged:save("easingType",easingType)
         onWindowEffectChanged:{if(restored){save("windowEffect",windowEffect);Qt.callLater(window.applyWindowEffect)}}
         onOnTopChanged:if(restored){save("onTop",onTop);HusApi.setWindowStaysOnTopHint(window,onTop)}
         onWindowOpacityChanged:save("windowOpacity",windowOpacity)
+        onAutoAccentChanged:{save("autoAccent",autoAccent);updateAutoAccent()}
+        onHoverEffectsChanged:save("hoverEffects",hoverEffects)
+        onFrostOpacityChanged:save("frostOpacity",frostOpacity)
+        onGlassOpacityChanged:save("glassOpacity",glassOpacity)
+        onMaterialBlurChanged:save("materialBlur",materialBlur)
+        onGlassRefractionChanged:save("glassRefraction",glassRefraction)
+        onGlassHighlightChanged:save("glassHighlight",glassHighlight)
         Component.onCompleted:{
             if(themeMode==="manual")themeMode=dark?"dark":"light"
             if(themeMode!=="system")dark=themeMode==="dark"
             restored=true
             apply()
+            Qt.callLater(updateAutoAccent)
             Qt.callLater(function(){window.applyWindowEffect();HusApi.setWindowStaysOnTopHint(window,appearance.onTop)})
         }
     }
     property string progressText:""
+    function resetPageEntrance(){pageEntrance.stop();pageLoader.opacity=1;pageShift.x=0;pageShift.y=0;pageLoader.entranceScale=1}
+    function enterPage(){resetPageEntrance();if(appearance.motion && appearance.pageEffect!==0)pageEntrance.restart()}
     property var progressPercent:"auto"
     property string updateUrl:""
     property string updateVersion:""
@@ -150,17 +190,35 @@ HusWindow {
     function qaClosePresets(){if(QaMode)equipmentPresets.close()}
     function qaSliderTest(){
         if(!QaMode || workspace.module!=="settings")return false
-        pageLoader.item.contentY=400
+        pageLoader.item.section=1
+        pageLoader.item.contentY=0
         return Backend.qaDrag("setting_backgroundOpacity")
     }
     function qaWheelTest(){
         if(!QaMode || workspace.module!=="settings")return false
+        pageLoader.item.section=0
         pageLoader.item.contentY=0
         return Backend.qaWheel("settingsScroll")
     }
     function qaWheelMoved(){return QaMode && pageLoader.item.contentY>40}
+    function qaSettingsSection(index){if(QaMode && workspace.module==="settings"){pageLoader.item.section=index;pageLoader.item.contentY=0;return true}return false}
+    function qaGlassBound(){
+        let found=false
+        function visit(item){if(item.objectName==="__HusLiquidGlass__" && Math.abs(item.refraction-appearance.glassRefraction)<0.0001)found=true;for(const child of item.children || [])visit(child)}
+        visit(window.contentItem);return found
+    }
+    function qaEntranceReset(){return pageLoader.opacity===1 && pageShift.x===0 && pageShift.y===0 && pageLoader.entranceScale===1}
+    function qaGroupPopup(action){
+        function find(item){if(item.objectName==="groupedCatalog" && item.visible)return item;for(const child of item.children || []){const hit=find(child);if(hit)return hit}return null}
+        const list=find(window.contentItem)
+        if(!QaMode || !list)return false
+        if(action==="open")return list.qaOpen()
+        if(action==="close"){list.qaClose();return true}
+        return list.qaPopupStable()
+    }
     function qaAppearanceSnapshot(){
         return {catalogColumns:workspace.catalogColumns,cardMaterial:appearance.cardMaterial,themeMode:appearance.themeMode,dark:appearance.dark,compact:appearance.compact,
+            autoAccent:appearance.autoAccent,hoverEffects:appearance.hoverEffects,frostOpacity:appearance.frostOpacity,glassOpacity:appearance.glassOpacity,materialBlur:appearance.materialBlur,glassRefraction:appearance.glassRefraction,glassHighlight:appearance.glassHighlight,
             accent:appearance.accent,fontSize:appearance.fontSize,radius:appearance.radius,duration:appearance.duration,
             motion:appearance.motion,pageEffect:appearance.pageEffect,windowEffect:appearance.windowEffect,
             onTop:appearance.onTop,windowOpacity:appearance.windowOpacity,backgroundMode:appearance.backgroundMode,
@@ -346,12 +404,16 @@ HusWindow {
                 HusBreadcrumb { Layout.fillWidth:true;initModel:[{title:"工作台",key:"home"},{title:locationTitle,key:workspace.module}].concat(workspace.screen==="editor"?[{title:workspace.current.name || "编辑",key:"editor"}]:[]) }
                 Loader {
                     id:pageLoader;Layout.fillWidth:true;Layout.fillHeight:true;active:Backend.ready;clip:true
+                    property real entranceScale:1
+                    transform:[Translate { id:pageShift },Scale { origin.x:pageLoader.width/2;origin.y:pageLoader.height/2;xScale:pageLoader.entranceScale;yScale:pageLoader.entranceScale }]
                     sourceComponent:workspace.module==="home"?homePage:workspace.module==="settings"?settingsPage:workspace.module==="tweaks"?tweaksPage:workspace.module==="presets"?globalPresetsPage:workspace.module==="mods"?modsPage:workspace.screen==="editor"?editorPage:workspace.module==="armor"?armorPage:catalogPage
-                    onLoaded:if(appearance.motion && appearance.pageEffect!==0)pageEntrance.restart()
-                    SequentialAnimation {
+                    onLoaded:window.enterPage()
+                    ParallelAnimation {
                         id:pageEntrance
-                        PropertyAction { target:pageLoader;property:"opacity";value:0 }
-                        NumberAnimation { target:pageLoader;property:"opacity";to:1;duration:appearance.duration*2;easing.type:Easing.OutCubic }
+                        NumberAnimation { target:pageLoader;property:"opacity";from:0;to:1;duration:appearance.duration*2;easing.type:Easing.OutCubic }
+                        NumberAnimation { target:pageShift;property:"x";from:appearance.pageEffect===2?32:appearance.pageEffect===3?-32:0;to:0;duration:appearance.duration*2;easing.type:appearance.easingType }
+                        NumberAnimation { target:pageShift;property:"y";from:appearance.pageEffect===4 || appearance.pageEffect===7?24:0;to:0;duration:appearance.duration*2;easing.type:appearance.pageEffect===7?Easing.OutBack:appearance.easingType }
+                        NumberAnimation { target:pageLoader;property:"entranceScale";from:appearance.pageEffect===5?0.96:appearance.pageEffect===6?1.04:1;to:1;duration:appearance.duration*2;easing.type:appearance.easingType }
                     }
                 }
                 HusSpin { visible:!Backend.ready && !workspace.fatalError;Layout.alignment:Qt.AlignCenter;tip:"正在载入游戏数据…" }
