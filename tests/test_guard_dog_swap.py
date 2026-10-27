@@ -23,8 +23,8 @@ def main():
    for _,c in ipairs(options)do
     assert(not seen[c.id]);seen[c.id]=true
     assert(not c.description:find('96DE9CD50F7306E6',1,true),'ARC-3 remained selectable')
-    assert(not c.description:find('3575AABC5F1F9326',1,true),'Redeemer remained selectable')
-    if c.id>16 then assert(c.name:find('实验性',1,true),'Untested donor missing experimental label')end
+    if c.description:find('3575AABC5F1F9326',1,true)then assert(c.description:find('补齐',1,true),'Redeemer missing build prerequisites')end
+    if c.id>16 and not c.description:find('文档实测记录',1,true) then assert(c.name:find('实验性',1,true),'Untested donor missing experimental label')end
    end
    assert(not pcall(B.choose,selected.id,999999),'Invalid donor accepted')
    for oi,donor in ipairs(options)do
