@@ -20,6 +20,8 @@
 #include <QQuickWindow>
 #include <QImage>
 #include <QImageReader>
+#include <array>
+#include <algorithm>
 #include <QFileInfo>
 #include <QCryptographicHash>
 #include <QQuickItem>
@@ -116,7 +118,7 @@ QVariant Controller::setting(QString n,QVariant fallback){
  auto value=settings_->value(n,fallback);
  // INI reloads may return strings (notably "false"). Preserve the requested
  // value type so QML never treats a nonempty boolean string as true.
- if(fallback.isValid() && value.metaType()!=fallback.metaType() && !value.convert(fallback.metaType()))return fallback;
+ if(fallback.isValid() && !fallback.isNull() && value.metaType()!=fallback.metaType() && !value.convert(fallback.metaType()))return fallback;
  return value;
 }
 void Controller::saveSetting(QString n,QVariant v){settings_->setValue(n,plain(v));settings_->sync();}
@@ -252,6 +254,24 @@ QString Controller::chooseBackground(){
  return saveBackground(path);
 }
 QString Controller::qaBackground(QString path){if(!qEnvironmentVariableIsSet("SHODAN_HUSKAR_QA"))return {};return saveBackground(path);}
+QString Controller::backgroundAccent(QString source,bool dark){
+ const auto url=QUrl(source);if(url.isLocalFile())source=url.toLocalFile();
+ QImageReader reader(source);reader.setAutoTransform(true);
+ const auto size=reader.size();if(!size.isValid()||size.width()>16000||size.height()>16000)return {};
+ reader.setScaledSize(size.scaled(96,96,Qt::KeepAspectRatio));
+ const auto image=reader.read().convertToFormat(QImage::Format_ARGB32);if(image.isNull())return {};
+ struct Bin{double weight=0,hx=0,hy=0,s=0;};std::array<Bin,24> bins{};
+ for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x){
+  const auto c=image.pixelColor(x,y);const double h=c.hsvHueF(),s=c.hsvSaturationF(),v=c.valueF();
+  if(c.alpha()<128||h<0||s<0.12||v<0.12||v>0.98)continue;
+  const double w=s*(1.0-std::abs(v-0.6))*c.alphaF();auto& b=bins[std::min(23,int(h*24))];
+  b.weight+=w;b.hx+=h*w;b.s+=s*w;
+ }
+ const auto best=std::max_element(bins.begin(),bins.end(),[](const Bin&a,const Bin&b){return a.weight<b.weight;});
+ if(best->weight<=0)return dark?"#69a7ff":"#1677ff";
+ // Keep the accent legible; HusTheme generates the matching text/hover ramps.
+ return QColor::fromHsvF(best->hx/best->weight,std::clamp(best->s/best->weight,0.45,0.8),dark?0.90:0.68).name();
+}
 QString Controller::saveBackground(QString path){
  if(QUrl(path).isLocalFile())path=QUrl(path).toLocalFile();
  QImageReader reader(path);auto size=reader.size();QFile input(path);
@@ -341,9 +361,10 @@ bool Controller::qaDrag(QString name){
 }
 bool Controller::qaWheel(QString name){
  if(!qEnvironmentVariableIsSet("SHODAN_HUSKAR_QA"))return false;
+ QCoreApplication::processEvents();
  std::function<QQuickItem*(QQuickItem*)> find=[&](QQuickItem* root)->QQuickItem*{if(root->objectName()==name)return root;for(auto* child:root->childItems())if(auto* item=find(child))return item;return nullptr;};
  for(auto* w:QGuiApplication::allWindows())if(auto* window=qobject_cast<QQuickWindow*>(w))if(auto* item=find(window->contentItem())){
-  auto local=item->mapToScene(QPointF(item->width()/2,item->height()/2));
+  auto local=item->mapToScene(QPointF(25,item->height()/2));
   QWheelEvent event(local,window->mapToGlobal(local.toPoint()),QPoint(),QPoint(0,-120),Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);
   QCoreApplication::sendEvent(window,&event);return true;
  }return false;

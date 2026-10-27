@@ -1,0 +1,70 @@
+"""Read actual bundles to audit effect donors and mount hashes; never install."""
+import argparse,json,os,pathlib,sys,time
+
+def main():
+ p=argparse.ArgumentParser();p.add_argument('--vendor',required=True);p.add_argument('--output',type=pathlib.Path,required=True);a=p.parse_args()
+ root=pathlib.Path(__file__).resolve().parents[1];out=a.output.resolve();out.mkdir(parents=True,exist_ok=False)
+ profile=out/'profile';profile.mkdir();(profile/'game folder.txt').write_text('D:/steam/steamapps/common/Helldivers 2','utf8')
+ os.environ.update(SHODAN_PROFILE=str(profile),SHODAN_QA_OUTPUT=str(out));sys.path.insert(0,a.vendor)
+ from lupa.luajit21 import LuaRuntime
+ lua=LuaRuntime();lua.globals().SHODAN_EUI=True;lua.execute('arg={...}',(root/'src/stat_editor.lua').as_posix())
+ lua.globals().B=lua.execute('return dofile(...)',(root/'offline/host.lua').as_posix())
+ started=time.monotonic()
+ result=lua.execute('''
+require('install').write_files=function()error('Game writes forbidden')end
+local R=ShodanStatEditor.resident;local M=require('res_patch');local ctx=assert(R.ctx())
+local write=M.write_file;M.write_file=function(path,bytes)assert(not path:find(ctx.root,1,true),'Game writes forbidden');return write(path,bytes)end
+B.editor_mode(false);B.items('Primary','');B.select('968211C0033DCE64')
+local shot
+for _,r in ipairs(B.rows())do if r.projectile_source then shot=r.id;break end end
+assert(shot,'No projectile selector')
+local checks={}
+for _,id in ipairs({67,253})do
+ B.choose(shot,id);local mode
+ for _,r in ipairs(B.rows())do if r.choice_kind=='resomode'then mode=B.registry['968211C0033DCE64'].rows[r.id]end end
+ assert(mode)
+ local initial=assert(R.targets(mode));local resources,events=R.dependencies(mode.page)
+ assert(#resources>0,'Actual effect resource hashes were not collected')
+ local names,missing=M.resolve_resources(ctx,initial,resources,events);assert(names,missing)
+ for _,s in ipairs(missing)do assert(s:sub(1,#'资源 ')~='资源 ',s)end
+ local dep={projectile=id,resources=#resources,events=#events,preferred=#initial,packages=#names,unresolved={}}
+ for _,s in ipairs(missing)do dep.unresolved[#dep.unresolved+1]=s end
+ checks[#checks+1]=dep
+ -- Exercise the real UI action, substituting only the final disk writer.
+ local install=M.install_many;local getenv=os.getenv;local running=require('install').game_running
+ local captured
+ M.install_many=function(_,_,targets,mode,group,signature)
+  captured=targets;assert(mode=='full' and group and signature)
+  local infos={};for i=1,#targets do infos[i]={index=i,entries=1,toc=1,gpu=0,stream=0}end;return infos
+ end
+ os.getenv=function(k)if k=='SHODAN_QA_OUTPUT' or k=='SHODAN_HUSKAR_QA'then return nil end;return getenv(k)end
+ require('install').game_running=function()return false end
+ local ok,message=R.act(mode,1)
+ os.getenv=getenv;require('install').game_running=running;M.install_many=install
+ assert(ok,message);assert(captured and #captured==#names,'UI action lost automatically located packages')
+end
+B.reset();local hashes=0
+for _,item in ipairs(B.items('Mechas',''))do
+ B.select(item.id)
+ for _,r in ipairs(B.rows())do
+  if r.label:find('附着节点哈希',1,true) or r.label:find('挂点名',1,true)then
+   assert(r.text:match('^0x%x%x%x%x%x%x%x%x$'));assert(r.default_text:match('^0x%x%x%x%x%x%x%x%x$'))
+   assert(tonumber(r.text)==r.value)
+   B.set(r.id,r.text)
+   assert(not pcall(B.set,r.id,'-1'));assert(not pcall(B.set,r.id,'0x100000000'))
+   hashes=hashes+1
+  end
+ end
+end
+assert(hashes>0,'Mount hash rows not exercised')
+return {hash_fields=hashes,checks=checks,game_writes=0}
+''')
+ def convert(v):
+  if hasattr(v,'items'):
+   d={k:convert(x) for k,x in v.items()}
+   return [d[i] for i in range(1,len(d)+1)] if d and all(isinstance(k,int) for k in d) else d
+  return v
+ report=convert(result);report['elapsed_seconds']=round(time.monotonic()-started,2)
+ (out/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),'utf8');print(json.dumps(report,ensure_ascii=False))
+
+if __name__=='__main__':main()

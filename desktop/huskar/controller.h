@@ -37,6 +37,7 @@ public:
  Q_INVOKABLE QString chooseFile(bool save,QString filter);
  Q_INVOKABLE QStringList chooseMods();
  Q_INVOKABLE QString chooseBackground();
+ Q_INVOKABLE QString backgroundAccent(QString source,bool dark);
  Q_INVOKABLE QString qaBackground(QString path);
  Q_INVOKABLE QString storeTheme(QString json);
  Q_INVOKABLE QStringList themeComponents()const;

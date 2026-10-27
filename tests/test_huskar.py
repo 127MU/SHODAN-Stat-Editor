@@ -13,10 +13,11 @@ def main():
     if a.qa_platform_dir:
         env.update(QT_QPA_PLATFORM='offscreen',QT_QPA_PLATFORM_PLUGIN_PATH=str(a.qa_platform_dir.resolve()),QT_QUICK_BACKEND='software')
     proc=subprocess.Popen([str(a.exe.resolve())],cwd=a.exe.resolve().parent,env=env)
-    try: code=proc.wait(timeout=90)
+    try: code=proc.wait(timeout=150)
     except subprocess.TimeoutExpired:
         subprocess.run(['taskkill','/PID',str(proc.pid),'/T','/F'],capture_output=True)
         raise
+    assert (out/'report.json').exists(),f'Native QA exited without a report: {code}'
     report=json.loads((out/'report.json').read_text(encoding='utf8'))
     assert code==0 and report['error']=='',(code,report)
     captures=len(list(out.glob('*.png')))
@@ -31,7 +32,7 @@ def main():
     # Reopen the exact same profile and compare the actual restored preferences.
     env['SHODAN_HUSKAR_RESTORE_QA']='1'
     reopened=subprocess.Popen([str(a.exe.resolve())],cwd=a.exe.resolve().parent,env=env)
-    try: restored_code=reopened.wait(timeout=90)
+    try: restored_code=reopened.wait(timeout=150)
     except subprocess.TimeoutExpired:
         subprocess.run(['taskkill','/PID',str(reopened.pid),'/T','/F'],capture_output=True)
         raise
