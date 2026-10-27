@@ -4,7 +4,7 @@ import argparse, hashlib, json, os, shutil, subprocess, sys, zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '4.1.0-r26'
+VERSION = '4.1.0-r27'
 
 def main():
     p = argparse.ArgumentParser()
@@ -61,13 +61,13 @@ def main():
     with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for f in release.rglob('*'):
             if f.is_file():z.write(f,release.name+'/'+f.relative_to(release).as_posix())
-    sources=[ROOT/'LICENSE',ROOT/'README.md',ROOT/'src/stat_editor.lua']
+    sources=[ROOT/'LICENSE',ROOT/'README.md',ROOT/'src/stat_editor.lua',ROOT/'docs/guard-dog-configuration.md']
     sources+=list((ROOT/'assets').glob('*.png'))
     sources+=[f for f in (ROOT/'offline/launcher').iterdir() if f.is_file() and f.suffix in ('.cpp','.h','.c','.ico','.def','.manifest')]
     sources+=list((ROOT/'offline').glob('*.lua'))+list((ROOT/'offline/originals').glob('*'))+list((ROOT/'offline/licenses').glob('*.txt'))
     sources+=[f for folder in ('desktop/huskar','desktop/eui') for f in (ROOT/folder).rglob('*') if f.is_file() and f.suffix in ('.cpp','.h','.qml','.js','.cmake','.def','.txt','.md','.manifest')]
     sources+=[ROOT/'tools'/n for n in ('package_huskar.py','package_lab.py','package_eui.py','package_onefile.py')]
-    sources+=[ROOT/'tests'/name for name in ('test_huskar.py','test_huskar_shaders.py','test_parameter_audit.py','parameter_audit_regression.lua','test_release_update.cpp','test_startup_update.py','test_search_context_extra.py','search_context_extra_regression.lua','test_original_mapping.py','test_foreign_snapshot.py','test_switch_reset.py','test_res_patch.py','test_chinese_choices.py','test_resident_donors.py','test_weapon_calibre.py','test_foreign_core_tails.py','test_gl52_self_exclusion.py','test_dual_tube_projectiles.py','test_field_storage_audit.py','field_storage_audit.lua','test_state_machine.py','test_res_patch_override.py','test_state_machine_integration.py','test_bounce_tweak.py','test_modified_catalog.py','test_guard_dog_swap.py','test_reference_identity.py','test_reference_restart.py','test_residency_dependencies.py','test_residency_game_readonly.py','test_appearance_settings.py')]
+    sources+=[ROOT/'tests'/name for name in ('test_huskar.py','test_huskar_shaders.py','test_parameter_audit.py','parameter_audit_regression.lua','test_release_update.cpp','test_startup_update.py','test_search_context_extra.py','search_context_extra_regression.lua','test_original_mapping.py','test_foreign_snapshot.py','test_switch_reset.py','test_res_patch.py','test_chinese_choices.py','test_resident_donors.py','test_weapon_calibre.py','test_foreign_core_tails.py','test_gl52_self_exclusion.py','test_dual_tube_projectiles.py','test_field_storage_audit.py','field_storage_audit.lua','test_state_machine.py','test_res_patch_override.py','test_state_machine_integration.py','test_bounce_tweak.py','test_modified_catalog.py','test_guard_dog_swap.py','test_guard_dog_defaults.py','test_reference_identity.py','test_reference_restart.py','test_residency_dependencies.py','test_residency_game_readonly.py','test_appearance_settings.py')]
     with zipfile.ZipFile(a.output_root/(release.name+'_Source.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for f in sorted(set(sources)):
             if f.is_file():z.write(f,release.name+'_Source/'+f.relative_to(ROOT).as_posix())

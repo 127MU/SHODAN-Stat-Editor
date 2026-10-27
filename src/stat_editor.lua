@@ -12316,6 +12316,32 @@ MOD.dogs.add(13, 'CC786F6491FE7E65', 'StA-X3 黄蜂', '需加载对应武器资�
 MOD.dogs.add(14, '35A61296619CC47E', 'LAS-99 类星体加农炮', '需加载对应武器资源；护卫犬实测可开火。补弹取决于搭载的无人机，不会随武器自动获得。')
 MOD.dogs.add(15, 'EEA5E3CEF1E12C14', 'PLAS-1 焦土', '需加载对应武器资源；护卫犬实测可开火。补弹取决于搭载的无人机，不会随武器自动获得。')
 MOD.dogs.add(16, '8365609B35EF6672', '穿梭舰重机枪', '热狗搭载实测可开火；需要场景已加载穿梭舰武器资源。')
+-- BACKPACK-DOGS sections 27–30: the drone does not run the player's default
+-- attachment build. These two measured recipes leave immutable defaults intact.
+MOD.dogs.recipes={}
+MOD.dogs.magazines={list={},by_id={},by_bytes={},at={}}
+for _,v in ipairs({{0,'0000000000000000','未指定（游戏原值）'},
+                   {1,'C891ACF9E8DBDA97','P-19 救世主默认弹匣模型'},
+                   {2,'4F839E923046E631','P-2 和平制造者默认弹匣模型'}})do
+    local bytes='';for n=16,2,-2 do bytes=bytes..string.char(tonumber(v[2]:sub(n-1,n),16))end
+    local it={id=v[1],raw=v[2],bytes=bytes,label=v[3],note='仅修改 WeaponCustomization +0x80；不会自动安装资源。'}
+    local reg=MOD.dogs.magazines;reg.list[#reg.list+1]=it;reg.by_id[it.id]=it;reg.by_bytes[bytes]=it.id;reg.at[it.id]=#reg.list
+end
+MOD.dogs.verified={
+    ['CF8934FF6567A42D']='P-92：文档记录护卫犬搭载可开火；锁定目标仍受武器本身限制。',
+    ['7B06196E90154C88']='LAS-7：文档记录漫游车搭载可开火。',
+    ['DBB6C961C59FADC1']='P/40-K：文档记录护卫犬搭载可开火。',
+    ['3F92BA65EF65CCA9']='P-72：文档记录热狗搭载可开火。',
+    ['AA69A60D74A3EC54']='PLAS-15：文档记录狗息搭载可开火；中毒行为可能影响连续攻击。',
+    ['416D053372C4E433']='LAS-58：文档记录漫游车搭载可开火。',
+    ['1A437158E1B8D2A1']='P-113：文档记录护卫犬搭载可开火。',
+    ['C780BCD79547DA0F']='P-69：文档记录热狗搭载可开火。',
+    ['027DEC442CC26A90']='P-44：文档记录狗息搭载可开火。',
+    ['8D3D52A3B2F19402']='P-4：文档记录护卫犬搭载可开火。',
+    ['2B28E17FFED05F7C']='SG-22：文档记录热狗搭载可开火。',
+    ['3575AABC5F1F9326']='P-19：须在本武器的“无人机直读配置”中补齐射弹 296 和默认弹匣模型；文档记录四种载体可开火。',
+    ['05E4E5C2DB6E44A2']='P-2：须补齐射弹 342 和默认弹匣模型；文档记录护卫犬搭载可开火。'
+}
 
 local function read_field(f, original)
     if f.storage == 'virtual' then   -- a value the editor keeps itself (no table field)
@@ -12351,6 +12377,7 @@ local function read_field(f, original)
         return reg.by_bytes[key] or MOD.refs.register('items', key)
     end
     if f.storage == 'dogweapon' then return MOD.dogs.by_bytes[bytes(8)] end
+    if f.storage == 'dogmag' then return MOD.dogs.magazines.by_bytes[bytes(8)] end
     if f.storage == 'mountitem' then   -- the entity a mount slot carries (an arm, a gun, a rack)
         local key = bytes(8)
         if not key or #key < 8 then return nil end
@@ -12410,6 +12437,7 @@ end
 
 local function encode(f, value)
     if f.storage == 'dogweapon' then local e=MOD.dogs.by_id[value];return e and e.bytes end
+    if f.storage == 'dogmag' then local e=MOD.dogs.magazines.by_id[value];return e and e.bytes end
     if f.storage == 'grenade' then return KINDS[TYPES.throwable].entity_bytes(value) end
     if f.storage == 'rackitem' then local e = MOD.refs.items().by_id[value]; return e and e.bytes end
     if f.storage == 'mountitem' then local e = MOD.refs.mounts().by_id[value]; return e and e.bytes end
@@ -13866,7 +13894,9 @@ local function resolve_gun(weapon, key)
         -- +92 rounds added per reload (a clip: Autocannon 5, Veto 6; else 1, a shell at a time); +96 a reload
         -- is allowed below this many rounds left (f32; 0: below the capacity)
         add_row(weapon, 'Ammo', 'rounds_per_reload', 'Rounds per reload', 'u32',
-                { part('rounds_per_reload', T_ROUNDS, rounds + 92, 'u32', 100000) }, 1, 999, 1, 5)
+                { part('rounds_per_reload', T_ROUNDS, rounds + 92, 'u32', 100000) }, 1, 999, 1, 5).tip={
+                    '单次装填加入的弹药数量。文档已验证 AC-8 原值 5、容量 10 时分两次装满；改为 10 后一次装满。',
+                    '同时影响玩家手持与无人机，不是无人机专属参数；玩家路径仍消耗备弹，护卫犬路径不扣备弹。'}
         local clip = not MOD.offline and key == weapon.key and KINDS[T_ROUNDS].CLIPS[weapon.hash]   -- (live only)
         if clip then
             local f = field_at(T_ROUNDS, 'clip' .. rounds, 'virtual', 100000)
@@ -15184,10 +15214,11 @@ local function resolve_stratagem(entry)
             r.choice='dogweapon'
             local raw=MOD.refs.hex(s.drone.drone)
             local reload=raw=='A0FF2F9A0CA6992A' or raw=='979E9BC6D48D1FC6' or raw=='B9BAF571FC8F9959'
-            r.tip={reload and '当前无人机具备补弹行为。' or '当前无人机没有常规换弹行为，换成弹匣武器后可能打空停火。',
+            r.tip={raw=='A0FF2F9A0CA6992A' and '护卫犬已实测：直接填弹匣，不检查或扣除备弹；分段装填量取决于武器。' or reload and '当前无人机具备补弹行为；是否同样不扣备弹尚未复测。' or '当前无人机没有常规换弹行为，有限弹药可能打空停火；文档已验证部分副武器可开火。',
                 '仅替换首槽的武器实体引用，不修改挂点、动作或战备武器声明。',
                 '换装不自动安装资源补丁。请先确保供体武器资源已加载，否则可能出现缺模型或崩溃。',
-                '已排除实测无法可靠开火的 ARC-3 电弧发射器与 P-19 救世主；K-9 原装电弧武器不受此限制。',
+                'ARC-3 等需要松手发射的武器仍排除。P-19、P-2 必须先在供体武器页补齐无人机直读射弹与弹匣模型。',
+                '狗息的中毒行为可能令其停止持续攻击；有限弹药优先使用护卫犬或热狗。',
                 '列表已排除蓄力需要松手发射的武器；未验证的候选标为实验性，不代表已确认可用。',
                 '换装后请在供体武器页面修改其参数；相关修改会共享给使用同一武器实体的装备。'}
         end
@@ -16353,6 +16384,7 @@ local function resolve(weapon)
         end
     end
     resolve_gun(weapon, weapon.key)
+    MOD.dogs.rows(weapon, weapon.key)
     -- a vehicle's part that is an entity of its own (an exosuit's arm, a tank's turret, an FRV's gun): its
     -- own health component, armor and durable ratio, which the game reads for that part alone
     if weapon.mounted then KINDS[TYPES.health].part_rows(weapon, weapon.key) end
@@ -16869,6 +16901,7 @@ local function resolve_some(progress, deadline)
         MOD.records.ready = false
         for _, f in pairs(fields) do f.users = {} end
         KINDS[TYPES.custom].cache = {}
+        MOD.dogs.recipes = {} -- offsets and immutable defaults belong to this table scan
         KINDS[TYPES.throwable].prepare_grenades()
     end
     while progress.next <= #weapons do
@@ -17511,6 +17544,8 @@ function MOD.validate_preset_values(bundle, desired)
                 assert(reg.by_id[o.value],'预设包含旧版列表序号或未知资源引用：'..o.id..'。请重新选择资源后保存预设。')
             elseif f.storage=='dogweapon' then
                 assert(MOD.dogs.by_id[o.value],'预设包含无效的无人机武器编号：'..o.id)
+            elseif f.storage=='dogmag' then
+                assert(MOD.dogs.magazines.by_id[o.value] and f.allowed[o.value],'预设包含不匹配的无人机弹匣模型：'..o.id)
             elseif f.storage=='gun' then
                 assert(o.value%1==0 and MOD.enemy.gun_choices().by_id[o.value],'预设包含无效的武器编号：'..o.id)
             elseif f.storage=='grenade' then
@@ -17953,19 +17988,157 @@ end
 -- Enumerate real firing components, not package shells, racks or projectile records.
 -- Keep the first 16 published IDs; other IDs derive from the entity hash and are
 -- exact Lua/JSON integers. Presets therefore survive table/catalogue reordering.
+-- Decode the weapon's own immutable default attachments. Only measured
+-- component/member layouts are copied; unrelated deltas are never reinterpreted.
+function MOD.dogs.recipe(weapon,key)
+    if MOD.dogs.recipes[weapon.hash] then return MOD.dogs.recipes[weapon.hash] end
+    local custom,delta=tables[TYPES.custom],tables[TYPES.deltas]
+    local layout=KINDS[TYPES.deltas].layout
+    local row=custom and custom.index[key]
+    if not row or not delta or not layout then return nil end
+    local function original(t,off,n)
+        if off<0 or off+n>t.payload then return nil end
+        local address=t.copies[1]+HEADER_BYTES+off
+        local reader=rawget(_G,'SHODAN_OFFLINE_DEFAULT_READ')
+        if reader then return reader(address,n) end
+        return api.read(address,n)
+    end
+    local function word(t,off)local raw=original(t,off,4);return raw and #raw==4 and u32(raw,0)end
+    local targets={
+        [321]={kind=T_FIRE,fields={
+            [0]={id='drone_projectile',label='无人机直读射弹 ID',projectile=true},
+            [576]={id='drone_projectile_alt',label='无人机备用射击模式射弹 ID',projectile=true}}},
+        [5]={kind=T_MAGAZINE,fields={
+            [136]={id='drone_mag_capacity',label='无人机直读弹匣容量'},
+            [140]={id='drone_mag_start',label='无人机直读初始备弹匣数'},
+            [144]={id='drone_mag_supply',label='无人机直读补给弹匣数'},
+            [148]={id='drone_mag_max',label='无人机直读备用弹匣上限'}}},
+        [274]={kind=TYPES.custom,fields={[128]={id='drone_magazine',label='无人机默认弹匣模型',model=true}}},
+        [119]={kind=T_ROUNDS,fields={
+            [64]={id='drone_rounds_projectile_1',label='无人机弹药池 1 射弹 ID',projectile=true},
+            [68]={id='drone_rounds_projectile_2',label='无人机弹药池 2 射弹 ID',projectile=true}}}
+    }
+    local result={fields={}};local found={}
+    local renumbered=KINDS[T_WEAPON].stride==1240 and KINDS[TYPES.items].RENUMBERED
+    for slot=0,9 do
+        local item_id=word(custom,row+slot*8+4)
+        local item,at=KINDS[TYPES.items].find(item_id)
+        local path=item and original(item,at+32,8)
+        local index=path and delta.index[path]
+        if index then
+            local count,first=word(delta,layout[1]+index*8),word(delta,layout[1]+index*8+4)
+            if count and first and count<=math.floor(delta.payload/12) and layout[2]+(first+count)*12<=delta.payload then
+                for c=first,first+count-1 do
+                    local comp=word(delta,layout[2]+c*12)
+                    if renumbered and renumbered[comp]~=nil then comp=renumbered[comp] end
+                    local target=targets[comp]
+                    local table_=target and tables[target.kind]
+                    local entity=table_ and table_.index[key]
+                    local fd,nd=word(delta,layout[2]+c*12+4),word(delta,layout[2]+c*12+8)
+                    if entity and fd and nd and nd<=math.floor(delta.payload/12) and layout[3]+(fd+nd)*12<=delta.payload then
+                        for d=fd,fd+nd-1 do
+                            local off,n,data=word(delta,layout[3]+d*12),word(delta,layout[3]+d*12+4),word(delta,layout[3]+d*12+8)
+                            for member,descriptor in pairs(target.fields)do
+                                local width=descriptor.model and 8 or 4
+                                if off and n and data and member>=off and member+width<=off+n
+                                   and entity+member+width<=table_.payload then
+                                    local bytes=original(delta,layout[4]+data+member-off,width)
+                                    if bytes and #bytes==width then
+                                        local value=not descriptor.model and u32(bytes,0) or nil
+                                        if not descriptor.projectile or value and value>0 and tables[T_PROJECTILE] and tables[T_PROJECTILE].index[value] then
+                                            local field={id=descriptor.id,label=descriptor.label,projectile=descriptor.projectile,model=descriptor.model,
+                                                kind=target.kind,offset=entity+member,value=value,bytes=bytes}
+                                            found[descriptor.id]=field -- later fitted slots win
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    for _,field in pairs(found)do
+        if field.model then
+            local reg=MOD.dogs.magazines;local id=reg.by_bytes[field.bytes]
+            if not id then
+                local raw=MOD.refs.hex(field.bytes)
+                id=tonumber(raw:sub(1,6),16)*16777216+tonumber(raw:sub(7,12),16)+1000
+                assert(not reg.by_id[id],'弹匣模型编号冲突：'..raw)
+                local entry={id=id,raw=raw,bytes=field.bytes,label=settings.tr(weapon.name)..' 默认配件弹匣模型',
+                    note='从此武器默认配件 delta 解析；无人机表现尚需验证。'}
+                reg.list[#reg.list+1]=entry;reg.by_id[id]=entry;reg.by_bytes[field.bytes]=id;reg.at[id]=#reg.list
+            end
+            field.value=id;result.magazine=id
+        elseif field.id=='drone_projectile' then result.projectile=field.value end
+        result.fields[#result.fields+1]=field
+    end
+    table.sort(result.fields,function(a,b)return a.id<b.id end)
+    MOD.dogs.recipes[weapon.hash]=result
+    return result
+end
+
+function MOD.dogs.rows(weapon,key)
+    if not MOD.offline or weapon.key~=key then return end
+    if weapon.slot~='Secondary' and weapon.slot~='Support' then return end
+    if weapon.hash=='2E9D0BDC48B09E60' or weapon.hash=='E8D5F49AD7780E54' then return end
+    local charge=tables[TYPES.charge];local at=charge and charge.index[key]
+    if at and read_field({kind=TYPES.charge,offset=at+184,storage='u8',limit=255},true)~=1 then return end
+    local recipe=MOD.dogs.recipe(weapon,key)
+    for _,field in ipairs(recipe and recipe.fields or {})do
+        local storage=field.model and 'dogmag' or 'u32'
+        local t=tables[field.kind];local address=t.copies[1]+HEADER_BYTES+field.offset
+        local reader=rawget(_G,'SHODAN_OFFLINE_DEFAULT_READ')
+        local baseline
+        if reader then baseline=reader(address,field.model and 8 or 4)
+        else baseline=api.read(address,field.model and 8 or 4)end
+        if baseline and #baseline==(field.model and 8 or 4)then
+            local p=part(field.id,field.kind,field.offset,storage,field.model and 281474976711655 or 100000)
+            if field.model then
+                local raw=baseline
+                local original=MOD.dogs.magazines.by_bytes[raw]
+                -- A foreign/custom original stays intact; do not replace it with the recommended model.
+                if original==nil then
+                    local hex=MOD.refs.hex(raw);original=tonumber(hex:sub(1,6),16)*16777216+tonumber(hex:sub(7,12),16)+1000
+                    local reg=MOD.dogs.magazines
+                    assert(not reg.by_id[original] or reg.by_id[original].bytes==raw,'原始弹匣模型编号冲突')
+                    local it={id=original,raw=hex,bytes=raw,label=settings.tr(weapon.name)..' 游戏原始弹匣模型'}
+                    if not reg.by_id[original]then reg.list[#reg.list+1]=it;reg.at[original]=#reg.list end
+                    reg.by_id[original]=it;reg.by_bytes[raw]=original
+                end
+                p.field.allowed={[0]=true,[field.value]=true,[original]=true,why='只能选择当前武器对应的默认弹匣模型'}
+            end
+            local r=add_row(weapon,'无人机直读配置（实验性）',field.id,field.label,storage,{p},0,281474976711655,1,10)
+            r.choice=field.model and 'dogmag' or field.projectile and true or nil
+            local recommended=field.model and MOD.dogs.magazines.by_id[field.value].label or tostring(field.value)
+            r.note='默认配件配置：'..recommended..'；按需设置，恢复仍还原实体原始值。'
+            r.tip={'此项从当前武器默认配件的 delta 解析，不套用其他武器的数值。',
+                '无人机直接挂载可能不执行玩家默认配件建造链；未实测的组合仍属实验性。',
+                '修改共享武器实体，会影响其他使用它的装备；不会自动写入或安装资源补丁。',
+                '护卫犬不检查或扣除备弹，玩家手持与工事座位仍使用玩家弹药结算路径。'}
+        end
+    end
+end
+
 function MOD.dogs.ensure()
     if MOD.dogs.ready then return end
-    local excluded={['96DE9CD50F7306E6']=true,['3575AABC5F1F9326']=true}
+    local excluded={['96DE9CD50F7306E6']=true,['2E9D0BDC48B09E60']=true,['E8D5F49AD7780E54']=true}
     local candidates={}
     for _,kind in ipairs({T_FIRE,T_BEAM_WEAPON,TYPES.arc_weapon,T_SPRAY})do
         for key in pairs(tables[kind] and tables[kind].index or {})do
             if type(key)=='string' and #key==8 then candidates[key]=true end
         end
     end
+    -- Include every player sidearm/support entry, including unusual firing
+    -- components. Unmeasured combinations remain explicitly experimental.
+    for _,weapon in ipairs(weapons)do
+        if (weapon.slot=='Secondary' or weapon.slot=='Support') and weapon.key then candidates[weapon.key]=true end
+    end
     MOD.dogs.excluded={}
     local function blocked(key)
         local raw=MOD.refs.hex(key)
-        if excluded[raw] then return '文档明确记录无法可靠开火' end
+        if excluded[raw] then return '按配置排除，或需要松手发射、不适合无人机输入' end
         local charge=tables[TYPES.charge]
         local at=charge and charge.index[key]
         if at then
@@ -17995,7 +18168,9 @@ function MOD.dogs.ensure()
             local id=tonumber(raw:sub(1,6),16)*16777216+tonumber(raw:sub(7,12),16)+1000
             assert(not MOD.dogs.by_id[id],'无人机武器编号冲突：'..raw..' / '..tostring(MOD.dogs.by_id[id] and MOD.dogs.by_id[id].raw)..' / '..tostring(id))
             local label=MOD.refs.entity_name(key) or names[key] or ('未命名武器（实体 ID '..raw..'）')
-            MOD.dogs.add(id,raw,settings.tr(label)..'（实验性）',
+            local tested=MOD.dogs.verified[raw]
+            MOD.dogs.add(id,raw,settings.tr(label)..(tested and '' or '（实验性）'),
+                tested and ('文档实测记录：'..tested..' 需加载对应资源，未列出的载体组合仍属实验性。') or
                 '实验性：尚未验证此武器在无人机上的开火表现。需加载对应资源；换弹、冷却和锁定仍受搭载行为与武器自身规则限制。')
         end
     end
@@ -18062,6 +18237,7 @@ end
 
 function MOD.ents.pick(name)
     if name == 'dogweapon' then return MOD.dogs end
+    if name == 'dogmag' then return MOD.dogs.magazines end
     if name == 'mountitem' then return MOD.refs.mounts() end
     if name == 'mountside' then return MOD.ents.sides() end
     if name == 'faction' then return MOD.ents.factions() end
@@ -18435,10 +18611,19 @@ function MOD.resident.dependencies(page)
             local id=MOD.refs.hex(bytes):lower();local key=type_hex..':'..id
             if not seen_res[key]then seen_res[key]=true;resources[#resources+1]={type_hex=type_hex,id_hex=id}end
         end
+        return bytes
     end
     local function audio(kind,at)
         local id=number(kind,at)
         if id and id>0 and not seen_audio[id]then seen_audio[id]=true;events[#events+1]=id end
+    end
+    local function donor_model(key)
+        if not key or not MOD.dogs.recipes[MOD.refs.hex(key)] then return end
+        local t=tables[TYPES.custom];local at=t and t.index[key]
+        if at then
+            local raw=resource(TYPES.custom,at+128,'5f7203c8f280dab8')
+            if raw and raw~=string.rep('\0',8)then blobs[#blobs+1]=raw end
+        end
     end
     local take
     take=function(what,id)
@@ -18476,6 +18661,7 @@ function MOD.resident.dependencies(page)
         end
     end
     if page then
+        donor_model(page.key)
         if page.record then take(page.kind==T_EXPLOSION and 'blast' or 'shot',page.id)end
         MOD.resident.changed_refs(page,take)
         for _,row in ipairs(page.rows or {})do
@@ -18483,7 +18669,10 @@ function MOD.resident.dependencies(page)
                 local value=read_field(row.parts[1].field)
                 if value~=default_of(row.parts[1].field)then
                     local item=MOD.ents.pick(row.choice).by_id[value]
-                    if item then for _,id in ipairs(MOD.resident.item_ids(item.bytes,true))do take('shot',id)end end
+                    if item then
+                        donor_model(item.bytes)
+                        for _,id in ipairs(MOD.resident.item_ids(item.bytes,true))do take('shot',id)end
+                    end
                 end
             end
         end
@@ -19523,7 +19712,7 @@ local function change(row, delta_sign, big, exact)
             ui.version = ui.version + 1
             return
         end
-        if row.choice == 'dogweapon' or row.choice == 'mountitem' or row.choice == 'mountside'
+        if row.choice == 'dogweapon' or row.choice == 'dogmag' or row.choice == 'mountitem' or row.choice == 'mountside'
            or row.choice == 'faction' or row.choice == 'behavior' then
             -- the mounts a page carries, the side each sits on, and the two selector fields
             local reg = MOD.ents.pick(row.choice)
@@ -19537,6 +19726,7 @@ local function change(row, delta_sign, big, exact)
             end
             if target == current then return end
             local p = row.parts[1]
+            if row.choice=='dogmag' and not p.field.allowed[target] then ui.message={text='弹匣模型与当前武器不匹配',till=api.now()+4};return end
             local ok, why = write_field(p.field, target)
             if ok then set_override(weapon, p, unless_default(target, default_of(p.field)))
             else ui.message = { text = why, till = api.now() + 4 } end
@@ -23462,7 +23652,7 @@ if MOD.offline then
             elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then
                 local reg=row.choice=='rackitem' and MOD.refs.items() or row.choice=='package' and MOD.refs.packages() or MOD.refs.entries()
                 local item=reg.by_id[v];choice_name=settings.tr(item and item.label or ('条目 '..tostring(v)))
-            elseif row.choice=='dogweapon' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
+            elseif row.choice=='dogweapon' or row.choice=='dogmag' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
                 local reg=MOD.ents.pick(row.choice);local it=reg and reg.by_id[v]
                 choice_name=settings.tr(it and it.label or ('条目 '..tostring(v)))
             elseif row.choice=='gun' then local g=MOD.enemy.gun_choices().by_id[v];choice_name=g and settings.tr(g.label) or ''
@@ -23470,7 +23660,7 @@ if MOD.offline then
                 local shot=KINDS[T_PROJECTILE].by_id and KINDS[T_PROJECTILE].by_id[v]
                 choice_name=settings.tr(shot and shot.label or MOD.records.name(T_PROJECTILE,v) or '')
             end
-            local reference=row.choice=='package' or row.choice=='rackitem' or row.choice=='mountitem' or row.choice=='dogweapon'
+            local reference=row.choice=='package' or row.choice=='rackitem' or row.choice=='mountitem' or row.choice=='dogweapon' or row.choice=='dogmag'
             local default_text=row.code and MOD.code.text(d) or settings.tr(fmt(d,row.storage))
             local value_text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage))
             if row.hash32 then
@@ -23544,9 +23734,11 @@ if MOD.offline then
             if type(v)=='number' and v%1==0 and not MOD.FIRE_FUNCTIONS[v] then out[#out+1]={id=v,name='未确认的功能 '..v..'（原值）'} end
             return out
         end
-        if row and (row.choice=='dogweapon' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior') then
+        if row and (row.choice=='dogweapon' or row.choice=='dogmag' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior') then
             local reg=MOD.ents.pick(row.choice);local out={}
-            for _,it in ipairs(reg and reg.list or {}) do out[#out+1]={id=it.id,name=settings.tr(it.label),description=it.note and (it.note..' 实体 ID：'..it.raw) or nil} end
+            for _,it in ipairs(reg and reg.list or {}) do
+                if row.choice~='dogmag' or row.parts[1].field.allowed[it.id] then out[#out+1]={id=it.id,name=settings.tr(it.label),description=it.note and (it.note..(row.choice=='dogmag' and ' 资源 ID：' or ' 实体 ID：')..it.raw) or nil} end
+            end
             return out
         end
         if row and row.choice=='resomode' then
@@ -23599,7 +23791,7 @@ if MOD.offline then
         elseif row.choice=='apex_fire' then assert(id==2677 or id==2719,'请选择有效的尖峰开火动作');return state.desktop.set(n,id)
         elseif row.choice=='firemode' or row.choice=='fntype' or row.choice=='resomode' then return state.desktop.set(n,id)
         elseif row.choice=='smmode' or row.choice=='smres' then return state.desktop.set(n,id)
-        elseif row.choice=='dogweapon' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
+        elseif row.choice=='dogweapon' or row.choice=='dogmag' or row.choice=='mountitem' or row.choice=='mountside' or row.choice=='faction' or row.choice=='behavior' then
             return state.desktop.set(n,id)
         elseif row.choice=='slot' then return state.desktop.set(n,id)
         elseif row.choice=='rackitem' or row.choice=='package' or row.choice=='entry' then return state.desktop.set(n,id)
