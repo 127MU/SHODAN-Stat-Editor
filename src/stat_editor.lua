@@ -18810,14 +18810,14 @@ function MOD.sm.page_rows(weapon, def, suffix)
     if not pkg then return end
     local tag = 'sm:' .. tostring(def and def.off or '') .. ':' .. suffix .. ':'
     local pick = add_row(weapon, '状态机（实验性功能）', 'smres' .. suffix, '状态机资源（实验性）', 'virtual',
-                         { part('smres', 0, tag .. 'res', 'virtual', 16) }, 0, 16, 1, 1)
+                         { part('smres' .. suffix, 0, tag .. 'res', 'virtual', 16) }, 0, 16, 1, 1)
     pick.choice = 'smres'
     pick.package_row = pkg
     pick.pick_row = pick
     pick.tip = MOD.sm.TIP
     pick.parts[1].field.default = 1
     local mode = add_row(weapon, '状态机（实验性功能）', 'smmode' .. suffix, '炮塔展开（实验性，状态机补丁）', 'virtual',
-                         { part('smmode', 0, tag .. 'mode', 'virtual', 2) }, 0, 2, 1, 1)
+                         { part('smmode' .. suffix, 0, tag .. 'mode', 'virtual', 2) }, 0, 2, 1, 1)
     mode.choice = 'smmode'
     mode.package_row = pkg
     mode.pick_row = pick

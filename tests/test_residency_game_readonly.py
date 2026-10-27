@@ -19,7 +19,7 @@ local shot
 for _,r in ipairs(B.rows())do if r.projectile_source then shot=r.id;break end end
 assert(shot,'No projectile selector')
 local checks={}
-for _,id in ipairs({67,253})do
+for _,id in ipairs({67,253,144})do -- 144: PLAS-1 Scorcher, reported residency failure
  B.choose(shot,id);local mode
  for _,r in ipairs(B.rows())do if r.choice_kind=='resomode'then mode=B.registry['968211C0033DCE64'].rows[r.id]end end
  assert(mode)

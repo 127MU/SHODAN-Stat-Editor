@@ -99,9 +99,10 @@ Timer {
             else if(step===23){store.select(store.library[0])}
             else if(step===24){ensure(store.rows.length>0,"数据记录为空");Backend.capture("15-records");const path=Backend.qaBackground(AssetRoot+"shodan.png");ensure(!!path,"自定义图片未保存");preferences.backgroundImage=path;preferences.backgroundMode="image";preferences.backgroundOpacity=0.25;store.openModule("settings")}
             else if(step===25){
-                if(wheelPhase===0){Backend.capture("16-image-settings");ensure(window.qaSliderTest(),"无法拖动背景滑块");wheelPhase=1;return}
-                if(wheelPhase===1){ensure(preferences.backgroundOpacity>=0.7,"滑块拖动没有提交数值");window.qaSettingsSection(0);wheelPhase=2;return}
-                if(wheelPhase===2){ensure(window.qaWheelTest(),"无法发送滚轮事件");wheelPhase=3;return}
+                  if(wheelPhase===0){window.qaSettingsSection(1);wheelPhase=1;return}
+                  if(wheelPhase===1){Backend.capture("16-image-settings");ensure(window.qaSliderTest(),"无法拖动背景滑块");wheelPhase=2;return}
+                  if(wheelPhase===2){ensure(preferences.backgroundOpacity>=0.7,"滑块拖动没有提交数值");window.qaSettingsSection(0);wheelPhase=3;return}
+                  if(wheelPhase===3){ensure(window.qaWheelTest(),"无法发送滚轮事件");wheelPhase=4;return}
                 ensure(window.qaWheelMoved(),"滚轮没有滚动页面");preferences.accent="#722ed1"
             }
             else if(step===26){ensure(preferences.backgroundOpacity>=0.7,"滑块拖动没有提交数值");Backend.capture("17-theme");Backend.toggleMcp()}
