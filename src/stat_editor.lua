@@ -18204,7 +18204,13 @@ function MOD.resident.state_of(row)
     local module = MOD.resident.module()
     local group,signature,_,_,why=MOD.resident.plan(row,packages)
     if why then return 0 end
-    if module.group then packages=module.group(ctx,group,signature) or packages end
+    if module.group then
+        local registered=module.group(ctx,group,signature)
+        -- A changed dependency plan invalidates the old group. Do not fall back
+        -- to declaring success just because its original donor remains installed.
+        if not registered and module.group(ctx,group) then return 0 end
+        packages=registered or packages
+    end
     if #packages==0 then return 0 end
     local memo, result = MOD.resident.memo or {}, 1
     for _, package in ipairs(packages) do
