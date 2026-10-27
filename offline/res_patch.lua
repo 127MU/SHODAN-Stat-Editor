@@ -897,7 +897,7 @@ end
 --   'light' the entries without side streams only
 --   'res'   only the overridden entries, and only the types they belong to
 -- A nil mode keeps the mode the package's ledger entry already has.
-function M.install_with(ctx, host, name, mode, overrides)
+function M.install_with(ctx, host, name, mode, overrides, extras)
     if mode == nil or mode == '' then
         local known = M.entry_of(ctx, host, name)
         mode = known and known.mode or nil
@@ -910,6 +910,11 @@ function M.install_with(ctx, host, name, mode, overrides)
                 return nil, '资源覆盖内容必须是按资源 ID 给出的字节串'
             end
         end
+    end
+    if extras==nil then
+        local saved,err,retained=M.saved_overrides(ctx,host,name)
+        if not saved then return nil,err end
+        extras=retained
     end
     local entries, at, slot_index, slot_why = slot_for(ctx, host, name)
     if not entries then return nil, slot_why end
@@ -944,8 +949,28 @@ function M.install_with(ctx, host, name, mode, overrides)
                                     entries = picked } or spec
     local blobs, slice_why = package_slices(set, name, slice_spec, mode == 'full', resolved)
     if not blobs then return nil, slice_why end
+    local included={}
+    for _,blob in ipairs(blobs)do included[blob.entry.type_hex..':'..blob.entry.id_hex]=true end
+    for _,blob in ipairs(extras or {})do
+        local key=blob.entry.type_hex..':'..blob.entry.id_hex
+        if not included[key]then
+            if mode~='full' and (#blob.gpu>0 or #blob.stream>0)then
+                return nil,'旧补丁含有跨包流资源，请使用完整驻留模式：'..key
+            end
+            blobs[#blobs+1]={entry=blob.entry,toc=override_for(index,blob.entry.type_hex,blob.entry.id_hex) or blob.toc,
+                             gpu=blob.gpu,stream=blob.stream}
+            included[key]=true
+        end
+    end
     if #blobs == 0 then return nil, '此资源包没有可以写入常驻补丁的资源' end
     local build_spec = picked and trimmed_spec(spec, blobs) or spec
+    if extras and extras.types then
+        local types,known={},{}
+        for _,t in ipairs(build_spec.types)do types[#types+1]=t;known[t.type_hex]=true end
+        for _,t in ipairs(extras.types)do if not known[t.type_hex]then types[#types+1]=t;known[t.type_hex]=true end end
+        build_spec={name=build_spec.name,magic=build_spec.magic,unknown=build_spec.unknown,trailing=build_spec.trailing,types=types}
+        build_spec=trimmed_spec(build_spec,blobs)
+    end
     local toc, gpu, stream = build_package(build_spec, blobs)
 
     return write_patch(ctx, host, name, mode, slot_index, at, entries, toc, gpu, stream, #blobs)
@@ -954,9 +979,9 @@ end
 -- Writes one patch set and returns the slot it took, plus what went into it.
 function M.install(ctx, host, name, mode)
     if mode ~= 'full' and mode ~= 'light' then return nil, '无效的资源驻留模式' end
-    local overrides, why = M.saved_overrides(ctx, host, name)
+    local overrides, why, extras = M.saved_overrides(ctx, host, name)
     if not overrides then return nil, why end
-    return M.install_with(ctx, host, name, mode, overrides)
+    return M.install_with(ctx, host, name, mode, overrides, extras)
 end
 
 -- Takes one patch set back out.  Later slots move down so the numbering stays continuous (a hole
@@ -1032,7 +1057,7 @@ function M.revert(ctx, host, name)
         if not done then return nil, why end
         return true
     end
-    local info, why = M.install_with(ctx, host, name, entry.mode, {})
+    local info, why = M.install_with(ctx, host, name, entry.mode, {}, {})
     if not info then return nil, why end
     return true
 end
@@ -1107,18 +1132,28 @@ function M.saved_overrides(ctx, host, name)
     if not source then return nil, why end
     local originals = {}
     for _, item in ipairs(source.entries) do originals[item.type_hex .. ':' .. item.id_hex] = item end
-    local overrides = {}
+    local overrides,extras = {},{types=spec.types}
     for _, item in ipairs(spec.entries) do
         local key = item.type_hex .. ':' .. item.id_hex
         local original = originals[key]
-        if not original then return nil, '已安装补丁含有当前原包中不存在的资源：' .. key end
         local bytes, why = package_read(held, name, item.toc_at, item.toc_size)
         if not bytes then return nil, why end
-        local baseline, why = package_read(set, name, original.toc_at, original.toc_size)
-        if not baseline then return nil, why end
-        if bytes ~= baseline then overrides[key] = bytes end
+        if original then
+            local baseline, why = package_read(set, name, original.toc_at, original.toc_size)
+            if not baseline then return nil, why end
+            if bytes ~= baseline then overrides[key] = bytes end
+        else
+            -- Older/merged managed patches can contain valid resources from
+            -- another source package. Keep the entire resource, not just its TOC.
+            local base=ctx.root..'/'..patch_name(host,entry.index)
+            local gpu,stream='',''
+            if item.gpu_size>0 then gpu,why=read_at(base..GPU_SUFFIX,item.gpu_at,item.gpu_size);if not gpu then return nil,why end end
+            if item.stream_size>0 then stream,why=read_at(base..STREAM_SUFFIX,item.stream_at,item.stream_size);if not stream then return nil,why end end
+            extras[#extras+1]={entry=item,toc=bytes,gpu=gpu,stream=stream}
+            overrides[key]=bytes
+        end
     end
-    return overrides
+    return overrides,nil,extras
 end
 
 -- Exact u64 lookup, kept as bytes throughout (Lua numbers cannot hold all file IDs).
@@ -1284,11 +1319,12 @@ function M.install_many(ctx, host, names, mode, group, signature)
     if type(names)~='table' or #names==0 then return nil,'没有需要安装的资源包' end
     local used,highest=used_numbers(ctx.root,host)
     if not used or #used~=highest+1 then return nil,'补丁序号不连续；未修改任何文件' end
-    local global,entries={},M.read_ledger(ctx)
+    local global,entries,retained={},M.read_ledger(ctx),{}
     table.sort(entries,function(a,b)return a.index<b.index end)
     for _,entry in ipairs(entries) do if entry.host==host then
-        local edits,err=M.saved_overrides(ctx,host,entry.name)
+        local edits,err,extras=M.saved_overrides(ctx,host,entry.name)
         if not edits then return nil,err end
+        retained[entry.name]=extras
         for key,bytes in pairs(edits) do global[key]=bytes end
     end end
     local indexes,queue,requested={},{},{}
@@ -1320,7 +1356,12 @@ function M.install_many(ctx, host, names, mode, group, signature)
                 local key=e.type_hex..':'..e.id_hex
                 if global[key] then edits[key]=global[key] end
             end
-            local info,err=M.install_with(ctx,host,name,job.mode,edits)
+            local extras=retained[name]
+            for _,blob in ipairs(extras or {})do
+                local key=blob.entry.type_hex..':'..blob.entry.id_hex
+                if global[key]then edits[key]=global[key] end
+            end
+            local info,err=M.install_with(ctx,host,name,job.mode,edits,extras)
             if not info then return nil,name..'（'..tostring(err)..'）' end
             if not job.existing then infos[#infos+1]=info end
         end
@@ -1338,20 +1379,25 @@ function M.install_many(ctx, host, names, mode, group, signature)
 end
 
 function M.update_entry(ctx, host, name, mode, id, kind, bytes)
-    local overrides, why = M.saved_overrides(ctx, host, name)
+    local overrides, why, extras = M.saved_overrides(ctx, host, name)
     if not overrides then return nil, why end
     overrides[hex_key(kind) .. ':' .. hex_key(id)] = bytes
-    return M.install_with(ctx, host, name, mode, overrides)
+    return M.install_with(ctx, host, name, mode, overrides, extras)
 end
 
 function M.revert_entry(ctx, host, name, id, kind)
     local entry = M.entry_of(ctx, host, name)
     if not entry then return true end
-    local overrides, why = M.saved_overrides(ctx, host, name)
+    local overrides, why, extras = M.saved_overrides(ctx, host, name)
     if not overrides then return nil, why end
+    for _,blob in ipairs(extras or {})do
+        if blob.entry.type_hex==hex_key(kind) and blob.entry.id_hex==hex_key(id)then
+            return nil,'此资源来自跨包补丁，当前原包没有可信恢复值；请保留补丁或移除整包：'..hex_key(kind)..':'..hex_key(id)
+        end
+    end
     overrides[hex_key(kind) .. ':' .. hex_key(id)] = nil
     if entry.mode == 'res' and not next(overrides) then return M.remove(ctx, host, name) end
-    return M.install_with(ctx, host, name, entry.mode, overrides)
+    return M.install_with(ctx, host, name, entry.mode, overrides, extras)
 end
 
 return M

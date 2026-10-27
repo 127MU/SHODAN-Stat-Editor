@@ -25,7 +25,48 @@ bankbytes=string.rep('\\0',16)..'BKHD'..I.u32(4)..I.u32(123)..'HIRC'..I.u32(#hir
 donor='aaaaaaaaaaaaaaaa';wrong='bbbbbbbbbbbbbbbb'
 addpkg(donor,{{asset,particle,'real particle'},{'1234567812345678',bank,bankbytes}})
 addpkg(wrong,{{asset,'0000000000000001','wrong type'},{'8765432187654321',bank,'random HIRC'..I.u32(98765)}})
+function merged_patch()
+ assert(M.install(ctx,host,donor,'full'))
+ local spec=assert(I.package_head(ctx.set,donor))
+ local blobs=assert(I.package_slices(ctx.set,donor,spec,true,{[particle..':'..asset]='edited particle'}))
+ local e={id_raw=rawhex('92cafe3676890fe4'),id_hex='92cafe3676890fe4',type_raw=rawhex(bank),type_hex=bank,
+  unknown1_raw=I.u64(0),unknown2_raw=I.u64(0),unknown3=0,unknown4=0}
+ blobs[#blobs+1]={entry=e,toc='legacy bank toc',gpu='legacy gpu',stream='legacy sound stream'}
+ local toc,gpu,stream=I.build_package(spec,blobs)
+ assert(M.write_file(path(0),toc));assert(M.write_file(path(0,'.gpu_resources'),gpu));assert(M.write_file(path(0,'.stream'),stream))
+end
+function retained_bank()
+ assert(M.patch_entry(ctx,host,donor,'92cafe3676890fe4',bank)=='legacy bank toc')
+ assert(M.read_file(path(0,'.gpu_resources'))=='legacy gpu')
+ assert(M.read_file(path(0,'.stream'))=='legacy sound stream')
+ assert(M.patch_entry(ctx,host,donor,asset,particle)=='edited particle')
+end
 ''')
+
+    def test_merged_cross_package_bank_survives_single_and_batch_rebuild(self):
+        self.lua.execute('''merged_patch()
+local edits,why,extra=M.saved_overrides(ctx,host,donor);assert(edits,why);assert(#extra==1)
+assert(M.install(ctx,host,donor,'full'));retained_bank()
+ctx={root=root,profile=root,set=ctx.set} -- reopen the ledger without an in-memory migration cache
+assert(M.install_many(ctx,host,{donor,wrong},'full','group','signature'));retained_bank()
+assert(M.install_with(ctx,host,donor,'full',{[particle..':'..asset]='edited particle'}));retained_bank()
+local before=snapshot();local reverted,why=M.revert_entry(ctx,host,donor,'92cafe3676890fe4',bank)
+assert(not reverted and why:find('可信恢复值',1,true));unchanged(before)
+assert(M.update_entry(ctx,host,donor,'full','92cafe3676890fe4',bank,'edited bank'))
+assert(M.patch_entry(ctx,host,donor,'92cafe3676890fe4',bank)=='edited bank')
+assert(M.read_file(path(0,'.stream'))=='legacy sound stream')''')
+
+    def test_merged_bank_missing_stream_or_light_conversion_is_not_silently_dropped(self):
+        self.lua.execute('''merged_patch();local before=snapshot()
+local ok,why=M.install(ctx,host,donor,'light');assert(not ok and why:find('跨包流资源',1,true));unchanged(before)
+os.remove(path(0,'.stream'));before=snapshot()
+local edits,why=M.saved_overrides(ctx,host,donor);assert(not edits and why);unchanged(before)''')
+
+    def test_merged_bank_is_restored_on_batch_failure(self):
+        self.lua.execute('''merged_patch();local before=snapshot();local write=M.write_file
+M.write_file=function(p,b)if p:find('residency_dependencies.txt',1,true)then return false,'injected failure' end;return write(p,b)end
+local ok=M.install_many(ctx,host,{donor,wrong},'full','group','sig');M.write_file=write
+assert(not ok);unchanged(before);retained_bank()''')
 
     def test_exact_resource_and_real_bank_event(self):
         self.lua.execute('''local names,missing=assert(M.resolve_resources(ctx,{wrong},{{id_hex=asset,type_hex=particle}},{98765}))

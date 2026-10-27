@@ -15,6 +15,15 @@ class StateMachineIntegrationTests(unittest.TestCase):
     lua.execute('arg={...}', (ROOT/'src/stat_editor.lua').as_posix())
     lua.execute('return dofile(...)',(ROOT/'offline/host.lua').as_posix())
     lua.execute('''local S=assert(ShodanStatEditor.sm)
+-- Multiple mount slots must keep distinct preset IDs, not just distinct row labels.
+local weapon={hash='AUDIT',rows={},by_id={load_package_m1={row={}},load_package_m2={row={}}}}
+S.page_rows(weapon,{off=1},'_m1');S.page_rows(weapon,{off=2},'_m2')
+local ids={}
+for _,row in ipairs(weapon.rows)do for _,p in ipairs(row.parts)do
+ assert(not ids[p.id],'Duplicate mount preset ID: '..p.id);ids[p.id]=true
+end end
+assert(weapon.by_id.smres_m1 and weapon.by_id.smres_m2)
+assert(weapon.by_id.smres_m1.field.key~=weapon.by_id.smres_m2.field.key)
 local I=require('install');I.game_running=function()return false end
 local calls={};local P={state=function()return 0 end,
  update_entry=function(ctx,host,pkg,mode,id,kind,bytes)
