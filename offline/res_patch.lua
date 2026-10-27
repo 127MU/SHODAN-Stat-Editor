@@ -1121,6 +1121,50 @@ function M.saved_overrides(ctx, host, name)
     return overrides
 end
 
+-- Exact u64 lookup, kept as bytes throughout (Lua numbers cannot hold all file IDs).
+-- Build once per bundle set; publish only a complete index, never a partial scan.
+function M.scan_resources(ctx, blobs)
+    local set, why = bundle_set(ctx)
+    if not set then return nil, why end
+    if not set.names or #set.names == 0 then return nil, '资源包清单为空，无法核对依赖' end
+    local index = ctx.resource_index
+    if not index or ctx.resource_index_set ~= set then
+        index = {}
+        for _, name in ipairs(set.names or {}) do
+            if name:match('^%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x$') then
+                local spec, err = package_head(set, name)
+                if not spec then return nil, err end
+                for _, entry in ipairs(spec.entries) do
+                    local types = index[entry.id_raw] or {}
+                    types[entry.type_hex] = true
+                    index[entry.id_raw] = types
+                end
+            end
+        end
+        if not next(index) then return nil, '资源索引为空，无法核对依赖' end
+        ctx.resource_index, ctx.resource_index_set = index, set
+    end
+    local found, seen = {}, {}
+    for _, blob in ipairs(blobs or {}) do
+        -- Four-byte alignment also covers u64 fields following a u32 enum.
+        for off = 1, #blob - 7, 4 do
+            local raw = blob:sub(off, off + 7)
+            if raw ~= string.rep('\0', 8) then
+                for kind in pairs(index[raw] or {}) do
+                    local id = hex_of(raw)
+                    local key = kind .. ':' .. id
+                    if not seen[key] then
+                        seen[key] = true
+                        found[#found + 1] = {type_hex = kind, id_hex = id}
+                    end
+                end
+            end
+        end
+    end
+    table.sort(found, function(a,b) return a.type_hex..a.id_hex < b.type_hex..b.id_hex end)
+    return found
+end
+
 -- Resolve actual table references rather than assuming that a weapon's declared
 -- loadout package contains its projectile's particles and audio. Read only TOCs
 -- and the HIRC object directory (skip the potentially enormous sound DATA chunk).
@@ -1217,7 +1261,7 @@ function M.resolve_resources(ctx, preferred, resources, events)
     end
     local unresolved={}
     for key in pairs(wanted) do if not found[key] then unresolved[#unresolved+1]='资源 '..key end end
-    for id in pairs(audio) do if not found['audio:'..id] then unresolved[#unresolved+1]='音效事件 '..id end end
+    for id in pairs(audio) do if not found['audio:'..id] then unresolved[#unresolved+1]='未定位的音效候选哈希 '..id end end
     table.sort(unresolved)
     ctx.resolution_cache[signature]={names=names,unresolved=unresolved}
     return names, unresolved

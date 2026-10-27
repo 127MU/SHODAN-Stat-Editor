@@ -18202,8 +18202,15 @@ function MOD.resident.state_of(row)
     local ctx = MOD.resident.ctx()
     if not ctx then return 0 end
     local module = MOD.resident.module()
-    local group,signature=MOD.resident.plan(row,packages)
-    if module.group then packages=module.group(ctx,group,signature) or packages end
+    local group,signature,_,_,why=MOD.resident.plan(row,packages)
+    if why then return 0 end
+    if module.group then
+        local registered=module.group(ctx,group,signature)
+        -- A changed dependency plan invalidates the old group. Do not fall back
+        -- to declaring success just because its original donor remains installed.
+        if not registered and module.group(ctx,group) then return 0 end
+        packages=registered or packages
+    end
     if #packages==0 then return 0 end
     local memo, result = MOD.resident.memo or {}, 1
     for _, package in ipairs(packages) do
@@ -18253,7 +18260,8 @@ function MOD.resident.act(row, mode)
     if mode == 2 then
         return false, '跨包特效需要贴图和声音流，不能使用仅轻资源模式。请选择「完整（含贴图）」。'
     end
-    local group,signature,resources,events=MOD.resident.plan(row,packages)
+    local group,signature,resources,events,why=MOD.resident.plan(row,packages)
+    if why then return false,'资源依赖检查失败，未安装：'..tostring(why) end
     local resolved,unresolved=module.resolve_resources(ctx,packages,resources,events)
     if not resolved then return false,unresolved end
     for _,message in ipairs(unresolved)do
@@ -18271,7 +18279,8 @@ function MOD.resident.act(row, mode)
     end
     return true, string.format('已写入 %s，共 %.1f MB（%s）；重启游戏后生效',
         table.concat(notes, '、'), size / 1048576, '含贴图和流数据')
-        ..(#unresolved>0 and ('。尚未定位的音效事件：'..table.concat(unresolved,'；')..'。不保证这些音效生效，请实机验证。') or '')
+        ..(#unresolved>0 and ('。'..table.concat(unresolved,'；')) or '')
+        ..'。音效绑定尚未完整定位；资源已写入不代表游戏内特效、音效已验证。'
 end
 -- ---------------------------------------------------------------- where a page's effects live
 rawset(state, 'resident', MOD.resident)   -- QA: the detector on the state table, next to the rest
@@ -18415,6 +18424,7 @@ end
 -- mounted weapons. Resource hashes are byte strings; never round a u64 via Lua.
 function MOD.resident.dependencies(page)
     local resources,events,seen,seen_res,seen_audio={},{},{},{},{}
+    local blobs,dependency_error={},nil
     local function number(kind,at)
         return read_field(field_at(kind,at,'u32',4294967295))
     end
@@ -18437,6 +18447,8 @@ function MOD.resident.dependencies(page)
         local kind=what=='shot' and T_PROJECTILE or T_EXPLOSION
         local t=tables[kind];local at=t and t.index[id]
         if not at then return end
+        local row=api.read(t.copies[1]+HEADER_BYTES+at,KINDS[kind].stride)
+        if row and #row==KINDS[kind].stride then blobs[#blobs+1]=row else dependency_error='无法读取资源引用行：'..mark end
         if what=='shot'then
             for _,off in ipairs({72,80,96,104,112,120})do resource(kind,at+off,'a8193123526fad64')end
             resource(kind,at+128,'e0a48d0be9a7453f')
@@ -18444,7 +18456,22 @@ function MOD.resident.dependencies(page)
             for _,off in ipairs({144,156})do local x=number(kind,at+off);if x and x>0 then take('blast',x)end end
         else
             resource(kind,at+56,'a8193123526fad64')
-            for _,off in ipairs({64,108,112})do audio(kind,at+off)end
+            -- RESDEP: +0x40 has no matches in the build's Wwise event catalog.
+            -- These hashes are not proof of an audio binding; do not guess banks.
+            -- ShakeAssets is a payload-relative DLArray, not a file address.
+            local rel,hi,count=number(kind,at+40),number(kind,at+44),number(kind,at+48)
+            if count and count>0 then
+                if hi~=0 or not rel or rel==0 or count>math.floor(t.payload/8) or rel>t.payload-count*8 then
+                    dependency_error='震屏资源数组越界：'..mark
+                else
+                    local shakes=api.read(t.copies[1]+HEADER_BYTES+rel,count*8)
+                    if not shakes or #shakes~=count*8 then dependency_error='无法读取震屏资源数组：'..mark
+                    else
+                        blobs[#blobs+1]=shakes
+                        for i=0,count-1 do resource(kind,rel+i*8,'fcaaf813b4d3cc1e')end
+                    end
+                end
+            end
             if (number(kind,at+80) or 0)>0 then local x=number(kind,at+84);if x and x>0 then take('shot',x)end end
         end
     end
@@ -18461,17 +18488,29 @@ function MOD.resident.dependencies(page)
             end
         end
     end
+    if dependency_error then return resources,events,dependency_error end
+    if #blobs>0 then
+        local module=MOD.resident.module()
+        local ctx,why=MOD.resident.ctx()
+        if not ctx then return resources,events,why end
+        local extra,err=module.scan_resources(ctx,blobs)
+        if not extra then return resources,events,err end
+        for _,r in ipairs(extra)do
+            local key=r.type_hex..':'..r.id_hex
+            if not seen_res[key]then seen_res[key]=true;resources[#resources+1]=r end
+        end
+    end
     return resources,events
 end
 
 function MOD.resident.plan(row,packages)
-    local resources,events=MOD.resident.dependencies(row.page)
+    local resources,events,why=MOD.resident.dependencies(row.page)
     local parts={}
     for _,name in ipairs(packages)do parts[#parts+1]='p:'..name end
     for _,r in ipairs(resources)do parts[#parts+1]=r.type_hex..':'..r.id_hex end
     for _,id in ipairs(events)do parts[#parts+1]='a:'..id end
     table.sort(parts)
-    return tostring(row.page and row.page.hash or ('package:'..tostring(packages[1]))),table.concat(parts,','),resources,events
+    return tostring(row.page and row.page.hash or ('package:'..tostring(packages[1]))),table.concat(parts,','),resources,events,why
 end
 
 -- A record page names one record, so its packages are the ones of every item that owns it -- plus, when the
