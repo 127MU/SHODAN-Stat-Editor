@@ -271,6 +271,14 @@ class TestWarStatusAddon(unittest.TestCase):
         self.assertEqual(instance.connection['client_tls'],1)
         self.assertEqual(instance.connection['server_tls'],1)
 
+    def test_http_failure_categories_hide_url_and_credentials(self):
+        instance=addon.WarStatusAddon()
+        failed=SimpleNamespace(request=SimpleNamespace(pretty_host=addon.HOST,method='GET',path='/api/WarSeason/801/Status?token=secret',http_version='HTTP/2'),error=SimpleNamespace(msg='HTTP/2 stream reset https://private:secret@example.com'))
+        instance.error(failed)
+        self.assertEqual(instance.connection['failure_kind'],'HTTP/2 流失败')
+        self.assertEqual(instance.connection['failed_endpoint'],'战况接口')
+        self.assertNotIn('secret',json.dumps(instance.connection))
+
     def test_api_router_bypasses_every_other_destination(self):
         import socket
         import socketserver

@@ -2,7 +2,7 @@
 from pathlib import Path
 import argparse,hashlib,json,shutil,zipfile,ctypes,struct
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='4.1.0-r29-dev3'
+VERSION='4.1.0-r29-dev4'
 CORE_VERSION='4.1.0'
 CORE_COMMIT='ed8f8be397c6d5b816394034ee724572d9f14607'
 MODULES=('stat_editor','host','hostdata','install','engine_shim','gamedata','update','armory','armory_data','armor_ui','armor_baseline','text_input','zh_extra','zh_game','zh_params','zh_reference','zh_ui','theme','layout','desktop_features','mod_merge','extra_stratagem_guard','res_patch','state_machine')

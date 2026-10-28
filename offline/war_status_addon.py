@@ -446,10 +446,24 @@ class WarStatusAddon:
         request = getattr(flow, "request", None)
         if request and getattr(request, "pretty_host", "").lower() == HOST:
             self.failures["http"] += 1
+            # Only fixed categories are retained. Do not expose full URLs,
+            # request payloads or third-party error strings in diagnostics.
+            text = str(getattr(getattr(flow, "error", None), "msg", "") or "").lower()
+            kind = "HTTP 转发失败（原因未分类）"
+            for words, label in ((["http/2", "http2", "stream reset"], "HTTP/2 流失败"), (["timeout", "timed out"], "请求超时"), (["certificate", "tls", "ssl"], "上游 TLS 失败"), (["reset", "closed", "eof", "disconnect"], "连接被对端关闭"), (["refused", "unreachable"], "上游不可达")):
+                if any(word in text for word in words):
+                    kind = label
+                    break
+            path = getattr(request, "path", "").split("?", 1)[0]
+            category = "战况接口" if path.startswith("/api/WarSeason/") else "作战接口" if path.startswith("/api/Operation/") else "其他游戏 API"
+            self.connection["failure_kind"] = kind
+            self.connection["failed_endpoint"] = category
+            version = getattr(request, "http_version", "")
+            self.connection["failed_protocol"] = version if version in ("HTTP/1.0", "HTTP/1.1", "HTTP/2", "HTTP/3") else "未知"
             if request.method == "CONNECT":
                 self.health("捕获到了既有 HTTP 代理的 CONNECT 隧道；透明捕获与现有代理链可能不兼容")
             else:
-                self.health("游戏 API 的 HTTP 连接失败；尚未进行战况改写，请查看连接诊断计数")
+                self.health(category + "转发失败：" + kind + "。此前成功的响应不代表此请求成功。")
 
     def response(self, flow):
         request, response = flow.request, flow.response

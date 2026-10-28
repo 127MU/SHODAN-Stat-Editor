@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 from proxy_runtime_policy import include_proxy_file
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '4.1.0-r29-dev3'
+VERSION = '4.1.0-r29-dev4'
 MITMDUMP_SHA256 = 'e2f05da6385d8c76c2f5b7b23b5d0f7e2c23483b5ece99fe1f4e3b0c04c5f8b5'
 
 def main():
