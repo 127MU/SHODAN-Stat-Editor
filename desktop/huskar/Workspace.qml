@@ -80,6 +80,7 @@ QtObject {
         if(key==="presets"){refreshPresets();return}
         if(key==="mods"){refreshMods();return}
         if(key==="settings")return
+        if(key==="warproxy")return
         if(key==="tweaks"){call("tweaks",[],x=>tweaks=x);return}
         if(key==="armor"){refreshArmor();return}
         const d=destinations.find(x=>x.key===key)

@@ -13,6 +13,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "controller.h"
+#include "war_proxy.h"
 #include "husapp.h"
 
 int main(int argc,char** argv){
@@ -45,6 +46,7 @@ int main(int argc,char** argv){
  app.setWindowIcon(QIcon(executableRoot+"/assets/shodan.png"));
  QDir::setCurrent(executableRoot);
  Controller controller;
+ WarProxy warProxy(controller.profile());
  QQmlApplicationEngine engine;
  // HusApp is a lazy QML singleton. Initialize it before constructing controls:
  // otherwise pages that never reference HusApp leave its icon font unregistered.
@@ -57,6 +59,7 @@ int main(int argc,char** argv){
  engine.addImportPath(QCoreApplication::applicationDirPath()+"/qml");
  if(!QFile::exists(QCoreApplication::applicationDirPath()+"/qml/HuskarUI/Basic/qmldir"))engine.addImportPath(HUSKAR_IMPORT_PATH);
  engine.rootContext()->setContextProperty("Backend",&controller);
+ engine.rootContext()->setContextProperty("WarProxyBackend",&warProxy);
  engine.rootContext()->setContextProperty("AssetRoot",QUrl::fromLocalFile(QCoreApplication::applicationDirPath()+"/assets/"));
  engine.rootContext()->setContextProperty("QaMode",qEnvironmentVariableIsSet("SHODAN_HUSKAR_QA"));
  engine.rootContext()->setContextProperty("QaRestoreMode",qEnvironmentVariableIsSet("SHODAN_HUSKAR_RESTORE_QA"));
