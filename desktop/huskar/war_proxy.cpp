@@ -54,6 +54,7 @@ WarProxy::WarProxy(QString profile,QObject* parent):QObject(parent),settings_(pr
  try{metadata_=object(read(":/shodan/war_catalog.json"));}catch(...){}
  try{if(QFileInfo::exists(profile_+"/war-targets.json"))targets_=validateTargets(object(read(profile_+"/war-targets.json"))["targets"].toArray());}catch(const std::exception& e){status_="方案文件读取失败，已保留原文件："+QString::fromUtf8(e.what());}
  refreshCatalog();
+ certificateTrusted_=verifyCertificateTrust();
 #ifdef Q_OS_WIN
  job_=CreateJobObjectW(nullptr,nullptr);if(job_){JOBOBJECT_EXTENDED_LIMIT_INFORMATION info{};info.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;if(!SetInformationJobObject(job_,JobObjectExtendedLimitInformation,&info,sizeof(info))){CloseHandle(job_);job_=nullptr;}}
  process_.setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments* a){a->flags|=CREATE_NO_WINDOW;});
@@ -65,6 +66,7 @@ WarProxy::WarProxy(QString profile,QObject* parent):QObject(parent),settings_(pr
  certificateProcess_.setStandardOutputFile(QProcess::nullDevice());certificateProcess_.setStandardErrorFile(QProcess::nullDevice());
  connect(&certificateProcess_,&QProcess::errorOccurred,this,[this](QProcess::ProcessError){certificateStatus_="无法运行 Windows 证书工具，未确认信任状态。";emit changed();});
  connect(&certificateProcess_,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this](int code,QProcess::ExitStatus exit){
+  certificateTrusted_=verifyCertificateTrust();
   if(code!=0 || exit!=QProcess::NormalExit){certificateStatus_="证书操作失败，请检查当前用户权限；未操作系统级证书库。";emit changed();return;}
   if(removingCertificate_){settings_.remove("installedCa");certificateStatus_="本程序记录的本机 CA 已从当前用户信任库移除。";}
   else{settings_.setValue("installedCa",certificateThumbprint_);certificateStatus_="本机 CA 已安装到当前用户信任库，请重启游戏。指纹："+certificateThumbprint_;}
@@ -93,11 +95,15 @@ void WarProxy::pollHealth(){
   const double updated=s["updated"].toDouble(-1);
   require(s["ready"].isBool() && std::isfinite(updated) && updated>=sessionStart_ && updated<=now/1000.0+5 && now/1000.0-updated<=15,"代理状态已过期或不属于本次会话");
   lastHealthReadMs_=now;pluginReady_=s["ready"].toBool(false);
+  const int routerPort=s["router_port"].toInt();
+  if(routerPort>0 && routerPort<=65535)proxyAddress_="http://127.0.0.1:"+QString::number(routerPort);
   QString bridgeError;
   if(pluginReady_){try{publishSteamSession();}catch(const std::exception& e){pluginReady_=false;QFile::remove(profile_+"/war-proxy/steam-proxy.ini");bridgeError=" · 游戏启动桥接失败："+QString::fromUtf8(e.what());}}
   else QFile::remove(profile_+"/war-proxy/steam-proxy.ini");
   const auto f=s["failures"].toObject();
+  const auto connection=s["connection"].toObject();
   status_=s["message"].toString()+" · 战况 "+QString::number(s["statuses"].toInt())+" · 改写 "+QString::number(s["rewrites"].toInt())+" · 客户端 TLS 失败 "+QString::number(f["client_tls"].toInt())+" · 上游连接失败 "+QString::number(f["connect"].toInt()+f["server_tls"].toInt()+f["http"].toInt());
+  if(!connection.isEmpty())status_+=" · API 请求/响应 "+QString::number(connection["requests"].toInt())+"/"+QString::number(connection["responses"].toInt())+(connection["failure_kind"].toString().isEmpty()?QString():" · "+connection["failure_kind"].toString());
   try{
    const auto digest=QString::fromLatin1(QCryptographicHash::hash(read(profile_+"/war-proxy/plan.json"),QCryptographicHash::Sha256).toHex());
    status_+=s["applied_plan_digest"].toString()==digest?" · 本次方案已写入响应（不等同于局内已验证）":" · 本次方案等待战况刷新";
@@ -123,6 +129,7 @@ WarProxy::~WarProxy(){if(mitmSession_ && process_.state()!=QProcess::NotRunning)
  if(certificateProcess_.state()!=QProcess::NotRunning)certificateProcess_.waitForFinished(2000);
 }
 QString WarProxy::check(){
+ certificateTrusted_=verifyCertificateTrust();
  try{
    require(QFileInfo(executable()).isFile(),"请先选择官方 Windows 版 mitmdump.exe");
    auto file=QFileInfo(executable());require(file.fileName().compare("mitmdump.exe",Qt::CaseInsensitive)==0 || (file.fileName().compare("python.exe",Qt::CaseInsensitive)==0 && QFileInfo::exists(file.dir().filePath("proxy_main.py"))),"代理核心不完整，请选择 mitmdump.exe 或配套的内置运行时");
@@ -209,6 +216,7 @@ bool WarProxy::launchPlan(QJsonObject p,bool prepareOnly){
     mode="upstream:"+proxy.toString(QUrl::RemovePath|QUrl::RemoveQuery|QUrl::RemoveFragment)+"@127.0.0.1:"+QString::number(port);
    }
   }
+  if(!prepareOnly){env.insert("SHODAN_WAR_MITM_PORT",QString::number(QUrl(proxyAddress_).port()));process_.setProcessEnvironment(env);}
   process_.setWorkingDirectory(root);mitmSession_=true;stopping_=false;
   QStringList arguments{"--mode",mode,"--allow-hosts","^api\\.live\\.prod\\.thehelldiversgame\\.com(:443)?$","--set","confdir="+root+"/ca","--set","flow_detail=0","--quiet","-s",root+"/addon.py"};
   if(QFileInfo(executable()).fileName().compare("python.exe",Qt::CaseInsensitive)==0){arguments.prepend(QFileInfo(executable()).dir().absoluteFilePath("proxy_main.py"));arguments.prepend("-I");}
@@ -235,8 +243,10 @@ QJsonArray WarProxy::validateTargets(QJsonArray input){
   for(const auto& e:effects){require(integer(e,1,2147483647),"效果 ID 无效");if(!ids.contains(e))ids.append(e);}
   auto owner=t.value("owner").isUndefined()?QJsonValue(0):t["owner"],type=t.value("campaign_type").isUndefined()?QJsonValue(0):t["campaign_type"];
   require(integer(owner,0,4) && integer(type,0,3),"阵营或战役类型无效");
+  auto race=t.value("campaign_race").isUndefined()?QJsonValue(0):t["campaign_race"];
+  require(integer(race,0,4),"作战敌人阵营无效");
   require((!t.contains("enabled")||t["enabled"].isBool()) && (!t.contains("campaign")||t["campaign"].isBool()),"方案开关类型无效");
-  output.append(QJsonObject{{"planet",id},{"enabled",t.value("enabled").toBool(true)},{"effects",ids},{"owner",owner},{"campaign",t.value("campaign").toBool(false)},{"campaign_type",type}});
+  output.append(QJsonObject{{"planet",id},{"enabled",t.value("enabled").toBool(true)},{"effects",ids},{"owner",owner},{"campaign",t.value("campaign").toBool(false)},{"campaign_type",type},{"campaign_race",race}});
  }
  return output;
 }
@@ -302,7 +312,7 @@ void WarProxy::refreshCatalog(){
  for(const auto& row:livePlanets){auto q=row.toObject();if(!q["index"].isDouble())continue;int id=q["index"].toInt();auto e=planets.value(id);e["id"]=id;if(e["name"].toString().isEmpty())e["name"]="星球 #"+QString::number(id);e["owner"]=q["owner"];e["players"]=q["players"];planets[id]=e;}
  planets_=QJsonArray{};for(const auto& e:planets)planets_.append(e);emit modelsChanged();
 }
-bool WarProxy::certificateTrusted()const{
+bool WarProxy::verifyCertificateTrust()const{
 #ifdef Q_OS_WIN
  try{auto pem=read(profile_+"/war-proxy/ca/mitmproxy-ca-cert.cer");auto start=pem.indexOf("-----BEGIN CERTIFICATE-----");if(start<0)return false;auto encoded=pem.mid(start+27);auto end=encoded.indexOf("-----END CERTIFICATE-----");if(end<0)return false;auto digest=QCryptographicHash::hash(QByteArray::fromBase64(encoded.left(end)),QCryptographicHash::Sha1);
   auto store=CertOpenStore(CERT_STORE_PROV_SYSTEM_W,0,0,CERT_SYSTEM_STORE_CURRENT_USER|CERT_STORE_READONLY_FLAG,L"ROOT");if(!store)return false;CRYPT_HASH_BLOB hash{DWORD(digest.size()),reinterpret_cast<BYTE*>(digest.data())};auto cert=CertFindCertificateInStore(store,X509_ASN_ENCODING|PKCS_7_ASN_ENCODING,0,CERT_FIND_SHA1_HASH,&hash,nullptr);bool found=cert!=nullptr;if(cert)CertFreeCertificateContext(cert);CertCloseStore(store,0);return found;
@@ -318,6 +328,7 @@ void WarProxy::setCaptureMode(QString mode){
 }
 void WarProxy::launchGame(QString gameDirectory){
  Q_UNUSED(gameDirectory);
+ certificateTrusted_=verifyCertificateTrust();
  auto report=[this](QString message){launchStatus_=message;fail(message);};
  if(!active_ || !pluginReady_ || proxyAddress_.isEmpty()){report("请先开启 HTTP 代理兼容模式并等待就绪");return;}
  if(!certificateTrusted()){report("请先安装本机 CA，再通过 Steam 启动游戏");return;}

@@ -14,6 +14,96 @@ MAX_BODY = 8 * 1024 * 1024
 EFFECT_PAIRS = ((1202,1203),(1243,1245),(1244,1386),(1248,1249),(1303,1310),
                 (1306,1309),(1307,1308),(1360,1361),(1377,1378),(1380,1379),
                 (1401,1400),(1402,1403),(1413,1414))
+# Verified native bots_cyborgs presence. Only use ORIGINAL server effects to
+# infer a liberated planet's enemy; user-added cross-faction effects don't count.
+NATIVE_ENEMY_EFFECTS = {1361: 3}
+
+
+class ApiOnlyRouter:
+    """Loopback CONNECT dispatcher. Only the exact game API enters mitmproxy.
+
+    All other TLS connections retain end-to-end encryption and connect directly;
+    their headers, bodies and destination names are never persisted.
+    """
+    def __init__(self, api_port):
+        import socket
+        import socketserver
+        import select
+        from threading import Thread
+        class Handler(socketserver.BaseRequestHandler):
+            def handle(self):
+                upstream = None
+                established = False
+                try:
+                    self.request.settimeout(10)
+                    header = bytearray()
+                    while b"\r\n\r\n" not in header:
+                        part = self.request.recv(1)
+                        if not part:
+                            return
+                        header.extend(part)
+                        if len(header) > 16384:
+                            return
+                    first = bytes(header).split(b"\r\n", 1)[0].decode("ascii")
+                    method, destination, version = first.split(" ")
+                    if method == "CONNECT":
+                        host, port = destination.rsplit(":", 1)
+                        host = host.removeprefix("[").removesuffix("]")
+                        port = int(port)
+                    else:
+                        from urllib.parse import urlsplit
+                        url = urlsplit(destination)
+                        if url.scheme != "http" or not url.hostname or url.username or url.password:
+                            raise ValueError("absolute HTTP URL required")
+                        host, port = url.hostname, url.port or 80
+                    if not host or not 1 <= port <= 65535:
+                        return
+                    is_api = method == "CONNECT" and host.lower() == HOST and port == 443
+                    upstream = socket.create_connection(("127.0.0.1", api_port) if is_api else (host, port), timeout=10)
+                    if is_api:
+                        # Rebuild the public CONNECT line only; don't forward
+                        # Proxy-Authorization or unrelated client headers.
+                        upstream.sendall(("CONNECT " + HOST + ":443 HTTP/1.1\r\nHost: " + HOST + ":443\r\n\r\n").encode("ascii"))
+                    elif method == "CONNECT":
+                        self.request.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+                    else:
+                        # Anti-cheat/update clients may use plain HTTP. Send
+                        # origin-form requests directly, not through mitmproxy.
+                        path = (url.path or "/") + ("?" + url.query if url.query else "")
+                        lines = bytes(header).split(b"\r\n")[1:]
+                        lines = [line for line in lines if line and not line.lower().startswith((b"proxy-authorization:", b"proxy-connection:", b"connection:"))]
+                        upstream.sendall((method + " " + path + " " + version + "\r\n").encode("ascii") + b"\r\n".join(lines) + b"\r\nConnection: close\r\n\r\n")
+                    established = True
+                    self.request.settimeout(15);upstream.settimeout(15)
+                    while True:
+                        readable, _, _ = select.select([self.request, upstream], [], [], 300)
+                        if not readable:
+                            return
+                        for source in readable:
+                            chunk = source.recv(65536)
+                            if not chunk:
+                                return
+                            (upstream if source is self.request else self.request).sendall(chunk)
+                except (OSError, ValueError, UnicodeError):
+                    if not established:
+                        try:
+                            self.request.sendall(b"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+                        except OSError:
+                            pass
+                    return
+                finally:
+                    if upstream:
+                        upstream.close()
+        class Server(socketserver.ThreadingTCPServer):
+            daemon_threads = True
+            allow_reuse_address = False
+        self.server = Server(("127.0.0.1", 0), Handler)
+        self.port = self.server.server_address[1]
+        self.thread = Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    def close(self):
+        self.server.shutdown();self.server.server_close();self.thread.join(timeout=2)
 
 
 class LocalRevocationService:
@@ -81,12 +171,15 @@ def normalize_targets(plan):
         if not isinstance(effects, list) or len(effects) > 32 or any(type(e) is not int or e <= 0 for e in effects):
             raise ValueError("效果配置无效")
         owner, campaign_type = raw.get("owner", 0), raw.get("campaign_type", 0)
+        campaign_race = raw.get("campaign_race", 0)
+        if type(campaign_race) is not int or campaign_race not in (0, 1, 2, 3, 4):
+            raise ValueError("作战敌人阵营无效")
         if type(owner) is not int or owner not in range(5) or type(campaign_type) is not int or campaign_type not in range(4):
             raise ValueError("阵营或战役类型无效")
         campaign = raw.get("campaign", False)
         if type(campaign) is not bool:
             raise ValueError("战役开关无效")
-        result.append(dict(planet=planet, effects=list(dict.fromkeys(effects)), owner=owner, campaign=campaign, campaign_type=campaign_type))
+        result.append(dict(planet=planet, effects=list(dict.fromkeys(effects)), owner=owner, campaign=campaign, campaign_type=campaign_type, campaign_race=campaign_race))
     return result
 
 
@@ -118,7 +211,7 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
                         if eid not in target['effects']:
                             target['effects'].append(eid)
     campaigns = document.get("campaigns", [])
-    if any(t["campaign"] or t["owner"] for t in targets) and (not isinstance(campaigns, list) or any(not isinstance(c, dict) or type(c.get("id")) is not int or type(c.get("planetIndex")) is not int for c in campaigns)):
+    if any(t["campaign"] or t["owner"] or t["campaign_race"] for t in targets) and (not isinstance(campaigns, list) or any(not isinstance(c, dict) or type(c.get("id")) is not int or type(c.get("planetIndex")) is not int for c in campaigns)):
         raise ValueError("战役结构不兼容，已保持原样")
     for target in targets:
         planet = target["planet"]
@@ -138,13 +231,17 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
     used_ids = {c["id"] for c in campaigns} if any(t["campaign"] or t["owner"] for t in targets) else set()
     for target in targets:
         planet = next(p for p in result["planetStatus"] if p.get("index") == target["planet"])
+        original_owner = planet.get("owner", 0)
+        native_races = {NATIVE_ENEMY_EFFECTS[e['galacticEffectId']] for e in entries if e['index'] == target['planet'] and e['galacticEffectId'] in NATIVE_ENEMY_EFFECTS}
+        inferred_race = original_owner if original_owner in (2, 3, 4) else next(iter(native_races)) if len(native_races) == 1 else 1
+        requested_race = target['campaign_race'] or (target['owner'] if target['owner'] in (2, 3, 4) else 0)
         if target["owner"] and planet.get("owner") != target["owner"]:
             planet["owner"] = target["owner"]
             changes += 1
-        if target["owner"] in (2, 3, 4):
+        if requested_race:
             for campaign in result.get("campaigns", []):
-                if campaign["planetIndex"] == target["planet"] and campaign.get("race") != target["owner"]:
-                    campaign["race"] = target["owner"]
+                if campaign["planetIndex"] == target["planet"] and campaign.get("race") != requested_race:
+                    campaign["race"] = requested_race
                     changes += 1
         if target["campaign"]:
             current = next((c for c in result.get("campaigns", []) if c["planetIndex"] == target["planet"]), None)
@@ -156,9 +253,7 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
                     raise ValueError("无法分配实验性战役编号")
                 campaign_ids[target["planet"]] = candidate
                 used_ids.add(candidate)
-                current = {"id": candidate, "planetIndex": target["planet"], "type": target["campaign_type"], "count": 1, "race": target["owner"] or planet.get("owner", 2)}
-                if current["race"] == 1:
-                    current["race"] = 2
+                current = {"id": candidate, "planetIndex": target["planet"], "type": target["campaign_type"], "count": 1, "race": requested_race or inferred_race}
                 result.setdefault("campaigns", []).append(current)
                 changes += 1
             elif current.get("type") != target["campaign_type"]:
@@ -167,8 +262,8 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
             if type(current.get('count')) is not int or current['count'] <= 0:
                 current['count'] = 1
                 changes += 1
-            if target["owner"] in (2, 3, 4) and current.get("race") != target["owner"]:
-                current["race"] = target["owner"]
+            if requested_race and current.get("race") != requested_race:
+                current["race"] = requested_race
                 changes += 1
     return result if changes else document, changes
 
@@ -191,8 +286,10 @@ class WarStatusAddon:
         self.shutting_down = False
         self.ready = False
         self.revocation_service = None
+        self.api_router = None
         self.last_message = "插件已加载，捕获尚未就绪"
         self.failures = {"client_tls": 0, "server_tls": 0, "connect": 0, "http": 0}
+        self.connection = {"client_tls": 0, "server_tls": 0, "requests": 0, "responses": 0, "last_status": 0, "failure_kind": ""}
 
     def health(self, message):
         self.last_message = message
@@ -201,7 +298,7 @@ class WarStatusAddon:
         try:
             target = Path(self.health_path)
             temporary = target.with_suffix(".tmp")
-            temporary.write_text(json.dumps({"message": message, "ready": self.ready, "failures": self.failures, "rewrites": self.rewrites, "statuses": self.statuses, "catalog_count": self.catalog_count, "war_id": self.war_id, "applied_plan_digest": self.applied_plan_digest, "updated": time.time()}, ensure_ascii=False), encoding="utf-8")
+            temporary.write_text(json.dumps({"message": message, "ready": self.ready, "router_port": self.api_router.port if self.api_router else 0, "failures": self.failures, "connection": self.connection, "rewrites": self.rewrites, "statuses": self.statuses, "catalog_count": self.catalog_count, "war_id": self.war_id, "applied_plan_digest": self.applied_plan_digest, "updated": time.time()}, ensure_ascii=False), encoding="utf-8")
             os.replace(temporary, target)
         except OSError:
             pass  # Diagnostics must not break forwarding.
@@ -253,6 +350,8 @@ class WarStatusAddon:
 
     def request(self, flow):
         request = flow.request
+        if request.pretty_host.lower() == HOST:
+            self.connection["requests"] += 1
         if request.method=='GET' and request.pretty_host.lower()==HOST and STATUS.fullmatch(request.path.split('?',1)[0]):
             # Only war status cache validators; authentication is untouched.
             for name in ('if-none-match', 'if-modified-since'):
@@ -272,6 +371,8 @@ class WarStatusAddon:
         cert_path = self.plan_path.parent / "session-api-cert.pem"
         cert_path.write_bytes(self.revocation_service.certificate)
         ctx.options.update(certs=[HOST + "=" + str(cert_path)])
+        if os.environ.get("SHODAN_WAR_MITM_PORT"):
+            self.api_router = ApiOnlyRouter(int(os.environ["SHODAN_WAR_MITM_PORT"]))
         self.ready = True
         self.health("捕获服务已就绪，等待游戏连接")
         async def watch():
@@ -290,6 +391,9 @@ class WarStatusAddon:
         if self.revocation_service:
             self.revocation_service.close()
             self.revocation_service = None
+        if self.api_router:
+            self.api_router.close()
+            self.api_router = None
 
     @staticmethod
     def api_tls(data):
@@ -301,12 +405,35 @@ class WarStatusAddon:
     def tls_failed_client(self, data):
         if self.api_tls(data):
             self.failures["client_tls"] += 1
+            self.connection["failure_kind"] = self.tls_failure_kind(data)
             self.health("游戏 API 的客户端 TLS 握手失败；当前用户信任 CA 不代表游戏的 TLS 后端接受该 CA")
 
     def tls_failed_server(self, data):
         if self.api_tls(data):
             self.failures["server_tls"] += 1
+            self.connection["failure_kind"] = self.tls_failure_kind(data)
             self.health("游戏 API 的上游 TLS 握手失败；未关闭服务器证书验证，请检查上游代理或路由")
+
+    @staticmethod
+    def tls_failure_kind(data):
+        # Persist only an allowlisted category, never the raw connection error:
+        # third-party errors may include addresses, request URLs or credentials.
+        context = getattr(data, "context", None)
+        text = " ".join(str(getattr(getattr(context, side, None), "error", "") or "") for side in ("client", "server")).lower()
+        for needles, category in ((["revocation", "revoked"], "吊销检查失败"), (["unknown ca", "certificate verify", "certificate_unknown", "unknown_ca"], "证书信任失败"), (["timeout", "timed out"], "连接超时"), (["protocol version", "no shared cipher"], "TLS 协议不兼容"), (["reset", "closed", "eof"], "对端断开连接")):
+            if any(word in text for word in needles):
+                return category
+        return "TLS 握手失败（原因未分类）"
+
+    def tls_established_client(self, data):
+        if self.api_tls(data):
+            self.connection["client_tls"] += 1
+            self.health("游戏 API 的客户端 TLS 已连接，等待 API 响应")
+
+    def tls_established_server(self, data):
+        if self.api_tls(data):
+            self.connection["server_tls"] += 1
+            self.health("游戏 API 的上游 TLS 已连接，等待 API 响应")
 
     def server_connect_error(self, data):
         server = getattr(data, "server", None)
@@ -326,6 +453,11 @@ class WarStatusAddon:
 
     def response(self, flow):
         request, response = flow.request, flow.response
+        if request.pretty_host.lower() == HOST:
+            self.connection["responses"] += 1
+            self.connection["last_status"] = int(response.status_code)
+            if response.status_code >= 400:
+                self.health("游戏 API 返回 HTTP " + str(int(response.status_code)) + "；未修改此响应")
         if request.method != "GET" or request.pretty_host.lower() != HOST or response.status_code != 200:
             return
         path = request.path.split("?", 1)[0]

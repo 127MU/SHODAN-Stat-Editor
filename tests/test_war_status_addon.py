@@ -116,6 +116,31 @@ class TestWarStatusAddon(unittest.TestCase):
         changed, _ = addon.rewrite_status(original, plan, None, {182: 90})
         self.assertEqual(changed["campaigns"][-1]["id"], 91)
 
+    def test_cyberstan_native_bots_are_not_replaced_with_terminids(self):
+        original={'planetStatus':[{'index':260,'owner':1}], 'planetActiveEffects':[{'index':260,'galacticEffectId':1361}], 'campaigns':[]}
+        plan={'targets':[{'planet':260,'effects':[],'owner':1,'campaign':True}]}
+        changed,_=addon.rewrite_status(original,plan,None)
+        self.assertEqual(changed['campaigns'][0]['race'],3)
+        self.assertEqual(changed['planetStatus'][0]['owner'],1)
+        # Adding a cross-faction effect must not change native inference.
+        plan['targets'][0]['effects']=[1373]
+        changed,_=addon.rewrite_status(original,plan,{1373})
+        self.assertEqual(changed['campaigns'][0]['race'],3)
+        plan['targets'][0]['campaign_race']=4
+        changed,_=addon.rewrite_status(original,plan,{1373})
+        self.assertEqual(changed['campaigns'][0]['race'],4)
+        self.assertEqual(addon.rewrite_status(changed,plan,{1373})[1],0)
+        self.assertFalse(original['campaigns'])
+
+    def test_owner_change_keeps_original_enemy_for_new_campaign(self):
+        original={'planetStatus':[{'index':93,'owner':4}], 'planetActiveEffects':[], 'campaigns':[]}
+        plan={'targets':[{'planet':93,'effects':[],'owner':1,'campaign':True}]}
+        changed,_=addon.rewrite_status(original,plan,None)
+        self.assertEqual(changed['campaigns'][0]['race'],4)
+        original['planetStatus'][0]['owner']=1
+        changed,_=addon.rewrite_status(original,plan,None)
+        self.assertEqual(changed['campaigns'][0]['race'],1)
+
     def test_owner_without_opening_campaign(self):
         plan={"targets":[{"planet":182,"effects":[],"owner":3}]}
         original=dict(BASE,campaigns=[{"id":90,"planetIndex":182,"type":2,"count":4,"race":4}])
@@ -235,6 +260,53 @@ class TestWarStatusAddon(unittest.TestCase):
         instance.tls_failed_client(other)
         self.assertEqual(instance.failures["client_tls"],1)
         self.assertFalse(instance.ready)
+
+    def test_connection_diagnostics_only_keep_categories(self):
+        instance=addon.WarStatusAddon()
+        data=SimpleNamespace(context=SimpleNamespace(client=SimpleNamespace(sni=addon.HOST,error="unknown ca https://secret:password@example.com/private"),server=SimpleNamespace(sni=addon.HOST)))
+        instance.tls_failed_client(data)
+        self.assertEqual(instance.connection['failure_kind'],'证书信任失败')
+        self.assertNotIn('password',json.dumps(instance.connection))
+        instance.tls_established_client(data);instance.tls_established_server(data)
+        self.assertEqual(instance.connection['client_tls'],1)
+        self.assertEqual(instance.connection['server_tls'],1)
+
+    def test_api_router_bypasses_every_other_destination(self):
+        import socket
+        import socketserver
+        import threading
+        seen=[]
+        class Echo(socketserver.BaseRequestHandler):
+            def handle(self):
+                self.request.settimeout(3)
+                data=self.request.recv(16384);seen.append(data)
+                self.request.sendall(data)
+        class Server(socketserver.ThreadingTCPServer):
+            daemon_threads=True
+        with Server(('127.0.0.1',0),Echo) as direct, Server(('127.0.0.1',0),Echo) as core:
+            threads=[threading.Thread(target=s.serve_forever,daemon=True) for s in (direct,core)]
+            for t in threads:t.start()
+            router=addon.ApiOnlyRouter(core.server_address[1])
+            try:
+                with socket.create_connection(('127.0.0.1',router.port),timeout=3) as client:
+                    client.sendall(('CONNECT 127.0.0.1:%s HTTP/1.1\r\n\r\n'%direct.server_address[1]).encode())
+                    self.assertIn(b'200',client.recv(4096))
+                    client.sendall(b'end-to-end-data');self.assertEqual(client.recv(4096),b'end-to-end-data')
+                self.assertEqual(seen,[b'end-to-end-data'])
+                with socket.create_connection(('127.0.0.1',router.port),timeout=3) as client:
+                    client.sendall(('CONNECT '+addon.HOST+':443 HTTP/1.1\r\nProxy-Authorization: secret\r\n\r\n').encode())
+                    data=client.recv(4096)
+                    self.assertIn(addon.HOST.encode(),data);self.assertNotIn(b'secret',data)
+                self.assertEqual(len(seen),2)
+                with socket.create_connection(('127.0.0.1',router.port),timeout=3) as client:
+                    client.sendall(('GET http://127.0.0.1:%s/update?q=1 HTTP/1.1\r\nHost: localhost\r\nProxy-Authorization: secret\r\n\r\n'%direct.server_address[1]).encode())
+                    data=client.recv(4096)
+                    self.assertTrue(data.startswith(b'GET /update?q=1 HTTP/1.1\r\n'))
+                    self.assertNotIn(b'secret',data)
+                self.assertEqual(len(seen),3)
+            finally:
+                router.close()
+                for s in (direct,core):s.shutdown()
 
     def test_loaded_is_not_capture_ready(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -39,7 +39,7 @@ public:
  QVariantList planets()const{return planets_.toVariantList();}
  bool pluginReady()const{return pluginReady_;}
  bool catalogFresh()const{return catalogFresh_;}
- bool certificateTrusted()const;
+ bool certificateTrusted()const{return certificateTrusted_;}
  QString captureMode()const{return "proxy";}
  QString proxyAddress()const{return proxyAddress_;}
  QString launchStatus()const{return launchStatus_;}
@@ -76,6 +76,8 @@ private:
  QString certificateThumbprint_;
  QString certificateStatus_="仅在点击安装后信任本机 CA；不会静默修改系统级证书库。";
  bool removingCertificate_=false;
+ bool certificateTrusted_=false;
+ bool verifyCertificateTrust()const;
  QString status_="变种代理未开启";
  bool active_=false,stopping_=false;
  bool mitmSession_=false;
