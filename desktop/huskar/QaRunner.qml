@@ -15,6 +15,7 @@ Timer {
     property int wheelPhase:0
     property bool flagOnly:Backend.setting("qaFlagReset",false)
     property bool appearanceOnly:Backend.setting("qaAppearanceOnly",false)
+    property bool warProxyOnly:Backend.setting("qaWarProxyOnly",false)
     property bool flagStarted:false
     property var flagRow
     interval:850;repeat:true
@@ -60,6 +61,18 @@ Timer {
     onTriggered:{
         if(!Backend.ready || waiting || Object.keys(store.callbacks).length)return
         try{
+            if(warProxyOnly){
+                if(step===0)store.openModule("warproxy")
+                else if(step===1){ensure(Backend.qaEdit("warPlanet","93",true),"星球输入不可用");ensure(Backend.qaEdit("warEffects","1386",true),"效果输入不可用");Backend.capture("war-proxy-light")}
+                else if(step===2){ensure(!WarProxyBackend.active,"代理不应自动开启");preferences.dark=true}
+                else if(step===3){Backend.capture("war-proxy-dark");ensure(Number(Backend.setting("warPlanet",0))===93,"星球索引未保存");ensure(String(Backend.setting("warEffects",""))==="1386","效果未保存");ensure(window.qaWarProxy("catalog"),"星球或效果目录缺失")}
+                else if(step===4){ensure(Backend.qaCheck("warEffect_1373",true),"无法按名称勾选效果")}
+                else if(step===5){ensure(window.qaWarProxy("selected"),"效果未勾选");ensure(window.qaWarProxy("save"),"星球方案未保存");Backend.capture("war-proxy-catalog");ensure(WarProxyBackend.saveTarget(JSON.stringify({planet:182,effects:[1373],enabled:false,owner:0,campaign:true,campaign_type:2})),"第二颗星球未保存");ensure(WarProxyBackend.targets.length===2,"多星球方案丢失");ensure(window.qaWarProxy("planetSearchOpen"),"星球搜索窗口未打开")}
+                else if(step===6){ensure(Backend.qaEdit("warPlanetSearch","lesath",false),"星球搜索栏无法输入")}
+                else if(step===7){ensure(window.qaWarProxy("planetSearchCheck"),"星球中英文或编号搜索失败");window.qaWarProxy("connection")}
+                else if(step===8){Backend.capture("war-proxy-certificates");ensure(!WarProxyBackend.active,"不应启动真实代理");Backend.finishQa("")}
+                step++;return
+            }
             if(appearanceOnly){runAppearance();return}
             if(flagOnly && !flagStarted){flagStarted=true;step=61}
             if(QaRestoreMode){

@@ -157,7 +157,7 @@ HusWindow {
         // Menu delegates can complete during the next layout pass after resize.
         Qt.callLater(function(){if(ticket===window.navigationTicket)window.syncingNavigation=false})
     }
-    property string locationTitle:workspace.module==="home"?"首页":workspace.module==="settings"?"设置":workspace.module==="tweaks"?"游戏参数":workspace.module==="presets"?"全局预设":workspace.module==="mods"?"Mod 管理":workspace.destinations.find(x=>x.key===workspace.module)?.name || "工作台"
+    property string locationTitle:workspace.module==="warproxy"?"变种":workspace.module==="home"?"首页":workspace.module==="settings"?"设置":workspace.module==="tweaks"?"游戏参数":workspace.module==="presets"?"全局预设":workspace.module==="mods"?"Mod 管理":workspace.destinations.find(x=>x.key===workspace.module)?.name || "工作台"
     function closeQaDialogs(){if(QaMode)armorDialog.close()}
     function qaOpenPresets(){if(QaMode)equipmentPresets.open()}
     function qaUpdatePreview(){
@@ -356,6 +356,7 @@ HusWindow {
                             {key:"vehicle",label:"载具与机甲",iconSource:HusIcon.CarOutlined},{key:"armor",label:"护甲组合",iconSource:HusIcon.SafetyOutlined},
                             {key:"player",label:"潜兵数值",iconSource:HusIcon.UserOutlined},{key:"enemy",label:"敌人",iconSource:HusIcon.BugOutlined},{key:"attachment",label:"配件",iconSource:HusIcon.ToolOutlined}]},
                         {key:"tweaks",label:"游戏参数",iconSource:HusIcon.SettingOutlined},
+                        {key:"warproxy",label:"变种",iconSource:HusIcon.GlobalOutlined},
                         {key:"database",label:"数据与方案",iconSource:HusIcon.DatabaseOutlined,menuChildren:[{key:"records",label:"数据库",iconSource:HusIcon.DatabaseOutlined},{key:"presets",label:"全局预设",iconSource:HusIcon.FolderOpenOutlined}]}
                     ].concat(workspace.modsUnlocked?[{key:"mods",label:"Mod 管理",iconSource:HusIcon.AppstoreOutlined}]:[])
                     onClickMenu:(deep,key)=>{if(!window.syncingNavigation && key!=="editing" && key!=="database" && workspace.module!==key){focusOut();workspace.openModule(key)}}
@@ -406,7 +407,7 @@ HusWindow {
                     id:pageLoader;Layout.fillWidth:true;Layout.fillHeight:true;active:Backend.ready;clip:true
                     property real entranceScale:1
                     transform:[Translate { id:pageShift },Scale { origin.x:pageLoader.width/2;origin.y:pageLoader.height/2;xScale:pageLoader.entranceScale;yScale:pageLoader.entranceScale }]
-                    sourceComponent:workspace.module==="home"?homePage:workspace.module==="settings"?settingsPage:workspace.module==="tweaks"?tweaksPage:workspace.module==="presets"?globalPresetsPage:workspace.module==="mods"?modsPage:workspace.screen==="editor"?editorPage:workspace.module==="armor"?armorPage:catalogPage
+                    sourceComponent:workspace.module==="warproxy"?warProxyPage:workspace.module==="home"?homePage:workspace.module==="settings"?settingsPage:workspace.module==="tweaks"?tweaksPage:workspace.module==="presets"?globalPresetsPage:workspace.module==="mods"?modsPage:workspace.screen==="editor"?editorPage:workspace.module==="armor"?armorPage:catalogPage
                     onLoaded:window.enterPage()
                     ParallelAnimation {
                         id:pageEntrance
@@ -437,6 +438,8 @@ HusWindow {
     Component { id:editorPage;EditorPage { store:workspace;onChoose:row=>window.choices(row);onShared:row=>window.shared(row);onPresetsRequested:equipmentPresets.open() } }
     Component { id:armorPage;ArmorPage { store:workspace;onEditValues:p=>window.armorValues(p) } }
     Component { id:tweaksPage;GameTweaksPage { store:workspace } }
+    Component { id:warProxyPage;WarProxyPage { store:workspace } }
+    function qaWarProxy(action){return QaMode && workspace.module==="warproxy" && pageLoader.item?pageLoader.item.qa(action):false}
     Component { id:settingsPage;SettingsPage { store:workspace;preferences:appearance;effectUnavailable:window.effectUnavailable;onMessage:(title,text)=>window.message(title,text) } }
     HusModal {
         id:searchDialog;title:"搜索全部数据";width:620;modal:true;cancelText:"关闭";onCancel:close()
