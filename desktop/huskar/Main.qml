@@ -405,6 +405,7 @@ HusWindow {
                 HusBreadcrumb { Layout.fillWidth:true;initModel:[{title:"工作台",key:"home"},{title:locationTitle,key:workspace.module}].concat(workspace.screen==="editor"?[{title:workspace.current.name || "编辑",key:"editor"}]:[]) }
                 Loader {
                     id:pageLoader;Layout.fillWidth:true;Layout.fillHeight:true;active:Backend.ready;clip:true
+                    asynchronous:workspace.module==="warproxy"
                     property real entranceScale:1
                     transform:[Translate { id:pageShift },Scale { origin.x:pageLoader.width/2;origin.y:pageLoader.height/2;xScale:pageLoader.entranceScale;yScale:pageLoader.entranceScale }]
                     sourceComponent:workspace.module==="warproxy"?warProxyPage:workspace.module==="home"?homePage:workspace.module==="settings"?settingsPage:workspace.module==="tweaks"?tweaksPage:workspace.module==="presets"?globalPresetsPage:workspace.module==="mods"?modsPage:workspace.screen==="editor"?editorPage:workspace.module==="armor"?armorPage:catalogPage

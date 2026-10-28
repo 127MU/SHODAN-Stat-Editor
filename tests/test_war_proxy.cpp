@@ -33,6 +33,8 @@ int main(int argc,char** argv){
   bool rejected=false;try{WarProxy::plan(-1,"illuminate","1373");}catch(...){rejected=true;}check(rejected,"invalid planet");
   auto list=WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",182},{"effects",QJsonArray{1373,1373}},{"enabled",false},{"owner",4},{"campaign",true},{"campaign_type",3}}});
   check(list[0].toObject()["effects"].toArray().size()==1,"target dedup");
+  auto separateRace=WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",260},{"effects",QJsonArray{}},{"owner",1},{"campaign",true},{"campaign_race",3}}});
+  check(separateRace[0].toObject()["owner"]==1 && separateRace[0].toObject()["campaign_race"]==3,"ownership must be independent from operation enemy");
   rejected=false;try{WarProxy::validateTargets(QJsonArray{list[0],list[0]});}catch(...){rejected=true;}check(rejected,"duplicate target");
   QTemporaryDir profile;check(profile.isValid(),"temporary profile");
   {QSettings old(profile.filePath("war-proxy.ini"),QSettings::IniFormat);old.setValue("captureMode","local");old.sync();}
@@ -53,9 +55,10 @@ int main(int argc,char** argv){
   {
    WarProxy health(profile.path());WarProxyTestAccess::beginHealth(health);
    WarProxyTestAccess::poll(health);check(!health.pluginReady() && health.status().contains("等待代理状态"),"missing initial health should wait, not report file read error");
-   auto status=[&](double updated){save(profile.filePath("war-proxy/health.json"),QJsonDocument(QJsonObject{{"ready",true},{"updated",updated},{"message","healthy"}}).toJson());};
+   auto status=[&](double updated){save(profile.filePath("war-proxy/health.json"),QJsonDocument(QJsonObject{{"ready",true},{"router_port",32123},{"updated",updated},{"message","healthy"}}).toJson());};
    status(QDateTime::currentMSecsSinceEpoch()/1000.0-60);WarProxyTestAccess::poll(health);check(!health.pluginReady(),"old session health accepted");
    status(QDateTime::currentMSecsSinceEpoch()/1000.0);WarProxyTestAccess::poll(health);check(health.pluginReady(),"fresh health did not recover");
+   check(health.proxyAddress()=="http://127.0.0.1:32123","bridge must use API-only dispatcher instead of mitmproxy upstream listener");
    QFile::remove(profile.filePath("war-proxy/health.json"));WarProxyTestAccess::poll(health);check(health.pluginReady() && health.status().contains("自动重试"),"transient missing health should retry");
    save(profile.filePath("war-proxy/steam-proxy.ini"),"stale bridge");WarProxyTestAccess::expireHealth(health);WarProxyTestAccess::poll(health);
    check(!health.pluginReady() && !QFileInfo::exists(profile.filePath("war-proxy/steam-proxy.ini")),"prolonged health failure left stale bridge enabled");
