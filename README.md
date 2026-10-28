@@ -180,12 +180,20 @@
 
 **感谢持续分享研究过程、验证方法与工具，让后续开发能够建立在可核对的资料上。** 具体偏移和实验结论仍需按游戏 build 复验。
 
+### [deepseekv41flash / hd2-network-proxy](https://github.com/deepseekv41flash/hd2-network-proxy)
+
+感谢该项目公开分享战况响应、星球效果与战役机制的研究，以及代理实验记录、验证方法和工具，为本项目的变种功能开发与连接问题排查提供了参考依据。
+
+### [deepseekv41flash / hd2-srkit](https://github.com/deepseekv41flash/hd2-srkit)
+
+感谢该项目提供的 Stingray／《绝地潜兵 2》资源研究工具，为本项目的资源解析、补丁处理与问题核对提供了支持。
+
 同时感谢：
 
 - [SHODAN-HORAI / SHODAN-Stat-Editor](https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor)：编辑器核心与上游功能。
 - [CarbonAnime / SHODAN-Stat-Editor](https://github.com/CarbonAnime/SHODAN-Stat-Editor)：扩展功能与项目贡献。
 - [HuskarUI](https://github.com/mengps/HuskarUI)：桌面组件、图标和主题系统。
-- [hd2-srkit](https://github.com/deepseekv41flash/hd2-srkit) 与 [filediver](https://github.com/xypwn/filediver)：资源格式与解析相关的公开工具和资料。
+- [filediver](https://github.com/xypwn/filediver)：资源格式与解析相关的公开工具和资料。
 - 提交代码、提供中文对照、测试报告和问题反馈的贡献者与用户。
 
 ## 构建与许可
