@@ -18,6 +18,7 @@ struct WarProxyTestAccess {
  static void expireHealth(WarProxy& p){p.lastHealthReadMs_=QDateTime::currentMSecsSinceEpoch()-16000;}
  static void endHealth(WarProxy& p){p.mitmSession_=false;}
  static void updateBridge(WarProxy& p){p.updateSteamBridge();}
+ static QStringList arguments(WarProxy& p){return p.process_.arguments();}
 };
 static void check(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
 static void save(QString path,QByteArray b){QFile f(path);check(f.open(QIODevice::WriteOnly),"fixture write");check(f.write(b)==b.size(),"fixture bytes");}
@@ -45,6 +46,7 @@ int main(int argc,char** argv){
    QObject::connect(&proxy,&WarProxy::changed,&loop,[&]{if(proxy.status().contains("核心自检通过") || proxy.status().contains("已退出") || proxy.status().contains("无法启动"))loop.quit();});
    QTimer::singleShot(65000,&loop,&QEventLoop::quit);proxy.prepareCertificate(false);loop.exec();
    check(proxy.status().contains("核心自检通过"),proxy.status().toUtf8().constData());
+   check(WarProxyTestAccess::arguments(proxy).contains("connection_strategy=lazy") && WarProxyTestAccess::arguments(proxy).contains("upstream_cert=false"),"client TLS must not wait for upstream certificate sniffing");
    check(!proxy.certificateTrusted(),"native smoke must not install trust");
    check(QFileInfo::exists(profile.filePath("war-proxy/ca/mitmproxy-ca-cert.cer")),"CA not generated");
   }
@@ -53,6 +55,7 @@ int main(int argc,char** argv){
   QDir().mkpath(profile.filePath("war-proxy"));
   {WarProxy upgrade(profile.path());const auto target=profile.filePath("war-proxy/steam-bridge.exe");save(target,"old bridge");WarProxyTestAccess::updateBridge(upgrade);check(read(target)==read(QCoreApplication::applicationDirPath()+"/shodan-steam-bridge.exe"),"persistent bridge was not upgraded");}
   {
+   QFile::remove(profile.filePath("war-proxy/health.json")); // Native CA smoke may leave a completed preparation session.
    WarProxy health(profile.path());WarProxyTestAccess::beginHealth(health);
    WarProxyTestAccess::poll(health);check(!health.pluginReady() && health.status().contains("等待代理状态"),"missing initial health should wait, not report file read error");
    auto status=[&](double updated){save(profile.filePath("war-proxy/health.json"),QJsonDocument(QJsonObject{{"ready",true},{"router_port",32123},{"updated",updated},{"message","healthy"}}).toJson());};

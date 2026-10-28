@@ -4,6 +4,8 @@
 的 `mitmdump` 核心，代理与变种共用开关，不再需要 `variant_mod`。
 默认关闭，不随编辑器启动，也不参与数值修改的“写入游戏”。
 
+握手采用 `connection_strategy=lazy`、`upstream_cert=false`：先用本机 API 证书完成客户端 TLS，收到实际请求后再连接上游，避免上游证书探测阻塞游戏握手。此选项不关闭上游服务器证书验证。参见 [mitmproxy 选项说明](https://docs.mitmproxy.org/stable/concepts/options/)。
+
 ## 使用
 
 1. 在“编辑方案”选择星球，点击“选择 / 搜索效果”打开勾选弹窗，再保存方案。高级阵营与战役设置默认收起；“已保存方案”用于切换、导入导出；证书与启动配置集中在“连接设置”。

@@ -218,7 +218,7 @@ bool WarProxy::launchPlan(QJsonObject p,bool prepareOnly){
   }
   if(!prepareOnly){env.insert("SHODAN_WAR_MITM_PORT",QString::number(QUrl(proxyAddress_).port()));process_.setProcessEnvironment(env);}
   process_.setWorkingDirectory(root);mitmSession_=true;stopping_=false;
-  QStringList arguments{"--mode",mode,"--allow-hosts","^api\\.live\\.prod\\.thehelldiversgame\\.com(:443)?$","--set","confdir="+root+"/ca","--set","flow_detail=0","--quiet","-s",root+"/addon.py"};
+  QStringList arguments{"--mode",mode,"--allow-hosts","^api\\.live\\.prod\\.thehelldiversgame\\.com(:443)?$","--set","confdir="+root+"/ca","--set","flow_detail=0","--set","connection_strategy=lazy","--set","upstream_cert=false","--quiet","-s",root+"/addon.py"};
   if(QFileInfo(executable()).fileName().compare("python.exe",Qt::CaseInsensitive)==0){arguments.prepend(QFileInfo(executable()).dir().absoluteFilePath("proxy_main.py"));arguments.prepend("-I");}
   process_.start(executable(),arguments);
   QTimer::singleShot(45000,this,[this,ticket]{if(ticket==generation_ && mitmSession_ && !pluginReady_){terminalError_="代理插件未在 45 秒内就绪，已停止。请检查核心解包、临时目录和捕获权限。";stop();}});
