@@ -60,11 +60,13 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
   if(!listening(port)){MessageBoxW(nullptr,L"代理进程存在，但本机端口尚未就绪，游戏未启动。请在编辑器中停止变种代理后重新开启，等待就绪后再从 Steam 启动。",L"SHODAN Steam 启动桥接",MB_OK|MB_ICONWARNING);return 4;}
   std::wstring address=L"http://127.0.0.1:"+std::to_wstring(port);
   for(auto name:{L"HTTP_PROXY",L"HTTPS_PROXY",L"http_proxy",L"https_proxy"})SetEnvironmentVariableW(name,address.c_str());
+  // Authentication/anti-cheat must stay in the original game process network path,
+  // rather than being re-originated by the Python CONNECT dispatcher.
   // Login does not use WarSeason data. Keep it outside the local interception
   // route, and preserve caller exclusions instead of replacing them.
   std::wstring bypass=environment(L"NO_PROXY");
   if(!bypass.empty())bypass+=L",";
-  bypass+=L"localhost,127.0.0.1,::1,playfabapi.com,.playfabapi.com,playfab.com,.playfab.com";
+  bypass+=L"localhost,127.0.0.1,::1,playfabapi.com,.playfabapi.com,playfab.com,.playfab.com,easyanticheat.net,.easyanticheat.net,easyanticheat.com,.easyanticheat.com,epicgames.com,.epicgames.com,epicgames.dev,.epicgames.dev";
   SetEnvironmentVariableW(L"NO_PROXY",bypass.c_str());
   SetEnvironmentVariableW(L"no_proxy",bypass.c_str());
  }

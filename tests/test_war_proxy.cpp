@@ -18,6 +18,7 @@ struct WarProxyTestAccess {
  static void expireHealth(WarProxy& p){p.lastHealthReadMs_=QDateTime::currentMSecsSinceEpoch()-16000;}
  static void endHealth(WarProxy& p){p.mitmSession_=false;}
  static void updateBridge(WarProxy& p){p.updateSteamBridge();}
+ static QStringList arguments(WarProxy& p){return p.process_.arguments();}
 };
 static void check(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
 static void save(QString path,QByteArray b){QFile f(path);check(f.open(QIODevice::WriteOnly),"fixture write");check(f.write(b)==b.size(),"fixture bytes");}
@@ -35,8 +36,17 @@ int main(int argc,char** argv){
   check(list[0].toObject()["effects"].toArray().size()==1,"target dedup");
   auto separateRace=WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",260},{"effects",QJsonArray{}},{"owner",1},{"campaign",true},{"campaign_race",3}}});
   check(separateRace[0].toObject()["owner"]==1 && separateRace[0].toObject()["campaign_race"]==3,"ownership must be independent from operation enemy");
+  check(!separateRace[0].toObject()["open_regions"].toBool(),"native region experiment must default off");
+  auto regionPlan=WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",0},{"effects",QJsonArray{}},{"open_regions",true}}});
+  check(regionPlan[0].toObject()["open_regions"].toBool(),"native region flag lost during normalization");
+  auto initializedPlan=WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",0},{"effects",QJsonArray{}},{"campaign",true},{"campaign_race",4},{"initialize_regions",true}}});
+  check(initializedPlan[0].toObject()["initialize_regions"].toBool(),"region initialization flag lost");
+  rejected=false;try{WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",0},{"effects",QJsonArray{}},{"initialize_regions",true}}});}catch(...){rejected=true;}check(rejected,"region initialization requires campaign and explicit enemy");
+  rejected=false;try{WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",0},{"effects",QJsonArray{}},{"open_regions","true"}}});}catch(...){rejected=true;}check(rejected,"invalid region flag accepted");
   rejected=false;try{WarProxy::validateTargets(QJsonArray{list[0],list[0]});}catch(...){rejected=true;}check(rejected,"duplicate target");
   QTemporaryDir profile;check(profile.isValid(),"temporary profile");
+  {WarProxy route(profile.path());check(!route.useSystemProxy(),"must not implicitly chain system HTTP proxy");route.setUseSystemProxy(true);}
+  {WarProxy route(profile.path());check(route.useSystemProxy(),"explicit route selection must persist");route.setUseSystemProxy(false);}
   {QSettings old(profile.filePath("war-proxy.ini"),QSettings::IniFormat);old.setValue("captureMode","local");old.sync();}
   {WarProxy driverless(profile.path());check(driverless.captureMode()=="proxy","old capture setting must migrate to HTTP");driverless.setCaptureMode("local");check(driverless.captureMode()=="proxy" && driverless.status().contains("不包含网络捕获驱动"),"local capture should not remain available");}
   if(argc==3 && QString::fromLocal8Bit(argv[1])=="--native-core"){
@@ -45,14 +55,18 @@ int main(int argc,char** argv){
    QObject::connect(&proxy,&WarProxy::changed,&loop,[&]{if(proxy.status().contains("核心自检通过") || proxy.status().contains("已退出") || proxy.status().contains("无法启动"))loop.quit();});
    QTimer::singleShot(65000,&loop,&QEventLoop::quit);proxy.prepareCertificate(false);loop.exec();
    check(proxy.status().contains("核心自检通过"),proxy.status().toUtf8().constData());
+   check(WarProxyTestAccess::arguments(proxy).contains("connection_strategy=lazy") && WarProxyTestAccess::arguments(proxy).contains("upstream_cert=false"),"client TLS must not wait for upstream certificate sniffing");
    check(!proxy.certificateTrusted(),"native smoke must not install trust");
    check(QFileInfo::exists(profile.filePath("war-proxy/ca/mitmproxy-ca-cert.cer")),"CA not generated");
   }
   {WarProxy proxy(profile.path());check(proxy.saveTarget("{\"planet\":93,\"effects\":[1386]}"),"save plan");check(proxy.saveTarget("{\"planet\":182,\"effects\":[1373],\"enabled\":false}"),"save second plan");}
   {WarProxy restored(profile.path());check(restored.targets().size()==2,"restart persistence");check(!restored.active(),"must not autostart");restored.removeTarget(182);check(restored.targets().size()==1,"remove target");restored.restoreBackup();check(restored.targets().size()==2,"restore backup");}
+  {WarProxy region(profile.path());check(region.saveTarget("{\"planet\":0,\"effects\":[],\"open_regions\":true}"),"save native region plan");}
+  {WarProxy region(profile.path());bool found=false;for(const auto& row:region.targets()){const auto target=row.toMap();if(target["planet"].toInt()==0)found=target["open_regions"].toBool();}check(found,"native region flag must survive restart");region.removeTarget(0);}
   QDir().mkpath(profile.filePath("war-proxy"));
   {WarProxy upgrade(profile.path());const auto target=profile.filePath("war-proxy/steam-bridge.exe");save(target,"old bridge");WarProxyTestAccess::updateBridge(upgrade);check(read(target)==read(QCoreApplication::applicationDirPath()+"/shodan-steam-bridge.exe"),"persistent bridge was not upgraded");}
   {
+   QFile::remove(profile.filePath("war-proxy/health.json")); // Native CA smoke may leave a completed preparation session.
    WarProxy health(profile.path());WarProxyTestAccess::beginHealth(health);
    WarProxyTestAccess::poll(health);check(!health.pluginReady() && health.status().contains("等待代理状态"),"missing initial health should wait, not report file read error");
    auto status=[&](double updated){save(profile.filePath("war-proxy/health.json"),QJsonDocument(QJsonObject{{"ready",true},{"router_port",32123},{"updated",updated},{"message","healthy"}}).toJson());};
@@ -72,6 +86,13 @@ int main(int argc,char** argv){
   auto metadata=QJsonDocument::fromJson(read(":/shodan/war_catalog.json")).object();auto reference=metadata["effect_reference"].toObject()["1211"].toObject();
   save(profile.filePath("war-proxy/catalog.json"),QJsonDocument(QJsonObject{{"effects",QJsonArray{QJsonObject{{"id",1211},{"effectType",71},{"nameHash",reference["nameHash"]}}}},{"updated",0}}).toJson());
   {WarProxy display(profile.path());auto row=display.effects()[0].toMap();check(row["name"].toString()==reference["name"].toString(),"reference Chinese title priority");}
+  {WarProxy display(profile.path());int effectUpdates=0,planetUpdates=0;
+   QObject::connect(&display,&WarProxy::effectsChanged,[&]{++effectUpdates;});
+   QObject::connect(&display,&WarProxy::planetsChanged,[&]{++planetUpdates;});
+   display.refreshCatalog();check(effectUpdates==0 && planetUpdates==0,"unchanged catalog must not reset UI models");
+   save(profile.filePath("war-proxy/planets.json"),R"({"planets":[{"index":93,"owner":4,"players":123}]})");display.refreshCatalog();
+   check(effectUpdates==0 && planetUpdates==1,"planet updates must not rebuild effect search results");
+  }
   std::cout<<"PASS: plan validation and effect deduplication\n";return 0;
  }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 }

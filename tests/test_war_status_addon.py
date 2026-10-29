@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import unittest
 import os
 import tempfile
+import asyncio
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("war_status_addon", Path(__file__).resolve().parents[1]/"offline/war_status_addon.py")
@@ -21,10 +22,113 @@ def flow(path, document, host=addon.HOST, method="GET"):
 
 
 class TestWarStatusAddon(unittest.TestCase):
+    def test_initialize_regions_uses_native_ids_and_preserves_existing_state(self):
+        document=dict(BASE,warId=801,layoutVersion=7,planetRegions=[dict(planetIndex=182,regionIndex=3,owner=2,health=19,isAvailable=False,availabilityFactor=0)])
+        plan={'targets':[{'planet':182,'effects':[],'campaign':True,'campaign_race':3,'initialize_regions':True}]}
+        reference={'warId':801,'layoutVersion':7,'planetRegions':[dict(planetIndex=182,regionIndex=3,maxHealth=100),dict(planetIndex=182,regionIndex=9,maxHealth=600000)]}
+        before=json.dumps(document);result,count=addon.rewrite_status(document,plan,set(),region_reference=reference)
+        self.assertEqual(result['planetRegions'][0],document['planetRegions'][0])
+        self.assertEqual(result['planetRegions'][1],dict(planetIndex=182,regionIndex=9,owner=3,health=300000,players=0,regerPerSecond=0,isAvailable=True,availabilityFactor=1))
+        self.assertEqual(json.dumps(document),before)
+        self.assertEqual(addon.rewrite_status(result,plan,set(),region_reference=reference)[1],0)
+        for wrong in (None,dict(reference,warId=800),dict(reference,layoutVersion=6),dict(reference,planetRegions=[]),dict(reference,planetRegions=reference['planetRegions']*2)):
+            with self.assertRaises(addon.RegionAvailabilityError):addon.rewrite_status(document,plan,set(),region_reference=wrong)
+            self.assertEqual(json.dumps(document),before)
+
+    def test_initialize_requires_explicit_enemy_and_campaign(self):
+        for values in ({'initialize_regions':1},{'initialize_regions':True},{'initialize_regions':True,'campaign':True,'campaign_race':1}):
+            with self.assertRaises(ValueError):addon.normalize_targets({'targets':[dict(planet=182,effects=[],**values)]})
+
+    def test_async_region_reference_fetch_is_cached_and_failure_keeps_campaign(self):
+        instance=addon.WarStatusAddon();instance.plan={'targets':[{'planet':182,'effects':[],'campaign':True,'campaign_race':3,'initialize_regions':True}]}
+        instance.reload_plan=lambda:None
+        snapshots={};instance.snapshot=lambda name,data:snapshots.update({name:data})
+        document=dict(BASE,warId=801,layoutVersion=7,planetRegions=[])
+        reference={'warId':801,'layoutVersion':7,'planetRegions':[dict(planetIndex=182,regionIndex=4,maxHealth=600000)]}
+        with patch.object(instance,'fetch_region_reference',return_value=reference) as fetch:
+            f=flow('/api/WarSeason/801/Status',document);asyncio.run(instance.response(f))
+            self.assertEqual(json.loads(f.response.content)['planetRegions'][0]['regionIndex'],4)
+            asyncio.run(instance.response(flow('/api/WarSeason/801/Status',document)))
+            self.assertEqual(fetch.call_count,1)
+        instance.region_reference=None
+        with patch.object(instance,'fetch_region_reference',side_effect=OSError('network')):
+            f=flow('/api/WarSeason/801/Status',document);asyncio.run(instance.response(f))
+            self.assertFalse(json.loads(f.response.content)['planetRegions'])
+            self.assertTrue(json.loads(f.response.content)['campaigns'])
+            self.assertEqual(snapshots['campaign-diagnostics.json']['region_reference_error'],'OSError')
+
+    def test_region_failure_keeps_campaign_and_records_reason(self):
+        for regions in (None,[],[dict(planetIndex=182,regionIndex=0,isAvailable=1,availabilityFactor=0)]):
+            instance=addon.WarStatusAddon();instance.plan={'targets':[{'planet':182,'effects':[],'open_regions':True,'campaign':True,'campaign_race':3}]}
+            snapshots={};instance.snapshot=lambda name,data:snapshots.update({name:data})
+            document=dict(BASE,campaigns=[],planetRegions=regions)
+            f=flow('/api/WarSeason/801/Status',document);instance.process_response(f)
+            result=json.loads(f.response.content)
+            self.assertEqual(result['campaigns'][0]['planetIndex'],182)
+            self.assertEqual(result['planetRegions'],regions)
+            self.assertEqual(instance.rewrites,1)
+            self.assertTrue(snapshots['campaign-diagnostics.json']['region_error'])
+            self.assertEqual(snapshots['campaign-diagnostics.json']['targets'][0]['campaigns'][0]['race'],3)
+
+    def test_open_native_regions_preserves_other_fields_and_is_idempotent(self):
+        document=dict(BASE,planetRegions=[
+            dict(planetIndex=182,regionIndex=0,isAvailable=False,availabilityFactor=0,owner=1,health=42,settingsHash=123),
+            dict(planetIndex=182,regionIndex=1,isAvailable=True,availabilityFactor=0.5,owner=3,health=99),
+            dict(planetIndex=260,regionIndex=0,isAvailable=False,availabilityFactor=0)])
+        before=json.dumps(document)
+        plan={'targets':[{'planet':182,'effects':[],'open_regions':True}]}
+        result,count=addon.rewrite_status(document,plan,set())
+        self.assertEqual(count,2)
+        self.assertEqual(json.dumps(document),before)
+        self.assertEqual(result['planetRegions'][0],dict(document['planetRegions'][0],isAvailable=True,availabilityFactor=1))
+        self.assertEqual(result['planetRegions'][1:],document['planetRegions'][1:])
+        self.assertEqual(addon.rewrite_status(result,plan,set())[1],0)
+
+    def test_open_native_regions_validates_atomically(self):
+        plan={'targets':[{'planet':182,'effects':[],'open_regions':True}]}
+        valid=dict(planetIndex=182,regionIndex=0,isAvailable=False,availabilityFactor=0)
+        for regions in (None,[],[dict(valid,isAvailable=1)],[dict(valid,availabilityFactor=float('inf'))],[dict(valid,regionIndex='0')],[valid,dict(valid,availabilityFactor='0')]):
+            document=dict(BASE,planetRegions=regions);before=json.dumps(document)
+            with self.assertRaises(ValueError):addon.rewrite_status(document,plan,set())
+            self.assertEqual(json.dumps(document),before)
+        for flag in ('true',1,None):
+            with self.assertRaises(ValueError):addon.normalize_targets({'targets':[{'planet':182,'open_regions':flag}]})
+
+    def test_region_diagnostics_report_before_and_after(self):
+        instance=addon.WarStatusAddon();instance.plan={'targets':[{'planet':182,'effects':[],'open_regions':True}]}
+        snapshots={};instance.snapshot=lambda name,data:snapshots.update({name:data})
+        instance.process_response(flow('/api/WarSeason/801/Status',dict(BASE,planetRegions=[dict(planetIndex=182,regionIndex=0,isAvailable=False,availabilityFactor=0,health=42,secret='excluded')])))
+        target=snapshots['campaign-diagnostics.json']['targets'][0]
+        self.assertFalse(target['server_regions'][0]['isAvailable'])
+        self.assertTrue(target['output_regions'][0]['isAvailable'])
+        self.assertEqual(target['output_regions'][0]['health'],42)
+        self.assertNotIn('secret',json.dumps(target))
+
+    def test_war_info_region_capture_never_changes_response(self):
+        instance=addon.WarStatusAddon();seen={};instance.snapshot=lambda name,data:seen.update({name:data})
+        f=flow('/api/WarSeason/801/WarInfo',{'planetRegions':[{'planetIndex':0,'regionIndex':0,'settingsHash':4196558004,'unknownSecret':'do-not-copy'}]})
+        original=f.response.content;instance.process_response(f)
+        self.assertEqual(f.response.content,original)
+        self.assertEqual(instance.rewrites,0)
+        self.assertEqual(seen['planet-region-definitions.json']['regions'][0]['settingsHash'],4196558004)
+        self.assertNotIn('do-not-copy',json.dumps(seen))
+
+    def test_campaign_diagnostics_distinguish_input_from_output(self):
+        instance=addon.WarStatusAddon();instance.plan={'targets':[{'planet':260,'effects':[],'campaign':True,'campaign_race':3}]}
+        snapshots={};instance.snapshot=lambda name,data:snapshots.update({name:data})
+        instance.process_response(flow('/api/WarSeason/801/Status',{'planetStatus':[{'index':260,'owner':1}],'planetActiveEffects':[],'campaigns':[]}))
+        report=snapshots['campaign-diagnostics.json'];target=report['targets'][0]
+        self.assertFalse(target['server_campaigns'])
+        self.assertEqual(target['campaigns'][0]['race'],3)
+        self.assertFalse(report['operation_generation_verified'])
+        instance.process_response(flow('/api/WarSeason/801/Status',{'planetStatus':[{'index':260,'owner':1}],'planetActiveEffects':[],'campaigns':[],'planetEvents':None,'jointOperations':None}))
+        self.assertEqual(instance.rewrites,2)
+        self.assertFalse(snapshots['campaign-diagnostics.json']['targets'][0]['server_events'])
+
     def ready(self):
         instance = addon.WarStatusAddon()
         instance.plan = PLAN
-        instance.response(flow("/api/WarSeason/GalacticWarEffects", {"galacticEffects": [{"id": 1373}, {"id": 1386}]}))
+        instance.process_response(flow("/api/WarSeason/GalacticWarEffects", {"galacticEffects": [{"id": 1373}, {"id": 1386}]}))
         return instance
 
     def test_add_only_and_deduplicate(self):
@@ -48,7 +152,7 @@ class TestWarStatusAddon(unittest.TestCase):
     def test_new_war_and_query(self):
         instance = self.ready()
         f = flow("/api/WarSeason/9999/Status?x=1", BASE)
-        instance.response(f)
+        instance.process_response(f)
         self.assertEqual(instance.rewrites, 1)
         self.assertEqual(len(json.loads(f.response.content)["planetActiveEffects"]), 2)
         self.assertNotIn("etag", f.response.headers)
@@ -58,7 +162,7 @@ class TestWarStatusAddon(unittest.TestCase):
         for path, host, method in [("/api/Account", addon.HOST, "GET"), ("/api/WarSeason/801/Status", "example.com", "GET"), ("/api/WarSeason/801/Status", addon.HOST, "POST")]:
             f = flow(path, BASE, host, method)
             original = f.response.content
-            instance.response(f)
+            instance.process_response(f)
             self.assertEqual(f.response.content, original)
         self.assertEqual(instance.rewrites, 0)
 
@@ -67,19 +171,19 @@ class TestWarStatusAddon(unittest.TestCase):
         instance.plan = PLAN
         f = flow("/api/WarSeason/801/Status", BASE)
         original = f.response.content
-        instance.response(f)
+        instance.process_response(f)
         self.assertEqual(f.response.content, original)
 
     def test_rejects_broken_new_catalog(self):
         instance = self.ready()
-        instance.response(flow("/api/WarSeason/GalacticWarEffects", {"galacticEffects": [{}]}))
+        instance.process_response(flow("/api/WarSeason/GalacticWarEffects", {"galacticEffects": [{}]}))
         self.assertIsNone(instance.allowed)
 
     def test_malformed_status_fails_open(self):
         instance = self.ready()
         f = flow("/api/WarSeason/801/Status", BASE)
         f.response.content = b"not json"
-        instance.response(f)
+        instance.process_response(f)
         self.assertEqual(f.response.content, b"not json")
         self.assertEqual(instance.rewrites, 0)
 
@@ -156,10 +260,10 @@ class TestWarStatusAddon(unittest.TestCase):
     def test_verified_effect_pair_is_written_with_campaign(self):
         instance = self.ready()
         instance.plan = {'targets':[{'planet':182,'effects':[1308],'campaign':True,'campaign_type':0,'owner':2}]}
-        instance.response(flow('/api/WarSeason/GalacticWarEffects', {'galacticEffects':[
+        instance.process_response(flow('/api/WarSeason/GalacticWarEffects', {'galacticEffects':[
             {'id':1307,'effectType':40},{'id':1308,'effectType':71}]}))
         f=flow('/api/WarSeason/801/Status',dict(BASE,campaigns=[]))
-        instance.response(f)
+        instance.process_response(f)
         result=json.loads(f.response.content)
         self.assertEqual({e['galacticEffectId'] for e in result['planetActiveEffects']},{1307,1308})
         self.assertEqual(result['campaigns'][0]['planetIndex'],182)
@@ -201,7 +305,7 @@ class TestWarStatusAddon(unittest.TestCase):
         instance = self.ready()
         f = flow("/api/WarSeason/GalacticWarEffects", {})
         f.response.content = b"bad json"
-        instance.response(f)
+        instance.process_response(f)
         self.assertIsNone(instance.allowed)
 
     def test_live_reload_and_private_cache(self):
@@ -212,13 +316,13 @@ class TestWarStatusAddon(unittest.TestCase):
             instance=addon.WarStatusAddon()
             with patch.dict(os.environ,{"SHODAN_WAR_PLAN":str(p)}):instance.load(None)
             catalog=flow("/api/WarSeason/GalacticWarEffects",{"galacticEffects":[{"id":1373,"effectType":71,"accountId":"must-not-cache","values":["must-not-cache"]},{"id":1386,"effectType":71}]})
-            instance.response(catalog)
+            instance.process_response(catalog)
             status=flow("/api/WarSeason/801/Status",dict(BASE,accountId="must-not-cache"))
-            instance.response(status)
+            instance.process_response(status)
             self.assertEqual(json.loads(status.response.content)["planetActiveEffects"][0]["galacticEffectId"],1373)
             config["targets"][0]["effects"]=[1386]
             p.write_text(json.dumps(config),encoding="utf8");stamp=instance.plan_stamp+1000000000;os.utime(p,ns=(stamp,stamp))
-            status=flow("/api/WarSeason/801/Status",BASE);instance.response(status)
+            status=flow("/api/WarSeason/801/Status",BASE);instance.process_response(status)
             self.assertEqual(json.loads(status.response.content)["planetActiveEffects"][0]["galacticEffectId"],1386)
             for name in ("catalog.json","planets.json","health.json"):
                 self.assertNotIn("must-not-cache",(root/name).read_text("utf8"))
@@ -226,7 +330,7 @@ class TestWarStatusAddon(unittest.TestCase):
     def test_disabling_live_target_stops_modification(self):
         instance=self.ready()
         instance.plan={"schema":2,"targets":[{"planet":182,"effects":[1373],"enabled":False}]}
-        f=flow("/api/WarSeason/801/Status",BASE);original=f.response.content;instance.response(f)
+        f=flow("/api/WarSeason/801/Status",BASE);original=f.response.content;instance.process_response(f)
         self.assertEqual(f.response.content,original)
 
     def test_live_ack_waits_for_successful_status_even_with_same_mtime(self):
@@ -236,8 +340,8 @@ class TestWarStatusAddon(unittest.TestCase):
             path.write_text(json.dumps(config),encoding='utf8')
             instance=addon.WarStatusAddon()
             with patch.dict(os.environ,{'SHODAN_WAR_PLAN':str(path)}):instance.load(None)
-            instance.response(flow('/api/WarSeason/GalacticWarEffects',{'galacticEffects':[{'id':1373},{'id':1386}]}))
-            instance.response(flow('/api/WarSeason/801/Status',BASE))
+            instance.process_response(flow('/api/WarSeason/GalacticWarEffects',{'galacticEffects':[{'id':1373},{'id':1386}]}))
+            instance.process_response(flow('/api/WarSeason/801/Status',BASE))
             old=instance.applied_plan_digest
             stamp=instance.plan_stamp
             config['targets'][0]['effects']=[1386]
@@ -245,9 +349,9 @@ class TestWarStatusAddon(unittest.TestCase):
             instance.tick()
             self.assertNotEqual(instance.plan_digest,old)
             self.assertEqual(instance.applied_plan_digest,old)
-            instance.response(flow('/api/WarSeason/801/Status',{}))
+            instance.process_response(flow('/api/WarSeason/801/Status',{}))
             self.assertEqual(instance.applied_plan_digest,old)
-            instance.response(flow('/api/WarSeason/801/Status',BASE))
+            instance.process_response(flow('/api/WarSeason/801/Status',BASE))
             self.assertEqual(instance.applied_plan_digest,instance.plan_digest)
 
     def test_tls_diagnostics_do_not_log_credentials(self):
@@ -270,6 +374,14 @@ class TestWarStatusAddon(unittest.TestCase):
         instance.tls_established_client(data);instance.tls_established_server(data)
         self.assertEqual(instance.connection['client_tls'],1)
         self.assertEqual(instance.connection['server_tls'],1)
+
+    def test_http_failure_categories_hide_url_and_credentials(self):
+        instance=addon.WarStatusAddon()
+        failed=SimpleNamespace(request=SimpleNamespace(pretty_host=addon.HOST,method='GET',path='/api/WarSeason/801/Status?token=secret',http_version='HTTP/2'),error=SimpleNamespace(msg='HTTP/2 stream reset https://private:secret@example.com'))
+        instance.error(failed)
+        self.assertEqual(instance.connection['failure_kind'],'HTTP/2 流失败')
+        self.assertEqual(instance.connection['failed_endpoint'],'战况接口')
+        self.assertNotIn('secret',json.dumps(instance.connection))
 
     def test_api_router_bypasses_every_other_destination(self):
         import socket

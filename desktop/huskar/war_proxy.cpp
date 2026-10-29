@@ -138,6 +138,11 @@ QString WarProxy::check(){
  emit changed();return status_;
 }
 bool WarProxy::start(int planet,QString faction,QString effects){return startMitm(planet,faction,effects);}
+void WarProxy::setUseSystemProxy(bool enabled){
+ if(active_ || busy()){fail("请先停止变种代理，再切换 API 连接路线");return;}
+ settings_.setValue("useSystemProxy",enabled);settings_.sync();
+ fail(enabled?"游戏 API 将经当前系统 HTTP 代理转发；请留意与加速器的路由叠加。":"游戏 API 将按系统网络路由直连，不额外叠加系统 HTTP 代理。TUN 和加速器是否接管仍由它们自身决定。");
+}
 void WarProxy::stop(){
  if(!mitmSession_)return;
  QFile::remove(profile_+"/war-proxy/steam-proxy.ini");
@@ -211,14 +216,14 @@ bool WarProxy::launchPlan(QJsonObject p,bool prepareOnly){
    QSettings internet("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",QSettings::NativeFormat);
    auto upstream=internet.value("ProxyServer").toString().trimmed();
    if(upstream.contains(';')||upstream.contains('=')){QString selected;for(const auto& part:upstream.split(';')){auto pair=part.split('=');if(pair.size()==2 && pair[0].trimmed()=="http")selected=pair[1].trimmed();}upstream=selected;}
-   if(internet.value("ProxyEnable").toInt()==1 && !upstream.isEmpty()){
+   if(useSystemProxy() && internet.value("ProxyEnable").toInt()==1 && !upstream.isEmpty()){
     QUrl proxy(upstream.contains("://")?upstream:"http://"+upstream);require(proxy.isValid() && !proxy.host().isEmpty() && proxy.userInfo().isEmpty() && (proxy.scheme()=="http" || proxy.scheme()=="https"),"当前系统 HTTP 代理格式不受支持，未自动改变它");
     mode="upstream:"+proxy.toString(QUrl::RemovePath|QUrl::RemoveQuery|QUrl::RemoveFragment)+"@127.0.0.1:"+QString::number(port);
    }
   }
   if(!prepareOnly){env.insert("SHODAN_WAR_MITM_PORT",QString::number(QUrl(proxyAddress_).port()));process_.setProcessEnvironment(env);}
   process_.setWorkingDirectory(root);mitmSession_=true;stopping_=false;
-  QStringList arguments{"--mode",mode,"--allow-hosts","^api\\.live\\.prod\\.thehelldiversgame\\.com(:443)?$","--set","confdir="+root+"/ca","--set","flow_detail=0","--quiet","-s",root+"/addon.py"};
+  QStringList arguments{"--mode",mode,"--allow-hosts","^api\\.live\\.prod\\.thehelldiversgame\\.com(:443)?$","--set","confdir="+root+"/ca","--set","flow_detail=0","--set","connection_strategy=lazy","--set","upstream_cert=false","--set","http2=false","--quiet","-s",root+"/addon.py"};
   if(QFileInfo(executable()).fileName().compare("python.exe",Qt::CaseInsensitive)==0){arguments.prepend(QFileInfo(executable()).dir().absoluteFilePath("proxy_main.py"));arguments.prepend("-I");}
   process_.start(executable(),arguments);
   QTimer::singleShot(45000,this,[this,ticket]{if(ticket==generation_ && mitmSession_ && !pluginReady_){terminalError_="代理插件未在 45 秒内就绪，已停止。请检查核心解包、临时目录和捕获权限。";stop();}});
@@ -245,8 +250,11 @@ QJsonArray WarProxy::validateTargets(QJsonArray input){
   require(integer(owner,0,4) && integer(type,0,3),"阵营或战役类型无效");
   auto race=t.value("campaign_race").isUndefined()?QJsonValue(0):t["campaign_race"];
   require(integer(race,0,4),"作战敌人阵营无效");
+  require(!t.contains("initialize_regions") || t["initialize_regions"].isBool(),"分区初始化开关必须为布尔值");
+  require(!t.value("initialize_regions").toBool() || (t.value("campaign").toBool() && race.toInt()>=2),"初始化分区需要开启战役并明确选择作战敌人");
+  require(!t.contains("open_regions") || t["open_regions"].isBool(),"分区开放开关必须为布尔值");
   require((!t.contains("enabled")||t["enabled"].isBool()) && (!t.contains("campaign")||t["campaign"].isBool()),"方案开关类型无效");
-  output.append(QJsonObject{{"planet",id},{"enabled",t.value("enabled").toBool(true)},{"effects",ids},{"owner",owner},{"campaign",t.value("campaign").toBool(false)},{"campaign_type",type},{"campaign_race",race}});
+  output.append(QJsonObject{{"planet",id},{"enabled",t.value("enabled").toBool(true)},{"effects",ids},{"owner",owner},{"campaign",t.value("campaign").toBool(false)},{"campaign_type",type},{"campaign_race",race},{"open_regions",t.value("open_regions").toBool(false)},{"initialize_regions",t.value("initialize_regions").toBool(false)}});
  }
  return output;
 }
@@ -284,6 +292,7 @@ void WarProxy::exportTargets(){
 }
 void WarProxy::restoreBackup(){try{auto p=object(read(profile_+"/war-targets.backup.json"));require(p["targets"].isArray(),"备份文件缺少方案列表");persistTargets(p["targets"].toArray());}catch(const std::exception& e){fail(QString::fromUtf8(e.what()));}}
 void WarProxy::refreshCatalog(){
+ const auto previousEffects=effects_,previousPlanets=planets_;
  QJsonArray liveEffects,livePlanets;QByteArray c,p;
  try{c=read(profile_+"/war-proxy/catalog.json");auto doc=object(c);liveEffects=doc["effects"].toArray();catalogFresh_=active_ && doc["updated"].toDouble()>=sessionStart_;}catch(...){}
  try{p=read(profile_+"/war-proxy/planets.json");livePlanets=object(p)["planets"].toArray();}catch(...){}
@@ -310,7 +319,10 @@ void WarProxy::refreshCatalog(){
  for(auto it=effects.begin();it!=effects.end();++it){if(!liveEffects.isEmpty()&&!currentIds.contains(it.key()))continue;auto e=it.value();int type=e["effectType"].toInt();e["category"]=type==71?"变种与敌情":type==40?"星图词条":type==32?"临时战备":type==36?"临时装备":"游戏效果（类型 "+QString::number(type)+"）";effects_.append(e);}
  for(const auto& row:metadata_["planets"].toArray()){auto q=row.toObject();planets[q["id"].toInt()]=q;}
  for(const auto& row:livePlanets){auto q=row.toObject();if(!q["index"].isDouble())continue;int id=q["index"].toInt();auto e=planets.value(id);e["id"]=id;if(e["name"].toString().isEmpty())e["name"]="星球 #"+QString::number(id);e["owner"]=q["owner"];e["players"]=q["players"];planets[id]=e;}
- planets_=QJsonArray{};for(const auto& e:planets)planets_.append(e);emit modelsChanged();
+ planets_=QJsonArray{};for(const auto& e:planets)planets_.append(e);
+ if(effects_!=previousEffects)emit effectsChanged();
+ if(planets_!=previousPlanets)emit planetsChanged();
+ if(effects_!=previousEffects || planets_!=previousPlanets)emit modelsChanged();
 }
 bool WarProxy::verifyCertificateTrust()const{
 #ifdef Q_OS_WIN
