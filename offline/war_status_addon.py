@@ -5,10 +5,13 @@ import re
 import copy
 import time
 import hashlib
+import asyncio
+import urllib.request
 from pathlib import Path
 
 HOST = "api.live.prod.thehelldiversgame.com"
 STATUS = re.compile(r"^/api/WarSeason/[0-9]+/Status$")
+WAR_INFO = re.compile(r"^/api/WarSeason/[0-9]+/WarInfo$")
 MAX_BODY = 8 * 1024 * 1024
 # Verified type40 tag/type71 presence pairs, war 801. Never infer by ID adjacency.
 EFFECT_PAIRS = ((1202,1203),(1243,1245),(1244,1386),(1248,1249),(1303,1310),
@@ -179,11 +182,23 @@ def normalize_targets(plan):
         campaign = raw.get("campaign", False)
         if type(campaign) is not bool:
             raise ValueError("战役开关无效")
-        result.append(dict(planet=planet, effects=list(dict.fromkeys(effects)), owner=owner, campaign=campaign, campaign_type=campaign_type, campaign_race=campaign_race))
+        open_regions=raw.get('open_regions',False)
+        if type(open_regions) is not bool:
+            raise ValueError("分区开放开关必须为布尔值")
+        initialize_regions=raw.get('initialize_regions',False)
+        if type(initialize_regions) is not bool:
+            raise ValueError("分区初始化开关必须为布尔值")
+        if initialize_regions and (not campaign or campaign_race not in (2,3,4)):
+            raise ValueError("初始化分区需要开启战役并明确选择作战敌人")
+        result.append(dict(planet=planet, effects=list(dict.fromkeys(effects)), owner=owner, campaign=campaign, campaign_type=campaign_type, campaign_race=campaign_race,open_regions=open_regions,initialize_regions=initialize_regions))
     return result
 
 
-def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None):
+class RegionAvailabilityError(ValueError):
+    pass
+
+
+def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None, region_reference=None):
     """Pure transformation; malformed/unknown schema must fail before mutation."""
     if not isinstance(document, dict):
         raise ValueError("战况响应不是对象，已保持原样")
@@ -227,6 +242,50 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
     result = copy.deepcopy(document)
     result["planetActiveEffects"] = entries + additions
     changes = len(additions)
+    initialize_targets=[t for t in targets if t['initialize_regions']]
+    if initialize_targets:
+        if not isinstance(region_reference,dict) or region_reference.get('warId')!=document.get('warId') or region_reference.get('layoutVersion')!=document.get('layoutVersion'):
+            raise RegionAvailabilityError('缺少当前战争及布局对应的原生分区定义')
+        definitions=region_reference.get('planetRegions')
+        regions=result.get('planetRegions')
+        if not isinstance(definitions,list) or not isinstance(regions,list):
+            raise RegionAvailabilityError('原生分区定义或状态列表不兼容')
+        for target in initialize_targets:
+            native=[r for r in definitions if isinstance(r,dict) and r.get('planetIndex')==target['planet']]
+            if not native:
+                raise RegionAvailabilityError('所选星球没有原生分区定义')
+            seen=set()
+            for definition in native:
+                index=definition.get('regionIndex');maximum=definition.get('maxHealth')
+                if type(index) is not int or index<0 or index in seen or type(maximum) is not int or maximum<=1:
+                    raise RegionAvailabilityError('原生分区编号或生命值上限不兼容')
+                seen.add(index)
+                if any(isinstance(r,dict) and r.get('planetIndex')==target['planet'] and r.get('regionIndex')==index for r in regions):
+                    continue
+                # Experimental local state, not server defaults or persisted war progress.
+                regions.append(dict(planetIndex=target['planet'],regionIndex=index,owner=target['campaign_race'],health=maximum//2,players=0,regerPerSecond=0,isAvailable=True,availabilityFactor=1))
+                changes+=1
+    region_targets={t['planet'] for t in targets if t['open_regions']}
+    if region_targets:
+        import math
+        regions=result.get('planetRegions')
+        if not isinstance(regions,list):
+            raise RegionAvailabilityError('当前战况不包含原生分区，未创建虚构分区')
+        found=set()
+        for region in regions:
+            if not isinstance(region,dict):
+                raise RegionAvailabilityError('原生分区结构不兼容')
+            if region.get('planetIndex') not in region_targets:
+                continue
+            if type(region.get('regionIndex')) is not int or type(region.get('isAvailable')) is not bool or type(region.get('availabilityFactor')) not in (int,float) or not math.isfinite(region['availabilityFactor']):
+                raise RegionAvailabilityError('原生分区可用性字段不兼容，已保持原样')
+            found.add(region['planetIndex'])
+            if not region['isAvailable']:
+                region['isAvailable']=True;changes+=1
+            if region['availabilityFactor']<=0:
+                region['availabilityFactor']=1;changes+=1
+        if found!=region_targets:
+            raise RegionAvailabilityError('所选星球缺少原生分区，已保持原样')
     campaign_ids = campaign_ids if campaign_ids is not None else {}
     used_ids = {c["id"] for c in campaigns} if any(t["campaign"] or t["owner"] for t in targets) else set()
     for target in targets:
@@ -283,6 +342,8 @@ class WarStatusAddon:
         self.statuses = 0
         self.catalog_count = 0
         self.war_id = None
+        self.region_reference = None
+        self.region_reference_error = None
         self.shutting_down = False
         self.ready = False
         self.revocation_service = None
@@ -465,7 +526,38 @@ class WarStatusAddon:
             else:
                 self.health(category + "转发失败：" + kind + "。此前成功的响应不代表此请求成功。")
 
-    def response(self, flow):
+    def fetch_region_reference(self, war_id):
+        # Public static endpoint only. No account headers, cookies or proxy loop.
+        opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open("https://"+HOST+"/api/WarSeason/"+str(war_id)+"/WarInfo",timeout=8) as reply:
+            raw=reply.read(MAX_BODY+1)
+        if len(raw)>MAX_BODY:
+            raise ValueError('原生分区定义响应过大')
+        doc=json.loads(raw)
+        if not isinstance(doc,dict) or doc.get('warId')!=war_id or not isinstance(doc.get('planetRegions'),list):
+            raise ValueError('原生分区定义战争编号或结构不匹配')
+        return doc
+
+    async def response(self, flow):
+        request=flow.request;response=flow.response
+        path=request.path.split('?',1)[0]
+        if request.method=='GET' and request.pretty_host.lower()==HOST and response.status_code==200 and STATUS.fullmatch(path):
+            try:
+                self.reload_plan()
+                if any(t['initialize_regions'] for t in normalize_targets(self.plan)):
+                    raw=response.content
+                    if raw is not None and len(raw)<=MAX_BODY:
+                        document=json.loads(raw);war_id=int(path.split('/')[3])
+                        if not isinstance(document,dict):
+                            raise ValueError('战况不是对象')
+                        if not isinstance(self.region_reference,dict) or self.region_reference.get('warId')!=war_id or self.region_reference.get('layoutVersion')!=document.get('layoutVersion'):
+                            self.region_reference=await asyncio.to_thread(self.fetch_region_reference,war_id)
+                            self.region_reference_error=None
+            except (ValueError,TypeError,KeyError,OSError) as error:
+                self.region_reference_error=type(error).__name__
+        self.process_response(flow)
+
+    def process_response(self, flow):
         request, response = flow.request, flow.response
         if request.pretty_host.lower() == HOST:
             self.connection["responses"] += 1
@@ -475,7 +567,7 @@ class WarStatusAddon:
         if request.method != "GET" or request.pretty_host.lower() != HOST or response.status_code != 200:
             return
         path = request.path.split("?", 1)[0]
-        if path != "/api/WarSeason/GalacticWarEffects" and not STATUS.fullmatch(path):
+        if path != "/api/WarSeason/GalacticWarEffects" and not STATUS.fullmatch(path) and not WAR_INFO.fullmatch(path):
             return
         try:
             if path == "/api/WarSeason/GalacticWarEffects":
@@ -486,6 +578,17 @@ class WarStatusAddon:
             if raw is None or len(raw) > MAX_BODY:
                 raise ValueError("响应为空或过大，已保持原样")
             document = json.loads(raw)
+            if WAR_INFO.fullmatch(path):
+                if not isinstance(document,dict):
+                    raise ValueError("WarInfo 不是对象")
+                regions=document.get('planetRegions',[])
+                if not isinstance(regions,list):
+                    raise ValueError("WarInfo 分区定义格式不兼容")
+                fields=('planetIndex','regionIndex','settingsHash','maxHealth','regionSize','flags','damageMultiplier')
+                self.snapshot('planet-region-definitions.json',{'war_id':int(path.split('/')[3]),'regions':[
+                    {k:r[k] for k in fields if type(r.get(k)) in (int,float)} for r in regions if isinstance(r,dict)],'updated':time.time()})
+                self.health("已采集原生星球分区定义，未修改 WarInfo；分区作战生成仍未验证")
+                return
             if path == "/api/WarSeason/GalacticWarEffects":
                 rows = document.get("galacticEffects") if isinstance(document, dict) else document
                 if not isinstance(rows, list) or not rows or any(not isinstance(r, dict) or type(r.get("id")) is not int for r in rows):
@@ -510,21 +613,54 @@ class WarStatusAddon:
             if self.allowed is None and any(t["effects"] for t in normalize_targets(self.plan)):
                 self.health("尚未获取本次效果目录，战况保持原样；请重新登录游戏")
                 return
-            changed, count = rewrite_status(document, self.plan, self.allowed, self.campaign_ids, self.effect_types)
+            region_error = None
+            try:
+                changed, count = rewrite_status(document, self.plan, self.allowed, self.campaign_ids, self.effect_types,self.region_reference)
+            except RegionAvailabilityError as error:
+                # Unsupported experimental regions must not remove the working
+                # planet campaigns/effects from this same Status response.
+                region_error = str(error)
+                fallback = copy.deepcopy(self.plan)
+                for target in fallback.get('targets', []):
+                    target['open_regions'] = False
+                    target['initialize_regions'] = False
+                changed, count = rewrite_status(document, fallback, self.allowed, self.campaign_ids, self.effect_types)
             if count:
                 response.content = json.dumps(changed, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
                 for header in ("etag", "content-md5", "digest"):
                     response.headers.pop(header, None)
                 self.rewrites += 1
             target_ids = {t['planet'] for t in normalize_targets(self.plan)}
+            # Optional diagnostics must tolerate missing/null metadata. They
+            # must not turn a successfully rewritten response into an error.
+            event_rows = document.get('planetEvents')
+            event_rows = [e for e in event_rows if isinstance(e,dict)] if isinstance(event_rows,list) else []
+            joint_rows = document.get('jointOperations')
+            joint_rows = [e for e in joint_rows if isinstance(e,dict)] if isinstance(joint_rows,list) else []
             # Public structural diagnostics only, never Operation requests or accounts.
             self.snapshot('campaign-diagnostics.json', {'war_id': war_id, 'targets': [
-                {'planet': pid, 'campaigns': [{k:c[k] for k in ('id','planetIndex','type','count','race') if k in c}
+                {'planet': pid,
+                 'input_owner': next((p.get('owner') for p in document.get('planetStatus',[]) if p.get('index')==pid),None),
+                 'output_owner': next((p.get('owner') for p in changed.get('planetStatus',[]) if p.get('index')==pid),None),
+                 'server_campaigns': [{k:c[k] for k in ('id','planetIndex','type','count','race') if k in c}
+                  for c in document.get('campaigns',[]) if c.get('planetIndex')==pid],
+                 'server_effects': [e['galacticEffectId'] for e in document.get('planetActiveEffects',[]) if e.get('index')==pid],
+                 'server_regions': [{k:r[k] for k in ('planetIndex','regionIndex','owner','health','isAvailable','availabilityFactor') if type(r.get(k)) in (int,float,bool)} for r in document.get('planetRegions',[]) if isinstance(r,dict) and r.get('planetIndex')==pid] if isinstance(document.get('planetRegions'),list) else [],
+                 'output_regions': [{k:r[k] for k in ('planetIndex','regionIndex','owner','health','isAvailable','availabilityFactor') if type(r.get(k)) in (int,float,bool)} for r in changed.get('planetRegions',[]) if isinstance(r,dict) and r.get('planetIndex')==pid] if isinstance(changed.get('planetRegions'),list) else [],
+                 'server_events': [{k:e[k] for k in ('id','planetIndex','eventType','campaignId','race','health','maxHealth','startTime','expireTime') if type(e.get(k)) in (int,float)}
+                  for e in event_rows if e.get('planetIndex')==pid],
+                 'server_joint_operations': [{k:e[k] for k in ('id','planetIndex','hqNodeIndex') if type(e.get(k)) is int}
+                  for e in joint_rows if e.get('planetIndex')==pid],
+                 'campaigns': [{k:c[k] for k in ('id','planetIndex','type','count','race') if k in c}
                   for c in changed.get('campaigns',[]) if c.get('planetIndex')==pid],
                  'effects': [e['galacticEffectId'] for e in changed.get('planetActiveEffects',[]) if e.get('index')==pid]}
-                for pid in sorted(target_ids)], 'updated': time.time()})
+                for pid in sorted(target_ids)],
+                'server_schema':{name: sorted({key for row in document.get(name,[]) if isinstance(row,dict) for key in row}) for name in ('campaigns','planetEvents','jointOperations') if isinstance(document.get(name,[]),list)},
+                'status_fields':sorted(document.keys()),
+                'region_schemas':{name:sorted({key for row in rows if isinstance(row,dict) for key in row}) for name,rows in document.items() if 'region' in name.lower() and isinstance(rows,list)},
+                'region_error':region_error, 'region_reference_error':self.region_reference_error, 'initialized_region_planets':[t['planet'] for t in normalize_targets(self.plan) if t['initialize_regions']] if not region_error else [], 'plan_digest':self.plan_digest, 'operation_generation_verified':False, 'updated': time.time()})
             self.applied_plan_digest = self.plan_digest
-            self.health("方案已应用到本次战况响应；已生成作战和局内效果仍需游戏验证")
+            self.health(("分区实验未应用："+region_error+"；其余战役与效果已应用") if region_error else "方案已应用到本次战况响应；已生成作战和局内效果仍需游戏验证")
         except (ValueError, KeyError, TypeError, UnicodeError, OSError) as error:
             self.health("校验未通过，响应保持原样："+str(error)[:140])
 

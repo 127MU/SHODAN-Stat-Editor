@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 from proxy_runtime_policy import include_proxy_file
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '4.1.0-r29-dev4'
+VERSION = '4.1.0-r29'
 MITMDUMP_SHA256 = 'e2f05da6385d8c76c2f5b7b23b5d0f7e2c23483b5ece99fe1f4e3b0c04c5f8b5'
 
 def main():
@@ -38,6 +38,8 @@ def main():
             else:p.error('proxy runtime hash/path validation failed: '+name)
         data['files']=filtered;data['capture_modes']=['regular','upstream'];data['component_policy']='http-only; packet capture drivers and redirector excluded'
         (release/'mitmproxy/runtime.json').write_text(json.dumps(data,indent=2),encoding='utf8')
+        subprocess.run([str((release/'mitmproxy/python.exe').resolve()),'-I','-c',
+                        'import ssl;c=ssl.create_default_context();assert c.check_hostname and c.verify_mode==ssl.CERT_REQUIRED'],check=True)
     if a.mitmdump:
         if not a.mitmproxy_license or not a.mitmproxy_license.is_file():
             p.error('--mitmproxy-license is required when bundling mitmdump')

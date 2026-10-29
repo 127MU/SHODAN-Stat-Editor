@@ -18,14 +18,15 @@ class WarProxy : public QObject {
  Q_PROPERTY(QString executable READ executable NOTIFY changed)
  Q_PROPERTY(QString certificateStatus READ certificateStatus NOTIFY changed)
  Q_PROPERTY(QVariantList targets READ targets NOTIFY targetsChanged)
- Q_PROPERTY(QVariantList effects READ effects NOTIFY modelsChanged)
- Q_PROPERTY(QVariantList planets READ planets NOTIFY modelsChanged)
+ Q_PROPERTY(QVariantList effects READ effects NOTIFY effectsChanged)
+ Q_PROPERTY(QVariantList planets READ planets NOTIFY planetsChanged)
  Q_PROPERTY(bool pluginReady READ pluginReady NOTIFY changed)
  Q_PROPERTY(bool catalogFresh READ catalogFresh NOTIFY changed)
  Q_PROPERTY(bool certificateTrusted READ certificateTrusted NOTIFY changed)
  Q_PROPERTY(QString captureMode READ captureMode NOTIFY changed)
  Q_PROPERTY(QString proxyAddress READ proxyAddress NOTIFY changed)
  Q_PROPERTY(QString launchStatus READ launchStatus NOTIFY changed)
+ Q_PROPERTY(bool useSystemProxy READ useSystemProxy WRITE setUseSystemProxy NOTIFY changed)
 public:
  explicit WarProxy(QString profile,QObject* parent=nullptr);
  ~WarProxy() override;
@@ -43,6 +44,8 @@ public:
  QString captureMode()const{return "proxy";}
  QString proxyAddress()const{return proxyAddress_;}
  QString launchStatus()const{return launchStatus_;}
+ bool useSystemProxy()const{return settings_.value("useSystemProxy",false).toBool();}
+ void setUseSystemProxy(bool enabled);
  Q_INVOKABLE void chooseExecutable();
  Q_INVOKABLE void openCertificate();
  Q_INVOKABLE void installCertificate();
@@ -67,6 +70,8 @@ public:
 signals:
  void changed();
  void modelsChanged();
+ void effectsChanged();
+ void planetsChanged();
  void targetsChanged();
 private:
  friend struct WarProxyTestAccess;

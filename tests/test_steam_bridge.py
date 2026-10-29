@@ -70,7 +70,7 @@ def main():
             route_env=dict(os.environ,NO_PROXY=active_bypass,no_proxy=active_bypass)
             endpoint=server.server_port
             assert endpoint!=port,'Test ports collided; rerun with new ephemeral ports'
-            for host,bypass in [('route-check.playfabapi.com',True),('route-check.playfab.com',True),('api.live.prod.thehelldiversgame.com',False)]:
+            for host,bypass in [('route-check.playfabapi.com',True),('route-check.playfab.com',True),('route-check.easyanticheat.net',True),('route-check.easyanticheat.com',True),('route-check.epicgames.com',True),('route-check.epicgames.dev',True),('api.live.prod.thehelldiversgame.com',False)]:
                 request=subprocess.run(['curl.exe','--silent','--show-error','--max-time','3','--proxy','http://127.0.0.1:'+str(port),'--resolve',host+':'+str(endpoint)+':127.0.0.1','http://'+host+':'+str(endpoint)+'/'],env=route_env,capture_output=True,timeout=6)
                 if bypass:assert request.returncode==0 and request.stdout==b'local-route-ok',(host,request.stderr)
                 else:assert request.returncode!=0,'Game API was incorrectly excluded from the proxy'

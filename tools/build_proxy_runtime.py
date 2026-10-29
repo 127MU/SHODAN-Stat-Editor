@@ -36,13 +36,20 @@ def main():
             rel=f.relative_to(a.python_root/"Lib")
             if f.is_file() and f.suffix==".py" and not any(part in excluded for part in rel.parts):z.write(f,rel.as_posix())
     included.add("python312.zip")
+    # Some distributions give ssl.py a companion CA policy file. OpenSSL
+    # requires a real filesystem path: a path inside python312.zip cannot
+    # be passed to load_verify_locations. Preserve both code and CA policy.
+    ssl_source=a.python_root/"Lib/ssl.py"
+    if "codex-rejected-cas.pem" in ssl_source.read_text(encoding="utf8"):
+        copy(ssl_source,"Lib/ssl.py")
+        copy(a.python_root/"Lib/codex-rejected-cas.pem","Lib/codex-rejected-cas.pem")
     for f in a.site_packages.rglob("*"):
         rel=f.relative_to(a.site_packages)
         if f.is_file() and include_proxy_file(rel.as_posix()) and not any(part in {"__pycache__","tests","test","bin"} for part in rel.parts) and f.suffix not in (".pyc",".pyo"):
             copy(f,"Lib/site-packages/"+rel.as_posix())
-    (root/"python312._pth").write_text("python312.zip\n.\nDLLs\nLib/site-packages\nimport site\n",encoding="ascii");included.add("python312._pth")
+    (root/"python312._pth").write_text("Lib\npython312.zip\n.\nDLLs\nLib/site-packages\nimport site\n",encoding="ascii");included.add("python312._pth")
     (root/"proxy_main.py").write_text("from mitmproxy.tools.main import mitmdump\nif __name__ == '__main__':\n    mitmdump()\n",encoding="utf8");included.add("proxy_main.py")
-    probe=json.loads(subprocess.check_output([str(root/"python.exe"),"-I","-c","import platform,json,importlib.metadata;print(json.dumps({'python':platform.python_version(),'mitmproxy':importlib.metadata.version('mitmproxy')}))"],text=True))
+    probe=json.loads(subprocess.check_output([str(root/"python.exe"),"-I","-c","import platform,json,importlib.metadata,ssl;c=ssl.create_default_context();assert c.check_hostname and c.verify_mode==ssl.CERT_REQUIRED;print(json.dumps({'python':platform.python_version(),'mitmproxy':importlib.metadata.version('mitmproxy')}))"],text=True))
     if probe['mitmproxy']!='12.3.1' or not probe['python'].startswith('3.12.'):raise RuntimeError('unexpected proxy/Python runtime')
     files={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in sorted(included)}
     (root/"runtime.json").write_text(json.dumps({"core":"mitmproxy","version":probe['mitmproxy'],"python":probe['python'],"source":"https://github.com/mitmproxy/mitmproxy/tree/v12.3.1","capture_modes":["regular","upstream"],"files":files},indent=2),encoding="utf8")
