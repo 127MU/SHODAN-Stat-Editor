@@ -26,6 +26,7 @@ end
 -- An opt-in render check for the packaged application; never writes game files.
 local qa_output = os.getenv('SHODAN_QA_OUTPUT')
 if qa_output then U.available = false end
+local V = require('vehicles')
 
 pcall(ffi.cdef, 'uint64_t GetTickCount64(void);')
 local function clock() return tonumber(ffi.C.GetTickCount64()) / 1000 end
@@ -73,14 +74,14 @@ local function fatal(text)
 end
 
 -- ---------------------------------------------------------------- start
--- where the window was when it last closed: its top left (window.txt: x y)
+-- where the window was when it last closed: its top left, and its height once the user resized it (window.txt: x y [h])
 local PLACE = I.home .. '/window.txt'
 local function saved_place()
     local f = io.open(PLACE, 'r')
     local text = f and f:read('*a') or ''
     if f then f:close() end
-    local x, y = text:match('^(%-?%d+) (%-?%d+)')
-    return x and { tonumber(x), tonumber(y) } or nil
+    local x, y, h = text:match('^(%-?%d+) (%-?%d+) ?(%d*)')
+    return x and { tonumber(x), tonumber(y), tonumber(h) } or nil
 end
 
 local THEME=I.home..'/theme.txt'
@@ -89,7 +90,7 @@ local function main()
     local selected_theme=theme_file and theme_file:read('*a') or 'light'
     if theme_file then theme_file:close() end
     shim.set_theme(selected_theme:match('dark') and 'dark' or 'light')
-    shim.open('SHODAN 数值编辑器 4.1.0', saved_place())
+    shim.open('SHODAN 数值编辑器 4.5.1', saved_place())
     shim.pump()
     local migrated = I.migrate()
     if migrated then log('copied ' .. migrated .. ' files from the CowboyBingus folder') end
@@ -163,17 +164,24 @@ local function main()
                          .. '\n\nIf another tool changed them, verify the game files in Steam.'), 0x30)
     end
 
+    -- the vehicles' handling (their physics, out of the game's archives): the panel offers it when this works
+    local physics_ok, physics_why = pcall(V.load, (game:gsub('[/\\]game$', '')), log)
+    if physics_ok and physics_why > 0 then rawset(_G, 'SHODAN_PHYSICS', V.shared)
+    elseif not physics_ok then log('vehicle physics: not offered: ' .. tostring(physics_why)) end
+    local patch = I.patch_installed(game)   -- this editor's patch archive in the game (its name), or nil
+
     -- ------------------------------------------------------------ the editor
     screen({ 'SHODAN Stat Editor Offline', 'Finding the stats...' })
     rawset(_G, 'SHODAN_OFFLINE', true)
     rawset(_G, 'SHODAN_OFFLINE_LAYOUT', require('layout'))
-    rawset(_G, 'SHODAN_OFFLINE_DEFAULT_READ', D.original_bytes)
+    rawset(_G, 'SHODAN_OFFLINE_DEFAULT_READ', function(address,size) return D.original_bytes(address,size) or (V.original_bytes and V.original_bytes(address,size)) end)
     rawset(_G, 'SHODAN_OFFLINE_GAME', game)
     rawset(_G, 'SHODAN_OFFLINE_REGISTER_LAYOUT', D.register_original_layout)
     rawset(_G,'SHODAN_OFFLINE_TEXT',shim.take_text)
     rawset(_G,'SHODAN_OFFLINE_WHEEL',function() local value=shim.wheel or 0;shim.wheel=0;return value end)
     rawset(_G,'SHODAN_OFFLINE_ZH',require('zh_extra'))
-    rawset(_G,'SHODAN_OFFLINE_ZH_GAME',require('zh_game'))
+    local reviewed_game=require('zh_game')
+    rawset(_G,'SHODAN_OFFLINE_ZH_GAME',{translate=function(text) return reviewed_game.translate(text) or V.translate(text) end})
     rawset(_G,'SHODAN_OFFLINE_ZH_PARAMS',require('zh_params'))
     rawset(_G,'SHODAN_OFFLINE_ZH_REFERENCE',require('zh_reference'))
     rawset(_G,'SHODAN_OFFLINE_ZH_UI',require('zh_ui'))
@@ -195,7 +203,7 @@ local function main()
     local id = ffi.C.GetUserDefaultUILanguage()
     local primary, sub = id % 1024, math.floor(id / 1024)
     if rawget(_G, 'SHODAN_OFFLINE_LANG') == nil then rawset(_G, 'SHODAN_OFFLINE_LANG', primary == 0x04 and ((sub == 2 or sub == 4) and 'zh-Hans' or 'zh-Hant')
-                                      or primary == 0x19 and 'ru' or nil) end
+                                      or primary == 0x19 and 'ru' or primary == 0x0A and 'es-419' or primary == 0x16 and 'pt-BR' or nil) end
     stingray = shim.engine()
     function update(dt) end
     local editor = arg and arg[1] or here .. 'stat_editor.lua'
@@ -213,7 +221,7 @@ local function main()
     ARM.tr=state.tr;ARM.transition=shim.transition
     state.open_armor = AR.show
     local build = U.build(here)   -- app/build.txt: version, commit, channel
-    shim.set_title('SHODAN 数值编辑器 4.1.0')
+    shim.set_title('SHODAN 数值编辑器 4.5.1')
     -- the host's own text in the panel's language, drawn with its font
     local function tr(text)
         if type(state.tr)~='function' then return text end
@@ -263,7 +271,11 @@ local function main()
         else bar.message='主题已切换，但无法保存偏好：'..tostring(why);bar.tone=WARN end
     end
 
-    local function installed_count() local n = 0; for _, v in pairs(ours) do if v then n = n + 1 end end return n end
+    local function installed_count()
+        local n = patch and 1 or 0
+        for _, v in pairs(ours) do if v then n = n + 1 end end
+        return n
+    end
 
     local function status()
         if bar.busy then return bar.busy, WARN end
@@ -444,7 +456,9 @@ local function main()
             if mine and not writes[name] and (mod_management_enabled or not managed[name]) then writes[name], back = originals[name], back + 1 end
         end
         if mod_management_enabled then for name in pairs(managed) do if not writes[name] then writes[name]=assert(originals[name]) end end end
-        if not next(writes) then
+        local physics, vehicles = nil, nil
+        if rawget(_G, 'SHODAN_PHYSICS') then physics, vehicles = V.patch() end
+        if not next(writes) and not physics and not patch then
             bar.busy, bar.base = nil, state.writes
             write_succeeded=true
             say('Nothing to install: your values are the game\'s own.', GOOD)
@@ -461,7 +475,21 @@ local function main()
         local marked={};for name in pairs(pending) do marked[#marked+1]=name end;table.sort(marked)
         assert(marker:write(table.concat(marked,'\n')));assert(marker:close())
         end
-        local done, why = I.write_files(game, writes, originals, false, observed)
+        local done, why = true, nil
+        if next(writes) then done, why = I.write_files(game, writes, originals, false, observed) end
+        if done then for name, data in pairs(writes) do ours[name] = data ~= originals[name] end end
+        if done and (physics or patch) then
+            local name
+            done, name = I.write_patch(game, V.BASE, physics)
+            if done then
+                if physics then made = made + 1 elseif patch then back = back + 1 end
+                patch = name
+                log(physics and ('vehicle handling: ' .. name .. ' (' .. table.concat(vehicles, ', ') .. ')')
+                    or 'vehicle handling: patch removed')
+            else
+                why = name
+            end
+        end
         bar.busy = nil
         if not done then
             log('install failed: ' .. tostring(why))
@@ -491,11 +519,15 @@ local function main()
         local writes = {}
         for name, mine in pairs(ours) do if mine and (mod_management_enabled or not managed[name]) then writes[name] = originals[name] end end
         for name,data in pairs(shipped or {}) do if mod_management_enabled or not managed[name] then writes[name]=data end end
-        if not next(writes) then write_succeeded=true;say('The game\'s own files are already in place.', GOOD); return end
+        if not next(writes) and not patch then write_succeeded=true;say('The game\'s own files are already in place.', GOOD); return end
         busy('Restoring the game\'s files...')
         local names = {}
         for name in pairs(writes) do names[#names + 1] = name end
         local done, why = I.write_files(game, writes, originals, true, observed)
+        if done and patch then
+            local removed, problem = I.write_patch(game, V.BASE, nil)
+            if removed then patch = nil; log('vehicle handling: patch removed') else done, why = nil, problem end
+        end
         bar.busy = nil
         if not done then say('Not restored: ' .. tostring(why), WARN); return end
         write_succeeded=true
@@ -527,7 +559,11 @@ local function main()
 
     if eui then
         local started=clock()
-        repeat update(0.05);assert(clock()-started<30,'读取数据超时') until state.phase=='ready'
+        repeat
+            update(0.05)
+            assert(state.phase~='gave_up','数据读取失败：'..tostring(state.status))
+            assert(state.phase=='ready' or clock()-started<30,'读取数据超时（'..tostring(state.phase)..'）：'..tostring(state.status))
+        until state.phase=='ready'
         -- Apply queued saved values before exposing the model.
         for _=1,10 do update(0.05) end
         bar.base=state.writes or 0
@@ -587,6 +623,8 @@ local function main()
                 local found=false;for _,f in ipairs(files) do if f==name then found=true end end
                 if not found then files[#files+1]=name end
             end
+            local patch_bytes=V.shared and V.patch()
+            if patch_bytes then files[#files+1]='载具、动作与游戏文字资源补丁' end
             table.sort(files)
             if not mod_management_enabled then for _,name in ipairs(files)do if managed[name]then errors[#errors+1]=name..' 正由已安装的 Mod 使用；请开启 Mod 管理后再修改此文件。' end end end
             return {name='写入游戏预览',entries=entries,files=files,problems=errors,warnings=extra_warnings or {},count=#entries}
@@ -974,7 +1012,7 @@ local function main()
     if shim.place then
         I.mkdirs(I.home)
         local f = io.open(PLACE, 'w')
-        if f then f:write(shim.place[1], ' ', shim.place[2], '\n'); f:close() end
+        if f then f:write(shim.place[1], ' ', shim.place[2], shim.place[3] and (' ' .. shim.place[3]) or '', '\n'); f:close() end
     end
     -- the editor saves its values a moment after a change
     local stop = clock() + 1.5

@@ -458,6 +458,7 @@ HusWindow {
             spacing:20
             RowLayout {
                 Layout.fillWidth:true;HusText { text:"全局预设";font.pixelSize:30;font.bold:true;Layout.fillWidth:true }
+                HusButton { text:"恢复内置示例";onClicked:workspace.call("restore_examples",[],x=>{workspace.status=x;workspace.refreshPresets()}) }
                 HusButton { text:"导入";onClicked:window.importPreset("full",0) }
                 HusButton { objectName:"new_global_preset";text:"新建预设";type:HusButton.Type_Primary;onClicked:{nameDialog.callback=name=>workspace.call("full_preset",["new",0,name],()=>workspace.refreshPresets());nameDialog.open()} }
             }

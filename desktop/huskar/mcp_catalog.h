@@ -6,6 +6,7 @@ inline Value huskarMcpCatalog(Backend& backend,std::set<std::string>& methods){
  const std::map<std::string,std::string> signatures={
  {"items","[tab, query] 查询装备；tab: Primary/Secondary/Support/Throwables/Stratagems/Mechas/Attachments/Records"},
  {"select","[hash] 选择装备；hash 使用 items 返回的 id"},{"rows","[] 当前装备的参数、原值、范围和共享影响"},
+ {"game_text","[field, value?] 查看或修改游戏内文字；field: name/desc，空字符串恢复原文"},
  {"set","[row_id, value] 修改当前装备参数；value 可为数字或数值字符串，先调用 rows 获取 id"},
  {"reset","[row_id?] 恢复原值；省略 row_id 恢复当前装备"},{"choices","[row_id] 查询弹丸或状态效果候选项"},
  {"shared","[row_id] 查询共享此参数的装备"},{"preset","[action, slot] 当前装备预设；action: save/load/clear，slot: 1..5"},

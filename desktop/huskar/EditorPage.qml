@@ -7,6 +7,14 @@ ColumnLayout {
     id:page
     required property var store
     property var projectile:store.rows.find(x=>x.projectile_source) || null
+    property var nameText:({available:false})
+    property var descriptionText:({available:false})
+    function loadGameText(){
+        store.call("game_text",["name"],x=>page.nameText=x)
+        store.call("game_text",["desc"],x=>page.descriptionText=x)
+    }
+    Connections { target:page.store;function onSelectionReady(){page.loadGameText()} }
+    Component.onCompleted:if(store.rows.length>0)loadGameText()
     property string section:""
     property string query:""
     property bool changedOnly:false
@@ -64,6 +72,39 @@ ColumnLayout {
             id:sectionColumn
             width:parent.width-16
             spacing:18
+            HusCollapse {
+                id:gameTextPanel
+                objectName:"gameTextPanel"
+                width:sectionColumn.width
+                visible:page.nameText.available
+                initModel:[{key:"text",title:"游戏内名称与说明（可选）"}]
+                titleFont.pixelSize:18
+                titleFont.weight:Font.DemiBold
+                animationEnabled:page.store.cardMotion
+                contentDelegate:Item {
+                    implicitHeight:gameTextForm.implicitHeight+40
+                    ColumnLayout {
+                        id:gameTextForm
+                        anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top
+                        anchors.margins:20
+                        spacing:12
+                        HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:"只修改游戏中显示的文字，不影响伤害等参数。写入游戏后对所有语言生效。";color:HusTheme.Primary.colorTextSecondary }
+                        HusText { text:"名称";font.bold:true }
+                        RowLayout {
+                            Layout.fillWidth:true;spacing:12
+                            HusInput { Layout.fillWidth:true;placeholderText:"输入游戏内名称";text:page.nameText.value || "";onEditingFinished:page.store.call("game_text",["name",text],x=>page.nameText=x) }
+                            HusButton { text:"恢复原名";type:HusButton.Type_Text;onClicked:page.store.call("game_text",["name",""],x=>page.nameText=x) }
+                        }
+                        HusText { text:"说明";font.bold:true }
+                        RowLayout {
+                            Layout.fillWidth:true;spacing:12
+                            HusInput { Layout.fillWidth:true;placeholderText:"输入游戏内说明";text:page.descriptionText.value || "";onEditingFinished:page.store.call("game_text",["desc",text],x=>page.descriptionText=x) }
+                            HusButton { text:"恢复原文";type:HusButton.Type_Text;onClicked:page.store.call("game_text",["desc",""],x=>page.descriptionText=x) }
+                        }
+                        HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:"回车或离开输入框自动保存。名称最多 60 字节、说明最多 400 字节；中文通常每字占 3 字节。";font.pixelSize:13;color:HusTheme.Primary.colorTextSecondary }
+                    }
+                }
+            }
             Repeater {
                 model:page.sections.slice(1).filter(s=>page.filtered.some(r=>r.section===s.value)).concat(page.filtered.some(r=>!r.section)?[{label:"通用",value:""}]:[])
                 MaterialCard {

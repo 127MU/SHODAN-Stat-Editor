@@ -17,10 +17,10 @@ for _,mode in ipairs({false,true})do
       if not b and QA_TABLES[p.field.kind] then local t=QA_TABLES[p.field.kind];b={p=ffi.cast('uint8_t*',t.copies[1]+24),n=t.payload} end
       if p.field.storage=='f32'and b and p.field.offset>=0 and p.field.offset+4<=b.n then
         local v=tonumber(ffi.cast('float*',b.p+p.field.offset)[0]);assert(v==v and math.abs(v)<math.huge,'Nonfinite value: '..item.name..' / '..row.label);decoded=decoded+1
-        if #row.parts==1 and not(row.mult or row.span or row.scale or row.zero or row.choice) then
+        if #row.parts==1 and not(row.mult or row.span or row.scale or row.zero or row.choice or p.field.unset) then
           local r=shown[row_index];assert(r and type(r.value)=='number','Missing numeric UI value')
           assert(math.abs(r.value-v)<=math.max(1,math.abs(v))*1e-6,'UI/float bytes disagree: '..item.name..' / '..row.label)
-          local original=D.original_bytes(tonumber(ffi.cast('uintptr_t',b.p+p.field.offset)),4)
+          local original=SHODAN_OFFLINE_DEFAULT_READ(tonumber(ffi.cast('uintptr_t',b.p+p.field.offset)),4)
           assert(original,'Missing immutable bytes: '..item.name..' / '..row.label)
           local base=tonumber(ffi.cast('const float*',original)[0]);assert(type(r.original)=='number'and math.abs(r.original-base)<=math.max(1,math.abs(base))*1e-6,'Default/float bytes disagree: '..item.name..' / '..row.label)
           simple_checks=simple_checks+1
