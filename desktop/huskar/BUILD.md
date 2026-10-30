@@ -8,7 +8,7 @@ HuskarUI 固定为 `d760773ee0f440284965fe443f765caeb66d8114`，自动获取其�
 cmake -S desktop/huskar -B build/huskar -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=<Qt SDK 路径>
 cmake --build build/huskar --parallel
 python tools/package_huskar.py --build-dir build/huskar --qt-dir <Qt SDK 路径> --compiler-bin <MinGW bin 路径> --huskar-root build/huskar/_deps/huskar-src --output-root dist/desktop
-python tools/package_onefile.py --release dist/desktop/SHODAN_4.5.1-r1 --compiler-bin <MinGW bin 路径>
+python tools/package_onefile.py --release dist/desktop/SHODAN_4.5.1-r2 --compiler-bin <MinGW bin 路径>
 ```
 
 离线复用源码可传入 `FETCHCONTENT_SOURCE_DIR_HUSKAR` 和
@@ -24,7 +24,7 @@ JSON 工具和 zlib/yyjson 源码，不编译、不链接其界面或渲染器�
 shodan_hash.dll 沿用现有运行库。构建和打包不会启动游戏或写入游戏文件。
 
 ```powershell
-python tests/test_huskar.py --exe "dist/desktop/SHODAN_4.5.1-r1/SHODAN 数值编辑器.exe" --output dist/qa-huskar
+python tests/test_huskar.py --exe "dist/desktop/SHODAN_4.5.1-r2/SHODAN 数值编辑器.exe" --output dist/qa-huskar
 ```
 
 该测试创建隔离配置，验证界面、回车/失焦保存、无效输入、预设、主题和图片；

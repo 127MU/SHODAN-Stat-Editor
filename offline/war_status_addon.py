@@ -7,6 +7,7 @@ import time
 import hashlib
 import asyncio
 import urllib.request
+import math
 from pathlib import Path
 
 HOST = "api.live.prod.thehelldiversgame.com"
@@ -329,14 +330,30 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
                 if type(index) is not int or index<0 or index in seen or type(maximum) is not int or maximum<=1:
                     raise RegionAvailabilityError('原生分区编号或生命值上限不兼容')
                 seen.add(index)
-                if any(isinstance(r,dict) and r.get('planetIndex')==target['planet'] and r.get('regionIndex')==index for r in regions):
+                existing=[r for r in regions if isinstance(r,dict) and r.get('planetIndex')==target['planet'] and r.get('regionIndex')==index]
+                if len(existing)>1:
+                    raise RegionAvailabilityError('当前战况包含重复的原生分区状态')
+                if existing:
+                    # Explicit local campaign initialization must also make
+                    # existing native regions playable for the selected enemy.
+                    # Merely preserving a locked/liberated/stale row leaves
+                    # the planet with a campaign but no eligible operations.
+                    region=existing[0]
+                    for field,value in (('owner',target['campaign_race']),('isAvailable',True)):
+                        if region.get(field)!=value:
+                            region[field]=value;changes+=1
+                    factor=region.get('availabilityFactor')
+                    if type(factor) not in (int,float) or not math.isfinite(factor) or factor<=0:
+                        region['availabilityFactor']=1;changes+=1
+                    health=region.get('health')
+                    if type(health) not in (int,float) or not math.isfinite(health) or health<=0 or health>maximum:
+                        region['health']=maximum//2;changes+=1
                     continue
                 # Experimental local state, not server defaults or persisted war progress.
                 regions.append(dict(planetIndex=target['planet'],regionIndex=index,owner=target['campaign_race'],health=maximum//2,players=0,regerPerSecond=0,isAvailable=True,availabilityFactor=1))
                 changes+=1
     region_targets={t['planet'] for t in targets if t['open_regions']}
     if region_targets:
-        import math
         regions=result.get('planetRegions')
         if not isinstance(regions,list):
             raise RegionAvailabilityError('当前战况不包含原生分区，未创建虚构分区')
