@@ -95,10 +95,11 @@ def main():
             before=f.stat().st_size
             # MinGW binutils use the system ANSI codepage for argv filenames.
             # Python copies Unicode paths; strip sees only an ASCII basename.
-            with tempfile.TemporaryDirectory(prefix='shodan-strip-') as temporary:
+            with tempfile.TemporaryDirectory(prefix='shodan-strip-',dir=a.build_dir.resolve()) as temporary:
                 staged=Path(temporary)/'input.exe'
                 shutil.copy2(f,staged)
-                subprocess.run([str(strip.resolve()),'--strip-unneeded',staged.name],cwd=temporary,check=True,env=env)
+                strip_env=dict(env,TEMP=temporary,TMP=temporary)
+                subprocess.run([str(strip.resolve()),'--strip-unneeded',staged.name],cwd=temporary,check=True,env=strip_env)
                 shutil.copy2(staged,f)
             stripped.append({'file':name,'before':before,'after':f.stat().st_size})
     files={f.relative_to(release).as_posix():hashlib.sha256(f.read_bytes()).hexdigest() for f in release.rglob('*') if f.is_file() and f.name!='manifest.json'}
