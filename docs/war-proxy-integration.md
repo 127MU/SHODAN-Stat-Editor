@@ -119,3 +119,17 @@ JSON 方案验证失败时不会部分应用，其他工具改动不会被自动
 4. `tools/package_onefile.py` 会把 manifest 中的运行时一起纳入单 EXE。
 
 仍可用 `--mitmdump <官方程序> --mitmproxy-license <LICENSE>` 构建兼容包，两种方式互斥。
+
+### 防守战役（实验性）
+
+在「变种工作区 → 编辑方案 → 高级设置」开启战役，选择「防守战役」。
+目标归属须为超级地球，明确选择作战敌人，再通过可搜索的星球选择器指定进攻来源。
+插件只接受本次 Status 中存在且归属与敌人阵营一致的来源星球。
+可设置入侵等级、防守时长和战役计数；默认分别为 20、48 小时、38。
+
+根据 [DEFENSE-FORGE-RECIPE](https://github.com/deepseekv41flash/hd2-network-proxy/blob/master/docs/DEFENSE-FORGE-RECIPE.md)，
+在同一次 Status 改写中补齐超级地球归属、敌方攻击边、type=4 战役、eventType=1 事件和联合作战。
+事件关联战役 ID，事件与联合作战 ID 一致；最大生命值为等级 × 50,000，剩余值设为 99%，potentialBuildUp=0。
+事件编号避开已有记录，保留其他星球数据；结构或来源校验失败时保留原响应。
+同一代理会话中刷新战况不延长截止时间，重启代理后重新初始化计时。
+这套逻辑只改本机响应，服务器不会推进本地防守进度；本项目目前只完成离线验证，实机作战仍需确认。

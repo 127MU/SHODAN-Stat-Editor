@@ -16,7 +16,13 @@ Timer {
     property bool flagOnly:Backend.setting("qaFlagReset",false)
     property bool appearanceOnly:Backend.setting("qaAppearanceOnly",false)
     property bool warProxyOnly:Backend.setting("qaWarProxyOnly",false)
+    property bool parameterGroupsOnly:Backend.setting("qaParameterGroupsOnly",false)
+    property bool statusStrengthOnly:Backend.setting("qaStatusStrengthOnly",false)
+    property bool squadTransportOnly:Backend.setting("qaSquadTransportOnly",false)
+    property bool historyOnly:Backend.setting("qaHistoryOnly",false)
+    property bool diagnosticsOnly:Backend.setting("qaDiagnosticsOnly",false)
     property bool flagStarted:false
+    property bool flagPrepared:false
     property var flagRow
     interval:850;repeat:true
     function run(w,s,p){window=w;store=s;preferences=p;start()}
@@ -47,8 +53,8 @@ Timer {
         else if(step===7){ensure(Backend.qaDrag("setting_frostOpacity"),"磨砂透明度无法拖动")}
         else if(step===8){ensure(preferences.frostOpacity>0.65,"材质滑条未生效");Backend.capture("appearance-04-frost");preferences.cardMaterial="glass";preferences.glassRefraction=0.14;preferences.glassHighlight=2.6;preferences.glassOpacity=0.28}
         else if(step===9){ensure(window.qaGlassBound(),"玻璃折射参数没有连接到原生材质");Backend.capture("appearance-05-glass");window.qaSettingsSection(2)}
-        else if(step===10){Backend.capture("appearance-06-motion");preferences.motion=false;preferences.hoverEffects=false;preferences.saveCustom();preferences.accent="#a65e00";preferences.useCustom()}
-        else if(step===11){ensure(!preferences.motion && !preferences.hoverEffects && preferences.autoAccent,"个人主题没有恢复动效与自动取色");window.qaSettingsSection(3)}
+        else if(step===10){Backend.capture("appearance-06-motion");preferences.motion=false;preferences.hoverEffects=false;preferences.materialQuality="economy";preferences.saveCustom();preferences.accent="#a65e00";preferences.useCustom()}
+        else if(step===11){ensure(!preferences.motion && !preferences.hoverEffects && preferences.autoAccent && preferences.materialQuality==="economy","个人主题没有恢复动效与自动取色");window.qaSettingsSection(3)}
         else if(step===12){Backend.capture("appearance-07-window");window.qaSettingsSection(4)}
         else if(step===13){Backend.capture("appearance-08-project");window.width=980;window.height=700;window.qaSettingsSection(0)}
         else if(step===14){Backend.capture("appearance-09-narrow-preview");window.width=1480;window.height=960;preferences.motion=true;window.qaSettingsSection(2)}
@@ -61,6 +67,55 @@ Timer {
     onTriggered:{
         if(!Backend.ready || waiting || Object.keys(store.callbacks).length)return
         try{
+            if(squadTransportOnly){
+                if(step===0){store.openModule("vehicle");const item=store.library.find(x=>x.id==="3EC790806D0B0540");ensure(!!item,"运输载体入口缺失");store.select(item)}
+                else if(step===1){ensure(store.rows.filter(r=>r.section==="小队投放（实验性）").length===25,"运输参数不完整");window.qaParameterGroups("cards")}
+                else if(step===2){ensure(window.qaParameterGroups("openCategory"),"运输参数分类无法打开")}
+                else if(step===3){ensure(window.qaParameterGroups("categoryCheck"),"运输参数弹窗为空");Backend.capture("squad-01-fields");row=store.rows.find(r=>r.section==="小队投放（实验性）" && !r.choice && Math.abs(r.value-.45)<.0001);ensure(!!row,"浮点参数解释错误");store.save(row,"0.625")}
+                else if(step===4){ensure(store.rows.find(r=>r.id===row.id).value===.625,"运输参数保存失败");window.qaParameterGroups("statusEnd");Backend.capture("squad-02-end");Backend.finishQa("")}
+                step++;return
+            }
+            if(statusStrengthOnly){
+                if(step===0){store.openModule("equipment");store.select(store.library[0])}
+                else if(step>=1 && step<=8){
+                    const choices=store.rows.filter(r=>r.choice_kind==="status")
+                    ensure(choices.length===4,"状态槽数量不正确")
+                    const index=step<=4?4-step:step-5
+                    store.call("choose",[choices[index].id,step<=4?0:[5,38,43,68][index]],()=>store.refreshRows())
+                }
+                else if(step===9){ensure(window.qaParameterGroups("openStatus"),"状态效果分类打不开")}
+                else if(step===10){ensure(window.qaParameterGroups("statusCheck"),"第四槽强度移出分类");window.qaParameterGroups("statusEnd");Backend.capture("status-01-four-slots")
+                    const choices=store.rows.filter(r=>r.choice_kind==="status");row=store.rows.find(r=>r.id===choices[3].id+1);ensure(row && !row.choice,"第四槽强度缺失");store.save(row,"2.75")}
+                else if(step===11){ensure(store.rows.find(r=>r.id===row.id).value===2.75,"第四槽强度无法保存");ensure(window.qaParameterGroups("statusCheck"),"保存后强度消失");Backend.capture("status-02-strength-saved");Backend.finishQa("")}
+                step++;return
+            }
+            if(diagnosticsOnly){
+                if(step===0){store.openModule("equipment");store.select(store.library[0])}
+                else if(step===1){ensure(Backend.qaCheck("openReferenceChain",true),"引用链入口缺失")}
+                else if(step===2){ensure(window.qaDiagnostic("chain"),"引用链弹窗为空");Backend.capture("diagnostic-01-chain");ensure(Backend.qaEdit("diagnosticSearch","伤害",false),"诊断搜索无法输入")}
+                else if(step===3){ensure(window.qaDiagnostic("filtered"),"引用链搜索未过滤");Backend.capture("diagnostic-02-search");window.qaDiagnostic("resources")}
+                else if(step===4){ensure(window.qaDiagnostic("resourcesCheck"),"资源诊断失败");Backend.capture("diagnostic-03-resources");window.qaDiagnostic("close")}
+                else if(step===5){ensure(Backend.qaCheck("openReferenceChain",true),"引用链无法重新打开")}
+                else if(step===6){ensure(window.qaDiagnostic("openRecord"),"无法打开对应记录")}
+                else if(step===7){ensure(store.module==="records" && store.rows.length>0,"记录跳转未载入参数");Backend.capture("diagnostic-04-record");Backend.finishQa("")}
+                step++;return
+            }
+            if(historyOnly){
+                if(step===0){store.openModule("equipment");store.select(store.library[0])}
+                else if(step===1){row=store.rows.find(r=>!r.choice && !r.code && !r.flag && typeof r.value==="number" && r.value<1000);ensure(!!row,"没有数值参数");original=row.value;ensure(window.qaFocusParameter(row.id),"无法定位参数")}
+                else if(step===2){ensure(Backend.qaEdit("field_"+row.id,String(original+1),true),"输入无法提交")}
+                else if(step===3){ensure(store.editHistory.undo>0,"撤销状态未更新");ensure(Backend.qaCheck("undoEdit",true),"撤销按钮无法点击")}
+                else if(step===4){ensure(store.rows.find(r=>r.id===row.id).value===original,"界面撤销未恢复");ensure(store.editHistory.redo>0,"重做状态未更新");Backend.capture("history-undo");ensure(Backend.qaCheck("redoEdit",true),"重做按钮无法点击")}
+                else if(step===5){ensure(store.rows.find(r=>r.id===row.id).value===original+1,"界面重做未恢复");Backend.capture("history-redo");ensure(Backend.qaCheck("reset_"+row.id,true),"恢复按钮无法点击")}
+                else if(step===6){ensure(Backend.qaCheck("undoEdit",true),"恢复后无法撤销")}
+                else if(step===7){ensure(store.rows.find(r=>r.id===row.id).value===original+1,"恢复操作撤销失败");Backend.capture("history-reset-undone");window.qaParameterGroups("cards")}
+                else if(step===8){ensure(window.qaParameterGroups("openCategory"),"分类弹窗无法打开")}
+                else if(step===9){ensure(Backend.qaCheck("undoCategoryEdit",true),"弹窗内无法撤销")}
+                else if(step===10){ensure(store.rows.find(r=>r.id===row.id).value===original,"弹窗内撤销未同步");Backend.capture("history-modal-undo");store.save(row,String(original+2));window.qaParameterGroups("closeCategory")}
+                else if(step===11){store.reviewHistory()}
+                else if(step===12){ensure(window.qaEditList(),"修改记录列表为空或未打开");Backend.capture("history-records");Backend.finishQa("")}
+                step++;return
+            }
             if(warProxyOnly){
                 if(step===0)store.openModule("warproxy")
                 else if(step===1){ensure(window.qaWarProxy("advanced"),"高级设置不可用");ensure(Backend.qaEdit("warPlanet","93",true),"星球输入不可用");ensure(Backend.qaEdit("warEffects","1386",true),"效果输入不可用");Backend.capture("war-proxy-light")}
@@ -75,7 +130,27 @@ Timer {
                 else if(step===10){ensure(Backend.qaEdit("warEffectSearch","风暴",false),"效果搜索不可用")}
                 else if(step===11){ensure(window.qaWarProxy("effectSearchCheck"),"中文效果搜索错误");window.qaWarProxy("connection")}
                 else if(step===12){ensure(window.qaWarProxy("savedEdit"),"已保存方案编辑失败")}
-                else if(step===13){ensure(window.qaWarProxy("editorCached"),"编辑已保存方案不应重建表单");Backend.finishQa("")}
+                else if(step===13){ensure(window.qaWarProxy("editorCached"),"编辑已保存方案不应重建表单");ensure(window.qaWarProxy("defenseSetup"),"防守配置未显示")}
+                else if(step===14){ensure(Backend.qaEdit("defenseLevel","38",true),"入侵等级输入失败")}
+                else if(step===15){ensure(window.qaWarProxy("defenseSave"),"防守配置保存失败");Backend.capture("war-proxy-defense");Backend.finishQa("")}
+                step++;return
+            }
+            if(parameterGroupsOnly){
+                if(step===0){store.openModule("equipment");store.select(store.library[0])}
+                else if(step===1){ensure(store.rows.length>0,"参数为空");Backend.capture("groups-01-expanded");ensure(window.qaParameterGroups("single"),"无法点击单组收起")}
+                else if(step===2){ensure(window.qaParameterGroups("singleCheck"),"收起后卡片仍保留展开高度");Backend.capture("groups-02-single-collapsed");ensure(window.qaParameterGroups("all"),"无法全部收起")}
+                else if(step===3){ensure(window.qaParameterGroups("allCheck"),"全部收起后仍有空白卡片");Backend.capture("groups-03-all-collapsed");ensure(window.qaParameterGroups("expand"),"无法全部展开")}
+                else if(step===4){ensure(window.qaParameterGroups("expandedCheck"),"展开后参数未恢复");Backend.capture("groups-04-restored");ensure(window.qaParameterGroups("classic"),"无法切换旧版")}
+                else if(step===5){Backend.capture("groups-05-classic");ensure(window.qaParameterGroups("cards"),"无法切换新版")}
+                else if(step===6){Backend.capture("groups-06-cards");ensure(window.qaParameterGroups("openCategory"),"分类卡片无法打开")}
+                else if(step===7){ensure(window.qaParameterGroups("categoryCheck"),"分类参数弹窗为空");Backend.capture("groups-07-category-dialog");window.qaParameterGroups("closeCategory");window.qaParameterGroups("classic");store.openModule("vehicle");const mech=store.library.find(x=>(x.english || "").startsWith("EXO-45") && !(x.english || "").includes("Left") && !(x.english || "").includes("Right"));ensure(!!mech,"机甲本体缺失");store.select(mech)}
+                else if(step===8){row=store.rows.find(r=>r.choice_kind==="mountside");ensure(!!row,"挂载方向选项缺失");ensure(window.qaParameterGroups("scrollSnapshot"),"无法滚到载具参数底部")}
+                else if(step===9){store.call("choose",[row.id,row.value===1?2:1],()=>store.refreshRows())}
+                else if(step===10){ensure(window.qaParameterGroups("scrollCheck"),"载具选项修改后跳回顶部");Backend.capture("groups-08-vehicle-scroll");window.qaParameterGroups("cards")}
+                else if(step===11){ensure(window.qaParameterGroups("openMount"),"无法打开挂载分类")}
+                else if(step===12){ensure(window.qaParameterGroups("dialogScroll"),"挂载弹窗无法滚动")}
+                else if(step===13){store.call("choose",[row.id,row.value===1?2:1],()=>store.refreshRows())}
+                else if(step===14){ensure(window.qaParameterGroups("dialogScrollCheck"),"修改载具选项后弹窗跳回顶部");Backend.capture("groups-09-dialog-scroll");store.call("reset",[row.id],()=>Backend.finishQa(""))}
                 step++;return
             }
             if(appearanceOnly){runAppearance();return}
@@ -93,8 +168,8 @@ Timer {
             if(step===0){ensure(store.module==="home","默认没有显示首页");ensure(Backend.capture("01-home"),"首页截图失败");store.openModule("equipment")}
             else if(step===1){ensure(store.library.length>0,"装备库为空");Backend.capture("02-library");store.search="ar-11";ensure(store.library.length>0,"搜索无结果")}
             else if(step===2){Backend.capture("03-search");store.select(store.library[0])}
-            else if(step===3){ensure(store.rows.length>0,"参数未载入");Backend.capture("04-editor");row=store.rows.find(x=>!x.flag&&!x.choice&&!x.code&&typeof x.value==="number");ensure(!!row,"没有数值字段");original=row.value;ensure(Backend.qaEdit("field_"+row.id,String(original+5),true),"未找到输入控件")}
-            else if(step===4){checkRows(original+5)}
+            else if(step===3){ensure(store.rows.length>0,"参数未载入");Backend.capture("04-editor");row=store.rows.find(x=>!x.flag&&!x.choice&&!x.code&&typeof x.value==="number");ensure(!!row,"没有数值字段");original=row.value;ensure(window.qaTrackParameter(row.id),"参数未按可见分组加载");ensure(Backend.qaEdit("field_"+row.id,String(original+5),true),"未找到输入控件")}
+            else if(step===4){ensure(window.qaParameterStable(row.id),"单项保存重建了输入控件");checkRows(original+5)}
             else if(step===5){ensure(Backend.qaEdit("field_"+row.id,String(original+10),false),"无法失焦保存")}
             else if(step===6){checkRows(original+10)}
             else if(step===7){waiting=true;store.call("preset",["save",5],function(){store.call("preset_export",["weapon",5],function(text){try{ensure(text.indexOf("SHODAN-PRESET 1")===0,"预设导出失败");store.call("preset_import",["weapon",5,text],function(){qa.waiting=false})}catch(e){Backend.finishQa(String(e))}})})}
@@ -159,7 +234,7 @@ Timer {
             else if(step===59){ensure(store.module==="enemy" && store.tab==="SEAF" && window.qaCatalogAligned(),"SEAF 最后一行排列错位");Backend.capture("42-seaf-last-row-aligned");window.width=1480;window.height=960}
             else if(step===60){ensure(store.module==="enemy" && store.tab==="SEAF" && window.qaCatalogAligned(),"窗口放大后排列错位");Backend.capture("43-seaf-resized-aligned");store.setCatalogColumns(4)}
             else if(step===61){store.openModule("equipment");store.select(store.library[0])}
-            else if(step===62){flagRow=store.rows.find(x=>x.flag && typeof x.original==="number");ensure(!!flagRow,"没有开关字段");ensure(Backend.qaCheck("toggle_"+flagRow.id,true),"无法点击开关")}
+            else if(step===62){flagRow=store.rows.find(x=>x.flag && typeof x.original==="number");ensure(!!flagRow,"没有开关字段");if(!flagPrepared){flagPrepared=true;ensure(window.qaFocusParameter(flagRow.id),"无法定位开关分类");return}ensure(Backend.qaCheck("toggle_"+flagRow.id,true),"无法点击开关")}
             else if(step===63){waiting=true;store.call("rows",[],function(rows){try{ensure(rows.find(x=>x.id===qa.flagRow.id).value!==qa.flagRow.original,"开关修改未保存");ensure(Backend.qaCheck("toggle_"+qa.flagRow.id)!==(qa.flagRow.original>=0.5),"开关修改后界面状态错误");Backend.capture("44-flag-changed");ensure(Backend.qaCheck("reset_"+qa.flagRow.id,true),"无法点击恢复");qa.waiting=false}catch(e){Backend.finishQa(String(e))}})}
             else if(step===64){waiting=true;store.call("rows",[],function(rows){try{ensure(rows.find(x=>x.id===qa.flagRow.id).value===qa.flagRow.original,"恢复后后台仍是修改值");ensure(Backend.qaCheck("toggle_"+qa.flagRow.id)===(qa.flagRow.original>=0.5),"后台已恢复但开关界面未恢复");Backend.capture("45-flag-reset");ensure(Backend.writeText(QaDirectory+"/appearance.json",JSON.stringify(window.qaAppearanceSnapshot())),"无法保存设置验证快照");qa.waiting=false;if(qa.flagOnly)Backend.finishQa("")}catch(e){Backend.finishQa(String(e))}})}
             else if(step===65){store.openModule("stratagem");store.select(store.library[0])}

@@ -10,6 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @unittest.skipUnless(LuaRuntime, 'LuaJIT is required')
 class DesktopFeaturesTests(unittest.TestCase):
+    def test_large_current_catalog_roundtrip(self):
+        lua = LuaRuntime()
+        lua.execute("package.path=" + repr(str(ROOT/'offline/?.lua').replace('\\', '/')) + "..';'..package.path")
+        lua.execute("local F=require('desktop_features');local v={};for n=1,50001 do v[n]={hash='0123456789ABCDEF',id='field_'..n,value=n}end;local text=F.encode('full','large',nil,v,'equipment');assert(#F.decode(text).values==50001)")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.lua = LuaRuntime()

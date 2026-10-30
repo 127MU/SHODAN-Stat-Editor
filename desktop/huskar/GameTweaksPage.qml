@@ -6,6 +6,19 @@ import HuskarUI.Basic
 Flickable {
     id:page
     required property var store
+    property bool ragdollOn:false
+    property bool checkingRagdoll:false
+    property bool wantedRagdoll:false
+    property string ragdollStatus:"版本核对后才能安装或恢复；不影响已编辑的数值。"
+    function previewRagdoll(on){
+        checkingRagdoll=true;wantedRagdoll=on
+        store.call("ragdoll_preview",[],function(result){checkingRagdoll=false;ragdollOn=result.enabled;ragdollStatus=result.message;ragdollConfirm.open()},function(text){checkingRagdoll=false;ragdollStatus=text})
+    }
+    HusModal {
+        id:ragdollConfirm;width:560;modal:true;title:page.wantedRagdoll?"启用布娃娃优化（实验性）":"恢复布娃娃优化";confirmText:"确认";cancelText:"取消";onCancel:close()
+        description:"此项会立即更改资源补丁，请先完全退出游戏。其他数值修改仍通过顶部「写入游戏」安装。"+page.ragdollStatus
+        onConfirm:{close();page.checkingRagdoll=true;page.store.call("ragdoll_apply",[page.wantedRagdoll],function(text){page.checkingRagdoll=false;page.ragdollOn=page.wantedRagdoll;page.ragdollStatus=text;page.store.status=text},function(text){page.checkingRagdoll=false;page.ragdollStatus=text})}
+    }
     contentHeight:body.implicitHeight;clip:true
     boundsBehavior:Flickable.StopAtBounds
     ScrollBar.vertical:HusScrollBar{}
@@ -15,7 +28,7 @@ Flickable {
         HusText { text:"游戏参数";font.pixelSize:30;font.bold:true }
         HusText { Layout.fillWidth:true;text:"调整后点击「写入游戏」生效。";wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
         Repeater {
-            model:[{key:"reticle",text:"狙击步枪第三人称准星",group:"瞄准显示"},{key:"bounce",text:"战略球更易附着表面",group:"投掷行为",note:"解除部分战备仅能在导航网格上部署的限制。岩石、高台、陡坡和物体碰撞仍可能使战略球弹开，不保证任意表面黏附。写入后需重新启动游戏。"},{key:"foliage",text:"射弹穿过树冠与灌木",group:"射弹交互"}]
+            model:[{key:"reticle",text:"狙击步枪第三人称准星",group:"瞄准显示"},{key:"bounce",text:"策略球部署限制放宽",group:"投掷行为",note:"解除部分战备仅能在导航网格上部署的限制。岩石、高台、陡坡和物体碰撞仍可能使策略球弹开，不保证任意表面粘附。写入后需重新启动游戏。"},{key:"foliage",text:"射弹穿过树冠与灌木",group:"射弹交互"}]
             MaterialCard {
             store:page.store
                 required property var modelData
@@ -28,6 +41,18 @@ Flickable {
                         HusText { Layout.fillWidth:true;visible:!!modelData.note;text:modelData.note || "";wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
                     }
                     HusSwitch { Layout.margins:18;checked:!!page.store.tweaks[modelData.key];onClicked:page.store.call("tweaks",[modelData.key,checked],d=>page.store.tweaks=d) }
+                }
+            }
+        }
+        MaterialCard {
+            store:page.store;Layout.fillWidth:true;title:"受击与布娃娃（实验性）"
+            bodyDelegate:ColumnLayout {
+                width:parent.width;spacing:12
+                HusText { Layout.fillWidth:true;Layout.margins:18;text:page.checkingRagdoll?"正在核对资源与补丁，请稍候…":page.ragdollStatus;wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
+                RowLayout {
+                    Layout.leftMargin:18;Layout.rightMargin:18;Layout.bottomMargin:18;spacing:12
+                    HusButton { objectName:"enableRagdoll";text:"启用优化";enabled:!page.checkingRagdoll;onClicked:page.previewRagdoll(true) }
+                    HusButton { text:"恢复";enabled:!page.checkingRagdoll;onClicked:page.previewRagdoll(false) }
                 }
             }
         }

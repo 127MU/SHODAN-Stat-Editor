@@ -34,6 +34,31 @@ class FileChangeGuardTests(unittest.TestCase):
    put('own.bin','foreign');local ok=I.write_files(QA_GAME,{['own.bin']='third'},originals)
    assert(not ok and I.read(QA_GAME..'/own.bin')=='foreign')
   ''')
+ def test_progress_finishes_and_observer_cannot_interrupt_commit(self):
+  self.lua.execute('''
+   put('one.bin','original-one');put('two.bin','original-two')
+   local events={}
+   SHODAN_EUI_PROGRESS=function(message,done,total)
+    events[#events+1]={message=message,done=done,total=total}
+    if #events==2 then error('UI observer failure')end
+   end
+   assert(I.write_files(QA_GAME,{['one.bin']='edited-one',['two.bin']='edited-two'},
+    {['one.bin']='original-one',['two.bin']='original-two'}))
+   assert(#events>=8 and events[#events].done==2 and events[#events].total==2)
+   assert(I.read(QA_GAME..'/one.bin')=='edited-one' and I.read(QA_GAME..'/two.bin')=='edited-two')
+   assert(not I.read(QA_GAME..'/one.bin.shodan-new'))
+  ''')
+ def test_identical_file_skips_staging_after_external_change_guard(self):
+  self.lua.execute('''
+   put('one.bin','same');local events={}
+   SHODAN_EUI_PROGRESS=function(message)events[#events+1]=message end
+   assert(I.write_files(QA_GAME,{['one.bin']='same'},{['one.bin']='same'}))
+   assert(not I.read(QA_GAME..'/one.bin.shodan-new'))
+   assert(events[#events]=='跳过内容相同的文件')
+   -- A matching desired value must never hide an external change after load.
+   local ok=I.write_files(QA_GAME,{['one.bin']='same'},{['one.bin']='original'},false,{['one.bin']='not-the-observed-hash'})
+   assert(not ok)
+  ''')
  def test_startup_mod_with_canonical_baseline_can_be_written_and_restored(self):
   self.lua.execute('''
    local name='generated_damage_settings.dl_bin'

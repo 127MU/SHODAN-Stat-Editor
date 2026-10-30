@@ -1,0 +1,6 @@
+{
+  "schema": 2,
+  "targets": [
+    {"planet": 139, "enabled": true, "effects": [], "owner": 0, "campaign": true, "campaign_type": 0}
+  ]
+}

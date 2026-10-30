@@ -23,10 +23,12 @@ ColumnLayout {
     Connections {
         target:field.store
         function onRowUpdated(updated){if(!field.armor && updated.id===field.row.id){field.row=updated;field.saved=updated.flag?String(updated.value):String(updated.text)}}
+        function onHistoryReplayed(){if(field.armor)field.store.call("armor_rows",[field.passiveId],function(rows){const updated=rows.find(r=>r.key===field.row.key);if(updated){field.row=updated;field.saved=String(updated.value)}})}
     }
     RowLayout {
         Layout.fillWidth:true
         HusText { text:row.label;Layout.fillWidth:true;wrapMode:Text.Wrap }
+        HusText { visible:field.row.choice_kind!=="resomode";text:"基准 "+(field.armor?field.row.default:field.row.default_text);color:HusTheme.Primary.colorTextSecondary;font.pixelSize:12;Layout.maximumWidth:160;elide:Text.ElideRight;HoverHandler { id:originalHover } HusToolTip { visible:originalHover.hovered;text:field.armor?parent.text:(field.row.baseline_source || "恢复基准")+"："+field.row.default_text+"\n启动时文件："+(field.row.loaded_text || "未知")+"\n待写入值："+(field.row.text || "未知")+"\n启动时文件可能已被其他工具修改，不作为游戏原版值。" } }
         HusIconButton {
             iconSource:HusIcon.QuestionCircleOutlined
             type:HusButton.Type_Text
@@ -64,16 +66,19 @@ ColumnLayout {
             text:"恢复";type:HusButton.Type_Text
             onClicked:{
                 if(field.armor){store.call("armor_set",[field.passiveId,field.row.key,field.row.default],function(){field.saved=String(field.row.default);field.error=""})}
-                else store.call("reset",[field.row.id],()=>store.refreshRows())
+                else store.resetField(field.row)
             }
         }
     }
     RowLayout {
+        visible:(field.row.shared || []).length>0
         Layout.fillWidth:true
-        HusText { visible:field.row.choice_kind!=="resomode";text:"原值  "+(field.armor?field.row.default:field.row.default_text);color:HusTheme.Primary.colorTextSecondary;font.pixelSize:13 }
+        HusText { visible:!!field.row.changed;text:"已修改";color:HusTheme.Primary.colorPrimary;font.pixelSize:12 }
         Item { Layout.fillWidth:true }
-        HusButton { visible:(field.row.shared || []).length>0;text:"查看共享影响";type:HusButton.Type_Link;onClicked:field.shared(field.row) }
+        HusButton { visible:(field.row.shared || []).length>0;text:"共享影响 "+(field.row.shared || []).length+" 项";type:HusButton.Type_Link;onClicked:field.shared(field.row);HusToolTip { visible:parent.hovered;text:(field.row.shared || []).map(x=>x.name).join("\n") } }
     }
+    HusText { visible:!field.armor && (field.row.shared || []).length>0;Layout.fillWidth:true;text:"同时影响："+(field.row.shared || []).slice(0,2).map(x=>x.name).join("、")+((field.row.shared || []).length>2?" 等":"");font.pixelSize:12;wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
+    HusText { visible:!field.armor && field.row.loaded_text!==undefined;Layout.fillWidth:true;text:"启动文件："+(field.row.loaded_text || "未知")+"  ·  待写入："+(field.row.text || "未知");font.pixelSize:12;wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
     HusText { visible:!!field.row.inline_note;Layout.fillWidth:true;text:field.row.inline_note || "";wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
     HusText { visible:!!field.error;Layout.fillWidth:true;text:field.error;wrapMode:Text.Wrap;color:HusTheme.Primary.colorError }
 }

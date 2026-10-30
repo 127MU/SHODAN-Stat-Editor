@@ -29,7 +29,7 @@ def main():
         copy(a.python_root/name,name)
     copy(a.python_root/"LICENSE.txt","licenses/Python.txt")
     for f in (a.python_root/"DLLs").iterdir():
-        if f.suffix.lower() in (".dll",".pyd") and not f.name.startswith("_test"):copy(f,"DLLs/"+f.name)
+        if f.suffix.lower() in (".dll",".pyd") and not f.name.startswith("_test") and include_proxy_file('DLLs/'+f.name):copy(f,"DLLs/"+f.name)
     excluded={"site-packages","__pycache__","test","tests","idlelib","tkinter","turtledemo","ensurepip","venv","lib2to3"}
     with zipfile.ZipFile(root/"python312.zip","w",zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for f in (a.python_root/"Lib").rglob("*"):

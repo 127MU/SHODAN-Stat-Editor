@@ -15,7 +15,13 @@ ColumnLayout {
             HusText { text:"护甲组合";font.pixelSize:30;font.bold:true }
             HusText { text:"配置叠加效果，数值修改在独立弹窗中完成。";color:HusTheme.Primary.colorTextSecondary }
         }
+    }
+    Flow {
+        Layout.fillWidth:true;spacing:8
         HusButton { text:"护甲类型参数";onClicked:{store.tab="ArmorWeight";const list=store.catalogs.ArmorWeight || [];if(list.length)store.select(list[0])} }
+        HusButton { text:"修改记录";onClicked:store.reviewHistory() }
+        HusButton { text:"撤销";enabled:store.editHistory.undo>0;onClicked:store.replayHistory(false) }
+        HusButton { text:"重做";enabled:store.editHistory.redo>0;onClicked:store.replayHistory(true) }
     }
     MaterialCard {
             store:page.store

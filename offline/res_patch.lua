@@ -507,7 +507,11 @@ local function package_slices(set, name, spec, keep_streams, overrides)
     local index, index_why = override_index(overrides, spec)
     if not index then return nil, index_why end
     local blobs = {}
-    for _, entry in ipairs(spec.entries) do
+    for number, entry in ipairs(spec.entries) do
+        if number==1 or number==#spec.entries or number%16==0 then
+            local notify=rawget(_G,'SHODAN_EUI_PROGRESS')
+            if type(notify)=='function'then pcall(notify,'读取资源与伴生数据 · '..name,number,#spec.entries)end
+        end
         local heavy = entry.gpu_size > 0 or entry.stream_size > 0
         if keep_streams or not heavy then
             local why
@@ -859,6 +863,19 @@ end
 -- patch back to prove the bytes landed, and only then records the slot in the ledger.  Everything
 -- runs inside a transaction, so a failure puts the previous patch back.
 local function write_patch(ctx, host, name, mode, index, at, entries, toc, gpu, stream, count)
+    local base=ctx.root..'/'..patch_name(host,index)
+    local same=M.read_file(base)==toc
+    for _,side in ipairs({{GPU_SUFFIX,gpu},{STREAM_SUFFIX,stream}})do
+        local current=M.read_file(base..side[1])
+        if #side[2]>0 then same=same and current==side[2]
+        else same=same and (current==nil or current=='')end
+    end
+    local notify=rawget(_G,'SHODAN_EUI_PROGRESS')
+    if same and at and entries[at].mode==mode and entries[at].built==count then
+        if type(notify)=='function'then pcall(notify,'资源补丁内容相同，跳过写入 · '..name,1,1)end
+        return {index=index,entries=count,toc=#toc,gpu=#gpu,stream=#stream,mode=mode,unchanged=true}
+    end
+    if type(notify)=='function'then pcall(notify,'写入资源补丁 · '..name,0,1)end
     return transaction(ctx, host, { index }, function()
     local base = ctx.root .. '/' .. patch_name(host, index)
     local ok, write_why = M.write_file(base, toc)
@@ -885,6 +902,7 @@ local function write_patch(ctx, host, name, mode, index, at, entries, toc, gpu, 
     entries[#entries + 1] = { host = host, index = index, name = name, mode = mode, built = count }
     local saved, ledger_why = M.write_ledger(ctx, entries)
     if not saved then return nil, ledger_why end
+    if type(notify)=='function'then pcall(notify,'资源补丁写入完成 · '..name,1,1)end
     return { index = index, entries = count, toc = #toc, gpu = #gpu, stream = #stream, mode = mode }
     end)
 end
@@ -1216,7 +1234,7 @@ function M.resolve_resources(ctx, preferred, resources, events)
     table.sort(signature);signature=table.concat(signature,',')
     ctx.resolution_cache=ctx.resolution_cache or {}
     local cached=ctx.resolution_cache[signature]
-    if cached then return cached.names,cached.unresolved end
+    if cached and cached.set==set then return cached.names,cached.unresolved,cached.details end
     local function bank_events(name, entry)
         local ids = {}
         -- Stingray's bank wrapper is 16 bytes; an unwrapped bank is accepted too.
@@ -1246,10 +1264,15 @@ function M.resolve_resources(ctx, preferred, resources, events)
         end
         return ids
     end
-    local inspected={}
+    local inspected,count={},0
     local function inspect(name)
         if inspected[name] then return true end
         inspected[name]=true
+        count=count+1
+        if count==1 or count%32==0 then
+            local notify=rawget(_G,'SHODAN_EUI_PROGRESS')
+            if type(notify)=='function'then pcall(notify,'核对资源与音效来源 · '..name,count,#(set.names or {}))end
+        end
         local spec,err=package_head(set,name)
         if not spec then return nil,err end
         local have={}
@@ -1298,8 +1321,41 @@ function M.resolve_resources(ctx, preferred, resources, events)
     for key in pairs(wanted) do if not found[key] then unresolved[#unresolved+1]='资源 '..key end end
     for id in pairs(audio) do if not found['audio:'..id] then unresolved[#unresolved+1]='未定位的音效候选哈希 '..id end end
     table.sort(unresolved)
-    ctx.resolution_cache[signature]={names=names,unresolved=unresolved}
-    return names, unresolved
+    local details={}
+    local function detail(key,kind,id)
+        local sources={}
+        for _,name in ipairs(names)do if providers[name].have[key]then sources[#sources+1]=name end end
+        details[#details+1]={key=key,type=kind,id=tostring(id),providers=sources,missing=not found[key]}
+    end
+    for key in pairs(wanted)do local kind,id=key:match('^([^:]+):(.+)$');detail(key,kind,id)end
+    for id in pairs(audio)do detail('audio:'..id,'audio',id)end
+    table.sort(details,function(a,b)return a.key<b.key end)
+    ctx.resolution_cache[signature]={set=set,names=names,unresolved=unresolved,details=details}
+    return names, unresolved,details
+end
+
+function M.inspect_resources(ctx,host,preferred,resources,events,declared)
+    local names,unresolved,details=M.resolve_resources(ctx,preferred,resources,events)
+    if not names then return nil,unresolved end
+    local own={};for _,name in ipairs(declared or {})do own[name]=true end
+    local states,packages={},{}
+    for _,name in ipairs(names)do
+        local state=M.state(ctx,host,name);states[name]=state
+        packages[#packages+1]={id=name,declared=own[name] or false,state=state,
+            status=own[name] and '声明包内（随对应配装加载）' or state==1 and '已登记完整驻留' or state==2 and '仅轻资源驻留' or '跨包，未登记驻留'}
+    end
+    local missing,audio=0,0
+    local types={audio='音效候选',a8193123526fad64='粒子特效',e0a48d0be9a7453f='实体模型',fcaaf813b4d3cc1e='震屏',
+        ['535a7bd3e650d799']='音效库',['5f7203c8f280dab8']='物理资源',cd4238c6a0c69e32='贴图',['18dead01056b72e9']='骨骼'}
+    for _,r in ipairs(details)do
+        r.type_name=types[r.type] or ('资源类型 '..r.type)
+        local own_resource,installed=false,false
+        for _,name in ipairs(r.providers)do own_resource=own_resource or own[name];installed=installed or states[name]==1 end
+        r.status=r.missing and (r.type=='audio' and '音效候选未定位' or '资源缺失') or own_resource and '声明包内' or installed and '已登记完整驻留' or '跨包，未登记完整驻留'
+        if r.missing then if r.type=='audio'then audio=audio+1 else missing=missing+1 end end
+    end
+    return {entries=details,packages=packages,warnings=unresolved,missing=missing,unresolved_audio=audio,
+        note='只读诊断，不安装或移除补丁。声明包内与登记驻留状态均不等于已通过游戏内特效/音效验证。'}
 end
 
 -- Carry edited resources into every newly installed copy of the same typed ID.

@@ -247,14 +247,27 @@ QJsonArray WarProxy::validateTargets(QJsonArray input){
   require(t["effects"].isArray(),"方案缺少效果列表");auto effects=t["effects"].toArray();require(effects.size()<=32,"每颗星球最多选择 32 个效果");QJsonArray ids;
   for(const auto& e:effects){require(integer(e,1,2147483647),"效果 ID 无效");if(!ids.contains(e))ids.append(e);}
   auto owner=t.value("owner").isUndefined()?QJsonValue(0):t["owner"],type=t.value("campaign_type").isUndefined()?QJsonValue(0):t["campaign_type"];
-  require(integer(owner,0,4) && integer(type,0,3),"阵营或战役类型无效");
+  require(integer(owner,0,4) && integer(type,0,4),"阵营或战役类型无效");
   auto race=t.value("campaign_race").isUndefined()?QJsonValue(0):t["campaign_race"];
   require(integer(race,0,4),"作战敌人阵营无效");
   require(!t.contains("initialize_regions") || t["initialize_regions"].isBool(),"分区初始化开关必须为布尔值");
   require(!t.value("initialize_regions").toBool() || (t.value("campaign").toBool() && race.toInt()>=2),"初始化分区需要开启战役并明确选择作战敌人");
   require(!t.contains("open_regions") || t["open_regions"].isBool(),"分区开放开关必须为布尔值");
   require((!t.contains("enabled")||t["enabled"].isBool()) && (!t.contains("campaign")||t["campaign"].isBool()),"方案开关类型无效");
-  output.append(QJsonObject{{"planet",id},{"enabled",t.value("enabled").toBool(true)},{"effects",ids},{"owner",owner},{"campaign",t.value("campaign").toBool(false)},{"campaign_type",type},{"campaign_race",race},{"open_regions",t.value("open_regions").toBool(false)},{"initialize_regions",t.value("initialize_regions").toBool(false)}});
+  QJsonObject defense;
+  for(auto key:{"defense_source","defense_level","defense_hours","defense_count"}){
+   int fallback=QString(key)=="defense_source"?-1:QString(key)=="defense_level"?20:QString(key)=="defense_hours"?48:38;
+   auto v=t.contains(key)?t[key]:QJsonValue(fallback);
+   int low=QString(key)=="defense_source"?-1:1,high=QString(key)=="defense_source"?10000:QString(key)=="defense_hours"?168:1000;
+   require(integer(v,low,high),"防守战役参数无效");defense.insert(key,v);
+  }
+  if(type.toInt()==4){
+   require(t.value("campaign").toBool() && owner.toInt()==1 && race.toInt()>=2,"防守战役需要开启战役、超级地球归属和明确的敌人阵营");
+   require(defense["defense_source"].toInt()>=0 && defense["defense_source"].toInt()!=id,"请选择另一颗敌方星球作为进攻来源");
+  }
+  QJsonObject normalized{{"planet",id},{"enabled",t.value("enabled").toBool(true)},{"effects",ids},{"owner",owner},{"campaign",t.value("campaign").toBool(false)},{"campaign_type",type},{"campaign_race",race},{"open_regions",t.value("open_regions").toBool(false)},{"initialize_regions",t.value("initialize_regions").toBool(false)}};
+  for(auto it=defense.begin();it!=defense.end();++it)normalized.insert(it.key(),it.value());
+  output.append(normalized);
  }
  return output;
 }

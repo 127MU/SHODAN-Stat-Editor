@@ -9,6 +9,8 @@ QtObject {
     property var cardBackdrop:null
     property bool cardMotion:true
     property bool hoverEffects:true
+    property string materialQuality:"balanced"
+    property bool materialScrolling:false
     property real frostOpacity:0.48
     property real glassOpacity:0.18
     property real materialBlur:3
@@ -19,6 +21,12 @@ QtObject {
     property var groups: []
     property var current: ({})
     property var rows: []
+    property int rowRevision:0
+    property var editHistory:({undo:0,redo:0,undo_label:"",redo_label:""})
+    function refreshHistory(){call("history",[],x=>editHistory=x)}
+    function replayHistory(redo){call(redo?"redo":"undo",[],function(x){editHistory=x;refreshRows();if(module==="armor")refreshArmor();historyReplayed();status=redo?"已重做参数编辑":"已撤销参数编辑"})}
+    signal historyReplayed()
+    signal reviewHistory()
     property var callbacks: ({})
     property var lastItems: ({})
     property var slotByItem: ({})
@@ -65,13 +73,15 @@ QtObject {
     signal loaded()
     signal selectionReady()
     signal rowUpdated(var row)
+    signal rowsRefreshing()
+    signal rowsRefreshed()
     signal updateFound(string version,string url,string notes,string downloadUrl)
     signal operationProgress(string message,int done,int total)
 
     function call(method,args,done,failed){
         if(!Backend.ready){if(failed)failed("数据尚未载入");return -1}
         let id=Backend.request(method,args || [])
-        callbacks[id]={done:done,failed:failed}
+        callbacks[id]={done:done,failed:failed,method:method}
         return id
     }
     function openModule(key){
@@ -124,16 +134,33 @@ QtObject {
         // alone does not update that local copy when section delegates survive.
         for(const item of updated)rowUpdated(item)
     }
-    function refreshRows(){if(!current.id)return;const ticket=epoch;call("rows",[],x=>{if(ticket===epoch)applyRows(x)})}
+    function refreshRows(){
+        if(!current.id)return
+        const ticket=epoch;rowsRefreshing()
+        call("rows",[],x=>{if(ticket===epoch){applyRows(x);rowsRefreshed()}},e=>{if(ticket===epoch)rowsRefreshed();store.error(e)})
+    }
+    function refreshFields(row){
+        if(row.choice || row.code){refreshRows();return}
+        const ticket=epoch
+        call("rows_delta",[row.id],function(changed){
+            if(ticket!==epoch)return
+            const byId={};for(const r of changed)byId[r.id]=r
+            // Preserve delegate models when only values change. Structural and
+            // filtered views still receive a normal model notification.
+            for(let i=0;i<rows.length;i++)if(byId[rows[i].id])rows[i]=byId[rows[i].id]
+            for(const r of changed)rowUpdated(r)
+            rowRevision++
+            if(current.id)current=Object.assign({},current,{changed:rows.some(r=>r.changed)})
+        })
+    }
+    function resetField(row){const ticket=epoch;call("reset",[row.id],()=>{if(ticket===epoch)refreshFields(row)})}
     function save(row,text,done,failed){
         const ticket=epoch;const owner=current.id
         call("set",[row.id,text],function(result){
             status=String(result);recent=recent.filter(x=>x!==owner);recent.unshift(owner);recent=recent.slice(0,40);Backend.saveSetting("recent",recent)
             if(ticket!==epoch)return
             if(done)done()
-            store.call("rows",[],function(updated){
-                if(ticket===epoch)store.applyRows(updated)
-            })
+            store.refreshFields(row)
         },failed)
     }
     function refreshPreset(){call("preset_info",[slot],x=>presetInfo=x)}
@@ -146,12 +173,15 @@ QtObject {
         function onCompleted(id,data,error){
             let cb=store.callbacks[id];delete store.callbacks[id]
             if(error){if(cb && cb.failed)cb.failed(error);else store.error(error)}
-            else if(cb && cb.done)cb.done(data)
+            else {
+                if(cb && cb.done)cb.done(data)
+                if(cb && ["set","choose","reset","code_set","preset","full_preset","tweaks","armor_set","armor_update"].includes(cb.method))store.refreshHistory()
+            }
         }
         function onInitialized(data){store.catalogs=data.catalogs;store.armor=data.armor;store.groups=data.armorGroups;store.game=data.game;store.status="数据已就绪";store.loaded()}
         function onStartupError(text){store.fatalError=text;store.error(text);if(QaMode)Backend.finishQa(text)}
         function onUpdateAvailable(version,url,notes,downloadUrl){store.updateFound(version,url,notes,downloadUrl)}
         function onProgress(text,done,total){store.operationProgress(text,done,total)}
-        function onExternalChange(){store.refreshRows();if(store.module==="armor")store.refreshArmor();if(store.module==="mods")store.refreshMods()}
+        function onExternalChange(){store.refreshHistory();store.refreshRows();if(store.module==="armor")store.refreshArmor();if(store.module==="mods")store.refreshMods()}
     }
 }

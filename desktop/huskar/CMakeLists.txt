@@ -34,7 +34,7 @@ qt_add_executable(shodan_huskar main.cpp controller.cpp controller.h war_proxy.c
  ${eui_helpers_SOURCE_DIR}/3rd/yyjson-0.12.0/src/yyjson.c)
 configure_file(${huskar_SOURCE_DIR}/gallery/qml/Controls/GradientFlowEffect.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml COPYONLY)
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml PROPERTIES QT_RESOURCE_ALIAS GalleryFlow.qml)
-qt_add_resources(shodan_huskar ui PREFIX "/shodan" FILES CatalogGroups.js GroupedCatalog.qml Main.qml Workspace.qml HomePage.qml CatalogPage.qml EditorPage.qml FieldEditor.qml MaterialCard.qml SmoothWheel.qml ArmorPage.qml SettingsPage.qml GameTweaksPage.qml WarProxyPage.qml QaRunner.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml)
+qt_add_resources(shodan_huskar ui PREFIX "/shodan" FILES CatalogGroups.js GroupedCatalog.qml Main.qml Workspace.qml HomePage.qml CatalogPage.qml EditorPage.qml FieldEditor.qml DiagnosticDialog.qml MaterialCard.qml SmoothWheel.qml ArmorPage.qml SettingsPage.qml GameTweaksPage.qml WarProxyPage.qml QaRunner.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml)
 set_source_files_properties(../../offline/war_status_addon.py PROPERTIES QT_RESOURCE_ALIAS war_status_addon.py)
 set_source_files_properties(../../assets/war_catalog.json PROPERTIES QT_RESOURCE_ALIAS war_catalog.json)
 qt_add_resources(shodan_huskar war_addon PREFIX "/shodan" FILES ../../offline/war_status_addon.py ../../assets/war_catalog.json)

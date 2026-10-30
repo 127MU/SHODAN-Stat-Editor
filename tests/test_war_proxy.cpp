@@ -34,6 +34,14 @@ int main(int argc,char** argv){
   bool rejected=false;try{WarProxy::plan(-1,"illuminate","1373");}catch(...){rejected=true;}check(rejected,"invalid planet");
   auto list=WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",182},{"effects",QJsonArray{1373,1373}},{"enabled",false},{"owner",4},{"campaign",true},{"campaign_type",3}}});
   check(list[0].toObject()["effects"].toArray().size()==1,"target dedup");
+  QJsonObject defense{{"planet",156},{"effects",QJsonArray{}},{"campaign",true},{"campaign_type",4},{"owner",1},{"campaign_race",3},{"defense_source",157},{"defense_level",38},{"defense_hours",24},{"defense_count",40}};
+  auto defensePlan=WarProxy::validateTargets(QJsonArray{defense})[0].toObject();
+  check(defensePlan["defense_source"]==157 && defensePlan["defense_level"]==38 && defensePlan["defense_hours"]==24 && defensePlan["defense_count"]==40,"defense settings lost");
+  for(auto key:{"owner","campaign_race","defense_source","defense_level","defense_hours","defense_count"}){
+   auto invalid=defense;invalid[key]=-1;bool denied=false;
+   try{WarProxy::validateTargets(QJsonArray{invalid});}catch(...){denied=true;}
+   check(denied,"invalid defense configuration accepted");
+  }
   auto separateRace=WarProxy::validateTargets(QJsonArray{QJsonObject{{"planet",260},{"effects",QJsonArray{}},{"owner",1},{"campaign",true},{"campaign_race",3}}});
   check(separateRace[0].toObject()["owner"]==1 && separateRace[0].toObject()["campaign_race"]==3,"ownership must be independent from operation enemy");
   check(!separateRace[0].toObject()["open_regions"].toBool(),"native region experiment must default off");

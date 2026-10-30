@@ -8,7 +8,7 @@ HusWindow {
     id:window
     width:1480;height:960;minimumWidth:980;minimumHeight:680
     title:"SHODAN 数值编辑器 · "+Backend.version
-    Workspace { id:workspace;cardMaterial:appearance.cardMaterial;cardBackdrop:backgroundLayer;cardMotion:appearance.motion;hoverEffects:appearance.hoverEffects;frostOpacity:appearance.frostOpacity;glassOpacity:appearance.glassOpacity;materialBlur:appearance.materialBlur;glassRefraction:appearance.glassRefraction;glassHighlight:appearance.glassHighlight }
+    Workspace { id:workspace;cardMaterial:appearance.cardMaterial;cardBackdrop:backgroundLayer;cardMotion:appearance.motion;materialQuality:appearance.materialQuality;materialScrolling:window.materialScrolling;hoverEffects:appearance.hoverEffects;frostOpacity:appearance.frostOpacity;glassOpacity:appearance.glassOpacity;materialBlur:appearance.materialBlur;glassRefraction:appearance.glassRefraction;glassHighlight:appearance.glassHighlight }
     QtObject {
         id:appearance
         property bool restored:false
@@ -32,6 +32,7 @@ HusWindow {
         property real windowOpacity:Backend.setting("windowOpacity",1)
         property bool autoAccent:Backend.setting("autoAccent",false)
         property bool hoverEffects:Backend.setting("hoverEffects",true)
+        property string materialQuality:Backend.setting("materialQuality","balanced")
         property real frostOpacity:Backend.setting("frostOpacity",0.48)
         property real glassOpacity:Backend.setting("glassOpacity",0.18)
         property real materialBlur:Backend.setting("materialBlur",3)
@@ -39,7 +40,7 @@ HusWindow {
         property real glassHighlight:Backend.setting("glassHighlight",2.1)
         property var customAppearance:Backend.setting("customAppearance",null)
         property var previousAppearance:null
-        readonly property var appearanceKeys:["dark","themeMode","accent","cardMaterial","fontSize","radius","motion","duration","pageEffect","easingType","autoAccent","hoverEffects","frostOpacity","glassOpacity","materialBlur","glassRefraction","glassHighlight"]
+        readonly property var appearanceKeys:["dark","themeMode","accent","cardMaterial","fontSize","radius","motion","duration","pageEffect","easingType","autoAccent","hoverEffects","frostOpacity","glassOpacity","materialBlur","glassRefraction","glassHighlight","materialQuality"]
         function snapshot(){const out={};for(const key of appearanceKeys)out[key]=appearance[key];return out}
         function restore(values){
             if(!values)return
@@ -51,7 +52,7 @@ HusWindow {
         }
         function resetAppearance(){
             previousAppearance=snapshot()
-            restore({dark:false,themeMode:"light",accent:"#1677ff",cardMaterial:"solid",fontSize:16,radius:8,motion:true,duration:160,pageEffect:1,easingType:Easing.OutCubic,autoAccent:false,hoverEffects:true,frostOpacity:0.48,glassOpacity:0.18,materialBlur:3,glassRefraction:0.095,glassHighlight:2.1})
+            restore({dark:false,themeMode:"light",accent:"#1677ff",cardMaterial:"solid",fontSize:16,radius:8,motion:true,duration:160,pageEffect:1,easingType:Easing.OutCubic,autoAccent:false,hoverEffects:true,frostOpacity:0.48,glassOpacity:0.18,materialBlur:3,glassRefraction:0.095,glassHighlight:2.1,materialQuality:"balanced"})
         }
         function saveCustom(){customAppearance=snapshot();Backend.saveSetting("customAppearance",customAppearance)}
         function useCustom(){if(customAppearance){previousAppearance=snapshot();restore(customAppearance)}}
@@ -103,6 +104,7 @@ HusWindow {
         onWindowOpacityChanged:save("windowOpacity",windowOpacity)
         onAutoAccentChanged:{save("autoAccent",autoAccent);updateAutoAccent()}
         onHoverEffectsChanged:save("hoverEffects",hoverEffects)
+        onMaterialQualityChanged:save("materialQuality",materialQuality)
         onFrostOpacityChanged:save("frostOpacity",frostOpacity)
         onGlassOpacityChanged:save("glassOpacity",glassOpacity)
         onMaterialBlurChanged:save("materialBlur",materialBlur)
@@ -117,7 +119,26 @@ HusWindow {
             Qt.callLater(function(){window.applyWindowEffect();HusApi.setWindowStaysOnTopHint(window,appearance.onTop)})
         }
     }
+    property bool materialScrolling:false
+    function pauseMaterials(){materialScrolling=true;materialSettle.restart()}
+    Timer { id:materialSettle;interval:220;onTriggered:window.materialScrolling=false }
     property string progressText:""
+    property string progressFile:""
+    property var progressStages:[]
+    property double progressStarted:0
+    property double progressStageStarted:0
+    property int elapsedSeconds:0
+    Timer { interval:250;repeat:true;running:progress.visible;onTriggered:window.elapsedSeconds=Math.floor((Date.now()-window.progressStarted)/1000) }
+    function startProgress(title,text){progress.title=title;progressStages=[];progressText=text;progressFile="";progressPercent="auto";progressStarted=Date.now();progressStageStarted=progressStarted;elapsedSeconds=0;progress.open()}
+    function updateProgress(text,done,total){
+        const split=text.indexOf(" · ");progressFile=split>=0?text.slice(split+3):"";if(split>=0)text=text.slice(0,split)
+        if(text!==progressText){
+            const next=progressStages.slice(-5)
+            if(progressText)next.push({name:progressText,seconds:((Date.now()-progressStageStarted)/1000).toFixed(1)})
+            progressStages=next;progressStageStarted=Date.now();progressText=text
+        }
+        progressPercent=total>0?Math.min(100,Math.round(done*100/total)):"auto"
+    }
     function resetPageEntrance(){pageEntrance.stop();pageLoader.opacity=1;pageShift.x=0;pageShift.y=0;pageLoader.entranceScale=1}
     function enterPage(){resetPageEntrance();if(appearance.motion && appearance.pageEffect!==0)pageEntrance.restart()}
     property var progressPercent:"auto"
@@ -160,6 +181,25 @@ HusWindow {
     property string locationTitle:workspace.module==="warproxy"?"变种":workspace.module==="home"?"首页":workspace.module==="settings"?"设置":workspace.module==="tweaks"?"游戏参数":workspace.module==="presets"?"全局预设":workspace.module==="mods"?"Mod 管理":workspace.destinations.find(x=>x.key===workspace.module)?.name || "工作台"
     function closeQaDialogs(){if(QaMode)armorDialog.close()}
     function qaOpenPresets(){if(QaMode)equipmentPresets.open()}
+    function qaFocusParameter(id){return QaMode && workspace.screen==="editor" && pageLoader.item && pageLoader.item.focusParameter(id)}
+    function qaEditList(){return QaMode && editList.visible && editList.entries.length>0}
+    function qaDiagnostic(action){return QaMode && diagnostics.qa(action)}
+    function qaParameterGroups(action){return QaMode && workspace.screen==="editor" && pageLoader.item && pageLoader.item.qaFold(action)}
+    property var qaTrackedInput:null
+    function qaParameterControl(id){
+        function find(item){if(item.objectName==="field_"+id)return item;for(const child of item.children || []){const hit=find(child);if(hit)return hit}return null}
+        return pageLoader.item?find(pageLoader.item):null
+    }
+    function qaTrackParameter(id){
+        if(!QaMode)return false
+        qaTrackedInput=qaParameterControl(id)
+        let count=0
+        function visit(item){if(String(item.objectName).startsWith("field_"))count++;for(const child of item.children || [])visit(child)}
+        visit(pageLoader.item)
+        Backend.writeText(QaDirectory+"/editing-load-metrics.json",JSON.stringify({renderedFields:count,totalRows:workspace.rows.length}))
+        return !!qaTrackedInput && count<workspace.rows.length
+    }
+    function qaParameterStable(id){return QaMode && qaTrackedInput===qaParameterControl(id)}
     function qaUpdatePreview(){
         if(!QaMode)return false
         workspace.updateFound("v99.0.0","https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/v99.0.0","更新日志\n\n修复启动空白与被动勾选。\n新增同类条目分组。", "https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v99.0.0/SHODAN_99.0.0.exe")
@@ -218,7 +258,7 @@ HusWindow {
     }
     function qaAppearanceSnapshot(){
         return {catalogColumns:workspace.catalogColumns,cardMaterial:appearance.cardMaterial,themeMode:appearance.themeMode,dark:appearance.dark,compact:appearance.compact,
-            autoAccent:appearance.autoAccent,hoverEffects:appearance.hoverEffects,frostOpacity:appearance.frostOpacity,glassOpacity:appearance.glassOpacity,materialBlur:appearance.materialBlur,glassRefraction:appearance.glassRefraction,glassHighlight:appearance.glassHighlight,
+            autoAccent:appearance.autoAccent,hoverEffects:appearance.hoverEffects,materialQuality:appearance.materialQuality,frostOpacity:appearance.frostOpacity,glassOpacity:appearance.glassOpacity,materialBlur:appearance.materialBlur,glassRefraction:appearance.glassRefraction,glassHighlight:appearance.glassHighlight,
             accent:appearance.accent,fontSize:appearance.fontSize,radius:appearance.radius,duration:appearance.duration,
             motion:appearance.motion,pageEffect:appearance.pageEffect,windowEffect:appearance.windowEffect,
             onTop:appearance.onTop,windowOpacity:appearance.windowOpacity,backgroundMode:appearance.backgroundMode,
@@ -247,7 +287,7 @@ HusWindow {
         workspace.call(method,args,x=>{review.data=x;review.loading=false},e=>{review.data={problems:[e]};review.loading=false})
     }
     function operate(action){
-        workspace.busy=true;progress.title=action==="install"?"写入游戏":"恢复游戏原版";progressText="准备处理…";progressPercent="auto";progress.open()
+        workspace.busy=true;startProgress(action==="install"?"写入游戏":"恢复游戏原版","准备处理…")
         workspace.call(action,[],x=>{workspace.busy=false;progress.close();workspace.status=x;message("操作结果",x);workspace.refreshRows()},e=>{workspace.busy=false;progress.close();message("操作未完成",e)})
     }
     function choices(row){
@@ -265,7 +305,7 @@ HusWindow {
         residency.description="此操作会立即"+((row.choice_kind==="smmode"?Number(item.id)===2:Number(item.id)===3)?"移除":"写入")+"当前条目的资源驻留补丁（"+(item.name || item.label)+"）。请先关闭游戏，完成后重启游戏生效。"
         residency.open()
     }
-    function shared(row){message("共享影响 · "+row.label,(row.shared || []).map(x=>typeof x==="string"?x:(x.name || x.equipment || JSON.stringify(x))).join("\n"))}
+    function shared(row){editList.title="共享影响 · "+row.label;editList.description="以下条目共用底层参数，修改本项会同时生效。";editList.query="";editList.entries=(row.shared || []).map(x=>({name:typeof x==="string"?x:x.name || x.equipment || "未命名",detail:x.category || ""}));editList.open()}
     function armorValues(passive){armorDialog.passive=passive;armorDialog.values=[];armorDialog.open();workspace.call("armor_rows",[passive.id],x=>armorDialog.values=x)}
     function importPreset(kind,id){
         let p=Backend.chooseFile(false,"SHODAN 预设 (*.txt);;所有文件 (*)");if(!p)return
@@ -278,8 +318,9 @@ HusWindow {
     Connections {
         target:workspace
         function onError(text){message("操作未完成",text)}
+        function onReviewHistory(){window.focusOut();workspace.call("history",[],function(history){workspace.editHistory=history;editList.title="本次编辑记录";editList.description="最近 100 次参数编辑，按时间倒序排列。加载预设后重新记录；资源补丁安装不参与撤销。";editList.query="";editList.entries=(history.entries && history.entries.length?history.entries:[]).map(x=>({name:x.label,detail:x.count+" 项字段"}));editList.open()})}
         function onUpdateFound(version,url,notes,downloadUrl){updateVersion=version;updateUrl=url;updateNotes=notes || "该发行版未提供更新日志。";updateDownloadUrl=downloadUrl || "";updateDialog.open()}
-        function onOperationProgress(text,done,total){progressText=text;progressPercent=total>0?Math.round(done*100/total):"auto"}
+        function onOperationProgress(text,done,total){window.updateProgress(text,done,total)}
         function onModuleChanged(){window.syncingNavigation=true;focusOut();Qt.callLater(window.syncNavigation)}
         function onLoaded(){Qt.callLater(window.syncNavigation)}
     }
@@ -436,7 +477,11 @@ HusWindow {
     }
     Component { id:homePage;HomePage { store:workspace } }
     Component { id:catalogPage;CatalogPage { store:workspace;onHiddenRequested:hidden.open() } }
-    Component { id:editorPage;EditorPage { store:workspace;onChoose:row=>window.choices(row);onShared:row=>window.shared(row);onPresetsRequested:equipmentPresets.open() } }
+    Component { id:editorPage;EditorPage { store:workspace;onChoose:row=>window.choices(row);onShared:row=>window.shared(row);onPresetsRequested:equipmentPresets.open();onDiagnosticRequested:mode=>diagnostics.load(mode) } }
+    DiagnosticDialog {
+        id:diagnostics;store:workspace;hostWidth:window.width;hostHeight:window.height
+        onOpenRecord:(hash,name)=>{workspace.openModule("records");workspace.select({id:hash,name:name})}
+    }
     Component { id:armorPage;ArmorPage { store:workspace;onEditValues:p=>window.armorValues(p) } }
     Component { id:tweaksPage;GameTweaksPage { store:workspace } }
     Component { id:warProxyPage;WarProxyPage { store:workspace } }
@@ -522,7 +567,7 @@ HusWindow {
         property var row:({});property int mode:0
         confirmText:"确认";cancelText:"取消";onCancel:close()
         onConfirm:{
-            close();workspace.busy=true;progress.title=row.choice_kind==="smmode"?"处理状态机补丁":"处理资源驻留补丁";progressText="正在处理，请稍候…";progressPercent="auto";progress.open()
+            close();workspace.busy=true;window.startProgress(row.choice_kind==="smmode"?"处理状态机补丁":"处理资源驻留补丁","正在读取资源与生成补丁…")
             workspace.call("choose",[row.id,mode],x=>{workspace.busy=false;progress.close();workspace.status=x;window.message("操作结果",x);workspace.refreshRows()},e=>{workspace.busy=false;progress.close();window.message("操作未完成",e)})
         }
     }
@@ -557,7 +602,31 @@ HusWindow {
     }
     HusModal {
         id:progress;width:600;modal:true;maskClosable:false;closable:false
-        bodyDelegate:ColumnLayout { width:550;spacing:20;HusSpin { Layout.alignment:Qt.AlignHCenter;percent:window.progressPercent } HusText { Layout.fillWidth:true;text:window.progressText;wrapMode:Text.Wrap } }
+        bodyDelegate:ColumnLayout {
+            width:550;spacing:16
+            HusSpin { Layout.alignment:Qt.AlignHCenter;percent:window.progressPercent }
+            HusText { Layout.fillWidth:true;text:window.progressText;wrapMode:Text.Wrap;font.bold:true }
+            HusText { visible:!!window.progressFile;Layout.fillWidth:true;text:window.progressFile;wrapMode:Text.Wrap;font.pixelSize:12;color:HusTheme.Primary.colorTextSecondary }
+            HusText { text:"已用时 "+window.elapsedSeconds+" 秒";color:HusTheme.Primary.colorTextSecondary }
+            Repeater { model:window.progressStages;HusText { required property var modelData;Layout.fillWidth:true;wrapMode:Text.Wrap;text:modelData.name+" · "+modelData.seconds+" 秒";font.pixelSize:12;color:HusTheme.Primary.colorTextSecondary } }
+            HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:"完成校验后提交文件。写入期间请等待结果，避免中断造成部分文件未替换。";color:HusTheme.Primary.colorTextSecondary;font.pixelSize:12 }
+        }
+    }
+    HusModal {
+        id:editList;width:Math.min(820,window.width-100);modal:true;cancelText:"关闭";onCancel:close()
+        property var entries:[];property string query:""
+        bodyDelegate:ColumnLayout {
+            width:editList.width-48;spacing:12
+            HusInput { Layout.fillWidth:true;placeholderText:"搜索条目";clearEnabled:true;text:editList.query;onTextEdited:editList.query=text }
+            ListView {
+                Layout.fillWidth:true;Layout.preferredHeight:Math.min(400,window.height*0.45);clip:true;spacing:10
+                model:editList.entries.filter(x=>(x.name+" "+x.detail).toLowerCase().includes(editList.query.toLowerCase()))
+                ScrollBar.vertical:HusScrollBar{}
+                SmoothWheel{}
+                delegate:HusText { required property var modelData;width:ListView.view.width-16;text:modelData.name+(modelData.detail?"\n"+modelData.detail:"");wrapMode:Text.Wrap }
+                HusEmpty { visible:parent.count===0;anchors.centerIn:parent;description:"没有匹配记录" }
+            }
+        }
     }
     HusModal {
         id:choiceDialog;width:Math.min(820,window.width-100);title:"选择条目";modal:true;cancelText:"关闭";onCancel:close()
@@ -589,14 +658,23 @@ HusWindow {
         id:armorDialog;width:Math.min(1000,window.width-100);modal:true;cancelText:"关闭";onCancel:close()
         property var passive:({});property var values:[]
         title:(passive.zh || passive.name || "护甲被动")+" · 数值"
-        bodyDelegate:Flickable {
-            width:armorDialog.width-48;implicitHeight:Math.max(100,Math.min(500,grid.implicitHeight));contentHeight:grid.implicitHeight;clip:true;ScrollBar.vertical:HusScrollBar{}
+        bodyDelegate:ColumnLayout {
+            width:armorDialog.width-48;spacing:12
+            RowLayout {
+                Layout.fillWidth:true
+                HusText { Layout.fillWidth:true;text:"参数自动保存，写入游戏后生效。";wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
+                HusButton { text:"撤销";enabled:workspace.editHistory.undo>0;onClicked:workspace.replayHistory(false) }
+                HusButton { text:"重做";enabled:workspace.editHistory.redo>0;onClicked:workspace.replayHistory(true) }
+            }
+            Flickable {
+            Layout.fillWidth:true;Layout.preferredHeight:Math.max(100,Math.min(500,grid.implicitHeight));contentHeight:grid.implicitHeight;clip:true;ScrollBar.vertical:HusScrollBar{}
             SmoothWheel { }
             GridLayout {
                 id:grid;width:parent.width-16;columns:width>620?2:1;rowSpacing:24;columnSpacing:28
                 Repeater { model:armorDialog.values;FieldEditor { required property var modelData;Layout.fillWidth:true;Layout.margins:12;row:modelData;store:workspace;armor:true;passiveId:armorDialog.passive.id } }
             }
             HusEmpty { visible:armorDialog.values.length===0;anchors.centerIn:parent;description:"此被动没有可编辑数值" }
+            }
         }
     }
     HusDrawer {

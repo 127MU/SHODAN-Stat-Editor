@@ -97,7 +97,7 @@ Value Backend::call(const char* method,const std::vector<Value>& args){
  if(lua_pcall(L,int(args.size()),1,0)){auto err=luaError(L);lua_settop(L,top);throw std::runtime_error(err);}
  auto v=read(-1);lua_settop(L,top);
  const std::string name=method;
- if(v.kind==Value::Table&&(name=="items"||name=="rows"||name=="choices"||name=="shared"||name=="full_presets"||name=="armor_rows"||name=="pending_preview"))v.arrayValue=true;
+ if(v.kind==Value::Table&&(name=="items"||name=="rows"||name=="rows_delta"||name=="choices"||name=="shared"||name=="full_presets"||name=="armor_rows"||name=="pending_preview"))v.arrayValue=true;
  return v;
 }
 Value Backend::property(const char* name){

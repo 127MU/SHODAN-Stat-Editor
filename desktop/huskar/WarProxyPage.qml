@@ -16,12 +16,26 @@ Flickable {
     property bool campaign:false
     property int campaignType:0
     property int campaignRace:0
+    property int defenseSource:-1
+    property int defenseLevel:20
+    property int defenseHours:48
+    property int defenseCount:38
+    property bool selectingDefenseSource:false
     property bool initializeRegions:false
     property string planetQuery:""
     property string effectQuery:""
     property string category:"all"
     property bool selectedOnly:false
     property bool advanced:false
+    readonly property int scenario:campaign?(campaignType===4?2:1):0
+    readonly property string planIssue:parseEffects()===null?"效果 ID 格式不正确":selectedEffects.length>32?"每颗星球最多选择 32 个效果":scenario===2 && owner!==1?"防守目标归属必须为超级地球":scenario===2 && campaignRace<2?"请选择防守战役的敌人阵营":scenario===2 && (defenseSource<0 || defenseSource===planet)?"请选择另一颗敌方星球作为进攻来源":""
+    function setScenario(value){
+        campaign=value!==0
+        if(value===2){campaignType=4;owner=1}
+        else if(value===1){campaignType=0;if(owner===1)owner=0}
+        else campaignType=0
+        dirty=true
+    }
     readonly property var effectRows:WarProxyBackend.effects
     property var indexedEffects:[]
     property var visibleEffects:[]
@@ -66,17 +80,17 @@ Flickable {
         if(next.length===visibleEffects.length && next.every((e,i)=>e===visibleEffects[i]))return
         visibleEffects=next;effectFilterRevision++
     }
-    function loadTarget(target){const t=JSON.parse(JSON.stringify(target));planet=Number(t.planet);effects=(t.effects || []).join(", ");owner=Number(t.owner || 0);campaign=!!t.campaign;campaignType=Number(t.campaign_type || 0);campaignRace=Number(t.campaign_race || 0);initializeRegions=!!t.initialize_regions;targetEnabled=t.enabled!==false;dirty=false;localError=""}
-    function choosePlanet(id){const t=WarProxyBackend.targets.find(x=>Number(x.planet)===Number(id));if(t)loadTarget(t);else{planet=Number(id);effects="";owner=0;campaign=false;campaignType=0;campaignRace=0;initializeRegions=false;targetEnabled=true;dirty=true}}
+    function loadTarget(target){const t=JSON.parse(JSON.stringify(target));planet=Number(t.planet);effects=(t.effects || []).join(", ");owner=Number(t.owner || 0);campaign=!!t.campaign;campaignType=Number(t.campaign_type || 0);campaignRace=Number(t.campaign_race || 0);initializeRegions=!!t.initialize_regions;defenseSource=Number(t.defense_source ?? -1);defenseLevel=Number(t.defense_level ?? 20);defenseHours=Number(t.defense_hours ?? 48);defenseCount=Number(t.defense_count ?? 38);targetEnabled=t.enabled!==false;dirty=false;localError=""}
+    function choosePlanet(id){const t=WarProxyBackend.targets.find(x=>Number(x.planet)===Number(id));if(t)loadTarget(t);else{planet=Number(id);effects="";owner=0;campaign=false;campaignType=0;campaignRace=0;initializeRegions=false;defenseSource=-1;defenseLevel=20;defenseHours=48;defenseCount=38;targetEnabled=true;dirty=true}}
     function requestPlanet(id){if(Number(id)===planet)return;if(dirty){pendingPlanet=Number(id);discardDialog.open()}else choosePlanet(id)}
     function toggleEffect(id){let ids=parseEffects() || [];ids=ids.includes(id)?ids.filter(x=>x!==id):ids.concat([id]);effects=ids.join(", ");dirty=true}
     function saveCurrent(){
         const ids=parseEffects();if(ids===null){localError="效果 ID 必须是正整数，多个用逗号隔开。";return false}
-        const ok=WarProxyBackend.saveTarget(JSON.stringify({planet:planet,effects:ids,enabled:targetEnabled,owner:owner,campaign:campaign,campaign_type:campaignType,campaign_race:campaignRace,open_regions:false,initialize_regions:initializeRegions}))
+        const ok=WarProxyBackend.saveTarget(JSON.stringify({planet:planet,effects:ids,enabled:targetEnabled,owner:owner,campaign:campaign,campaign_type:campaignType,campaign_race:campaignRace,open_regions:false,initialize_regions:initializeRegions,defense_source:defenseSource,defense_level:defenseLevel,defense_hours:defenseHours,defense_count:defenseCount}))
         if(ok){dirty=false;localError="";Backend.saveSetting("warPlanet",planet);Backend.saveSetting("warEffects",effects)}return ok
     }
     function requestEnable(observe){if(!observe && dirty && !saveCurrent())return;observeRequest=observe;enableDialog.open()}
-    function qa(action){if(!QaMode)return false;if(action==="advanced"){advanced=true;return true}if(action==="planetSearchOpen"){section=0;planetQuery="";planetDialog.open();return true}if(action==="planetSearchCheck"){const unchanged=planet===93;const english=planetQuery==="lesath" && filteredPlanets().some(p=>Number(p.id)===194);planetQuery="尾宿八";const chinese=filteredPlanets().some(p=>Number(p.id)===194);planetQuery="194";const numeric=filteredPlanets().some(p=>Number(p.id)===194);planetDialog.close();planetQuery="";return unchanged && english && chinese && numeric}if(action==="catalog"){section=0;effectQuery="1373";effectDialog.open();return WarProxyBackend.effects.length>=70 && WarProxyBackend.planets.length>=273}if(action==="savedEdit"){const t=WarProxyBackend.targets.find(x=>Number(x.planet)===93);if(!t)return false;loadTarget(t);section=0;return true}if(action==="filterSnapshot"){qaFilterRevision=effectFilterRevision;return true}if(action==="filterStable")return effectFilterRevision===qaFilterRevision;if(action==="effectSearchCheck")return visibleEffects.length>0 && visibleEffects.every(e=>e.searchText.includes("风暴"));if(action==="selected")return selectedEffects.includes(1373);if(action==="save")return saveCurrent();if(action==="editorCached")return editorInstance===qaEditorItem;if(action==="editor"){section=0;return true}if(action==="connection"){qaEditorItem=editorInstance;effectDialog.close();section=2;return true}return false}
+    function qa(action){if(!QaMode)return false;if(action==="defenseSetup"){advanced=true;campaign=true;campaignType=4;owner=1;campaignRace=3;defenseSource=157;dirty=true;return true}if(action==="defenseSave"){return saveCurrent() && WarProxyBackend.targets.some(t=>Number(t.planet)===planet && t.campaign_type===4 && t.defense_level===38 && t.defense_source===157)}if(action==="advanced"){advanced=true;return true}if(action==="planetSearchOpen"){section=0;planetQuery="";planetDialog.open();return true}if(action==="planetSearchCheck"){const unchanged=planet===93;const english=planetQuery==="lesath" && filteredPlanets().some(p=>Number(p.id)===194);planetQuery="尾宿八";const chinese=filteredPlanets().some(p=>Number(p.id)===194);planetQuery="194";const numeric=filteredPlanets().some(p=>Number(p.id)===194);planetDialog.close();planetQuery="";return unchanged && english && chinese && numeric}if(action==="catalog"){section=0;effectQuery="1373";effectDialog.open();return WarProxyBackend.effects.length>=70 && WarProxyBackend.planets.length>=273}if(action==="savedEdit"){const t=WarProxyBackend.targets.find(x=>Number(x.planet)===93);if(!t)return false;loadTarget(t);section=0;return true}if(action==="filterSnapshot"){qaFilterRevision=effectFilterRevision;return true}if(action==="filterStable")return effectFilterRevision===qaFilterRevision;if(action==="effectSearchCheck")return visibleEffects.length>0 && visibleEffects.every(e=>e.searchText.includes("风暴"));if(action==="selected")return selectedEffects.includes(1373);if(action==="save")return saveCurrent();if(action==="editorCached")return editorInstance===qaEditorItem;if(action==="editor"){section=0;return true}if(action==="connection"){qaEditorItem=editorInstance;effectDialog.close();section=2;return true}return false}
     Component.onCompleted:{buildPlanetIndex();buildEffectIndex();if(WarProxyBackend.targets.length)loadTarget(WarProxyBackend.targets[0]);uiReady=true}
     Connections { target:WarProxyBackend;function onTargetsChanged(){if(!page.dirty){const t=WarProxyBackend.targets.find(x=>Number(x.planet)===page.planet);if(t)page.loadTarget(t)}} }
     onSectionChanged:contentY=0
@@ -135,6 +149,12 @@ Flickable {
                     HusInput { objectName:"warPlanet";Layout.fillWidth:true;text:String(page.planet);onEditingFinished:{const n=Number(text);if(Number.isInteger(n)&&n>=0&&n<=10000){if(page.planet!==n)page.requestPlanet(n);text=String(page.planet)}else text=String(page.planet)} }
                     HusCheckBox { text:"启用此星球方案";checked:page.targetEnabled;onClicked:{page.targetEnabled=checked;page.dirty=true} }
                 }
+                RowLayout {
+                    Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16
+                    HusText { text:"方案类型";font.bold:true }
+                    HusSelect { objectName:"warScenario";Layout.fillWidth:true;model:[{label:"仅叠加效果",value:0},{label:"开放解放作战",value:1},{label:"防守作战（实验性）",value:2}];textRole:"label";valueRole:"value";clearEnabled:false;currentIndex:page.scenario;onActivated:page.setScenario(Number(currentValue)) }
+                }
+                HusText { Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:page.scenario===0?"仅配置星球效果，保留原有战役。":page.scenario===1?"设置敌人阵营与效果；特殊星球可在高级设置补齐原生分区。":"依次选择敌人、进攻来源、入侵等级和时长，再保存方案。目标归属自动设置为超级地球。";wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
                 HusText { Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:"已选择 "+page.selectedEffects.length+" 个效果："+page.selectedEffects.map(page.effectName).join("、");wrapMode:Text.Wrap }
                 Flow { Layout.fillWidth:true;Layout.margins:16;spacing:10
                     HusButton { text:"选择 / 搜索效果";onClicked:effectDialog.open() }
@@ -149,27 +169,42 @@ Flickable {
                     onActivated:{page.owner=Number(currentValue);page.dirty=true}
                 }
                 RowLayout { visible:page.advanced;Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16
-                    HusCheckBox { text:"开放该星球并覆盖战役类型（实验性）";checked:page.campaign;onClicked:{page.campaign=checked;page.dirty=true} }
+                    HusCheckBox { text:"开放该星球并覆盖战役类型（实验性）";checked:page.campaign;onClicked:{page.campaign=checked;if(!checked)page.campaignType=0;page.dirty=true} }
                     HusSelect { Layout.fillWidth:true;enabled:page.campaign;textRole:"label";valueRole:"value";clearEnabled:false;currentIndex:page.campaignType
-                        model:[{label:"常规解放",value:0},{label:"侦察战役",value:1},{label:"高优先级战役",value:2},{label:"超级地球保卫战形态",value:3}]
-                        onActivated:{page.campaignType=Number(currentValue);page.dirty=true}
+                        model:[{label:"常规解放",value:0},{label:"侦察战役",value:1},{label:"高优先级战役",value:2},{label:"超级地球保卫战形态",value:3},{label:"防守战役（实验性）",value:4}]
+                        onActivated:{page.campaignType=Number(currentValue);if(page.campaignType===4)page.owner=1;page.dirty=true}
                     }
                 }
-                RowLayout { visible:page.advanced && page.campaign;Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16
+                RowLayout { visible:page.campaign;Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16
                     HusText { text:"作战敌人" }
                     HusSelect { objectName:"warCampaignRace";Layout.fillWidth:true;textRole:"label";valueRole:"value";clearEnabled:false;currentIndex:page.campaignRace
                         model:[{label:"自动：保留原阵营或已确认的原生敌情",value:0},{label:"超级地球（实验性）",value:1},{label:"终结族",value:2},{label:"机器人",value:3},{label:"光能族",value:4}]
                         onActivated:{page.campaignRace=Number(currentValue);page.dirty=true}
                     }
                 }
+                ColumnLayout {
+                    visible:page.campaign && page.campaignType===4
+                    Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;spacing:10
+                    HusText { Layout.fillWidth:true;text:"防守战役配置（实验性）";font.bold:true }
+                    HusButton { Layout.fillWidth:true;text:"进攻来源："+(page.defenseSource<0?"请选择敌方星球":page.planetName(page.defenseSource)+" · #"+page.defenseSource);onClicked:{page.selectingDefenseSource=true;page.planetQuery="";planetDialog.open()} }
+                    Repeater {
+                        model:[{key:"defenseLevel",label:"入侵等级",hint:"1–1000；生命值上限 = 等级 × 50,000"},{key:"defenseHours",label:"防守时长（小时）",hint:"1–168；从首次应用起计时，刷新战况不会重置"},{key:"defenseCount",label:"战役计数",hint:"1–1000；战况中的战役计数字段，与入侵等级分开设置"}]
+                        RowLayout {
+                            required property var modelData;Layout.fillWidth:true;visible:modelData.key!=="defenseCount" || page.advanced
+                            ColumnLayout { Layout.fillWidth:true;HusText { text:modelData.label } HusText { Layout.fillWidth:true;text:modelData.hint;wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary } }
+                            HusInput { objectName:modelData.key;Layout.preferredWidth:120;text:String(page[modelData.key]);onEditingFinished:{const n=Number(text);const max=modelData.key==="defenseHours"?168:1000;if(Number.isInteger(n)&&n>=1&&n<=max){page[modelData.key]=n;page.dirty=true}text=String(page[modelData.key])} }
+                        }
+                    }
+                    HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:"目标归属请选择超级地球，作战敌人必须与进攻来源的实时归属一致。自动生成关联的攻击边、防守事件与联合作战，初始剩余生命值设为 99%。倒计时和进度属于本机方案；重新启动代理后重新计时，服务器不会推进这条本地防守进度。";color:HusTheme.Primary.colorTextSecondary }
+                }
                 HusCheckBox { visible:page.advanced;objectName:"warInitializeRegions";Layout.leftMargin:16;text:"补齐缺失的原生分区状态";checked:page.initializeRegions;onClicked:{page.initializeRegions=checked;page.dirty=true} }
                 HusText { visible:page.advanced;Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:"需要开启战役并选择敌人。仅为原生定义中缺失的分区初始化状态：敌方占领、50% 生命值、可用系数 1；这些是本地初始化值，不是游戏原值。已有分区的归属和生命值保留。";wrapMode:Text.Wrap }
-                HusText { visible:page.advanced;Layout.fillWidth:true;Layout.margins:16;text:"星球开放可能让客户端向线上服务器创建作战；奖励与归属统计尚未确认。此处没有防守事件注入，战役类型也不能替代防守事件。";wrapMode:Text.Wrap;color:HusTheme.Primary.colorWarning }
+                HusText { visible:page.advanced;Layout.fillWidth:true;Layout.margins:16;text:"星球开放可能让客户端向线上服务器创建作战；奖励与归属统计尚未确认。防守战役会生成关联事件与联合作战，实际任务可用性仍需在游戏中验证。";wrapMode:Text.Wrap;color:HusTheme.Primary.colorWarning }
                 HusText { Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:"已核实的星图标记 / 玩法词条配对会一起应用到同一星球；图标、文案效果不等同于新任务。保存后需等游戏下一次战况刷新，已生成的作战不会立即重建。";wrapMode:Text.Wrap }
-                HusText { Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:page.localError;visible:!!text;wrapMode:Text.Wrap;color:HusTheme.Primary.colorError }
+                HusText { Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:page.localError || page.planIssue;visible:!!text;wrapMode:Text.Wrap;color:HusTheme.Primary.colorError }
                 Flow { Layout.fillWidth:true;Layout.margins:16;spacing:10
-                    HusButton { type:HusButton.Type_Primary;text:WarProxyBackend.active?"保存并应用":"保存方案";onClicked:page.saveCurrent() }
-                    HusButton { text:"保存并开启代理";enabled:!WarProxyBackend.active && !WarProxyBackend.busy;onClicked:{if(page.saveCurrent())page.requestEnable(false)} }
+                    HusButton { type:HusButton.Type_Primary;text:WarProxyBackend.active?"保存并应用":"保存方案";enabled:!page.planIssue;onClicked:page.saveCurrent() }
+                    HusButton { text:"保存并开启代理";enabled:!page.planIssue && !WarProxyBackend.active && !WarProxyBackend.busy;onClicked:{if(page.saveCurrent())page.requestEnable(false)} }
                     HusButton { text:"启动游戏（Steam）";enabled:WarProxyBackend.active && WarProxyBackend.pluginReady && WarProxyBackend.certificateTrusted;onClicked:steamDialog.open() }
                 }
             }
@@ -250,7 +285,7 @@ Flickable {
         bodyDelegate:HusText { width:enableDialog.width-48;wrapMode:Text.Wrap;text:(page.observeRequest?"本次仅转发并采集效果目录，不应用保存的星球修改。":"将应用所有已启用的星球方案，未知效果会被拦截；阵营和战役覆盖是实验性功能。")+"\n\n请先安装本机 CA。"+(WarProxyBackend.captureMode==="proxy"?"兼容模式需要先将桥接启动选项粘贴到 Steam 游戏属性，然后由 Steam 启动游戏。":"等待捕获服务就绪后再启动游戏。")+"多人会话也可能受玩法变化影响。关闭代理后请退出游戏，再从 Steam 正常启动。不会保存账号、认证信息或完整流量。" }
     }
     HusModal {
-        id:planetDialog;width:Math.min(720,page.width-30);title:"选择星球";modal:true;confirmText:"完成";cancelText:"关闭";onConfirm:close();onCancel:close()
+        id:planetDialog;width:Math.min(720,page.width-30);title:page.selectingDefenseSource?"选择进攻来源星球":"选择星球";modal:true;confirmText:"完成";cancelText:"关闭";onConfirm:close();onCancel:close();onClosed:page.selectingDefenseSource=false
         bodyDelegate:ColumnLayout {
             width:planetDialog.width-48;spacing:10
             HusInput { objectName:"warPlanetSearch";Layout.fillWidth:true;placeholderText:"搜索中文名 / 英文名 / 星球编号";text:page.planetQuery;clearEnabled:true;onClickClear:page.planetQuery="";onTextEdited:page.planetQuery=text }
@@ -258,7 +293,7 @@ Flickable {
             ListView { Layout.fillWidth:true;Layout.preferredHeight:320;clip:true;spacing:6;model:page.filteredPlanets();boundsBehavior:Flickable.StopAtBounds
                 ScrollBar.vertical:HusScrollBar{}
                 SmoothWheel{}
-                delegate:HusButton { required property var modelData;width:ListView.view.width-16;text:modelData.name+" · "+(modelData.native || "")+" · #"+modelData.id;onClicked:{page.requestPlanet(modelData.id);planetDialog.close()} }
+                delegate:HusButton { required property var modelData;width:ListView.view.width-16;text:modelData.name+" · "+(modelData.native || "")+" · #"+modelData.id;onClicked:{if(page.selectingDefenseSource){page.defenseSource=Number(modelData.id);page.dirty=true}else page.requestPlanet(modelData.id);planetDialog.close()} }
             }
             HusText { visible:!page.filteredPlanets().length;text:"没有匹配的星球，请更换名称或编号。" }
         }
