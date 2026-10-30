@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 from proxy_runtime_policy import include_proxy_file
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '4.5.1'
+VERSION = '4.5.1-r1'
 MITMDUMP_SHA256 = 'e2f05da6385d8c76c2f5b7b23b5d0f7e2c23483b5ece99fe1f4e3b0c04c5f8b5'
 
 def main():
@@ -83,6 +83,18 @@ def main():
     for f in list(release.rglob('*')):
         if f.is_file() and (f.suffix.lower() in ('.pdb','.a','.lib','.prl','.qmltypes') or f.name.endswith('d.dll') and f.name.startswith('Qt6')):
             f.unlink()
+    # QML debugger/profiler plugins are only needed by development tooling.
+    shutil.rmtree(release/'qmltooling',ignore_errors=True)
+    # Strip only our MinGW build outputs, never third-party signed Qt/Python DLLs.
+    # COFF symbol tables can exceed the loaded code size, especially HuskarUI.
+    strip=a.compiler_bin/'strip.exe'
+    stripped=[]
+    for name in ('SHODAN 数值编辑器.exe','HuskarUIBasic.dll','HuskarUIImpl.dll','shodan-steam-bridge.exe'):
+        f=release/name
+        if f.is_file():
+            before=f.stat().st_size
+            subprocess.run([str(strip),'--strip-unneeded',str(f)],check=True,env=env)
+            stripped.append({'file':name,'before':before,'after':f.stat().st_size})
     files={f.relative_to(release).as_posix():hashlib.sha256(f.read_bytes()).hexdigest() for f in release.rglob('*') if f.is_file() and f.name!='manifest.json'}
     manifest={'version':VERSION,'core_version':CORE_VERSION,'core_commit':CORE_COMMIT,'ui_framework':'HuskarUI',
               'ui_commit':'d760773ee0f440284965fe443f765caeb66d8114','qt_version':'6.8.3','transport':'in-process-luajit',
@@ -94,6 +106,10 @@ def main():
             if f.is_file():z.write(f,release.name+'/'+f.relative_to(release).as_posix())
     sources=[ROOT/'LICENSE',ROOT/'README.md',ROOT/'src/stat_editor.lua',ROOT/'docs/guard-dog-configuration.md',ROOT/'docs/war-proxy-integration.md',ROOT/'offline/war_status_addon.py',ROOT/'tests/test_war_proxy.cpp',ROOT/'tests/test_war_status_addon.py',ROOT/'tests/test_war_proxy_ui.py',ROOT/'tests/mitmproxy_native_smoke.py']
     sources += [ROOT/'assets/war_catalog.json', ROOT/'tools/build_war_catalog.py', ROOT/'tools/build_proxy_runtime.py', ROOT/'tools/proxy_runtime_policy.py', ROOT/'tools/probe_war_connection.py', ROOT/'tools/import_war_reference.py', ROOT/'tests/test_steam_bridge.py']
+    sources += [ROOT/'tests/test_edit_history.py',ROOT/'tests/test_edit_history_ui.py',ROOT/'tests/test_status_strength_layout.py',ROOT/'tests/test_status_strength_ui.py',ROOT/'tests/test_row_delta.py',ROOT/'tests/test_file_change_guard.py',ROOT/'tests/test_parameter_groups_ui.py',ROOT/'tests/test_hash_reference.py',ROOT/'docs/editing-workflow.md',ROOT/'docs/compatibility-build26251122.md']
+    sources += [ROOT/'docs/gameplay-options.md']
+    sources += [ROOT/'docs/squad-transport.md',ROOT/'tests/test_squad_transport.py']
+    sources += [ROOT/'tests'/name for name in ('test_reference_chain.py','test_diagnostics_readonly.py','test_diagnostics_ui.py','test_gameplay_resources.py','test_gameplay_options.py')]
     sources+=list((ROOT/'assets').glob('*.png'))
     sources+=[f for f in (ROOT/'offline/launcher').iterdir() if f.is_file() and f.suffix in ('.cpp','.h','.c','.ico','.def','.manifest')]
     sources+=list((ROOT/'offline').glob('*.lua'))+list((ROOT/'offline/originals').glob('*'))+list((ROOT/'offline/licenses').glob('*.txt'))
@@ -103,6 +119,6 @@ def main():
     with zipfile.ZipFile(a.output_root/(release.name+'_Source.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for f in sorted(set(sources)):
             if f.is_file():z.write(f,release.name+'_Source/'+f.relative_to(ROOT).as_posix())
-    print(json.dumps({'release':str(release),'zip':str(target),'files':len(files),'bytes':target.stat().st_size},ensure_ascii=False))
+    print(json.dumps({'release':str(release),'zip':str(target),'files':len(files),'bytes':target.stat().st_size,'stripped':stripped},ensure_ascii=False))
 
 if __name__=='__main__':main()

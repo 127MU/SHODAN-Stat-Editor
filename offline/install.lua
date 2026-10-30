@@ -294,6 +294,12 @@ end
 -- skip_changed (Restore) leaves changed files be; Install stops.
 function M.write_files(game, writes, originals, skip_changed, observed)
     if M.game_running() then return nil, 'Helldivers 2 is running: close it first.' end
+    local function progress(stage,done,total)
+        local notify=rawget(_G,'SHODAN_EUI_PROGRESS')
+        if type(notify)=='function' then pcall(notify,stage,done or 0,total or 0) end
+    end
+    local total=0;for _ in pairs(writes)do total=total+1 end
+    progress('校验游戏文件与外部修改',0,total)
     local list, changed = load_list(), {}
     for name in pairs(writes) do
         local current = read(game .. '/' .. name)
@@ -313,14 +319,22 @@ function M.write_files(game, writes, originals, skip_changed, observed)
                     .. 'Close and reopen the editor, then Install.'
     end
     for _, name in ipairs(changed) do writes[name] = nil end
+    local unchanged=0
+    for name,data in pairs(writes)do
+        if read(game..'/'..name)==data then writes[name]=nil;unchanged=unchanged+1 end
+    end
+    if unchanged>0 then progress('跳过内容相同的文件',unchanged,unchanged)end
     if not next(writes) then return true, changed end
+    total=0;for _ in pairs(writes)do total=total+1 end
     mkdirs(M.originals_dir)
+    local backed=0
     for name in pairs(writes) do
         local path = M.originals_dir .. '/' .. name
         if read(path) ~= originals[name] then
             local ok, why = write(path, originals[name])
             if not ok then return nil, 'could not keep the original of ' .. name .. ': ' .. tostring(why) end
         end
+        backed=backed+1;progress('保存原始文件备份 · '..name,backed,total)
     end
     local staged = {}
     for name, data in pairs(writes) do
@@ -331,6 +345,7 @@ function M.write_files(game, writes, originals, skip_changed, observed)
             return nil, 'could not write ' .. name .. ' (' .. tostring(why) .. ')'
         end
         staged[#staged + 1] = { name = name, tmp = tmp, data = data }
+        progress('生成待写入文件 · '..name,#staged,total)
         if data ~= originals[name] then
             list[name] = list[name] or {}
             list[name][hash_of(data)] = true
@@ -341,7 +356,8 @@ function M.write_files(game, writes, originals, skip_changed, observed)
         return nil, 'could not write ' .. LIST
     end
     local failed = {}
-    for _, s in ipairs(staged) do
+    progress('提交并验证游戏文件',0,#staged)
+    for index, s in ipairs(staged) do
         -- MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
         if kernel.MoveFileExA(s.tmp, game .. '/' .. s.name, 0x9) == 0 or read(game .. '/' .. s.name) ~= s.data then
             failed[#failed + 1] = s.name
@@ -353,6 +369,7 @@ function M.write_files(game, writes, originals, skip_changed, observed)
             list[s.name] = { [hash_of(s.data)] = true }
             if observed then observed[s.name] = hash_of(s.data) end
         end
+        progress('提交并验证游戏文件 · '..s.name,index,#staged)
     end
     save_list(list)
     if #failed > 0 then return nil, 'could not replace ' .. table.concat(failed, ', ') end

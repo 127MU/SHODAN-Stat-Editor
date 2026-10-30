@@ -198,8 +198,12 @@ local function original_at(file,offset,size)
     end
 end
 
-function M.original_bytes(address,size)
-    for _,file in pairs(M.files) do
+function M.original_bytes(address,size,loaded)
+    for _,source in pairs(M.files) do
+        if loaded and not source.loaded_reference then
+            source.loaded_reference={p=source.p,n=source.n,cipher=source.cipher,baseline=source.cipher}
+        end
+        local file=loaded and source.loaded_reference or source
         local offset=address-tonumber(ffi.cast('uintptr_t',file.p))
         if offset>=0 and offset+size<=file.n then
             if file.original_unavailable then return nil end

@@ -1,6 +1,7 @@
 -- Names from the user-provided 绝地潜兵2资源ID workbook; no gameplay values are imported.
 -- Reviewed against the workbook and installed game Chinese string IDs on 2026-10-27.
 -- https://docs.qq.com/sheet/DQ3Rya0VudGd3WWtv (local export, 2026-10-24).
+local hashes=require('zh_hashes')
 local exact={
  ["10g. Duckbill"]="10号霰弹 鸭嘴",
  ["10g. Full Choke"]="10号霰弹 全喉缩",
@@ -1530,7 +1531,7 @@ local exact={
 local lower={};for k,v in pairs(exact) do lower[k:lower()]=v end
 local M={}
 function M.translate(text)
- local value=exact[text] or lower[text:lower()];if value then return value end
+ local value=exact[text] or lower[text:lower()] or hashes.translate(text);if value then return value end
  if text:sub(1,2)=="* " then local name=M.translate(text:sub(3));if name then return "* "..name end end
 end
 -- Entity names keyed by the workbook resource ID. Enemy aliases in the upstream
@@ -2830,4 +2831,5 @@ local resource_names={
 }
 function M.entity_name(id)return entity_names[id]end
 function M.resource_name(id)return resource_names[id] or entity_names[id]end
+function M.parameter_name(kind,id)return hashes.parameter_name(kind,id)end
 return M

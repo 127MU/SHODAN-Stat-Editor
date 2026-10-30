@@ -3,6 +3,28 @@ from test_res_patch import ResourcePatchTests
 
 
 class DependencyTests(ResourcePatchTests):
+    def test_readonly_diagnostic_types_providers_cache_and_missing_audio(self):
+        self.lua.execute('''
+local before=snapshot()
+local report,why=M.inspect_resources(ctx,host,{donor},{{type_hex=particle,id_hex=asset}}, {98765,98766},{donor})
+assert(report,why);assert(report.missing==0 and report.unresolved_audio==1)
+local indexed,unresolved=false,false
+for _,r in ipairs(report.entries)do
+ if r.type==particle then assert(r.providers[1]==donor and r.status=='声明包内' and r.type_name=='粒子特效');indexed=true end
+ if r.id=='98766' then assert(r.missing and r.status=='音效候选未定位');unresolved=true end
+end
+assert(indexed and unresolved);unchanged(before)
+local cached=assert(M.inspect_resources(ctx,host,{donor},{{type_hex=particle,id_hex=asset}},{98765,98766},{}))
+for _,r in ipairs(cached.entries)do if r.type==particle then assert(r.status=='跨包，未登记完整驻留')end end
+unchanged(before)
+''')
+    def test_identical_patch_keeps_files_and_skips_transaction(self):
+        self.lua.execute('''
+assert(M.install(ctx,host,donor,'full'));local before=snapshot()
+local write=M.write_file;M.write_file=function()error('Unexpected repeated write')end
+local result,why=M.install(ctx,host,donor,'full');M.write_file=write
+assert(result,why);assert(result.unchanged);unchanged(before)
+''')
     def setUp(self):
         super().setUp()
         self.lua.execute('''

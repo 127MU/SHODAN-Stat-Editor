@@ -1,6 +1,9 @@
 -- Desktop-only previews and portable data presets. Input is parsed as data;
 -- no Lua is evaluated and no game files are written here.
 local M={}
+-- Expanded catalogs can contain more than 50k values. Keep a bounded parser
+-- together with the existing 8 MiB input limit.
+local MAX_VALUES=150000
 local function finite(v)return type(v)=='number' and v==v and math.abs(v)~=math.huge end
 local function clean_name(s)
     s=tostring(s or ''):gsub('[%z\1-\31\127]',' '):match('^%s*(.-)%s*$')
@@ -33,7 +36,7 @@ function M.decode(text)
                 local value=tonumber(raw);assert(hash and #hash==16 and finite(value),'预设含无效参数或数值')
                 hash=hash:upper();local k=hash..':'..id;assert(not seen[k],'预设存在重复参数');seen[k]=true
                 result.values[#result.values+1]={hash=hash,id=id,value=value}
-                assert(#result.values<=50000,'预设参数过多')
+                assert(#result.values<=MAX_VALUES,'预设参数过多')
             else
                 assert((key=='kind' or key=='name' or key=='weapon' or key=='editor') and not result[key],'预设包含未知或重复字段')
                 result[key]=body
@@ -80,7 +83,7 @@ function M.shared(owner,parts,tr,index)
                 end
                 if current then
                     seen[id]=true;out[#out+1]={id=other.hash or '',name=tr(other.name or '未命名记录'),
-                        category=other.record and '数据记录' or '装备'}
+                        category=other.record and '数据记录' or other.stratagem and '战略配备' or other.mounted and '载具挂载' or other.attachment and '配件' or '武器/装备'}
                 end
             end
         end

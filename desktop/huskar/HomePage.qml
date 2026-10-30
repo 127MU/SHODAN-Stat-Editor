@@ -537,25 +537,14 @@ Item {
                     }
                 }
 
-                Rectangle {
-                    id: progressTrack
-                    width: parent.width - 40
-                    height: 6
-                    radius: height * 0.5
-                    anchors.left: parent.left
-                    anchors.leftMargin: 20
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 18
-                    color: HusTheme.Primary.colorFillSecondary
-
-                    Rectangle {
-                        width: hovered ? Math.max(parent.width * 0.44, 96) : Math.max(parent.width * 0.35, 72)
-                        height: parent.height
-                        radius: parent.radius
-                        color: componentCard.accentColor
-                        Behavior on width { NumberAnimation { duration: HusTheme.Primary.durationFast } }
-                    }
+                HusButton {
+                    id:progressTrack
+                    anchors.left:parent.left;anchors.leftMargin:20
+                    anchors.bottom:parent.bottom;anchors.bottomMargin:18
+                    text:"打开";type:HusButton.Type_Primary
+                    onClicked:root.openMenu(componentCard.itemData.key)
                 }
+
             }
         }
     }

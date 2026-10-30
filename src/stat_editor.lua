@@ -1,6 +1,6 @@
 -- HD2-Addon: mods/shodan/stat_editor
--- SHODAN Stat Editor v4.5.1 by SHODAN. Run by SHODAN Stat Editor Offline (offline/host.lua).
-local MOD = { global = 'ShodanStatEditor', title = 'SHODAN Stat Editor', version = '4.5.1', author = 'SHODAN', log = 'SHODANStatEditor.log' }
+-- SHODAN Stat Editor v4.5.1-r1 by SHODAN. Run by SHODAN Stat Editor Offline (offline/host.lua).
+local MOD = { global = 'ShodanStatEditor', title = 'SHODAN Stat Editor', version = '4.5.1-r1', author = 'SHODAN', log = 'SHODANStatEditor.log' }
 -- magazines, heatsinks and ammunition types: the game's names, by the text id of the item (its English text)
 MOD.item_names = {
     [0x046FF548] = '5.5x50mm Ripper',
@@ -19165,7 +19165,7 @@ local function read_field(f, original)
     end
     local entry = tables[f.kind]
     if not entry then return nil end
-    local original_read=original and MOD.offline and rawget(_G,'SHODAN_OFFLINE_DEFAULT_READ')
+    local original_read=original and MOD.offline and rawget(_G,original=='loaded' and 'SHODAN_OFFLINE_LOADED_READ' or 'SHODAN_OFFLINE_DEFAULT_READ')
     local address=entry.copies[1]+HEADER_BYTES+f.offset
     local function bytes(size)
         if original_read then return original_read(address,size) end
@@ -20073,7 +20073,7 @@ function MOD.status.refused(row, target)
 end
 
 local function status_rows(entry, section, prefix, drow, per)
-    local strength_of = {}   -- slot -> its named strength row
+    local details_seen = {} -- Shared effect details appear once; strengths stay beside their physical slots.
     for i = 0, 3 do
         local kind = read_field(field_at(T_DAMAGE, drow + 44 + i * 8, 'u32', 100000))
         if not kind or kind == 0 then break end
@@ -20081,12 +20081,9 @@ local function status_rows(entry, section, prefix, drow, per)
         local sid = srow and read_field(field_at(T_STATUS, srow + 44, 'u32', 100000))
         local qrow = sid and sid > 0 and tables[T_DAMAGE] and tables[T_DAMAGE].index[sid]
         local stun = srow and not qrow and KINDS[T_STATUS].stuns[kind]
-        if qrow or stun then
+        if (qrow or stun) and not details_seen[kind] then
+            details_seen[kind]=true
             local name, key = stun or KINDS[T_STATUS].names[kind] or ('Status ' .. kind), prefix .. 'status' .. kind
-            -- Strength belongs to the physical slot, not to the selected status name.
-            local strength_id = prefix .. 'slot' .. (i + 1) .. '_strength'
-            strength_of[i] = add_row(entry, section, strength_id, name .. ' applied per ' .. per, 'f32',
-                                     { part(strength_id, T_DAMAGE, drow + 48 + i * 8, 'f32', 100000) }, 0, 1000, 0.1, 1)
             local first = qrow and damage_rows(entry, name, key .. '_', qrow, name, 6)   -- no forces: a status has none
             local duration = add_row(entry, name, key .. '_duration', name .. ' duration (s)', 'f32',
                                      { part(key .. '_duration', T_STATUS, srow + 40, 'f32', 100000) }, 0, 600, 0.5, 5)
@@ -20103,7 +20100,7 @@ local function status_rows(entry, section, prefix, drow, per)
         row.choice, row.drow, row.slot = 'status', drow, i
         row.label_of = function() return 'Applies: ' .. MOD.status.name(read_field(row.parts[1].field) or 0) end
         if i == 0 then row.note = 'what each hit applies; the slots go in order' end
-        row.strength = strength_of[i] or add_row(entry, own, id .. '_strength', 'Status effect ' .. (i + 1) .. ' strength per ' .. per,
+        row.strength = add_row(entry, own, id .. '_strength', 'Status effect ' .. (i + 1) .. ' strength per ' .. per,
                                                  'f32', { part(id .. '_strength', T_DAMAGE, drow + 48 + i * 8, 'f32', 100000) }, 0, 1000, 0.1, 1)
     end
 end
@@ -23573,6 +23570,7 @@ local function resolve(weapon)
     weapon.preset_ambiguous = nil
     weapon.ents_rows = nil
     weapon.grenade_swap = nil
+    if weapon.squad_transport then MOD.ents.rows(weapon,weapon.key);return end
     if weapon.slot == 'Throwables' then resolve_throwable(weapon); MOD.resident.page_rows(weapon); return end
     -- a support weapon you place (the C4 Pack): the backpack that shares its loadout package (its
     -- charges), the charge (health, throw distance) and its explosion
@@ -23926,9 +23924,12 @@ end
 -- A record's name (English), or nil.
 function MOD.records.name(kind, id)
     local u = MOD.records.users()
+    local ref=state.lang and state.lang()=='zh-Hans' and rawget(_G,'SHODAN_OFFLINE_ZH_REFERENCE')
+    local reference_name=ref and ref.parameter_name and ref.parameter_name(kind==TYPES.arc and 'arc' or kind==T_BEAM and 'beam' or '',id)
     if kind == T_PROJECTILE then return MOD.round_names and MOD.round_names[id] or (u.shots[id] or {})[1]
     elseif kind == T_EXPLOSION then return (u.blasts[id] or {})[1] or u.rounds[id]
-    elseif kind == TYPES.arc then return (u.arcs[id] or {})[1] end
+    elseif kind == TYPES.arc then return (u.arcs[id] or {})[1] or reference_name
+    elseif kind == T_BEAM then return reference_name end
     if state.lang and state.lang() == 'zh-Hans' and MOD.status.by[id] then return MOD.status.by[id].name end
     return KINDS[T_STATUS].names[id] or KINDS[T_STATUS].stuns[id]
 end
@@ -24277,7 +24278,7 @@ end
 
 -- A row's value (the mean of its parts); default = true: the game's own value instead.
 local function row_value(row, default)
-    local get = default and default_of or read_field
+    local get = default=='loaded' and function(f)return read_field(f,'loaded')end or default and default_of or read_field
     if row.choice == 'resomode' then return MOD.resident.state_of(row) end
     if row.choice == 'smmode' then return MOD.sm.state_of(row) end
     if row.choice == 'grenade' and not default and row.parts[1].field.pending_value ~= nil then
@@ -24633,6 +24634,8 @@ local function load_config()
         elseif name == 'several_vehicles' then
             MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
             known = true
+        elseif name=='water_diving' or name=='enhanced_vaulting' then
+            known=true -- Discard retired preview switches without applying their values.
         elseif name == 'stratagem_bounce' or name == 'foliage_pass_through' or name == 'sniper_crosshair' then
             MOD.tweaks[name == 'stratagem_bounce' and 'bounce' or name == 'sniper_crosshair' and 'reticle' or 'foliage'].on = value == 'on'
             MOD.tweaks.apply()
@@ -25123,6 +25126,8 @@ KINDS[TYPES.unit] = { name = 'unit', stride = 136, keyed = true }
 KINDS[TYPES.inventory] = { name = 'inventory', stride = 144, keyed = true }
 KINDS[TYPES.ear] = { name = 'hearing', stride = 16, keyed = true }
 KINDS[TYPES.transport] = { name = 'transport', stride = 48, keyed = true }
+TYPES.squad_transport = 0xD2B93CD8
+KINDS[TYPES.squad_transport] = { name = 'squad transport', stride = 168, keyed = true }
 -- whose side a unit is on (FactionComponentData, 152-byte records: +0 up to 3 factions of 4 bytes; 0 none,
 -- 1 Super Earth, 2 Terminids, 4 Illuminate, 8 Automatons). From 127MU's and CarbonAnime's forks. Only the
 -- first is shown; a unit whose first is none gets no row.
@@ -25424,6 +25429,12 @@ function MOD.refs.items()
         if rt then
             for _, off in pairs(rt.index) do
                 for slot = 0, 7 do add(api.read(rt.copies[1] + HEADER_BYTES + off + slot * 64, 8)) end
+            end
+        end
+        local squad=tables[TYPES.squad_transport]
+        if squad then
+            for _,off in pairs(squad.index)do
+                for slot=0,5 do add(api.read(squad.copies[1]+HEADER_BYTES+off+32+slot*16,8))end
             end
         end
     end)
@@ -25768,9 +25779,65 @@ end
 -- The rows these four tables give one entity: what it carries (each slot: the entity in it, the side it
 -- sits on, and once something is there its mount points and flags), the animation it mounts with, its
 -- faction, and the behaviour its AI runs.
+MOD.squad_transport = { HOSTS = {
+    DB90077E76FAA025='自动机运输艇 A', ['98152772A72F7838']='自动机运输艇 B',
+    ['3EC790806D0B0540']='SEAF 小队运输穿梭机', ['74E2285C01DA4F71']='光能族运输舰',
+    D37E8D120D2836E3='工厂阔步者 A', ['30F2DEE2333F227A']='工厂阔步者 B',
+} }
+function MOD.squad_transport.build()
+    for i=#weapons,1,-1 do
+        if weapons[i].squad_transport then by_hash[weapons[i].hash]=nil;table.remove(weapons,i)end
+    end
+    local t=tables[TYPES.squad_transport]
+    if not t then return end
+    local keys={};for hex in pairs(MOD.squad_transport.HOSTS)do keys[#keys+1]=hex end;table.sort(keys)
+    for _,hex in ipairs(keys)do
+        local key=hash_key(hex)
+        if t.index[key] and by_hash[hex]then
+            by_hash[hex].key=key
+        elseif t.index[key]then
+            local e={name='小队运输：'..MOD.squad_transport.HOSTS[hex],slot='Mechas',hash=hex,key=key,
+                squad_transport=true,rows={},by_id={},note='实验性运输载体参数；不会自动改变 AI 行为或修复投空。'}
+            weapons[#weapons+1]=e;by_hash[hex]=e
+        end
+    end
+end
+function MOD.squad_transport.rows(entry,key)
+    local t=tables[TYPES.squad_transport];local at=t and t.index[key]
+    if not at then return end
+    local section='小队投放（实验性）'
+    local function row(id,label,off,storage,tip)
+        label=label:gsub('（实验性，','（'):gsub('（实验性）','')
+        local r=add_row(entry,section,'squad_'..id,label,storage,
+            {part('squad_'..id,TYPES.squad_transport,at+off,storage,4294967295)},0,
+            storage=='u8' and 255 or 4294967295,storage=='f32' and 0.05 or 1,1)
+        r.tip={tip,'字段结构已离线核对；修改后的游戏行为未验证。不会自动加载外来资源或更换 AI 行为。'}
+        return r
+    end
+    row('param0','投放参数 A（实验性，+0x00）',0,'u32','原始整数，可能与规模有关，不能当作已确认的投兵数量。')
+    row('param4','投放参数 B（实验性，+0x04）',4,'u32','原始整数，与参数 A 成对观察，实际含义未确认。')
+    local node=row('node','投放节点哈希（+0x08）',8,'u32','Dropship = 0x3DE4072E；Spawner = 0xC170DF27。它是节点名哈希，不是实体或资源 ID。')
+    node.hash32=true
+    local spacing=row('param12','投放浮点参数（实验性，+0x0C）',12,'f32','常见值 0.20，SEAF 穿梭机为 0.45；尚不能确认为间距、时间或半径。')
+    spacing.parts[1].field.signed=true
+    for _,off in ipairs({16,17,24,128,129})do
+        row('flag'..off,string.format('投放标记（实验性，+0x%02X）',off),off,'u8','独立单字节标记；语义未确认，不会连带修改相邻字节。')
+    end
+    row('mode','投放模式原始值（实验性，+0x14）',20,'u32','枚举含义未定位；观察值有 0、5、6。SEAF 此值归零不能解决投空。')
+    for slot=0,5 do
+        local r=row('slot'..(slot+1)..'_resource','资源槽 '..(slot+1)..'（实验性）',32+slot*16,'rackitem',
+            '本槽的 64 位资源引用。六槽各占 16 字节，资源占前 8 字节；替换资源不代表能生成相应单位，跨包资源仍需加载。')
+        r.choice='rackitem'
+        local param=row('slot'..(slot+1)..'_value','资源槽 '..(slot+1)..' 浮点参数（实验性）',40+slot*16,'f32',
+            '资源引用后的四字节参数，按浮点数展示，意义尚未确认；不把它当作另一条资源。槽尾四字节保留。')
+        param.parts[1].field.signed=true
+    end
+    for n=0,2 do row('mask'..(n+1),'投放掩码 '..(n+1)..'（实验性）',132+n*4,'u32','末尾结构的原始位值，具体位含义未解；其余未知字节不开放修改。')end
+end
 function MOD.ents.rows(entry, key)
     if not entry or not key or entry.ents_rows then return end
     entry.ents_rows = true
+    MOD.squad_transport.rows(entry,key)
     local MOUNT = '挂载（实验性功能）'   -- upstream reports mount-point edits are unstable on some vehicles
     -- The supply FRV's rack rides the same mount table as everything else, and rewriting its anchor hashes has
     -- been seen to drop or misplace the rack, so mount-point editing stays off on that vehicle (upstream, 2026-10-26).
@@ -26119,7 +26186,7 @@ end
 
 -- Follow the actual current projectile/explosion chain, including fragments and
 -- mounted weapons. Resource hashes are byte strings; never round a u64 via Lua.
-function MOD.resident.dependencies(page)
+function MOD.resident.dependencies(page,all)
     local resources,events,seen,seen_res,seen_audio={},{},{},{},{}
     local blobs,dependency_error={},nil
     local function number(kind,at)
@@ -26183,18 +26250,36 @@ function MOD.resident.dependencies(page)
     end
     if page then
         donor_model(page.key)
-        if page.record then take(page.kind==T_EXPLOSION and 'blast' or 'shot',page.id)end
+        if page.record and (page.kind==T_PROJECTILE or page.kind==T_EXPLOSION)then take(page.kind==T_EXPLOSION and 'blast' or 'shot',page.id)end
+        if all then
+            for _,id in ipairs(MOD.resident.item_ids(page.key,true))do take('shot',id)end
+            for _,row in ipairs(page.rows or {})do
+                local what=MOD.resident.ref_of(row)
+                if what and row.parts[1]then take(what,read_field(row.parts[1].field))end
+            end
+        end
         MOD.resident.changed_refs(page,take)
         for _,row in ipairs(page.rows or {})do
             if row.choice=='mountitem' or row.choice=='dogweapon' then
                 local value=read_field(row.parts[1].field)
-                if value~=default_of(row.parts[1].field)then
+                if all or value~=default_of(row.parts[1].field)then
                     local item=MOD.ents.pick(row.choice).by_id[value]
                     if item then
                         donor_model(item.bytes)
                         for _,id in ipairs(MOD.resident.item_ids(item.bytes,true))do take('shot',id)end
                     end
                 end
+            end
+        end
+    end
+    if all and page and MOD.diagnostics then
+        local graph=require('reference_chain').build(MOD.diagnostics.roots(page),MOD.diagnostics.node)
+        for _,node in ipairs(graph.nodes)do
+            local kind=MOD.diagnostics.kinds[node.kind];local t=kind and tables[kind]
+            local at=t and t.index[node.id]
+            if at then
+                local raw=api.read(t.copies[1]+HEADER_BYTES+at,KINDS[kind].stride)
+                if raw then blobs[#blobs+1]=raw end
             end
         end
     end
@@ -26598,6 +26683,7 @@ local function become_ready(final)
         { 'armor weight', MOD.kits.build, 'armor weight: not listed: ' },
         { 'boosters', MOD.boosters.build, 'boosters: not listed: ' },
         { 'enemies', MOD.enemy.build, 'enemies: not listed: ' },
+        { 'squad transports', MOD.squad_transport.build, 'squad transports: not listed: ' },
     }
     set_status('building', 'listing stratagems, attachments and armor passives')
 end
@@ -31412,6 +31498,12 @@ end
 if MOD.offline then
     function MOD.desktop_name(w)
         local ref=rawget(_G,'SHODAN_OFFLINE_ZH_REFERENCE')
+        if settings.lang=='zh-Hans' and w.slot=='Attachments' and ref and ref.parameter_name then
+            local id=tonumber(w.hash:sub(-8),16)
+            local kind=w.attachment and w.attachment.order==4 and 'projectile_upgrade' or 'attachment'
+            local name=ref.parameter_name(kind,id)
+            if name then return name end
+        end
         if settings.lang=='zh-Hans' and (w.enemy or w.slot=='Mechas' and (w.parent or w.parents)) and ref and ref.entity_name then
             local id=w.hash
             if w.key then local parts={};for i=#w.key,1,-1 do parts[#parts+1]=string.format('%02X',w.key:byte(i))end;id=table.concat(parts)end
@@ -31502,11 +31594,12 @@ if MOD.offline then
         local w=state.desktop.registry[hash] or by_hash[hash]
         assert(w,'找不到此数据记录');select_weapon(w);return true
     end
-    function state.desktop.rows()
+    function state.desktop.rows(requested)
         if ui.weapon and ui.weapon.stratagem and ui.weapon.stratagem.drone then resolve(ui.weapon) end
         local out={}
         local impact=require('desktop_features');local index=impact.shared_index(by_hash)
         for n,row in ipairs(ui.weapon and ui.weapon.rows or {}) do
+            if not requested or requested[n] then
             local v,d=row_value(row),row_value(row,true)
             local faction_value=ui.weapon.enemy and not ui.weapon.enemy.faction and MOD.enemy.by_all_value(row)
             local faction_only=type(faction_value)=='number' and d~=nil and math.abs(faction_value-d)>1e-4
@@ -31579,11 +31672,25 @@ if MOD.offline then
             end
             out[#out+1]={reference=reference,id=n,label=settings.tr(row.label):gsub(' %(x%)$','（倍率）'):gsub(' %(%+%)$','（加值）'):gsub('（x）','（倍率）'):gsub('（%+）','（加值）'),section=settings.tr(row.section or ''),
                 value=v,original=d,text=value_text,default_text=default_text,code=not not row.code,
+                loaded_text=(row.choice or row.code or row.span or row.storage=='virtual') and '不适用（动态或引用字段）' or settings.tr(fmt(row_value(row,'loaded'),row.storage)),
+                baseline_source=d==nil and '基准不可用' or '恢复基准（备份/版本数据）',
                 projectile_source=row.choice==true,projectile_conflict=projectile_conflict,choice=not not row.choice,choice_kind=type(row.choice)=='string' and row.choice or '',choice_name=choice_name,flag=row.storage=='flag' or row.storage=='bit',min=nil,max=nil,
                 note=settings.tr(type(note)=='string' and note or ''),inline_note=settings.tr(inline_note),help=help,faction_only=faction_only,changed=(v~=d and not faction_only) or ui.weapon.enemy and MOD.enemy.pinned(row) or false,
                 shared=impact.shared(ui.weapon,row.parts,settings.tr,index)}
+            end
         end
         return out
+    end
+    function state.desktop.rows_delta(n)
+        local rows=ui.weapon and ui.weapon.rows or {}
+        local row=assert(rows[n],'找不到参数')
+        local keys,affected={},{}
+        for _,p in ipairs(row.parts) do keys[p.field.key]=true end
+        for i,r in ipairs(rows) do
+            for _,p in ipairs(r.parts) do if keys[p.field.key] then affected[i]=true;break end end
+        end
+        affected[n]=true
+        return state.desktop.rows(affected)
     end
     function state.desktop.shared(n)
         local row=assert(ui.weapon and ui.weapon.rows[n],'找不到参数')
@@ -31758,6 +31865,173 @@ if MOD.offline then
             return ''
         end,
     })
+    MOD.diagnostics={kinds={shot=T_PROJECTILE,blast=T_EXPLOSION,damage=T_DAMAGE,status=T_STATUS,arc=TYPES.arc,beam=T_BEAM}}
+    function MOD.diagnostics.number(kind,id,offset,storage)
+        local t=tables[kind];local at=t and t.index[id]
+        return at and read_field(field_at(kind,at+offset,storage or 'u32',4294967295))
+    end
+    function MOD.diagnostics.node(what,id)
+        local kind=MOD.diagnostics.kinds[what];local t=kind and tables[kind]
+        if not t or not t.index[id]then return {exists=false}end
+        local node={exists=true,links={}}
+        local prefix=MOD.records.PREFIX[kind]
+        node.record_hash=prefix and string.format('%s%014X',prefix,id) or ''
+        if what~='damage'then node.name=settings.tr(MOD.records.name(kind,id) or '')end
+        local function link(target,offset,label)
+            local value=MOD.diagnostics.number(kind,id,offset)
+            if type(value)=='number' and value>0 then node.links[#node.links+1]={kind=target,id=value,via=label}end
+        end
+        if what=='shot'then
+            link('damage',60,'直接命中伤害');link('blast',144,'命中爆炸');link('blast',156,'到期爆炸')
+        elseif what=='blast'then
+            link('damage',4,'爆炸伤害')
+            if (MOD.diagnostics.number(kind,id,80) or 0)>0 then link('shot',84,'破片射弹')end
+        elseif what=='damage'then
+            node.summary='伤害 '..tostring(MOD.diagnostics.number(kind,id,4))..' · 耐久伤害 '..tostring(MOD.diagnostics.number(kind,id,8))
+            for i=0,3 do link('status',44+i*8,'状态槽 '..(i+1))end
+        elseif what=='status'then
+            link('damage',44,'每跳伤害');node.summary='持续时间 '..tostring(MOD.diagnostics.number(kind,id,40,'f32'))..' 秒'
+        elseif what=='arc'then link('damage',36,'电弧伤害')
+        elseif what=='beam'then link('damage',12,'激光伤害')end
+        return node
+    end
+    function MOD.diagnostics.roots(page)
+        local roots={}
+        local function add(what,value,label)
+            if type(value)=='number' and value>0 then roots[#roots+1]={kind=what,id=value,via=label}end
+        end
+        local function key_roots(key,label)
+            if not key then return end
+            local function field(kind,offset,what,via)
+                local t=tables[kind];local at=t and t.index[key]
+                if at then add(what,read_field(field_at(kind,at+offset,'u32',4294967295)),label..' / '..via)end
+            end
+            field(T_FIRE,0,'shot','主射击模式');field(T_FIRE,576,'shot','第二射击模式')
+            field(T_ROUNDS,64,'shot','主弹种');field(T_ROUNDS,68,'shot','备选弹种')
+            for i=0,2 do field(TYPES.charge,4+i*24,'shot','蓄力阶段 '..(i+1))end
+            field(T_BEAM_WEAPON,0,'beam','激光类型');field(TYPES.arc_weapon,0,'arc','电弧类型')
+            field(T_SPRAY,200,'damage','喷流伤害');field(T_SPRAY,196,'shot','喷流射弹');field(T_MELEE,12,'damage','近战伤害')
+        end
+        if page.record then
+            for what,kind in pairs(MOD.diagnostics.kinds)do if kind==page.kind then add(what,page.id,'当前数据记录')end end
+        else key_roots(page.key,MOD.desktop_name(page))end
+        for _,row in ipairs(page.rows or {})do
+            if row.choice=='mountitem' or row.choice=='dogweapon'then
+                local item=MOD.ents.pick(row.choice).by_id[read_field(row.parts[1].field)]
+                if item then key_roots(item.bytes,settings.tr(item.label))end
+            end
+        end
+        if #roots==0 then
+            for _,row in ipairs(page.rows or {})do
+                local what=MOD.resident.ref_of(row)
+                if what and row.parts[1]then add(what,read_field(row.parts[1].field),settings.tr(row.label))end
+            end
+        end
+        return roots
+    end
+    function state.desktop.diagnostic_chain()
+        local page=assert(ui.weapon,'请先选择装备或数据记录')
+        local report=require('reference_chain').build(MOD.diagnostics.roots(page),MOD.diagnostics.node)
+        report.equipment=MOD.desktop_name(page);report.owner=page.hash
+        report.note='按当前编辑值追踪；数据记录的原始名称归属不代表当前装备实际装载。重复引用仅展开一次。'
+        if #report.entries==0 then report.note=report.note..' 当前条目未解析到支持的射击引用，不表示不存在攻击或伤害。'end
+        return report
+    end
+    function state.desktop.diagnostic_resources()
+        local page=assert(ui.weapon,'请先选择装备或数据记录')
+        local module=assert(MOD.resident.module(),'资源诊断模块不可用')
+        local ctx,why=MOD.resident.ctx();assert(ctx,why)
+        local preferred,declared,seen={},{},{}
+        local function package(id,own)
+            if type(id)~='number' or id<=0 then return end
+            local item=MOD.refs.packages().by_id[id]
+            if item and item.bytes then
+                local name=MOD.refs.hex(item.bytes):lower()
+                if own then declared[#declared+1]=name end
+                if not seen[name]then seen[name]=true;preferred[#preferred+1]=name end
+            end
+        end
+        local own=MOD.resident.item_package(page.key);if own then package(own,true)end
+        for _,id in ipairs(MOD.resident.page_targets(page))do package(id,false)end
+        for _,row in ipairs(page.rows or {})do
+            if row.choice=='package'then package(read_field(row.parts[1].field),false)end
+        end
+        local resources,events,err=MOD.resident.dependencies(page,true);assert(not err,err)
+        local report,why=module.inspect_resources(ctx,MOD.resident.carrier,preferred,resources,events,declared)
+        assert(report,why);report.equipment=MOD.desktop_name(page);report.owner=page.hash
+        local names={}
+        for _,item in ipairs(MOD.refs.packages().list)do if item.bytes then names[MOD.refs.hex(item.bytes):lower()]=settings.tr(item.label)end end
+        for _,item in ipairs(report.packages)do item.name=names[item.id] or item.id end
+        for _,item in ipairs(report.entries)do
+            item.provider_names={}
+            for _,name in ipairs(item.providers)do item.provider_names[#item.provider_names+1]=(names[name] and (names[name]..' · ') or '')..name end
+        end
+        if #resources==0 and #events==0 then report.note=report.note..' 当前条目未解析到资源/音效引用，不表示不存在依赖。'end
+        return report
+    end
+    function state.desktop.ragdoll_preview()
+        local ctx,why=MOD.resident.ctx();assert(ctx,why)
+        local result,err=require('gameplay_resources').preview(ctx);assert(result,err);return result
+    end
+    function state.desktop.ragdoll_apply(on)
+        assert(type(on)=='boolean','开关必须为布尔值')
+        assert(not os.getenv('SHODAN_QA_OUTPUT') and not os.getenv('SHODAN_HUSKAR_QA'),'测试模式禁止修改游戏资源补丁')
+        assert(not require('install').game_running(),'请先完全退出游戏，再更改布娃娃资源补丁')
+        local ctx,why=MOD.resident.ctx();assert(ctx,why)
+        local ok,message=require('gameplay_resources').apply(ctx,on);assert(ok,message)
+        MOD.resident.memo=nil;if MOD.sm then MOD.sm.cache=nil end
+        return message
+    end
+    MOD.history={}
+    function MOD.history.copy(list)
+        local out={};for _,v in ipairs(list)do local item={};for k,x in pairs(v)do item[k]=x end;out[#out+1]=item end;return out
+    end
+    function MOD.history.capture(n)
+        local w=ui.weapon;if not w then return end
+        local row=n and w.rows[tonumber(n)]
+        if row and (row.choice=='resomode' or row.choice=='smmode' or row.choice=='grenade')then return end
+        local snapshot={values={},overrides=MOD.history.copy(overrides),label=settings.tr(w.name)..' · '..(row and settings.tr(row.label) or '恢复本项')}
+        for _,r in ipairs(w.rows or {})do for _,p in ipairs(r.parts or {})do
+            local f=p.field;local v=read_field(f)
+            if v~=nil and f.storage~='grenade' then snapshot.values[f.key]={field=f,value=v}end
+        end end
+        return snapshot
+    end
+    function MOD.history.finish(before)
+        local changes={}
+        for _,item in pairs(before.values)do
+            local value=read_field(item.field)
+            if value~=nil and value~=item.value then changes[#changes+1]={field=item.field,before=item.value,after=value}end
+        end
+        if #changes==0 then return end
+        local old,new,diff={},{},{}
+        for _,o in ipairs(before.overrides)do old[o.hash..':'..o.id]=o end
+        for _,o in ipairs(overrides)do new[o.hash..':'..o.id]=o end
+        for key,o in pairs(old)do if not new[key] or new[key].value~=o.value then diff[key]={before=o,after=new[key]}end end
+        for key,o in pairs(new)do if not old[key]then diff[key]={after=o}end end
+        return {label=before.label,changes=changes,overrides=diff}
+    end
+    function MOD.history.restore(entry,reverse)
+        local expected=reverse and 'after' or 'before';local target=reverse and 'before' or 'after'
+        for _,item in ipairs(entry.changes)do
+            assert(read_field(item.field)==item[expected],'参数已被其他操作改变，无法安全撤销；请重新编辑此参数')
+        end
+        local applied={}
+        for _,item in ipairs(entry.changes)do
+            local ok,why=write_field(item.field,item[target])
+            if not ok then
+                for i=#applied,1,-1 do local old=applied[i];write_field(old.field,old[expected])end
+                error(why or '撤销失败，已回退本次操作',0)
+            end
+            applied[#applied+1]=item
+        end
+        local next_overrides={}
+        for _,o in ipairs(overrides)do if not entry.overrides[o.hash..':'..o.id]then next_overrides[#next_overrides+1]=o end end
+        for _,diff in pairs(entry.overrides)do if diff[target]then next_overrides[#next_overrides+1]=diff[target]end end
+        overrides=MOD.history.copy(next_overrides);save_config()
+        if ui.weapon then select_weapon(ui.weapon)end
+    end
+    require('edit_history').attach(state.desktop,MOD.history)
     function state.desktop.flush() save_config();flush_log();return true end
 end
 

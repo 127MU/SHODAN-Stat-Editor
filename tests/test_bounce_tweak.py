@@ -8,12 +8,19 @@ def main():
  from lupa.luajit21 import LuaRuntime
  lua=LuaRuntime();lua.globals().SHODAN_EUI=True;lua.execute("package.path=.....';'..package.path",(root/'offline/?.lua').as_posix())
  lua.execute('''local D=require('hostdata');local G=require('gamedata');local ffi=require('ffi');local load=D.load
+ local nav_addresses={};local original_read=D.original_bytes
+ D.original_bytes=function(address,size,...)
+  local data=original_read(address,size,...)
+  if nav_addresses[address] and size==1 and data then local value=data:byte();if math.floor(value/2)%2==0 then data=string.char(value+2)end end
+  return data
+ end
  D.load=function(...)
  local results={load(...)}
  for _,f in pairs(D.files)do for _,h in ipairs(G.headers(f.p,f.n))do
  if h.type==0x30EB6399 then
  local data=f.p+h.at+24;local count=tonumber(ffi.cast('uint32_t*',data+8)[0])
  for i=0,count-1 do local at=data+16+i*400+368;local flags=tonumber(at[0])
+ nav_addresses[tonumber(ffi.cast('uintptr_t',at))]=true
  -- Emulate a prior tool clearing only the navmesh bit, plus an unrelated bit.
  if math.floor(flags/2)%2==1 then at[0]=flags-2 end
  if math.floor(tonumber(at[0])/4)%2==0 then at[0]=at[0]+4 end
@@ -22,7 +29,11 @@ def main():
  require('install').write_files=function()error('Game writes forbidden')end
  ''')
  lua.execute('arg={...}',(root/'src/stat_editor.lua').as_posix());lua.globals().B=lua.execute('return dofile(...)',(root/'offline/host.lua').as_posix())
- result=lua.execute('''local MOD;for i=1,20 do local n,v=debug.getupvalue(B.tweaks,i);if n=='MOD'then MOD=v end end;assert(MOD)
+ result=lua.execute('''local function locate(fn,seen)
+ seen=seen or {};if seen[fn]then return end;seen[fn]=true
+ for i=1,30 do local n,v=debug.getupvalue(fn,i);if not n then break end;if n=='MOD'then return v end
+ if type(v)=='function'then local found=locate(v,seen);if found then return found end end end end
+ local MOD=assert(locate(B.tweaks))
  local t=MOD.tweaks.bounce;assert(#t.rows>0,'Previously modified records were lost')
  local D=require('hostdata');local G=require('gamedata');local ffi=require('ffi')
  local function check(on)

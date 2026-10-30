@@ -28,9 +28,11 @@ def main():
     log = (profile / "Logs/huskar-startup.log").read_text(encoding="utf-8", errors="replace")
     problems = [line for line in log.splitlines() if any(s in line for s in ("ReferenceError:", "TypeError:", "Binding loop", "Unable to assign", "Cannot assign", "Failed to link shader"))]
     assert not problems, problems
-    assert len(list(out.glob("war-proxy-*.png"))) == 4
+    assert len(list(out.glob("war-proxy-*.png"))) == 5
     saved=json.loads((profile/"war-targets.json").read_text("utf-8"))
     assert len(saved["targets"])==2 and saved["targets"][1]["enabled"] is False
+    defense=next(t for t in saved["targets"] if t["planet"]==93)
+    assert defense["campaign_type"]==4 and defense["defense_level"]==38 and defense["defense_source"]==157
     assert not (profile / "war-proxy/ca").exists(), "UI smoke test must not start MITM/certificate generation"
     print(json.dumps({"variants_page": True, "dark_light": True, "saved_plan": True, "auto_start": False, "game_writes": 0}))
 

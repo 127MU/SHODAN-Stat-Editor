@@ -24,19 +24,19 @@ HusCard {
         Loader {
             id:glassLoader
             anchors.fill:parent
-            active:card.store.cardMaterial!=="solid" && !!card.store.cardBackdrop
+            active:card.visible && card.store.cardMaterial!=="solid" && !!card.store.cardBackdrop
             sourceComponent:HusLiquidGlass {
                 id:glassEffect
                 anchors.fill:parent
                 sourceItem:card.store.cardBackdrop
                 sourceRect:surface.sampleRect
                 radiusBg.all:card.radiusBg.all
-                refraction:card.store.cardMaterial==="glass"?card.store.glassRefraction:0
+                refraction:card.store.cardMaterial==="glass"?card.store.glassRefraction*(card.store.materialQuality==="economy"?0.5:1):0
                 bevelDepth:card.store.cardMaterial==="glass"?0.18:0.11
                 bevelWidth:0.09
-                frost:card.store.cardMaterial==="glass"?0.02:card.store.materialBlur
+                frost:card.store.cardMaterial==="glass"?0.02:Math.min(card.store.materialBlur,card.store.materialQuality==="economy"?1:8)
                 specularIntensity:card.store.cardMaterial==="glass"?card.store.glassHighlight:0
-                animated:card.store.cardMaterial==="glass" && card.store.cardMotion
+                animated:card.visible && card.store.cardMaterial==="glass" && card.store.cardMotion && card.store.materialQuality!=="economy" && !(card.store.materialQuality==="balanced" && card.store.materialScrolling)
                 magnify:glassHover.hovered?1.06:1.02
                 tiltX:glassHover.hovered?(glassHover.point.position.y/Math.max(1,card.height)-0.5)*14:0
                 tiltY:glassHover.hovered?(glassHover.point.position.x/Math.max(1,card.width)-0.5)*14:0

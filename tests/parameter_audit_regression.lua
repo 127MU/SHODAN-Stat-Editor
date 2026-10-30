@@ -6,6 +6,7 @@ local function value(f)
  if f.storage=='f32' then return tonumber(ffi.cast('float*',p)[0]) end
  if f.storage=='u32' then return tonumber(ffi.cast('uint32_t*',p)[0]) end
  if f.storage=='u16' then return tonumber(ffi.cast('uint16_t*',p)[0]) end
+ if f.storage=='flag' and f.mask then return math.floor(tonumber(p[0])/f.mask)%2 end
  if f.storage=='u8' or f.storage=='flag' then return tonumber(p[0]) end
  if f.storage=='bit' then return bit.band(bit.rshift(tonumber(ffi.cast('uint16_t*',p)[0]),f.bit),1) end
 end

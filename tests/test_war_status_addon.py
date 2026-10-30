@@ -252,6 +252,85 @@ class TestWarStatusAddon(unittest.TestCase):
         self.assertEqual(len(changed["campaigns"]),1)
         self.assertEqual(changed["campaigns"][0],{"id":90,"planetIndex":182,"type":2,"count":4,"race":3})
 
+    def defense_fixture(self):
+        original = dict(BASE, time=1000, planetStatus=[{'index':156,'owner':3},{'index':157,'owner':3}],
+                        campaigns=[], planetAttacks=[], planetEvents=[], jointOperations=[])
+        plan = {'targets':[{'planet':156,'effects':[],'campaign':True,'campaign_type':4,
+                            'owner':1,'campaign_race':3,'defense_source':157}]}
+        return original, plan
+
+    def test_defense_recipe_links_and_stable_clock(self):
+        original, plan = self.defense_fixture()
+        ids, states = {}, {}
+        changed, count = addon.rewrite_status(original, plan, None, ids, defense_states=states)
+        self.assertGreater(count, 0)
+        campaign, event, joint = changed['campaigns'][0], changed['planetEvents'][0], changed['jointOperations'][0]
+        self.assertEqual(changed['planetStatus'][0]['owner'], 1)
+        self.assertEqual(changed['planetAttacks'], [{'source':157,'target':156}])
+        self.assertEqual((campaign['type'],campaign['count'],campaign['race']), (4,38,3))
+        self.assertEqual(event['campaignId'], campaign['id'])
+        self.assertEqual(event['jointOperationIds'], [joint['id']])
+        self.assertEqual(event['id'], joint['id'])
+        self.assertEqual(event['health'], 990000)
+        self.assertEqual(event['maxHealth'], 1000000)
+        self.assertEqual(event['expireTime']-event['startTime'], 48*3600)
+        self.assertEqual(addon.rewrite_status(changed, plan, None, ids, defense_states=states)[1], 0)
+        later = dict(original,time=2000)
+        again,_ = addon.rewrite_status(later,plan,None,ids,defense_states=states)
+        self.assertEqual(again['planetEvents'][0], event)
+        self.assertFalse(original['planetEvents'])
+
+    def test_defense_invalid_source_and_schema_are_atomic(self):
+        import copy
+        for bad in ('source','time','schema'):
+            original,plan=self.defense_fixture()
+            if bad=='source': original['planetStatus'][1]['owner']=2
+            if bad=='time': original['time']=float('nan')
+            if bad=='schema': original['jointOperations']={}
+            before=copy.deepcopy(original)
+            states={}
+            ids={}
+            with self.assertRaises(ValueError):
+                addon.rewrite_status(original,plan,None,ids,defense_states=states)
+            self.assertEqual(original['campaigns'],before['campaigns'])
+            self.assertEqual(original['planetStatus'],before['planetStatus'])
+            self.assertEqual(states,{})
+            self.assertEqual(ids,{})
+
+    def test_defense_source_owner_conflict_rejected_regardless_of_order(self):
+        original,plan=self.defense_fixture()
+        plan['targets'].append({'planet':157,'effects':[],'owner':2})
+        for targets in (plan['targets'],list(reversed(plan['targets']))):
+            with self.assertRaises(ValueError):
+                addon.rewrite_status(original,{'targets':targets},None)
+
+    def test_defense_proxy_hook_and_disabled_plan(self):
+        original,plan=self.defense_fixture()
+        instance=self.ready();instance.plan=plan
+        f=flow('/api/WarSeason/801/Status',original)
+        instance.process_response(f)
+        changed=json.loads(f.response.content)
+        self.assertEqual(changed['campaigns'][0]['type'],4)
+        self.assertEqual(len(changed['jointOperations']),1)
+        plan['targets'][0]['enabled']=False
+        untouched=flow('/api/WarSeason/801/Status',original)
+        instance.process_response(untouched)
+        self.assertEqual(json.loads(untouched.response.content),original)
+
+    def test_defense_multiple_targets_avoid_event_id_collisions(self):
+        original,plan=self.defense_fixture()
+        original['planetStatus'].append({'index':158,'owner':1})
+        plan['targets'].append(dict(plan['targets'][0],planet=158,defense_level=38,defense_hours=24))
+        original['planetEvents']=[{'id':9999,'planetIndex':9,'eventType':2}]
+        original['jointOperations']=[{'id':10000,'planetIndex':8}]
+        changed,_=addon.rewrite_status(original,plan,None)
+        events=changed['planetEvents'][1:]
+        self.assertEqual(len({e['id'] for e in events}),2)
+        self.assertTrue(all(e['id']>10000 for e in events))
+        self.assertEqual(events[1]['maxHealth'],1900000)
+        self.assertEqual(events[1]['expireTime']-events[1]['startTime'],24*3600)
+        self.assertEqual(changed['planetEvents'][0],original['planetEvents'][0])
+
     def test_bad_plan_rejected(self):
         for targets in ([{"planet": 182, "effects": [True]}], [{"planet": 182, "effects": [], "owner": 9}], [{"planet": 182, "effects": [], "campaign_type": 4}], [{"planet": 182, "effects": []}]*2):
             with self.assertRaises(ValueError):

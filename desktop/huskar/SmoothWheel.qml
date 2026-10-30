@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import HuskarUI.Basic
 
 // Native wheel input and animation; touch dragging remains with the Flickable.
@@ -7,11 +8,21 @@ WheelHandler {
     target:null
     property var view:parent && parent.contentY!==undefined?parent:(parent?parent.parent:null)
     property real destination:0
+    function notifyActivity(){
+        if(!view)return
+        const window=view.Window.window
+        if(window && typeof window.pauseMaterials==="function")window.pauseMaterials()
+    }
+    property Connections scrolling:Connections {
+        target:wheel.view
+        function onContentYChanged(){wheel.notifyActivity()}
+    }
     property NumberAnimation motion:NumberAnimation {
         target:wheel.view;property:"contentY";duration:HusTheme.Primary.durationFast;easing.type:Easing.OutCubic
     }
     onWheel:event=>{
         if(!view || view.contentY===undefined){event.accepted=false;return}
+        notifyActivity()
         const lower=view.originY || 0
         const upper=Math.max(lower,lower+view.contentHeight-view.height)
         const pixel=event.pixelDelta.y

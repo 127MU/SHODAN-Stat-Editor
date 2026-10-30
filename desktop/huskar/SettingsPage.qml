@@ -8,6 +8,8 @@ Flickable {
     objectName:"settingsScroll"
     required property var store
     required property var preferences
+    property bool advancedAppearance:Backend.setting("advancedAppearance",false)
+    onAdvancedAppearanceChanged:if(uiReady)Backend.saveSetting("advancedAppearance",advancedAppearance)
     property int section:0
     onSectionChanged:contentY=0
     property bool effectUnavailable:false
@@ -30,6 +32,11 @@ Flickable {
             options:[{label:"主题与材质",value:0},{label:"背景",value:1},{label:"交互动效",value:2},{label:"窗口",value:3},{label:"接口与项目",value:4}]
             currentIndex:page.section
             onCurrentValueChanged:if(page.uiReady && currentValue!==undefined)page.section=Number(currentValue)
+        }
+        RowLayout {
+            visible:page.section===0;Layout.fillWidth:true
+            HusText { Layout.fillWidth:true;text:page.advancedAppearance?"高级细调：保留全部自定义参数":"常用设置：颜色、字号、背景和动效";color:HusTheme.Primary.colorTextSecondary }
+            HusSwitch { checked:page.advancedAppearance;checkedText:"高级";uncheckedText:"常用";onClicked:page.advancedAppearance=checked }
         }
         GridLayout {
             id:themeGrid;visible:page.section===0;Layout.fillWidth:true
@@ -94,7 +101,7 @@ Flickable {
                     HusText { text:Number(preferences.frostOpacity).toFixed(2);Layout.preferredWidth:48 }
                 }
                 RowLayout {
-                    visible:preferences.cardMaterial==="frost";Layout.fillWidth:true;Layout.leftMargin:18;Layout.rightMargin:18
+                    visible:page.advancedAppearance && preferences.cardMaterial==="frost";Layout.fillWidth:true;Layout.leftMargin:18;Layout.rightMargin:18
                     ColumnLayout { Layout.preferredWidth:210;Layout.minimumWidth:140;Layout.maximumWidth:230;spacing:4;HusText { text:"磨砂模糊强度";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap } HusText { text:"越高背景越柔和；设为 0 时不模糊。只影响磨砂卡片。";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap;font.pixelSize:12;color:HusTheme.Primary.colorTextSecondary } }
                     HusSlider { objectName:"setting_materialBlur";Layout.fillWidth:true;Layout.minimumWidth:100;Layout.preferredHeight:32;min:0;max:8;stepSize:0.1;value:preferences.materialBlur;onFirstMoved:preferences.materialBlur=currentValue }
                     HusText { text:Number(preferences.materialBlur).toFixed(2);Layout.preferredWidth:48 }
@@ -106,7 +113,7 @@ Flickable {
                     HusText { text:Number(preferences.glassOpacity).toFixed(2);Layout.preferredWidth:48 }
                 }
                 HusCollapse {
-                    visible:preferences.cardMaterial==="glass";Layout.fillWidth:true;Layout.leftMargin:18;Layout.rightMargin:18
+                    visible:page.advancedAppearance && preferences.cardMaterial==="glass";Layout.fillWidth:true;Layout.leftMargin:18;Layout.rightMargin:18
                     initModel:[{key:"glass",title:"玻璃高级参数"}]
                     contentDelegate:ColumnLayout { width:parent.width;spacing:18
                 RowLayout {
@@ -161,6 +168,11 @@ Flickable {
                 width:parent.width;spacing:20
                 RowLayout { Layout.fillWidth:true;Layout.margins:18;ColumnLayout { Layout.fillWidth:true;Layout.minimumWidth:0;spacing:4;HusText { text:"界面过渡动画";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap } HusText { text:"总开关；关闭后停止控件过渡、卡片高亮渐变和玻璃动态效果。";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap;font.pixelSize:12;color:HusTheme.Primary.colorTextSecondary } } HusSwitch { checked:preferences.motion;onClicked:preferences.motion=checked } }
                 RowLayout { Layout.fillWidth:true;Layout.margins:18;ColumnLayout { Layout.fillWidth:true;Layout.minimumWidth:0;spacing:4;HusText { text:"卡片高亮与玻璃跟随";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap } HusText { text:"鼠标移入时边框高亮，玻璃随鼠标方向变化；卡片位置保持不动。";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap;font.pixelSize:12;color:HusTheme.Primary.colorTextSecondary } } HusSwitch { enabled:preferences.motion;checked:preferences.hoverEffects;onClicked:preferences.hoverEffects=checked } }
+                RowLayout {
+                    Layout.fillWidth:true;Layout.margins:18
+                    ColumnLayout { Layout.fillWidth:true;HusText { text:"材质性能" } HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:"省电降低模糊并停止玻璃流动；均衡在滚动时暂停流动；高品质持续保留完整效果。";font.pixelSize:12;color:HusTheme.Primary.colorTextSecondary } }
+                    HusSelect { objectName:"setting_materialQuality";model:[{label:"省电",value:"economy"},{label:"均衡",value:"balanced"},{label:"高品质",value:"quality"}];textRole:"label";valueRole:"value";clearEnabled:false;currentIndex:preferences.materialQuality==="economy"?0:preferences.materialQuality==="quality"?2:1;onActivated:preferences.materialQuality=currentValue }
+                }
                 HusText { Layout.margins:18;Layout.fillWidth:true;text:"按钮按压与颜色过渡沿用 HuskarUI 原生动效。关闭界面动画后，玻璃流动与悬浮跟随同步停止。";wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
                 RowLayout { Layout.fillWidth:true;Layout.margins:18;ColumnLayout { Layout.preferredWidth:210;Layout.minimumWidth:140;Layout.maximumWidth:230;spacing:4;HusText { text:"动画时长（毫秒）";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap } HusText { text:"控件的基础时长；页面过渡使用两倍时长。数值越小越快。";Layout.fillWidth:true;Layout.minimumWidth:0;wrapMode:Text.Wrap;font.pixelSize:12;color:HusTheme.Primary.colorTextSecondary } } HusSlider { Layout.fillWidth:true;Layout.minimumWidth:100;Layout.preferredHeight:32;Layout.minimumHeight:32;objectName:"setting_duration";min:80;max:600;stepSize:10;value:preferences.duration;onFirstReleased:preferences.duration=Math.round(currentValue) } }
                 RowLayout {

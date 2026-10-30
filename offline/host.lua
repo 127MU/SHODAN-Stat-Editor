@@ -90,7 +90,7 @@ local function main()
     local selected_theme=theme_file and theme_file:read('*a') or 'light'
     if theme_file then theme_file:close() end
     shim.set_theme(selected_theme:match('dark') and 'dark' or 'light')
-    shim.open('SHODAN 数值编辑器 4.5.1', saved_place())
+    shim.open('SHODAN 数值编辑器 4.5.1-r1', saved_place())
     shim.pump()
     local migrated = I.migrate()
     if migrated then log('copied ' .. migrated .. ' files from the CowboyBingus folder') end
@@ -175,6 +175,7 @@ local function main()
     rawset(_G, 'SHODAN_OFFLINE', true)
     rawset(_G, 'SHODAN_OFFLINE_LAYOUT', require('layout'))
     rawset(_G, 'SHODAN_OFFLINE_DEFAULT_READ', function(address,size) return D.original_bytes(address,size) or (V.original_bytes and V.original_bytes(address,size)) end)
+    rawset(_G, 'SHODAN_OFFLINE_LOADED_READ', function(address,size) return D.original_bytes(address,size,true) end)
     rawset(_G, 'SHODAN_OFFLINE_GAME', game)
     rawset(_G, 'SHODAN_OFFLINE_REGISTER_LAYOUT', D.register_original_layout)
     rawset(_G,'SHODAN_OFFLINE_TEXT',shim.take_text)
@@ -221,7 +222,7 @@ local function main()
     ARM.tr=state.tr;ARM.transition=shim.transition
     state.open_armor = AR.show
     local build = U.build(here)   -- app/build.txt: version, commit, channel
-    shim.set_title('SHODAN 数值编辑器 4.5.1')
+    shim.set_title('SHODAN 数值编辑器 4.5.1-r1')
     -- the host's own text in the panel's language, drawn with its font
     local function tr(text)
         if type(state.tr)~='function' then return text end
@@ -571,7 +572,16 @@ local function main()
         local B=state.desktop
         B.game=game;B.armor_list=AR.list;B.armor_groups=AR.groups
         B.armor_rows=D.armor_values
-        B.armor_set=ARM.set_value
+        B.armor_set=function(pid,key,value)
+            local old;for _,r in ipairs(D.armor_values(pid))do if r.key==key then old=r.value;break end end
+            assert(old~=nil,'找不到护甲参数')
+            local result,why=ARM.set_value(pid,key,value);assert(result~=nil,why)
+            if result~=old then B._record_edit('护甲被动 #'..pid..' · '..key,old,result,function(target,expected)
+                for _,r in ipairs(D.armor_values(pid))do if r.key==key then assert(r.value==expected,'护甲数值已被其他操作改变，无法安全撤销')end end
+                local applied,err=ARM.set_value(pid,key,target);assert(applied~=nil,err)
+            end)end
+            return result
+        end
         B.armor_profile=function(id) return AR.group(id) end
         B.armor_update=function(target,id,enabled,own,policy)
             local p=AR.group(target)
@@ -582,6 +592,21 @@ local function main()
             if policy then p.conflicts=policy end
             p.configured=true;AR.dirty=true
             if AR.save()==false then AR.profiles[target]=old;error('护甲配置保存失败') end
+            local after={enabled={},own=p.own,conflicts=p.conflicts,configured=p.configured}
+            for k,v in pairs(p.enabled)do after.enabled[k]=v end
+            local function equal(a,b)
+                if a.own~=b.own or a.conflicts~=b.conflicts or a.configured~=b.configured then return false end
+                for k,v in pairs(a.enabled)do if b.enabled[k]~=v then return false end end
+                for k,v in pairs(b.enabled)do if a.enabled[k]~=v then return false end end;return true
+            end
+            if not equal(old,after)then B._record_edit('护甲组合 · '..target,old,after,function(value,expected)
+                local current=AR.group(target);assert(equal(current,expected),'护甲组合已被其他操作改变，无法安全撤销')
+                local copy={enabled={},own=value.own,conflicts=value.conflicts,configured=value.configured}
+                for k,v in pairs(value.enabled)do copy.enabled[k]=v end
+                AR.profiles[target]=copy;AR.dirty=true
+                if AR.save()==false then AR.profiles[target]=current;error('护甲配置保存失败')end
+                state.writes=(state.writes or 0)+1
+            end)end
             state.writes=(state.writes or 0)+1;return true
         end
         B.install_preview=function()

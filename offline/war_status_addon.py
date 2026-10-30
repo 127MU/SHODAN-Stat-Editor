@@ -177,7 +177,7 @@ def normalize_targets(plan):
         campaign_race = raw.get("campaign_race", 0)
         if type(campaign_race) is not int or campaign_race not in (0, 1, 2, 3, 4):
             raise ValueError("作战敌人阵营无效")
-        if type(owner) is not int or owner not in range(5) or type(campaign_type) is not int or campaign_type not in range(4):
+        if type(owner) is not int or owner not in range(5) or type(campaign_type) is not int or campaign_type not in range(5):
             raise ValueError("阵营或战役类型无效")
         campaign = raw.get("campaign", False)
         if type(campaign) is not bool:
@@ -190,7 +190,17 @@ def normalize_targets(plan):
             raise ValueError("分区初始化开关必须为布尔值")
         if initialize_regions and (not campaign or campaign_race not in (2,3,4)):
             raise ValueError("初始化分区需要开启战役并明确选择作战敌人")
-        result.append(dict(planet=planet, effects=list(dict.fromkeys(effects)), owner=owner, campaign=campaign, campaign_type=campaign_type, campaign_race=campaign_race,open_regions=open_regions,initialize_regions=initialize_regions))
+        defense = {key: raw.get(key, default) for key, default in (
+            ('defense_source', -1), ('defense_level', 20), ('defense_hours', 48), ('defense_count', 38))}
+        for key, low, high in (('defense_source', -1, 10000), ('defense_level', 1, 1000), ('defense_hours', 1, 168), ('defense_count', 1, 1000)):
+            if type(defense[key]) is not int or not low <= defense[key] <= high:
+                raise ValueError('防守战役参数无效：' + key)
+        if campaign_type == 4:
+            if not campaign or owner != 1 or campaign_race not in (2, 3, 4):
+                raise ValueError('防守战役需要开启战役、超级地球归属和明确的敌人阵营')
+            if defense['defense_source'] < 0 or defense['defense_source'] == planet:
+                raise ValueError('请选择另一颗敌方星球作为进攻来源')
+        result.append(dict(planet=planet, effects=list(dict.fromkeys(effects)), owner=owner, campaign=campaign, campaign_type=campaign_type, campaign_race=campaign_race,open_regions=open_regions,initialize_regions=initialize_regions, **defense))
     return result
 
 
@@ -198,7 +208,61 @@ class RegionAvailabilityError(ValueError):
     pass
 
 
-def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None, region_reference=None):
+def apply_defense(result, target, campaign, states):
+    """Build the linked Status records together; never mutate an unrelated event."""
+    import math
+    now = result.get('time')
+    if type(now) not in (int, float) or not math.isfinite(now) or now < 0:
+        raise ValueError('防守战役缺少有效的战况时间')
+    source = next((p for p in result['planetStatus'] if p['index'] == target['defense_source']), None)
+    if source is None or source.get('owner') != target['campaign_race']:
+        raise ValueError('进攻来源不在本次战况中，或其归属与所选敌人阵营不符')
+    for name in ('planetAttacks', 'planetEvents', 'jointOperations'):
+        if not isinstance(result.get(name), list) or any(not isinstance(row, dict) for row in result[name]):
+            raise ValueError('防守战役响应结构不兼容：' + name)
+    events, joints = result['planetEvents'], result['jointOperations']
+    for row in events + joints:
+        if type(row.get('id')) is not int or row['id'] < 0 or type(row.get('planetIndex')) is not int:
+            raise ValueError('防守事件或联合作战编号不兼容')
+    pid = target['planet']
+    event = next((e for e in events if e['planetIndex'] == pid and e.get('eventType') == 1 and e.get('campaignId') == campaign['id']), None)
+    if any(e['planetIndex'] == pid and e.get('eventType') == 1 and e is not event for e in events):
+        raise ValueError('目标星球已有另一条防守事件，请选择其他星球或保留原生战役')
+    signature = (campaign['id'], target['defense_source'], target['campaign_race'], target['defense_hours'])
+    state = states.get(pid)
+    used = {r['id'] for r in events + joints}
+    if event is not None:
+        eid = event['id']
+        start, expire = event.get('startTime'), event.get('expireTime')
+    elif state and state['signature'] == signature:
+        eid, start, expire = state['id'], state['start'], state['expire']
+        if eid in used:
+            eid = max(used | {9100 + pid}) + 1
+    else:
+        eid = max(used | {9100 + pid}) + 1
+        start, expire = now, now + target['defense_hours'] * 3600
+    if eid >= 2**31 or any(type(t) not in (int, float) or not math.isfinite(t) for t in (start, expire)) or expire <= start:
+        raise ValueError('防守战役编号或时间无效')
+    if any(j['id'] == eid and j['planetIndex'] != pid for j in joints):
+        raise ValueError('防守联合作战编号与其他星球冲突')
+    edge = {'source': target['defense_source'], 'target': pid}
+    if not any(a.get('source') == edge['source'] and a.get('target') == pid for a in result['planetAttacks']):
+        result['planetAttacks'].append(edge)
+    maximum = target['defense_level'] * 50000
+    fields = dict(id=eid, planetIndex=pid, eventType=1, race=target['campaign_race'], health=maximum * 99 // 100,
+                  maxHealth=maximum, startTime=start, expireTime=expire, campaignId=campaign['id'], jointOperationIds=[eid], potentialBuildUp=0)
+    if event is None:
+        events.append(fields)
+    else:
+        event.update(fields)
+    joint = next((j for j in joints if j['id'] == eid), None)
+    if joint is None:
+        joints.append(dict(id=eid, planetIndex=pid, hqNodeIndex=2))
+    campaign['count'] = target['defense_count']
+    states[pid] = dict(signature=signature, id=eid, start=start, expire=expire)
+
+
+def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None, region_reference=None, defense_states=None):
     """Pure transformation; malformed/unknown schema must fail before mutation."""
     if not isinstance(document, dict):
         raise ValueError("战况响应不是对象，已保持原样")
@@ -216,6 +280,10 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
     known_planets = {p["index"] for p in planets if isinstance(p, dict) and type(p.get("index")) is int}
     additions = []
     targets = normalize_targets(plan)
+    target_owners = {t['planet']:t['owner'] for t in targets if t['owner']}
+    for target in targets:
+        if target['campaign_type'] == 4 and target['defense_source'] in target_owners and target_owners[target['defense_source']] != target['campaign_race']:
+            raise ValueError('进攻来源的另一份方案会改变其阵营，请先解决冲突')
     # Both members must be present in this session's authoritative catalog and
     # retain their verified types. Cached display data never grants permission.
     if effect_types and allowed is not None:
@@ -240,6 +308,7 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
                 pairs.add((planet, effect))
     # Work on copies only: one bad target must never leave a partially changed body.
     result = copy.deepcopy(document)
+    next_defense_states = copy.deepcopy(defense_states) if defense_states is not None else {}
     result["planetActiveEffects"] = entries + additions
     changes = len(additions)
     initialize_targets=[t for t in targets if t['initialize_regions']]
@@ -286,7 +355,8 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
                 region['availabilityFactor']=1;changes+=1
         if found!=region_targets:
             raise RegionAvailabilityError('所选星球缺少原生分区，已保持原样')
-    campaign_ids = campaign_ids if campaign_ids is not None else {}
+    output_campaign_ids = campaign_ids
+    campaign_ids = dict(campaign_ids) if campaign_ids is not None else {}
     used_ids = {c["id"] for c in campaigns} if any(t["campaign"] or t["owner"] for t in targets) else set()
     for target in targets:
         planet = next(p for p in result["planetStatus"] if p.get("index") == target["planet"])
@@ -324,6 +394,16 @@ def rewrite_status(document, plan, allowed, campaign_ids=None, effect_types=None
             if requested_race and current.get("race") != requested_race:
                 current["race"] = requested_race
                 changes += 1
+            if target['campaign_type'] == 4:
+                before = copy.deepcopy(result)
+                apply_defense(result, target, current, next_defense_states)
+                changes += int(result != before)
+    if defense_states is not None:
+        defense_states.clear()
+        defense_states.update(next_defense_states)
+    if output_campaign_ids is not None:
+        output_campaign_ids.clear()
+        output_campaign_ids.update(campaign_ids)
     return result if changes else document, changes
 
 
@@ -339,6 +419,7 @@ class WarStatusAddon:
         self.plan_digest = None
         self.applied_plan_digest = None
         self.campaign_ids = {}
+        self.defense_states = {}
         self.statuses = 0
         self.catalog_count = 0
         self.war_id = None
@@ -605,6 +686,7 @@ class WarStatusAddon:
             war_id = int(path.split("/")[3])
             if self.war_id is not None and self.war_id != war_id:
                 self.campaign_ids.clear()
+                self.defense_states.clear()
             self.war_id = war_id
             self.statuses += 1
             planets = document.get("planetStatus", []) if isinstance(document, dict) else []
@@ -615,7 +697,7 @@ class WarStatusAddon:
                 return
             region_error = None
             try:
-                changed, count = rewrite_status(document, self.plan, self.allowed, self.campaign_ids, self.effect_types,self.region_reference)
+                changed, count = rewrite_status(document, self.plan, self.allowed, self.campaign_ids, self.effect_types,self.region_reference,self.defense_states)
             except RegionAvailabilityError as error:
                 # Unsupported experimental regions must not remove the working
                 # planet campaigns/effects from this same Status response.
@@ -624,7 +706,7 @@ class WarStatusAddon:
                 for target in fallback.get('targets', []):
                     target['open_regions'] = False
                     target['initialize_regions'] = False
-                changed, count = rewrite_status(document, fallback, self.allowed, self.campaign_ids, self.effect_types)
+                changed, count = rewrite_status(document, fallback, self.allowed, self.campaign_ids, self.effect_types,defense_states=self.defense_states)
             if count:
                 response.content = json.dumps(changed, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
                 for header in ("etag", "content-md5", "digest"):
