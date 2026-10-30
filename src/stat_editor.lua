@@ -19075,7 +19075,7 @@ local defaults = {}     -- key -> value before this mod first wrote it
 -- mask: one bit of a flag byte (several switches in one byte, each its own field)
 local function field_at(kind, offset, storage, limit, mask)
     local ref64=storage=='rackitem' or storage=='mountitem' or storage=='package' or storage=='dogweapon' or storage=='dogmag' or storage=='gun'
-    local key = kind .. ':' .. offset .. (ref64 and ':ref64' or '') .. (mask and (':' .. mask) or '')
+    local key = kind .. ':' .. offset .. (ref64 and ':ref64' or storage=='boltcycle' and ':boltcycle' or '') .. (mask and (':' .. mask) or '')
     local f = fields[key]
     if not f then
         f = { key = key, kind = kind, offset = offset, storage = storage, limit = limit, mask = storage ~= 'bit' and mask or nil, bit = storage == 'bit' and mask or nil, users = {} }
@@ -19171,6 +19171,10 @@ local function read_field(f, original)
         if original_read then return original_read(address,size) end
         return api.read(address,size)
     end
+    if f.storage=='boltcycle' then
+        local raw=bytes(4);local value=raw and #raw==4 and u32(raw,0)
+        return value==f.bolt_on and 1 or value==f.bolt_off and 0 or nil
+    end
     if f.storage == 'tier' then   -- a destruction level: its template pointer and type, read as the threshold
         if original_read then
             local raw=bytes(12)
@@ -19252,6 +19256,7 @@ local function read_field(f, original)
 end
 
 local function encode(f, value)
+    if f.storage=='boltcycle' then return (value==0 or value==1) and u32_bytes(value==1 and f.bolt_on or f.bolt_off) or nil end
     if f.storage == 'dogweapon' then local e=MOD.dogs.by_id[value];return e and e.bytes end
     if f.storage == 'dogmag' then local e=MOD.dogs.magazines.by_id[value];return e and e.bytes end
     if f.storage == 'grenade' then return KINDS[TYPES.throwable].entity_bytes(value) end
@@ -20906,6 +20911,29 @@ local function resolve_gun(weapon, key)
                 local row=add_row(weapon,'Handling','apex_fire_ability','Apex firing action','u32',{p},2677,2719,1,1)
                 row.choice='apex_fire'
                 row.tip={'开火能力由 2677 切换为 2719，仅修改开火动作，不修改射速、伤害或弹药。此选项尚未在本机对局验证。'}
+            end
+        end
+        if KINDS[T_WEAPON].stride==1240 and (weapon.hash=='B6AFF2195568767F' or weapon.hash=='41F2DEF484634B59')then
+            local wt=tables[T_WEAPON];local donor=wt and wt.index[hash_key('03E67A19B07C6523')]
+            local anim=donor and default_of(field_at(T_WEAPON,donor+936,'u32',4294967295))
+            local ability=donor and default_of(field_at(T_WEAPON,donor+948,'u32',100000))
+            local eruptor=weapon.hash=='B6AFF2195568767F'
+            local recipe=eruptor and {{936,0x14FAF8EB,anim},{948,2668,ability},{1208,2668,ability}} or {{948,2694,ability}}
+            local valid=anim==0xAE6CC371 and ability and ability>0 and ability<100000
+            for _,s in ipairs(recipe)do
+                local base=default_of(field_at(T_WEAPON,data+s[1],'u32',4294967295))
+                if base~=s[2] then valid=false end
+            end
+            if valid then
+                local parts={}
+                for _,s in ipairs(recipe)do
+                    local p=part('disable_bolt_'..s[1],T_WEAPON,data+s[1],'boltcycle',1)
+                    p.field.bolt_off,p.field.bolt_on=s[2],s[3];p.field.allowed={[0]=true,[1]=true,why='拉栓动画开关只能取 0 或 1'}
+                    parts[#parts+1]=p
+                end
+                local r=add_row(weapon,'Handling','disable_bolt',eruptor and '关闭拉栓动画（实验性）' or '关闭拉栓动画','flag',parts,0,1,1,1)
+                r.tip={'同步调整开火动作与能力循环；关闭或恢复时还原基准字段。替换引用从当前版本 R-63 读取。',
+                    '保留射速、弹药、换弹和伤害参数。写入游戏并重启后生效。' ,eruptor and '爆裂铳包含行尾能力引用的新配方尚待实机验证。' or '说明书记录 R-40 已实测；本机仍需对局验证。'}
             end
         end
         -- infinite ammo (SHODAN Offline Integration): the game's own switches, WeaponData +960 and the
@@ -27880,6 +27908,7 @@ do
         for _, o in ipairs(full_presets[n].values) do
             lines[#lines + 1] = o.hash .. ' ' .. o.id .. ' ' .. number_text(o.value) .. named(o.hash)
         end
+        if full_presets[n].armor~=nil then lines[#lines+1]='armor '..require('desktop_features').hex(full_presets[n].armor)end
         return write_lines(path, lines)
     end
 
@@ -27918,6 +27947,10 @@ do
                 local parsed = hash and MOD.parse_number(amount)
                 if name and name ~= '' then
                     preset.name = name:sub(1, NAME_BYTES)
+                elseif line:match('^armor ')then
+                    local encoded=line:match('^armor (%x+)$')
+                    local ok,value=pcall(require('desktop_features').unhex,encoded or '?')
+                    preset.armor=not enemy and not preset.armor and ok and value or 'INVALID'
                 elseif parsed then
                     preset.values[#preset.values + 1] = { hash = hash:upper(), id = id, value = parsed }
                 else
@@ -28137,8 +28170,9 @@ do
         local n = nil
         for k = 1, FULL_PRESETS do if not full_presets[k] then n = k; break end end
         if not n then say('All ' .. FULL_PRESETS .. ' presets are in use: delete one first'); return end
-        full_presets[n] = { name = 'Preset ' .. n, values = current_values() }
-        save_full_preset(n)
+        local armor=not MOD.enemy.on and state.desktop and state.desktop.armor_capture and state.desktop.armor_capture() or nil
+        full_presets[n] = { name = 'Preset ' .. n, values = current_values(),armor=armor }
+        if not save_full_preset(n)then full_presets[n]=nil;error('预设保存失败，未创建新预设')end
         show(n)
         start_rename(n)
         say('Saved ' .. #full_presets[n].values .. ' changed value(s) as a new preset. Type its name, Enter keeps it.')
@@ -28146,8 +28180,13 @@ do
 
     local function save_full_preset_now(n)
         if not full_presets[n] then return end
-        full_presets[n].values = current_values()
-        save_full_preset(n)
+        local armor=not MOD.enemy.on and state.desktop and state.desktop.armor_capture and state.desktop.armor_capture() or nil
+        local old_values,old_armor=full_presets[n].values,full_presets[n].armor
+        full_presets[n].values = current_values();full_presets[n].armor=armor
+        if not save_full_preset(n)then
+            full_presets[n].values,full_presets[n].armor=old_values,old_armor
+            error('预设保存失败，原预设已保留')
+        end
         say('Saved ' .. #full_presets[n].values .. ' changed value(s) into "' .. full_presets[n].name .. '"')
         ui.version = ui.version + 1
     end
@@ -28157,6 +28196,10 @@ do
         local preset = full_presets[n]
         if not preset then return end
         if not settings.changes then say('Your changes are off: turn them on in Settings to load a preset'); return end
+        if preset.armor~=nil then
+            assert(not MOD.enemy.on and state.desktop and state.desktop.armor_apply,'此预设不支持护甲数值')
+            state.desktop.armor_apply(preset.armor)
+        end
         MOD.reset_side(MOD.enemy.on)
         local refused = 0
         for _, o in ipairs(preset.values) do
@@ -28213,10 +28256,10 @@ do
         local old=group[n];group[n]=values
         if not save_weapon_presets() then group[n]=old;error('预设保存失败，原预设已保留') end
     end
-    presets.full_put=function(n,name,values)
+    presets.full_put=function(n,name,values,armor)
         if not n then for k=1,FULL_PRESETS do if not full_presets[k] then n=k;break end end end
         assert(n and n>=1 and n<=FULL_PRESETS,'全局预设已满，请先删除一组')
-        local old=full_presets[n];full_presets[n]={name=name,values=values}
+        local old=full_presets[n];full_presets[n]={name=name,values=values,armor=armor}
         if not save_full_preset(n) then full_presets[n]=old;error('预设保存失败，原预设已保留') end
         return n
     end
@@ -31834,7 +31877,13 @@ if MOD.offline then
     end
     function state.desktop.full_presets()
         local out={}
-        for _,n in ipairs(presets.full_order()) do local p=presets.list()[n];out[#out+1]={id=n,name=settings.tr(p.name),count=#p.values} end
+        for _,n in ipairs(presets.full_order()) do
+            local p=presets.list()[n];local count=#p.values
+            if p.armor and state.desktop.armor_count then
+                local ok,extra=pcall(state.desktop.armor_count,p.armor);if ok then count=count+extra end
+            end
+            out[#out+1]={id=n,name=settings.tr(p.name),count=count}
+        end
         return out
     end
     function state.desktop.full_preset(action,n,name)

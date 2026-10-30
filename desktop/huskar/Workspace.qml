@@ -77,11 +77,12 @@ QtObject {
     signal rowsRefreshed()
     signal updateFound(string version,string url,string notes,string downloadUrl)
     signal operationProgress(string message,int done,int total)
+    signal armorValuesChanged()
 
     function call(method,args,done,failed){
         if(!Backend.ready){if(failed)failed("数据尚未载入");return -1}
         let id=Backend.request(method,args || [])
-        callbacks[id]={done:done,failed:failed,method:method}
+        callbacks[id]={done:done,failed:failed,method:method,action:args && args[0]}
         return id
     }
     function openModule(key){
@@ -175,6 +176,9 @@ QtObject {
             if(error){if(cb && cb.failed)cb.failed(error);else store.error(error)}
             else {
                 if(cb && cb.done)cb.done(data)
+                if(cb && cb.method==="full_preset" && cb.action==="load"){
+                    store.refreshRows();if(store.module==="armor")store.refreshArmor();store.armorValuesChanged()
+                }
                 if(cb && ["set","choose","reset","code_set","preset","full_preset","tweaks","armor_set","armor_update"].includes(cb.method))store.refreshHistory()
             }
         }

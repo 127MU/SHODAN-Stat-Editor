@@ -67,6 +67,31 @@ function M.set_value(pid,key,value)
     M.on_change();ui.rows=M.D.armor_values(pid);ui.signature=nil
     return rounded
 end
+-- Replace a validated preset in one profile write, rolling memory back on failure.
+function M.apply_values(values)
+    local previous,changed=M.plans,{}
+    local plans={}
+    for _,r in ipairs(values)do
+        local old
+        for _,v in ipairs(M.D.armor_values(r.pid))do if v.key==r.key then old=v;break end end
+        assert(old,'当前版本找不到护甲参数：'..r.key)
+        changed[#changed+1]={pid=r.pid,key=r.key,value=old.value}
+        local rounded,why=M.D.set_armor_value(r.pid,r.key,r.value)
+        if rounded==nil then
+            for _,v in ipairs(changed)do M.D.set_armor_value(v.pid,v.key,v.value)end
+            error(why)
+        end
+        if rounded~=old.default then plans[r.key]={pid=r.pid,default=old.default,value=rounded}end
+    end
+    M.plans=plans
+    local ok,why=save_values()
+    if not ok then
+        M.plans=previous
+        for _,v in ipairs(changed)do M.D.set_armor_value(v.pid,v.key,v.value)end
+        error('护甲预设保存失败：'..tostring(why))
+    end
+    M.on_change();ui.signature=nil
+end
 function M.toggle(id)
     local shim=require('engine_shim');shim.pulse('toggle:'..id)
     local profile=M.AR.group(ui.target);local previous=copy(profile)

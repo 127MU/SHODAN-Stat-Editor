@@ -49,8 +49,10 @@ def main():
     (work/'onefile.rc').write_text(rc,encoding='utf8')
     subprocess.run([str(a.compiler_bin/'windres.exe'),str(work/'onefile.rc'),'-o',str(work/'onefile.res.o')],env=env,check=True)
     target=a.release.parent/('SHODAN_'+manifest['version']+'_单文件.exe')
+    compiled=work/'shodan-onefile.exe'
     subprocess.run([str(a.compiler_bin/'g++.exe'),'-std=c++17','-O2','-s','-static','-mwindows','-municode',
-                    str(ROOT/'desktop/eui/onefile.cpp'),str(work/'onefile.res.o'),'-lcabinet','-lbcrypt','-o',str(target)],env=env,check=True)
+                    str(ROOT/'desktop/eui/onefile.cpp'),str(work/'onefile.res.o'),'-lcabinet','-lbcrypt','-o',str(compiled)],env=env,check=True)
+    shutil.copy2(compiled,target)
     print(json.dumps({'exe':str(target),'bytes':target.stat().st_size,'cache_build':build},ensure_ascii=False))
 
 if __name__=='__main__':main()

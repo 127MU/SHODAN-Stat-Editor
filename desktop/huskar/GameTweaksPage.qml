@@ -7,9 +7,23 @@ Flickable {
     id:page
     required property var store
     property bool ragdollOn:false
+    property bool displayedRagdollChecked:false
     property bool checkingRagdoll:false
     property bool wantedRagdoll:false
     property string ragdollStatus:"版本核对后才能安装或恢复；不影响已编辑的数值。"
+    function qa(action){
+        if(action==="ready")return !checkingRagdoll
+        if(action==="scroll"){contentY=Math.max(0,contentHeight-height);return true}
+        if(action==="toggle")return Backend.qaCheck("enableRagdoll",true)
+        if(action==="confirm")return ragdollConfirm.visible && !checkingRagdoll
+        if(action==="cancel"){ragdollConfirm.close();return true}
+        if(action==="state")return !ragdollConfirm.visible && displayedRagdollChecked===ragdollOn
+        return false
+    }
+    Component.onCompleted:{
+        checkingRagdoll=true
+        store.call("ragdoll_preview",[],function(result){checkingRagdoll=false;ragdollOn=result.enabled;ragdollStatus=result.message},function(text){checkingRagdoll=false;ragdollStatus=text})
+    }
     function previewRagdoll(on){
         checkingRagdoll=true;wantedRagdoll=on
         store.call("ragdoll_preview",[],function(result){checkingRagdoll=false;ragdollOn=result.enabled;ragdollStatus=result.message;ragdollConfirm.open()},function(text){checkingRagdoll=false;ragdollStatus=text})
@@ -46,14 +60,16 @@ Flickable {
         }
         MaterialCard {
             store:page.store;Layout.fillWidth:true;title:"受击与布娃娃（实验性）"
-            bodyDelegate:ColumnLayout {
-                width:parent.width;spacing:12
+            bodyDelegate:RowLayout {
+                width:parent.width;spacing:16
                 HusText { Layout.fillWidth:true;Layout.margins:18;text:page.checkingRagdoll?"正在核对资源与补丁，请稍候…":page.ragdollStatus;wrapMode:Text.Wrap;color:HusTheme.Primary.colorTextSecondary }
-                RowLayout {
-                    Layout.leftMargin:18;Layout.rightMargin:18;Layout.bottomMargin:18;spacing:12
-                    HusButton { objectName:"enableRagdoll";text:"启用优化";enabled:!page.checkingRagdoll;onClicked:page.previewRagdoll(true) }
-                    HusButton { text:"恢复";enabled:!page.checkingRagdoll;onClicked:page.previewRagdoll(false) }
-                }
+                    HusSwitch {
+                        Layout.margins:18
+                        objectName:"enableRagdoll";checked:page.ragdollOn
+                        onCheckedChanged:page.displayedRagdollChecked=checked
+                        checkedText:"开";uncheckedText:"关";enabled:!page.checkingRagdoll
+                        onClicked:{checked=Qt.binding(function(){return page.ragdollOn});page.previewRagdoll(!page.ragdollOn)}
+                    }
             }
         }
     }

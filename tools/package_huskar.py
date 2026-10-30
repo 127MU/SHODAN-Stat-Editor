@@ -1,6 +1,6 @@
 """Package the native HuskarUI desktop. Qt is deployed locally, without CI."""
 from pathlib import Path
-import argparse, hashlib, json, os, shutil, subprocess, sys, zipfile
+import argparse, hashlib, json, os, shutil, subprocess, sys, tempfile, zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 from proxy_runtime_policy import include_proxy_file
@@ -93,7 +93,14 @@ def main():
         f=release/name
         if f.is_file():
             before=f.stat().st_size
-            subprocess.run([str(strip),'--strip-unneeded',str(f)],check=True,env=env)
+            # MinGW binutils use the system ANSI codepage for argv filenames.
+            # Python copies Unicode paths; strip sees only an ASCII basename.
+            with tempfile.TemporaryDirectory(prefix='shodan-strip-',dir=a.build_dir.resolve()) as temporary:
+                staged=Path(temporary)/'input.exe'
+                shutil.copy2(f,staged)
+                strip_env=dict(env,TEMP=temporary,TMP=temporary)
+                subprocess.run([str(strip.resolve()),'--strip-unneeded',staged.name],cwd=temporary,check=True,env=strip_env)
+                shutil.copy2(staged,f)
             stripped.append({'file':name,'before':before,'after':f.stat().st_size})
     files={f.relative_to(release).as_posix():hashlib.sha256(f.read_bytes()).hexdigest() for f in release.rglob('*') if f.is_file() and f.name!='manifest.json'}
     manifest={'version':VERSION,'core_version':CORE_VERSION,'core_commit':CORE_COMMIT,'ui_framework':'HuskarUI',
@@ -109,6 +116,8 @@ def main():
     sources += [ROOT/'tests/test_edit_history.py',ROOT/'tests/test_edit_history_ui.py',ROOT/'tests/test_status_strength_layout.py',ROOT/'tests/test_status_strength_ui.py',ROOT/'tests/test_row_delta.py',ROOT/'tests/test_file_change_guard.py',ROOT/'tests/test_parameter_groups_ui.py',ROOT/'tests/test_hash_reference.py',ROOT/'docs/editing-workflow.md',ROOT/'docs/compatibility-build26251122.md']
     sources += [ROOT/'docs/gameplay-options.md']
     sources += [ROOT/'docs/squad-transport.md',ROOT/'tests/test_squad_transport.py']
+    sources += [ROOT/'tests/test_armor_presets.py']
+    sources += [ROOT/'tests/test_bolt_animation.py']
     sources += [ROOT/'tests'/name for name in ('test_reference_chain.py','test_diagnostics_readonly.py','test_diagnostics_ui.py','test_gameplay_resources.py','test_gameplay_options.py')]
     sources+=list((ROOT/'assets').glob('*.png'))
     sources+=[f for f in (ROOT/'offline/launcher').iterdir() if f.is_file() and f.suffix in ('.cpp','.h','.c','.ico','.def','.manifest')]

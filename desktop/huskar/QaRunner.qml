@@ -19,6 +19,9 @@ Timer {
     property bool parameterGroupsOnly:Backend.setting("qaParameterGroupsOnly",false)
     property bool statusStrengthOnly:Backend.setting("qaStatusStrengthOnly",false)
     property bool squadTransportOnly:Backend.setting("qaSquadTransportOnly",false)
+    property bool armorPresetsOnly:Backend.setting("qaArmorPresetsOnly",false)
+    property bool boltOnly:Backend.setting("qaBoltOnly",false)
+    property bool ragdollOnly:Backend.setting("qaRagdollOnly",false)
     property bool historyOnly:Backend.setting("qaHistoryOnly",false)
     property bool diagnosticsOnly:Backend.setting("qaDiagnosticsOnly",false)
     property bool flagStarted:false
@@ -67,6 +70,35 @@ Timer {
     onTriggered:{
         if(!Backend.ready || waiting || Object.keys(store.callbacks).length)return
         try{
+            if(ragdollOnly){
+                if(step===0)store.openModule("tweaks")
+                else if(step===1){if(!window.qaRagdoll("ready"))return;window.qaRagdoll("scroll")}
+                else if(step===2)ensure(window.qaRagdoll("toggle"),"布娃娃开关无法点击")
+                else if(step===3){if(!window.qaRagdoll("confirm"))return;Backend.capture("ragdoll-01-confirm");window.qaRagdoll("cancel")}
+                else if(step===4){ensure(window.qaRagdoll("state"),"取消后开关未保持实际状态");Backend.capture("ragdoll-02-cancelled");Backend.finishQa("")}
+                step++;return
+            }
+            if(boltOnly){
+                if(step===0){store.openModule("equipment");store.select(store.library.find(x=>x.id==="B6AFF2195568767F"))}
+                else if(step===1 || step===5){row=store.rows.find(r=>r.label.startsWith("关闭拉栓动画"));ensure(row && row.flag,"拉栓开关缺失");window.qaFocusParameter(row.id)}
+                else if(step===2 || step===6){ensure(Backend.qaCheck("toggle_"+row.id,true),"拉栓开关无法点击")}
+                else if(step===3 || step===7){ensure(store.rows.find(r=>r.id===row.id).value===1,"拉栓开关未保存");Backend.capture(step===3?"bolt-01-eruptor":"bolt-02-r40")}
+                else if(step===4){store.select(store.library.find(x=>x.id==="41F2DEF484634B59"))}
+                else if(step===8){Backend.finishQa("")}
+                step++;return
+            }
+            if(armorPresetsOnly){
+                if(step===0){store.openModule("armor");store.call("armor_rows",[7],x=>row=x[0])}
+                else if(step===1){ensure(!!row,"护甲字段缺失");store.call("armor_set",[7,row.key,3.5])}
+                else if(step===2){store.call("full_preset",["new",0,"Armor UI A"])}
+                else if(step===3){store.call("armor_set",[7,row.key,8])}
+                else if(step===4){store.call("full_preset",["new",0,"Armor UI B"],()=>store.refreshPresets())}
+                else if(step===5){const p=store.presets.find(p=>p.name==="Armor UI A");ensure(!!p,"预设 A 缺失");store.call("full_preset",["load",p.id])}
+                else if(step===6){window.qaArmorPreset("open")}
+                else if(step===7){ensure(window.qaArmorPreset("check",row.key,3.5),"护甲数值没有读取预设 A");Backend.capture("armor-01-preset-a");const p=store.presets.find(p=>p.name==="Armor UI B");store.call("full_preset",["load",p.id])}
+                else if(step===8){ensure(window.qaArmorPreset("check",row.key,8),"打开的护甲弹窗未刷新预设 B");Backend.capture("armor-02-preset-b");Backend.finishQa("")}
+                step++;return
+            }
             if(squadTransportOnly){
                 if(step===0){store.openModule("vehicle");const item=store.library.find(x=>x.id==="3EC790806D0B0540");ensure(!!item,"运输载体入口缺失");store.select(item)}
                 else if(step===1){ensure(store.rows.filter(r=>r.section==="小队投放（实验性）").length===25,"运输参数不完整");window.qaParameterGroups("cards")}
