@@ -1,6 +1,6 @@
 """Package the native HuskarUI desktop. Qt is deployed locally, without CI."""
 from pathlib import Path
-import argparse, hashlib, json, os, shutil, subprocess, sys, zipfile
+import argparse, hashlib, json, os, shutil, subprocess, sys, tempfile, zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from package_lab import MODULES, CORE_VERSION, CORE_COMMIT
 from proxy_runtime_policy import include_proxy_file
@@ -93,7 +93,13 @@ def main():
         f=release/name
         if f.is_file():
             before=f.stat().st_size
-            subprocess.run([str(strip),'--strip-unneeded',str(f)],check=True,env=env)
+            # MinGW binutils use the system ANSI codepage for argv filenames.
+            # Python copies Unicode paths; strip sees only an ASCII basename.
+            with tempfile.TemporaryDirectory(prefix='shodan-strip-') as temporary:
+                staged=Path(temporary)/'input.exe'
+                shutil.copy2(f,staged)
+                subprocess.run([str(strip.resolve()),'--strip-unneeded',staged.name],cwd=temporary,check=True,env=env)
+                shutil.copy2(staged,f)
             stripped.append({'file':name,'before':before,'after':f.stat().st_size})
     files={f.relative_to(release).as_posix():hashlib.sha256(f.read_bytes()).hexdigest() for f in release.rglob('*') if f.is_file() and f.name!='manifest.json'}
     manifest={'version':VERSION,'core_version':CORE_VERSION,'core_commit':CORE_COMMIT,'ui_framework':'HuskarUI',
