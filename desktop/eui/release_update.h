@@ -15,5 +15,5 @@ using ReleasePageFetch=std::function<ReleaseResponse(const std::string& path)>;
 std::string releaseNotesFromFeed(const std::string& atom,const std::string& version);
 std::string releaseDownloadFromAssets(const std::string& html,const std::string& version);
 ReleaseUpdate releaseFromLocation(const std::string& location,const std::string& current);
-ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& fetch={},const ReleasePageFetch& pages={});
+ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& fetch={},const ReleasePageFetch& pages={},const ReleaseFetch& mirror={});
 }
