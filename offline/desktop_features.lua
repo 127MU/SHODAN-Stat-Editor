@@ -15,10 +15,12 @@ local function unhex(s)
     assert(#s%2==0 and not s:find('[^%x]'),'预设名称编码无效')
     return (s:gsub('%x%x',function(c)return string.char(tonumber(c,16))end))
 end
-function M.encode(kind,name,weapon,values,editor)
+M.hex,M.unhex=hex,unhex
+function M.encode(kind,name,weapon,values,editor,armor)
     local lines={'SHODAN-PRESET 1','kind '..kind,'name '..hex(clean_name(name))}
     if kind=='full' and editor then lines[#lines+1]='editor '..editor end
     if kind=='weapon' then lines[#lines+1]='weapon '..weapon end
+    if armor~=nil then assert(kind=='full' and editor~='enemy','护甲数值仅属于装备全局预设');lines[#lines+1]='armor '..hex(armor)end
     for _,v in ipairs(values) do lines[#lines+1]=string.format('value %s %s %.17g',v.hash,v.id,v.value) end
     return table.concat(lines,'\n')..'\n'
 end
@@ -38,7 +40,7 @@ function M.decode(text)
                 result.values[#result.values+1]={hash=hash,id=id,value=value}
                 assert(#result.values<=MAX_VALUES,'预设参数过多')
             else
-                assert((key=='kind' or key=='name' or key=='weapon' or key=='editor') and not result[key],'预设包含未知或重复字段')
+                assert((key=='kind' or key=='name' or key=='weapon' or key=='editor' or key=='armor') and not result[key],'预设包含未知或重复字段')
                 result[key]=body
             end
         end
@@ -46,6 +48,10 @@ function M.decode(text)
     assert(result.kind=='weapon' or result.kind=='full','预设类型无效')
     assert(result.editor==nil or result.editor=='enemy' or result.editor=='equipment','预设编辑器类型无效')
     result.name=clean_name(unhex(assert(result.name,'缺少预设名称')))
+    if result.armor then
+        assert(result.kind=='full' and result.editor~='enemy','此预设不应包含护甲数值')
+        result.armor=unhex(result.armor)
+    end
     if result.kind=='weapon' then
         assert(result.weapon and #result.weapon==16 and result.weapon:match('^%x+$'),'缺少装备标识')
         result.weapon=result.weapon:upper()
@@ -116,9 +122,10 @@ function M.attach(B,C)
             return {kind=kind,name=names[name_key(n)] or ('预设 '..n),weapon=w.hash,values=out}
         end
         local preset=assert((P.list and P.list() or P.full)[n],'找不到全局预设')
-        return {kind=kind,name=preset.name,values=preset.values,editor=C.editor and C.editor() or nil}
+        return {kind=kind,name=preset.name,values=preset.values,editor=C.editor and C.editor() or nil,armor=preset.armor}
     end
     local function validate(bundle,allow_missing)
+        if bundle.armor~=nil then assert(B.armor_validate,'当前程序不支持护甲预设');B.armor_validate(bundle.armor)end
         if bundle.kind=='full' and C.editor then assert((bundle.editor or 'equipment')==C.editor(),'预设属于另一种编辑器，请先切换装备或敌人编辑') end
         local fields,warnings,accepted={},{},0
         for _,o in ipairs(bundle.values) do
@@ -179,6 +186,11 @@ function M.attach(B,C)
             end
         end
         table.sort(out,function(a,b)return a.equipment..a.parameter<b.equipment..b.parameter end)
+        if bundle.kind=='full' and bundle.editor~='enemy' then
+            if bundle.armor~=nil then
+                for _,entry in ipairs(B.armor_compare(bundle.armor))do out[#out+1]=entry end
+            elseif B.armor_compare then warnings[#warnings+1]='此旧预设不含护甲被动数值，将保留当前护甲数值。'end
+        end
         return {name=bundle.name,entries=out,count=#out,kind=bundle.kind,warnings=warnings,skipped=skipped,accepted=accepted}
     end
     function B.preset_info(slot)
@@ -190,7 +202,7 @@ function M.attach(B,C)
         if kind=='weapon' then
             assert(n>=1 and n<=5 and n%1==0,'预设编号无效');local k=name_key(n);local old=names[k];names[k]=name
             local ok,why=pcall(save_names);if not ok then names[k]=old;error(why) end
-        else local p=assert((P.list and P.list() or P.full)[n]);P.full_put(n,name,p.values) end
+        else local p=assert((P.list and P.list() or P.full)[n]);P.full_put(n,name,p.values,p.armor) end
         return '预设名称已保存'
     end
     function B.preset_compare(kind,n)return compare(source(kind,n),true)end
@@ -216,7 +228,7 @@ function M.attach(B,C)
             assert(seen[key]==nil or seen[key]==v.value,'预设的旧名称与槽位名称指定了不同数值')
             if seen[key]==nil then values[#values+1]={hash=v.hash,id=id,value=v.value};seen[key]=v.value end
         end
-        return M.encode(kind,s.name,s.weapon,values,s.editor)
+        return M.encode(kind,s.name,s.weapon,values,s.editor,s.armor)
     end
     local function imported(kind,text)
         local bundle=M.decode(text);assert(bundle.kind==kind,'导入预设的类型不匹配')
@@ -233,7 +245,7 @@ function M.attach(B,C)
             local named,why=pcall(save_names);if not named then names[k]=old;error(why) end
             local stored,reason=pcall(P.weapon_put,assert(C.selected()),n,values)
             if not stored then names[k]=old;pcall(save_names);error(reason) end
-        else n=P.full_put(nil,bundle.name,bundle.values) end
+        else n=P.full_put(nil,bundle.name,bundle.values,bundle.armor) end
         return {id=n,message='预设已导入，读取后才会改变编辑器数值'}
     end
     function B.pending_preview()

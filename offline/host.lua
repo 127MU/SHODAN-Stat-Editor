@@ -572,6 +572,7 @@ local function main()
         local B=state.desktop
         B.game=game;B.armor_list=AR.list;B.armor_groups=AR.groups
         B.armor_rows=D.armor_values
+        require('armor_presets').attach(B,D,ARM,AR)
         B.armor_set=function(pid,key,value)
             local old;for _,r in ipairs(D.armor_values(pid))do if r.key==key then old=r.value;break end end
             assert(old~=nil,'找不到护甲参数')

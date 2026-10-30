@@ -184,6 +184,7 @@ HusWindow {
     function qaFocusParameter(id){return QaMode && workspace.screen==="editor" && pageLoader.item && pageLoader.item.focusParameter(id)}
     function qaEditList(){return QaMode && editList.visible && editList.entries.length>0}
     function qaDiagnostic(action){return QaMode && diagnostics.qa(action)}
+    function qaRagdoll(action){return QaMode && workspace.module==="tweaks" && pageLoader.item && pageLoader.item.qa(action)}
     function qaParameterGroups(action){return QaMode && workspace.screen==="editor" && pageLoader.item && pageLoader.item.qaFold(action)}
     property var qaTrackedInput:null
     function qaParameterControl(id){
@@ -307,6 +308,13 @@ HusWindow {
     }
     function shared(row){editList.title="共享影响 · "+row.label;editList.description="以下条目共用底层参数，修改本项会同时生效。";editList.query="";editList.entries=(row.shared || []).map(x=>({name:typeof x==="string"?x:x.name || x.equipment || "未命名",detail:x.category || ""}));editList.open()}
     function armorValues(passive){armorDialog.passive=passive;armorDialog.values=[];armorDialog.open();workspace.call("armor_rows",[passive.id],x=>armorDialog.values=x)}
+    function qaArmorPreset(action,key,value){
+        if(!QaMode)return false
+        if(action==="open"){armorValues({id:7,zh:"急救包"});return true}
+        if(action==="check")return armorDialog.visible && armorDialog.values.some(r=>r.key===key && r.value===value)
+        return false
+    }
+    Connections { target:workspace;function onArmorValuesChanged(){if(armorDialog.visible)workspace.call("armor_rows",[armorDialog.passive.id],x=>armorDialog.values=x)} }
     function importPreset(kind,id){
         let p=Backend.chooseFile(false,"SHODAN 预设 (*.txt);;所有文件 (*)");if(!p)return
         let text=Backend.readText(p);if(!text){message("无法导入","文件为空或无法读取");return}

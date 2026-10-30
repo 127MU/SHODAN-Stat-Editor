@@ -109,6 +109,8 @@ def main():
     sources += [ROOT/'tests/test_edit_history.py',ROOT/'tests/test_edit_history_ui.py',ROOT/'tests/test_status_strength_layout.py',ROOT/'tests/test_status_strength_ui.py',ROOT/'tests/test_row_delta.py',ROOT/'tests/test_file_change_guard.py',ROOT/'tests/test_parameter_groups_ui.py',ROOT/'tests/test_hash_reference.py',ROOT/'docs/editing-workflow.md',ROOT/'docs/compatibility-build26251122.md']
     sources += [ROOT/'docs/gameplay-options.md']
     sources += [ROOT/'docs/squad-transport.md',ROOT/'tests/test_squad_transport.py']
+    sources += [ROOT/'tests/test_armor_presets.py']
+    sources += [ROOT/'tests/test_bolt_animation.py']
     sources += [ROOT/'tests'/name for name in ('test_reference_chain.py','test_diagnostics_readonly.py','test_diagnostics_ui.py','test_gameplay_resources.py','test_gameplay_options.py')]
     sources+=list((ROOT/'assets').glob('*.png'))
     sources+=[f for f in (ROOT/'offline/launcher').iterdir() if f.is_file() and f.suffix in ('.cpp','.h','.c','.ico','.def','.manifest')]
