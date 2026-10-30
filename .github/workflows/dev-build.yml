@@ -4,6 +4,8 @@ name: Desktop build
 on:
   push:
     branches: [main, 'ci/**']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,8 +17,8 @@ concurrency:
 
 env:
   LUAJIT_COMMIT: a4c064539ea931274d407e1249b4bb575424a0f4
-  LIBSODIUM_URL: https://download.libsodium.org/libsodium/releases/libsodium-1.0.22-stable-msvc.zip
-  LIBSODIUM_DLL_SHA256: 396501C7495E4B03D0F8ACB2416F3E2431B0CDC404968E17CC0E25C2ABC5CA27
+  RUNTIME_RELEASE: https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v4.5.1-r1/SHODAN_4.5.1-r1_Windows.zip
+  RUNTIME_SHA256: F3CE6F362A7A1C808AFE028EDF8AD456C39799A27E992CFD2BF39308905F2878
 
 jobs:
   build:
@@ -24,17 +26,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get LuaJIT and libsodium
+      - name: Install Qt and MinGW
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_mingw
+          modules: qtshadertools
+          tools: tools_mingw1310
+          cache: true
+
+      - name: Get pinned runtime and LuaJIT source
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           git clone --quiet https://github.com/LuaJIT/LuaJIT.git "$env:RUNNER_TEMP\LuaJIT"
+          if ($LASTEXITCODE) { throw 'LuaJIT clone failed' }
           git -C "$env:RUNNER_TEMP\LuaJIT" checkout --quiet $env:LUAJIT_COMMIT
-          Invoke-WebRequest $env:LIBSODIUM_URL -OutFile "$env:RUNNER_TEMP\sodium.zip"
-          Expand-Archive "$env:RUNNER_TEMP\sodium.zip" "$env:RUNNER_TEMP\sodium"
+          if ($LASTEXITCODE) { throw 'LuaJIT checkout failed' }
+          $archive = "$env:RUNNER_TEMP\runtime.zip"
+          Invoke-WebRequest $env:RUNTIME_RELEASE -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne $env:RUNTIME_SHA256) { throw 'Pinned runtime archive hash mismatch' }
+          Expand-Archive $archive "$env:RUNNER_TEMP\runtime"
+          $runtime = "$env:RUNNER_TEMP\runtime\SHODAN_4.5.1-r1"
           New-Item -ItemType Directory -Force offline\runtime | Out-Null
-          Copy-Item "$env:RUNNER_TEMP\sodium\libsodium\x64\Release\v143\dynamic\libsodium.dll" offline\runtime\
-          $hash = (Get-FileHash offline\runtime\libsodium.dll -Algorithm SHA256).Hash
-          if ($hash -ne $env:LIBSODIUM_DLL_SHA256) { throw "libsodium.dll is not the build the releases ship: $hash" }
+          Copy-Item "$runtime\libsodium.dll" offline\runtime\
+          "SHODAN_PROXY_RUNTIME=$runtime\mitmproxy" >> $env:GITHUB_ENV
 
       - name: Build LuaJIT, the launcher and shodan_hash.dll
         shell: cmd
@@ -51,22 +67,31 @@ jobs:
           set "LINK="
           copy /y lua51.dll "%GITHUB_WORKSPACE%\offline\runtime\" || exit /b 1
           set "LJ=%RUNNER_TEMP%\LuaJIT\src"
-          call "%GITHUB_WORKSPACE%\offline\launcher\build.bat"
-          if not exist "%GITHUB_WORKSPACE%\offline\launcher\SHODAN Stat Editor Offline.exe" exit /b 1
-          if not exist "%GITHUB_WORKSPACE%\offline\launcher\shodan_hash.dll" exit /b 1
+          cd /d "%GITHUB_WORKSPACE%\offline\launcher"
+          cl /nologo /O2 /W3 /MT /LD hashsolve.c fetch.c update.c /link winhttp.lib user32.lib /OUT:shodan_hash.dll
+          if errorlevel 1 exit /b 1
+          if not exist shodan_hash.dll exit /b 1
 
       - name: Build current desktop
         shell: pwsh
         run: |
-          cmake -S desktop/eui -B build/eui -A x64
-          if ($LASTEXITCODE -ne 0) { throw "CMake configure failed" }
-          cmake --build build/eui --config Release --parallel 4
-          if ($LASTEXITCODE -ne 0) { throw "Desktop build failed" }
-          python tools/package_eui.py --build-dir build/eui --eui-root build/eui/_deps/eui-src --output-root dist/desktop
-          if ($LASTEXITCODE -ne 0) { throw "Desktop packaging failed" }
+          $ErrorActionPreference = 'Stop'
+          $compiler = Split-Path (Get-Command g++.exe).Source
+          cmake -S desktop/huskar -B build/huskar -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR" "-DCMAKE_C_COMPILER=$compiler/gcc.exe" "-DCMAKE_CXX_COMPILER=$compiler/g++.exe"
+          if ($LASTEXITCODE) { throw 'CMake configure failed' }
+          cmake --build build/huskar --parallel 2
+          if ($LASTEXITCODE) { throw 'HuskarUI build failed' }
+          python tools/package_huskar.py --build-dir build/huskar --qt-dir "$env:QT_ROOT_DIR" --compiler-bin "$compiler" --huskar-root build/huskar/_deps/huskar-src --proxy-runtime "$env:SHODAN_PROXY_RUNTIME" --output-root dist/desktop
+          if ($LASTEXITCODE) { throw 'Desktop packaging failed' }
+          $release = Get-ChildItem dist/desktop -Directory | Where-Object Name -like 'SHODAN_*' | Select-Object -First 1
+          python tools/package_onefile.py --release $release.FullName --compiler-bin "$compiler"
+          if ($LASTEXITCODE) { throw 'Single-file packaging failed' }
 
       - name: Keep desktop packages
         uses: actions/upload-artifact@v4
         with:
           name: desktop-build
-          path: dist/desktop/*.zip
+          if-no-files-found: error
+          path: |
+            dist/desktop/*.zip
+            dist/desktop/*.exe
