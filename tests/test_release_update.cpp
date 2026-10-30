@@ -62,5 +62,20 @@ int main(int argc,char** argv){
  for(const auto& bad:{std::string("not json"),std::string("{\"message\":\"API rate limit exceeded\"}"),std::string("[]"),std::string("{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v4.2.0\",\"html_url\":\"https://example.com/\"}")}){
   bool rejected=false;try{parseReleaseUpdate(bad,"4.1.0-r5");}catch(const std::runtime_error&){rejected=true;}assert(rejected);
  }
+
+ int mirrors=0;
+ auto blocked=[](bool){return shodan::ReleaseResponse{503,{},{}};};
+ auto mirrored=shodan::checkReleaseUpdate("4.1.0-r8",blocked,{},[&](bool api){++mirrors;assert(api);return shodan::ReleaseResponse{200,detailed,{}};});
+ assert(mirrored.newer&&mirrored.error.empty()&&mirrors==1);
+ assert(mirrored.notes.find("Fix startup")!=std::string::npos&&mirrored.notes.find("GH-Proxy")!=std::string::npos);
+ assert(mirrored.downloadUrl=="https://gh-proxy.com/https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v4.1.0-r9/SHODAN_4.1.0-r9.exe");
+ auto invalidMirror=shodan::checkReleaseUpdate("4.1.0-r8",blocked,{},[](bool){return shodan::ReleaseResponse{200,"<html>bad gateway</html>",{}};});
+ assert(!invalidMirror.error.empty()&&!invalidMirror.newer);
+ auto oldMirror=shodan::checkReleaseUpdate("4.1.0-r8",[&](bool api){return api?shodan::ReleaseResponse{503,{},{}}:shodan::ReleaseResponse{302,{},"/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r10"};},{},[&](bool){return shodan::ReleaseResponse{200,detailed,{}};});
+ assert(oldMirror.version=="v4.1.0-r10"&&oldMirror.newer);
+ auto noMirror=shodan::checkReleaseUpdate("4.1.0-r9",[&](bool){return shodan::ReleaseResponse{302,{},"/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r9"};},{},[&](bool){assert(false);return shodan::ReleaseResponse{};});
+ assert(!noMirror.newer);
+ auto repairDetails=shodan::checkReleaseUpdate("4.1.0-r8",[&](bool api){return api?shodan::ReleaseResponse{403,{},{}}:shodan::ReleaseResponse{302,{},"/127MU/SHODAN-Stat-Editor/releases/tag/v4.1.0-r9"};},{},[&](bool){return shodan::ReleaseResponse{200,detailed,{}};});
+ assert(repairDetails.newer&&repairDetails.downloadUrl.find("https://gh-proxy.com/")==0);
  std::cout<<"release versions, revision ordering, published-only filtering, invalid response and project URL checks passed\n";
 }

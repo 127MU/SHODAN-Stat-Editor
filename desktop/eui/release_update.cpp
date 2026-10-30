@@ -51,11 +51,12 @@ ReleaseUpdate parseReleaseUpdate(const std::string& json,const std::string& curr
  result.newer=releaseNewer(result.version,current);return result;
 }
 namespace {
-ReleaseResponse requestReleasePath(bool api,const std::string& path){
+ReleaseResponse requestReleasePath(bool api,const std::string& path,bool mirror=false){
   Handle session(WinHttpOpen(L"SHODAN-Stat-Editor-Update/1.0",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0));
   WinHttpSetTimeouts(session.value,2500,3000,3000,3000);
-  Handle connection(WinHttpConnect(session.value,api?L"api.github.com":L"github.com",INTERNET_DEFAULT_HTTPS_PORT,0));
-  const std::wstring widePath(path.begin(),path.end());
+  Handle connection(WinHttpConnect(session.value,mirror?L"gh-proxy.com":(api?L"api.github.com":L"github.com"),INTERNET_DEFAULT_HTTPS_PORT,0));
+  const auto routedPath=mirror?"/https://api.github.com"+path:path;
+  const std::wstring widePath(routedPath.begin(),routedPath.end());
   Handle request(WinHttpOpenRequest(connection.value,L"GET",widePath.c_str(),nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE));
   DWORD redirects=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;WinHttpSetOption(request.value,WINHTTP_OPTION_REDIRECT_POLICY,&redirects,sizeof redirects);
   const wchar_t* headers=api?L"Accept: application/vnd.github+json\r\nX-GitHub-Api-Version: 2022-11-28\r\n":L"Accept: text/html\r\n";
@@ -121,7 +122,7 @@ ReleaseUpdate releaseFromLocation(const std::string& location,const std::string&
  if(!versionParts(result.version,parts))throw std::runtime_error("最新正式发行版的版本号无法识别");
  result.newer=releaseNewer(result.version,current);return result;
 }
-ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& provided,const ReleasePageFetch& pages){
+static ReleaseUpdate checkOfficialReleaseUpdate(const std::string& current,const ReleaseFetch& provided,const ReleasePageFetch& pages){
  const ReleaseFetch fetch=provided?provided:ReleaseFetch(requestRelease);
  const ReleasePageFetch publicPage=pages?pages:(provided?ReleasePageFetch{}:ReleasePageFetch([](const std::string& path){return requestReleasePath(false,path);}));
  // One startup check cycle: the public Latest release redirect, then at most
@@ -148,5 +149,26 @@ ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& 
   if(api.status!=200)throw std::runtime_error(api.status==403||api.status==429?"暂时无法检查更新：GitHub 访问受限，可稍后手动重试":"暂时无法获取正式发行版，请稍后手动重试");
   return parseReleaseUpdate(api.body,current);
  }catch(const std::exception& e){ReleaseUpdate result;result.error=e.what();return result;}
+}
+ReleaseUpdate checkReleaseUpdate(const std::string& current,const ReleaseFetch& provided,const ReleasePageFetch& pages,const ReleaseFetch& mirror){
+ auto result=checkOfficialReleaseUpdate(current,provided,pages);
+ const bool incomplete=result.newer&&(result.downloadUrl.empty()||result.notes.empty()||result.notes.find("暂时无法获取更新日志")==0);
+ if(result.error.empty()&&!incomplete)return result;
+ // Public metadata only; no GitHub token or game traffic goes to the mirror.
+ const ReleaseFetch fallback=mirror?mirror:(provided?ReleaseFetch{}:ReleaseFetch([](bool){return requestReleasePath(true,"/repos/127MU/SHODAN-Stat-Editor/releases/latest",true);}));
+ if(fallback)try{
+  const auto response=fallback(true);
+  if(response.status==200){
+   auto mirrored=parseReleaseUpdate(response.body,current);
+   // Cached metadata must never replace a newer version obtained from GitHub.
+   if(!mirrored.version.empty()&&(result.version.empty()||!releaseNewer(result.version,mirrored.version))){
+    if(!mirrored.downloadUrl.empty())mirrored.downloadUrl="https://gh-proxy.com/"+mirrored.downloadUrl;
+    mirrored.notes+=(mirrored.notes.empty()?"":"\n\n")+std::string("更新信息通过 GH-Proxy 镜像获取；发行版来源：")+mirrored.url;
+    return mirrored;
+   }
+  }
+ }catch(const std::exception&){}
+ if(!result.error.empty())result.error="GitHub 和更新镜像暂时均不可用，请稍后重试。";
+ return result;
 }
 }

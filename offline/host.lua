@@ -90,7 +90,7 @@ local function main()
     local selected_theme=theme_file and theme_file:read('*a') or 'light'
     if theme_file then theme_file:close() end
     shim.set_theme(selected_theme:match('dark') and 'dark' or 'light')
-    shim.open('SHODAN 数值编辑器 4.5.1-r1', saved_place())
+    shim.open('SHODAN 数值编辑器 4.5.1-r2', saved_place())
     shim.pump()
     local migrated = I.migrate()
     if migrated then log('copied ' .. migrated .. ' files from the CowboyBingus folder') end
@@ -222,7 +222,7 @@ local function main()
     ARM.tr=state.tr;ARM.transition=shim.transition
     state.open_armor = AR.show
     local build = U.build(here)   -- app/build.txt: version, commit, channel
-    shim.set_title('SHODAN 数值编辑器 4.5.1-r1')
+    shim.set_title('SHODAN 数值编辑器 4.5.1-r2')
     -- the host's own text in the panel's language, drawn with its font
     local function tr(text)
         if type(state.tr)~='function' then return text end

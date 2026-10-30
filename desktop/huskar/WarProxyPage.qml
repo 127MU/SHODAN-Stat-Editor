@@ -197,8 +197,8 @@ Flickable {
                     }
                     HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:"目标归属请选择超级地球，作战敌人必须与进攻来源的实时归属一致。自动生成关联的攻击边、防守事件与联合作战，初始剩余生命值设为 99%。倒计时和进度属于本机方案；重新启动代理后重新计时，服务器不会推进这条本地防守进度。";color:HusTheme.Primary.colorTextSecondary }
                 }
-                HusCheckBox { visible:page.advanced;objectName:"warInitializeRegions";Layout.leftMargin:16;text:"补齐缺失的原生分区状态";checked:page.initializeRegions;onClicked:{page.initializeRegions=checked;page.dirty=true} }
-                HusText { visible:page.advanced;Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:"需要开启战役并选择敌人。仅为原生定义中缺失的分区初始化状态：敌方占领、50% 生命值、可用系数 1；这些是本地初始化值，不是游戏原值。已有分区的归属和生命值保留。";wrapMode:Text.Wrap }
+                HusCheckBox { visible:page.advanced;objectName:"warInitializeRegions";Layout.leftMargin:16;text:"补齐并开放原生分区状态";checked:page.initializeRegions;onClicked:{page.initializeRegions=checked;page.dirty=true} }
+                HusText { visible:page.advanced;Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:"需要开启战役并选择敌人。按原生定义补齐缺失分区，同时开放已有分区并统一为所选敌人阵营。保留有效生命值；已归零或无效的生命值初始化为 50%。这些是本机方案值，不是游戏原值；不会改动其他星球。缺少匹配的原生定义时不应用分区修改。";wrapMode:Text.Wrap }
                 HusText { visible:page.advanced;Layout.fillWidth:true;Layout.margins:16;text:"星球开放可能让客户端向线上服务器创建作战；奖励与归属统计尚未确认。防守战役会生成关联事件与联合作战，实际任务可用性仍需在游戏中验证。";wrapMode:Text.Wrap;color:HusTheme.Primary.colorWarning }
                 HusText { Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:"已核实的星图标记 / 玩法词条配对会一起应用到同一星球；图标、文案效果不等同于新任务。保存后需等游戏下一次战况刷新，已生成的作战不会立即重建。";wrapMode:Text.Wrap }
                 HusText { Layout.fillWidth:true;Layout.leftMargin:16;Layout.rightMargin:16;text:page.localError || page.planIssue;visible:!!text;wrapMode:Text.Wrap;color:HusTheme.Primary.colorError }

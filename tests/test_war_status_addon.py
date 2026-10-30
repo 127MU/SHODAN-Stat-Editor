@@ -27,13 +27,29 @@ class TestWarStatusAddon(unittest.TestCase):
         plan={'targets':[{'planet':182,'effects':[],'campaign':True,'campaign_race':3,'initialize_regions':True}]}
         reference={'warId':801,'layoutVersion':7,'planetRegions':[dict(planetIndex=182,regionIndex=3,maxHealth=100),dict(planetIndex=182,regionIndex=9,maxHealth=600000)]}
         before=json.dumps(document);result,count=addon.rewrite_status(document,plan,set(),region_reference=reference)
-        self.assertEqual(result['planetRegions'][0],document['planetRegions'][0])
+        self.assertEqual(result['planetRegions'][0],dict(document['planetRegions'][0],owner=3,isAvailable=True,availabilityFactor=1))
         self.assertEqual(result['planetRegions'][1],dict(planetIndex=182,regionIndex=9,owner=3,health=300000,players=0,regerPerSecond=0,isAvailable=True,availabilityFactor=1))
         self.assertEqual(json.dumps(document),before)
         self.assertEqual(addon.rewrite_status(result,plan,set(),region_reference=reference)[1],0)
         for wrong in (None,dict(reference,warId=800),dict(reference,layoutVersion=6),dict(reference,planetRegions=[]),dict(reference,planetRegions=reference['planetRegions']*2)):
             with self.assertRaises(addon.RegionAvailabilityError):addon.rewrite_status(document,plan,set(),region_reference=wrong)
             self.assertEqual(json.dumps(document),before)
+
+    def test_initialize_reopens_existing_liberated_regions_without_touching_other_planets(self):
+        other=dict(planetIndex=10,regionIndex=1,owner=1,health=0,isAvailable=False,availabilityFactor=0)
+        document=dict(BASE,warId=801,layoutVersion=7,planetRegions=[
+            dict(planetIndex=182,regionIndex=3,owner=1,health=0,isAvailable=False,availabilityFactor=0,players=15),other])
+        reference=dict(warId=801,layoutVersion=7,planetRegions=[dict(planetIndex=182,regionIndex=3,maxHealth=100)])
+        plan={'targets':[dict(planet=182,effects=[],campaign=True,campaign_race=3,initialize_regions=True)]}
+        result,count=addon.rewrite_status(document,plan,set(),region_reference=reference)
+        self.assertGreater(count,0)
+        self.assertEqual(result['planetRegions'][0],dict(planetIndex=182,regionIndex=3,owner=3,health=50,isAvailable=True,availabilityFactor=1,players=15))
+        self.assertEqual(result['planetRegions'][1],other)
+        self.assertEqual(document['planetRegions'][0]['health'],0)
+        self.assertEqual(addon.rewrite_status(result,plan,set(),region_reference=reference)[1],0)
+        plan['targets'][0]['initialize_regions']=False
+        unchanged,_=addon.rewrite_status(document,plan,set())
+        self.assertEqual(unchanged['planetRegions'],document['planetRegions'])
 
     def test_initialize_requires_explicit_enemy_and_campaign(self):
         for values in ({'initialize_regions':1},{'initialize_regions':True},{'initialize_regions':True,'campaign':True,'campaign_race':1}):
