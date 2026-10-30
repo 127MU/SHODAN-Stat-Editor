@@ -33,7 +33,7 @@ HusModal {
         }
         return false
     }
-    function load(kind){mode=kind;query="";report={};errorText="";open();refresh()}
+    function load(kind){report={};mode=kind;query="";errorText="";open();refresh()}
     function refresh(){
         loading=true;progressText=mode==="chain"?"正在读取当前引用…":"正在扫描资源与音效目录，首次可能需要较长时间…"
         const ticket=++generation
@@ -72,7 +72,7 @@ HusModal {
             delegate:HusGroupBox {
                 required property var modelData
                 width:ListView.view.width-16
-                title:dialog.mode==="chain"?modelData.title:((modelData.type_name || modelData.type)+" · "+modelData.id)
+                title:dialog.mode==="chain"?(modelData.title || "未命名记录"):((modelData.type_name || modelData.type || "未知类型")+" · "+(modelData.id || "未知编号"))
                 ColumnLayout {
                     width:parent.width;spacing:6
                     HusText { Layout.fillWidth:true;wrapMode:Text.Wrap;text:dialog.mode==="chain"?(modelData.via+" · "+(modelData.parent_title?"来自 "+modelData.parent_title+" · ":"")+(modelData.missing?"当前版本没有此记录":modelData.repeated?"重复或循环引用，未再次展开":"第 "+(modelData.depth+1)+" 层")+(modelData.summary?"\n"+modelData.summary:"")):(modelData.status+"\n来源包："+(dialog.list(modelData.provider_names || modelData.providers).join("、") || "未定位"));color:modelData.missing?HusTheme.Primary.colorError:HusTheme.Primary.colorTextSecondary }
