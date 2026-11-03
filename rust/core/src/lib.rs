@@ -1,8 +1,11 @@
 //! Typed little-endian numeric editing. Baselines are immutable original bytes.
+pub mod correction;
 pub mod dlbin;
 pub mod document;
+pub mod export;
 pub mod hash;
 pub mod sealed;
+pub mod tables;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
