@@ -6,6 +6,7 @@ pub mod document;
 pub mod export;
 pub mod hash;
 pub mod native_api;
+pub mod preset;
 pub mod sealed;
 pub mod session;
 pub mod tables;

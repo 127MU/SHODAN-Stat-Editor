@@ -77,6 +77,13 @@ impl Session {
             .ok_or("没有可信原值，无法恢复")?;
         self.set(field, original)
     }
+    pub fn apply_batch(&mut self, fields: &[(Field, f64)]) -> Result<(), String> {
+        let edits = fields
+            .iter()
+            .map(|(f, v)| Ok((self.offset(*f)?, f.kind, *v)))
+            .collect::<Result<Vec<_>, String>>()?;
+        self.document.set_batch(&edits).map_err(str::to_string)
+    }
     pub fn pending_count(&self) -> usize {
         self.document.pending_count()
     }

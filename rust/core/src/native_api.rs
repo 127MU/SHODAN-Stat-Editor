@@ -63,6 +63,15 @@ impl Api {
             self.active = None;
             return Ok(json!(true));
         }
+        if method == "preset-inspect" {
+            let preset = crate::preset::Preset::decode(text(p, "text")?)?;
+            return Ok(
+                json!({"kind":preset.kind,"name":preset.name,"weapon":preset.weapon,
+                "editor":preset.editor,"armor":preset.armor,"values":preset.values.iter().map(|v|
+                    json!({"owner":v.owner,"parameter":v.parameter,"value":v.value})).collect::<Vec<_>>(),
+                "normalized":preset.encode()?}),
+            );
+        }
         if method == "open" {
             let path = PathBuf::from(text(p, "path")?);
             let bytes = fs::read(&path).map_err(|_| "无法读取数据文件")?;
@@ -103,6 +112,18 @@ impl Api {
             "set" => {
                 session.set(field(p)?, p["value"].as_f64().ok_or("数值无效")?)?;
                 Ok(json!({"pending":session.pending_count()}))
+            }
+            "apply-batch" => {
+                let edits = p["fields"].as_array().ok_or("缺少批量字段列表")?;
+                if edits.len() > 100000 {
+                    return Err("批量字段过多".into());
+                }
+                let edits = edits
+                    .iter()
+                    .map(|entry| Ok((field(entry)?, entry["value"].as_f64().ok_or("数值无效")?)))
+                    .collect::<Result<Vec<_>, String>>()?;
+                session.apply_batch(&edits)?;
+                Ok(json!({"pending":session.pending_count(),"accepted":edits.len()}))
             }
             "restore" => {
                 session.restore(field(p)?)?;

@@ -106,6 +106,27 @@ impl Document {
         Ok(())
     }
 
+    /// Stage a whole batch or retain the exact previous pending state.
+    pub fn set_batch(&mut self, fields: &[(usize, Kind, f64)]) -> Result<(), &'static str> {
+        let previous = self.pending.clone();
+        let mut seen = Vec::new();
+        for &(offset, kind, value) in fields {
+            if seen
+                .iter()
+                .any(|&at| at < offset.saturating_add(4) && offset < at + 4)
+            {
+                self.pending = previous;
+                return Err("批量修改包含重复或重叠字段");
+            }
+            if let Err(error) = self.set(offset, kind, value) {
+                self.pending = previous;
+                return Err(error);
+            }
+            seen.push(offset);
+        }
+        Ok(())
+    }
+
     pub fn pending_count(&self) -> usize {
         self.pending.len()
     }
@@ -184,5 +205,24 @@ mod tests {
         assert_eq!(d.pending_count(), 1);
         d.set(24, Kind::F32, 1.0).unwrap();
         assert_eq!(d.pending_count(), 0);
+    }
+    #[test]
+    fn failed_batch_preserves_preexisting_edits_exactly() {
+        let disk = fixture(1.0);
+        let mut d = Document::new(disk.clone(), None).unwrap();
+        d.set(24, Kind::F32, 12.0).unwrap();
+        let before = d.render(&disk).unwrap();
+        for batch in [
+            vec![(24, Kind::F32, 99.0), (28, Kind::F32, f64::NAN)],
+            vec![(24, Kind::F32, 99.0), (24, Kind::F32, 100.0)],
+            vec![(24, Kind::F32, 99.0), (25, Kind::F32, 100.0)],
+        ] {
+            assert!(d.set_batch(&batch).is_err());
+            assert_eq!(d.render(&disk).unwrap(), before);
+            assert_eq!(d.pending_count(), 1);
+        }
+        d.set_batch(&[(24, Kind::F32, 2.0), (28, Kind::U32, 3.0)])
+            .unwrap();
+        assert_eq!(d.pending_count(), 2);
     }
 }
