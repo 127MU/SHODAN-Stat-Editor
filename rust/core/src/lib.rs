@@ -6,6 +6,7 @@ pub mod document;
 pub mod export;
 pub mod hash;
 pub mod sealed;
+pub mod session;
 pub mod tables;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

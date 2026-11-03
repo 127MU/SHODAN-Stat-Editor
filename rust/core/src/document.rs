@@ -42,6 +42,10 @@ impl Document {
         &self.blocks
     }
 
+    pub fn snapshot(&self) -> &[u8] {
+        &self.snapshot
+    }
+
     fn check_field(&self, offset: usize) -> Result<(), &'static str> {
         if !self.blocks.iter().any(|b| b.contains(offset, 4)) {
             return Err("参数不在数据块有效载荷内");
