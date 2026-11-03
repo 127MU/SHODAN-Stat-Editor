@@ -16,6 +16,10 @@ class ParityBackend extends FakeBackend {
   @override
   Future<dynamic> call(String method, [List<dynamic> args = const []]) async {
     calls.add(method);
+    if (method == 'items')
+      return [
+        {'id': 'test', 'name': 'AR-11 仲裁者', 'changed': value != '66'},
+      ];
     if (method == 'rows_fast' && selectionWait != null)
       await selectionWait!.future;
     if (method == 'history')
@@ -84,6 +88,44 @@ class ParityBackend extends FakeBackend {
 }
 
 void main() {
+  testWidgets('主页仅已修改筛选刷新刚编辑的装备并保留搜索', (tester) async {
+    final backend = ParityBackend();
+    await tester.binding.setSurfaceSize(const Size(1480, 960));
+    await tester.pumpWidget(
+      Workbench(backend: backend, persistAppearance: false),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('仅已修改'));
+    await tester.pumpAndSettle();
+    expect(find.text('打开'), findsNothing);
+    await tester.tap(find.text('仅已修改'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('catalog-search')), '仲裁者');
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '123');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('关闭'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('catalog-search')))
+          .controller!
+          .text,
+      '仲裁者',
+    );
+    await tester.tap(find.text('仅已修改'));
+    await tester.pumpAndSettle();
+    expect(find.text('打开'), findsOneWidget);
+    expect(find.text('已修改'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.binding.setSurfaceSize(null);
+  });
   testWidgets('参数准备完成后一次切换，等待期间保留目录而不是空白', (tester) async {
     final backend = ParityBackend();
     await tester.binding.setSurfaceSize(const Size(1480, 960));

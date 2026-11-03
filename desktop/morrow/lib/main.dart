@@ -37,7 +37,7 @@ class _WorkbenchState extends State<Workbench> {
   late final Backend backend = widget.backend ?? Backend();
   bool ready = false, busy = false, dark = true;
   bool diagnosing = false;
-  bool onlyChanged = false;
+  bool onlyChanged = false, catalogOnlyChanged = false;
   String diagnosticResult = '';
   String status = '正在读取数据…', tab = 'Primary';
   String catalogQuery = '', parameterQuery = '';
@@ -141,6 +141,7 @@ class _WorkbenchState extends State<Workbench> {
     setState(() {
       tab = key;
       current = null;
+      catalogOnlyChanged = false;
       catalogQuery = '';
       parameterQuery = '';
       catalogSearch.clear();
@@ -188,13 +189,40 @@ class _WorkbenchState extends State<Workbench> {
       final result = await backend.call('rows_fast');
       if (mounted && ticket == epoch) {
         setState(() {
-          current = item; activeSection = null;
-          parameterQuery = ''; parameterSearch.clear(); onlyChanged = false;
+          current = item;
+          activeSection = null;
+          parameterQuery = '';
+          parameterSearch.clear();
+          onlyChanged = false;
           rows = result is List ? result : [];
         });
       }
-    } catch (e) { showError(e); }
-    finally { if (mounted && ticket == epoch) setState(() => busy = false); }
+    } catch (e) {
+      showError(e);
+    } finally {
+      if (mounted && ticket == epoch) setState(() => busy = false);
+    }
+  }
+
+  Future<void> backToCatalog() async {
+    if (busy) return;
+    final ticket = ++epoch;
+    setState(() => busy = true);
+    try {
+      final result = await backend.call('items', [tab, '']);
+      if (mounted && ticket == epoch)
+        setState(() {
+          items = result is List ? result : [];
+          current = null;
+          activeSection = null;
+          status =
+              '${items.where((item) => item['changed'] == true).length} 项已修改 / 共 ${items.length} 项';
+        });
+    } catch (e) {
+      showError(e);
+    } finally {
+      if (mounted && ticket == epoch) setState(() => busy = false);
+    }
   }
 
   Future<void> refreshCurrent() async {
@@ -1016,7 +1044,8 @@ class _WorkbenchState extends State<Workbench> {
               onError: showError,
               onRecord: select,
               onPresets: equipmentPresets,
-              onlyChanged: onlyChanged, onOnlyChanged: (value) => setState(() => onlyChanged = value),
+              onlyChanged: onlyChanged,
+              onOnlyChanged: (value) => setState(() => onlyChanged = value),
             ),
           ),
         ),
@@ -1287,8 +1316,7 @@ class _WorkbenchState extends State<Workbench> {
                               children: [
                                 if (current != null)
                                   IconButton(
-                                    onPressed: () =>
-                                        setState(() => current = null),
+                                    onPressed: busy ? null : backToCatalog,
                                     icon: const Icon(Icons.arrow_back),
                                   ),
                                 Expanded(
@@ -1356,6 +1384,28 @@ class _WorkbenchState extends State<Workbench> {
                                 onChanged: (value) =>
                                     setState(() => query = value.toLowerCase()),
                               ),
+                            if (current == null &&
+                                ![
+                                  'Settings',
+                                  'Tweaks',
+                                  'Presets',
+                                  'Armor',
+                                ].contains(tab))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: FilterChip(
+                                    label: const Text('仅已修改'),
+                                    selected: catalogOnlyChanged,
+                                    onSelected: busy
+                                        ? null
+                                        : (value) => setState(
+                                            () => catalogOnlyChanged = value,
+                                          ),
+                                  ),
+                                ),
+                              ),
                             const SizedBox(height: 20),
                             if (busy) const LinearProgressIndicator(),
                             Expanded(
@@ -1402,10 +1452,13 @@ class _WorkbenchState extends State<Workbench> {
                                             const columns = 4;
                                             final visible = items
                                                 .where(
-                                                  (x) => x
-                                                      .toString()
-                                                      .toLowerCase()
-                                                      .contains(query),
+                                                  (x) =>
+                                                      x
+                                                          .toString()
+                                                          .toLowerCase()
+                                                          .contains(query) &&
+                                                      (!catalogOnlyChanged ||
+                                                          x['changed'] == true),
                                                 )
                                                 .toList();
                                             return GridView.builder(
