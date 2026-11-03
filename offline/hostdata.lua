@@ -941,4 +941,177 @@ function M.build(change, log)
     return sealed
 end
 
+-- Upstream 4.6.0 per-armor passive writer; isolated helpers preserve custom stacking.
+do
+local PASSIVE = 0x63CE0FEB
+-- `add`'s modifiers appended to `mods`, but for the ids `mods` has already: the game applies an id once (Engineering
+-- Kit + Integrated Explosives: +2 grenades, not +4), and the armory's preview of a passive holding an id twice crashes
+-- the game (issue #66). The ids left out go to `dropped`.
+local function append_mods(mods, add, dropped)
+    local have, out = {}, { mods }
+    for o = 1, #mods, 16 do have[mods:sub(o, o + 3)] = true end
+    for o = 1, #add, 16 do
+        local key = add:sub(o, o + 3)
+        if have[key] then
+            local b1, b2, b3, b4 = key:byte(1, 4)
+            dropped[#dropped + 1] = string.format('%08X', ((b4 * 256 + b3) * 256 + b2) * 256 + b1)
+        else
+            have[key], out[#out + 1] = true, add:sub(o, o + 15)
+        end
+    end
+    return table.concat(out)
+end
+
+-- The armory's preview of a passive lists at most 3 described modifiers (no native passive has more; a 4th crashes
+-- the game, issue #74): past the 3rd, a modifier keeps its effect but loses its description id (+12). The ids
+-- that lose it go to `hidden`. `parts`, each passive's modifiers, take turns, so a long first one does not hide the rest.
+local MAX_DESCRIBED = 3
+local function cap_descriptions(mods, hidden, parts)
+    local keep, left = {}, MAX_DESCRIBED
+    for round = 1, MAX_DESCRIBED do
+        for _, part in ipairs(parts) do
+            local seen = 0
+            for o = 1, #part, 16 do
+                if part:sub(o + 12, o + 15) ~= '\0\0\0\0' then
+                    seen = seen + 1
+                    local id = part:sub(o, o + 3)
+                    if seen == round and left > 0 and not keep[id] then keep[id], left = true, left - 1 end
+                end
+            end
+        end
+    end
+    local out = {}
+    for o = 1, #mods, 16 do
+        local m = mods:sub(o, o + 15)
+        if m:sub(13, 16) ~= '\0\0\0\0' then
+            if not keep[m:sub(1, 4)] then
+                local b1, b2, b3, b4 = m:byte(1, 4)
+                hidden[#hidden + 1] = string.format('%08X', ((b4 * 256 + b3) * 256 + b2) * 256 + b1)
+                m = m:sub(1, 12) .. '\0\0\0\0'
+            end
+        end
+        out[#out + 1] = m
+    end
+    return table.concat(out)
+end
+
+local KIT = 0xD9A55AA0
+local FIRST_NEW_ID = 60
+-- lists: armor text id -> { passive id, ... }. Adds to / changes `changes` (from M.diff) in place.
+-- one_line: passive id -> the lines of its typed description; its other lines leave the armory.
+function M.armor_passives(changes, lists, log, one_line)
+    log, lists, one_line = log or function() end, lists or {}, one_line or {}
+    if not next(lists) and not next(one_line) then return true end
+    local function change_of(typ)
+        local f
+        for _, file in pairs(M.files) do
+            for _, h in ipairs(G.headers(file.p, file.n)) do if h.type == typ then f = file; break end end
+            if f then break end
+        end
+        if not f then return nil, 'the armor files are not loaded' end
+        for _, x in ipairs(changes) do if x.name == f.name then return x end end
+        local plain, n = open_base(f.cipher)
+        if not plain then return nil, f.name .. ': ' .. tostring(n) end
+        local c = { name = f.name, plain = plain, n = n, bytes = 0, floats = {}, hash = f.hash }
+        changes[#changes + 1] = c
+        table.sort(changes, function(x, y) return x.name < y.name end)
+        return c
+    end
+    local pc, why = change_of(PASSIVE)
+    if not pc then return nil, why end
+    local ac, why2 = change_of(KIT)
+    if not ac then return nil, why2 end
+    -- every passive's modifiers and weapon stat modifiers, as edited
+    local p, n = pc.plain, pc.n
+    local hs = G.headers(p, n)
+    for _, h in ipairs(hs) do
+        local P = h.at + 24
+        if h.type == PASSIVE and h.size >= 56 and one_line[u32(p, P)] then
+            local left = one_line[u32(p, P)]
+            for at = P + 56 + 12, P + 56 + 12 + (u32(p, P + 24) - 1) * 16, 16 do
+                if u32(p, at) ~= 0 then
+                    if left <= 0 then ffi.cast('uint32_t *', p + at)[0] = 0; pc.bytes = pc.bytes + 4 end
+                    left = left - 1
+                end
+            end
+        end
+    end
+    local blocks, next_id = {}, FIRST_NEW_ID
+    for _, h in ipairs(hs) do
+        if h.type == PASSIVE and h.size >= 56 then
+            local P = h.at + 24
+            local mc, sc = u32(p, P + 24), u32(p, P + 40)
+            local mo = mc > 0 and tonumber(ffi.cast(u64p, p + P + 16)[0]) or 56
+            local so = sc > 0 and tonumber(ffi.cast(u64p, p + P + 32)[0]) or 56 + mc * 16
+            if mo == 56 and so == 56 + mc * 16 and h.size == so + sc * 12 then
+                local id = u32(p, P)
+                blocks[id] = { mods = ffi.string(p + P + 56, mc * 16), stats = ffi.string(p + P + so, sc * 12), head = ffi.string(p + h.at, 80) }
+                next_id = math.max(next_id, id + 1)
+            end
+        end
+    end
+    if u32(p, 0) ~= #hs or hs[#hs].at + 24 + hs[#hs].size ~= n then return nil, 'the armor passive file has another layout' end
+    -- each armor's id; a new record per different list
+    local armors, wanted, records, added = {}, {}, {}, {}
+    for armor in pairs(lists) do armors[#armors + 1] = armor end
+    table.sort(armors)
+    for _, armor in ipairs(armors) do
+        local list = {}
+        for _, id in ipairs(lists[armor]) do
+            if blocks[id] then list[#list + 1] = id else log('passive ' .. id .. ' is not in this game\'s file: left out') end
+        end
+        local key = table.concat(list, ',')
+        if #list < 2 then
+            wanted[armor] = list[1] or 0
+        elseif records[key] then
+            wanted[armor] = records[key]
+        else
+            local mods, stats, dropped, hidden, parts = '', '', {}, {}, {}
+            for _, id in ipairs(list) do
+                mods, stats = append_mods(mods, blocks[id].mods, dropped), stats .. blocks[id].stats
+                parts[#parts + 1] = blocks[id].mods
+            end
+            mods = cap_descriptions(mods, hidden, parts)
+            local head = ffi.new('uint8_t[80]')
+            ffi.copy(head, blocks[list[1]].head, 80)
+            local payload = head + 24
+            local mc, sc = #mods / 16, #stats / 12
+            ffi.cast('uint32_t *', head + 12)[0] = 56 + #mods + #stats                           -- block size
+            ffi.cast('uint32_t *', payload)[0] = next_id
+            ffi.cast(u64p, payload + 16)[0] = mc > 0 and 56 or NONE
+            ffi.cast('uint32_t *', payload + 24)[0] = mc
+            ffi.cast(u64p, payload + 32)[0] = sc > 0 and 56 + #mods or NONE
+            ffi.cast('uint32_t *', payload + 40)[0] = sc
+            added[#added + 1] = ffi.string(head, 80) .. mods .. stats
+            records[key], wanted[armor] = next_id, next_id
+            log(string.format('passive %d: %s (%d modifiers, %d weapon stat modifiers)%s%s', next_id, key, mc, sc,
+                #dropped > 0 and ', already had ' .. table.concat(dropped, ' ') or '',
+                #hidden > 0 and ', not described in the armory ' .. table.concat(hidden, ' ') or ''))
+            next_id = next_id + 1
+        end
+    end
+    -- the armors
+    local q, kits = ac.plain, 0
+    for _, h in ipairs(G.headers(q, ac.n)) do
+        local P = h.at + 24
+        if h.type == KIT and u32(q, P + 40) == 0 and wanted[u32(q, P + 16)] then
+            ffi.cast('uint32_t *', q + P + 28)[0] = wanted[u32(q, P + 16)]
+            kits = kits + 1
+        end
+    end
+    ac.bytes = ac.bytes + kits * 4
+    log(string.format('armor passives: %d armor sets, %d new records', kits, #added))
+    if #added == 0 then return true end
+    local s = ffi.string(p, n) .. table.concat(added)
+    local grown = G.alloc(#s)
+    ffi.copy(grown, s, #s)
+    ffi.cast('uint32_t *', grown)[0] = #hs + #added
+    G.free(pc.plain)
+    pc.plain, pc.n, pc.bytes = grown, #s, pc.bytes + #s - n
+    return true
+end
+
+
+end
+
 return M

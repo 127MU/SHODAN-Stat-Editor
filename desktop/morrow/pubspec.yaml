@@ -1,0 +1,24 @@
+name: shodan_desktop
+publish_to: none
+version: 4.6.0+1
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+dependencies:
+  file_selector: ^1.1.0
+  window_manager: ^0.5.2
+  flutter:
+    sdk: flutter
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: MiSans
+      fonts:
+        - asset: assets/fonts/MiSans-Regular.subset.ttf
+  assets:
+    - assets/shodan.png
+  shaders:
+    - shaders/liquid_glass.frag
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

@@ -135,7 +135,9 @@ function M.attach(B,C)
             if w and C.preset_id then resolved,why=C.preset_id(w,o.id,bundle.values) end
             if why then error(why,0) end
             local parts=w and resolved and C.parts(w,resolved,bundle.values)
-            if not w or not parts or not parts[1] then
+            if w and C.passive_value and C.passive_value(w,o.id,o.value) then
+                accepted=accepted+1
+            elseif not w or not parts or not parts[1] then
                 local reason=not w and ('当前版本没有此装备：'..o.hash) or
                     ((C.name and C.name(w) or C.tr(w.name))..'：当前版本没有参数 '..o.id)
                 if not allow_missing then error(reason,0) end

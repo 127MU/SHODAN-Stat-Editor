@@ -383,6 +383,7 @@ local function main()
         if state.desktop_commit and not state.desktop_commit() then say('请输入有效数值，再写入游戏。',WARN);return end
         if I.game_running() then say('Helldivers 2 is running: close it, then Install.', WARN); return end
         busy('Installing: finding what changed...')
+        local dropped=state.load_donors and state.load_donors() or 0
         local changes, problems = D.diff()
         if problems and #problems > 0 then
             for _, c in ipairs(changes) do G.free(c.plain) end
@@ -397,6 +398,7 @@ local function main()
         local stacks, own_off, policy = AR.selection(state.stacks and state.stacks() or {},
                                                      state.own_off and state.own_off() or {}, D.passives())
         local stacked, why_not = D.stack(changes, stacks, log, own_off, policy)
+        if stacked then stacked,why_not=D.armor_passives(changes,state.armor_passives and state.armor_passives(),log,state.one_line and state.one_line())end
         if not stacked then
             for _, c in ipairs(changes) do G.free(c.plain) end
             bar.busy = nil
@@ -631,10 +633,13 @@ local function main()
                     end
                 end
             end
+            local dropped=state.load_donors and state.load_donors() or 0
+            if dropped>0 then extra_warnings=extra_warnings or {};extra_warnings[#extra_warnings+1]=tostring(dropped).." 项资源超过载入上限，可能缺少射弹轨迹或无法始终携带。"end
             local changes,problems=D.diff()
             local ok,why=pcall(function()
                 local stacks,off,policy=AR.selection(state.stacks and state.stacks() or {},state.own_off and state.own_off() or {},D.passives())
                 local stacked,reason=D.stack(changes,stacks,log,off,policy);assert(stacked,reason)
+                local combined,reason=D.armor_passives(changes,state.armor_passives and state.armor_passives(),log,state.one_line and state.one_line());assert(combined,reason)
                 local coded,reason=D.codes(changes,state.codes and state.codes(),log);assert(coded,reason)
             end)
             local files={};for _,c in ipairs(changes) do files[#files+1]=c.name;G.free(c.plain) end
@@ -672,6 +677,10 @@ local function main()
         B.game_running=function() return I.game_running() end
         B.write_succeeded=function() return write_succeeded end
         B.install=function() return tr(dispatch('install')) end
+        B.install_task=function()
+            local message=tr(dispatch('install'))
+            return {ok=write_succeeded,message=message or ''}
+        end
         B.restore=function() return tr(dispatch('restore')) end
         B.merge_named=function(name,inputs)
             local p,n=G.open_sealed(assert(originals[name],'没有可信原版：'..tostring(name)))
@@ -948,7 +957,9 @@ local function main()
                 assert(changed~=nil,why)
                 ARM.frame(shim);paint_bar();shim.save_bmp(qa_output .. '/armor-values.bmp')
                 local function preflight(stacking)
-                    local changes,problems=D.diff();assert(#problems==0,'diff failed')
+                    local dropped=state.load_donors and state.load_donors() or 0
+            if dropped>0 then extra_warnings=extra_warnings or {};extra_warnings[#extra_warnings+1]=tostring(dropped).." 项资源超过载入上限，可能缺少射弹轨迹或无法始终携带。"end
+            local changes,problems=D.diff();assert(#problems==0,'diff failed')
                     if stacking then
                         local stacks,own_off,policy=AR.selection({}, {}, D.passives())
                         local ok,why=D.stack(changes,stacks,log,own_off,policy);assert(ok,why)

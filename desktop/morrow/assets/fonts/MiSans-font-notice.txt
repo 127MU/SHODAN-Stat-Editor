@@ -1,0 +1,6 @@
+MiSans font by Xiaomi.
+Official site: https://hyperos.mi.com/font/zh/
+Official license: https://hyperos.mi.com/font-download/MiSans字体知识产权许可协议.pdf
+
+This application embeds the Regular weight, subsetted for Chinese, English and symbols.
+Copyright and font naming records from the source font are retained.

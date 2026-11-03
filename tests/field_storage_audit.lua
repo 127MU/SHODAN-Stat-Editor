@@ -11,7 +11,17 @@ for _,mode in ipairs({false,true})do
     count=count+1
     if row.storage=='f32'and p.field.storage~='virtual'then
       floats=floats+1
-      if row.mult and p.field.storage~='f32' then scaled_integer_parts=scaled_integer_parts+1
+      if row.drain and p.field.storage=='u32' then
+        local ratefield=row.drain.parts[1].field
+        assert(ratefield.storage=='f32','Bleed drain must be a float')
+        local rt=QA_TABLES[ratefield.kind];local rate=tonumber(ffi.cast('float*',rt.copies[1]+24+ratefield.offset)[0])
+        assert(rate>0,'Derived bleed time requires a positive drain')
+        if row.parts[1]==p then
+            local pt=QA_TABLES[p.field.kind];local health=tonumber(ffi.cast('uint32_t*',pt.copies[1]+24+p.field.offset)[0])
+            assert(math.abs(shown[row_index].value-health/rate)<1e-5,'Bleed-time UI does not match health / drain')
+        end
+        scaled_integer_parts=scaled_integer_parts+1
+      elseif row.mult and p.field.storage~='f32' then scaled_integer_parts=scaled_integer_parts+1
       elseif p.field.storage~='f32'then mismatches[#mismatches+1]={owner=item.name,row=row.label,part=p.id,kind=p.field.kind,offset=p.field.offset,actual=p.field.storage,expected=row.storage}end
       local b=blocks[p.field.kind]
       if not b and QA_TABLES[p.field.kind] then local t=QA_TABLES[p.field.kind];b={p=ffi.cast('uint8_t*',t.copies[1]+24),n=t.payload} end

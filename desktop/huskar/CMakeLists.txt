@@ -27,17 +27,14 @@ if(NOT eui_helpers_POPULATED)
 endif()
 set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(${eui_helpers_SOURCE_DIR}/3rd/zlib-1.3.1 ${CMAKE_BINARY_DIR}/zlib EXCLUDE_FROM_ALL)
-qt_add_executable(shodan_huskar main.cpp controller.cpp controller.h war_proxy.cpp war_proxy.h
+qt_add_executable(shodan_huskar main.cpp controller.cpp controller.h
  ../eui/bridge.cpp ../eui/mcp_server.cpp ../eui/release_update.cpp
  ../eui/mod_zip.cpp ../eui/patch_mods.cpp
  ${eui_helpers_SOURCE_DIR}/core/platform/json.cpp
  ${eui_helpers_SOURCE_DIR}/3rd/yyjson-0.12.0/src/yyjson.c)
 configure_file(${huskar_SOURCE_DIR}/gallery/qml/Controls/GradientFlowEffect.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml COPYONLY)
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml PROPERTIES QT_RESOURCE_ALIAS GalleryFlow.qml)
-qt_add_resources(shodan_huskar ui PREFIX "/shodan" FILES CatalogGroups.js GroupedCatalog.qml Main.qml Workspace.qml HomePage.qml CatalogPage.qml EditorPage.qml FieldEditor.qml DiagnosticDialog.qml MaterialCard.qml SmoothWheel.qml ArmorPage.qml SettingsPage.qml GameTweaksPage.qml WarProxyPage.qml QaRunner.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml)
-set_source_files_properties(../../offline/war_status_addon.py PROPERTIES QT_RESOURCE_ALIAS war_status_addon.py)
-set_source_files_properties(../../assets/war_catalog.json PROPERTIES QT_RESOURCE_ALIAS war_catalog.json)
-qt_add_resources(shodan_huskar war_addon PREFIX "/shodan" FILES ../../offline/war_status_addon.py ../../assets/war_catalog.json)
+qt_add_resources(shodan_huskar ui PREFIX "/shodan" FILES CatalogGroups.js GroupedCatalog.qml Main.qml Workspace.qml HomePage.qml CatalogPage.qml EditorPage.qml FieldEditor.qml DiagnosticDialog.qml MaterialCard.qml SmoothWheel.qml ArmorPage.qml SettingsPage.qml GameTweaksPage.qml QaRunner.qml ${CMAKE_CURRENT_BINARY_DIR}/GalleryFlow.qml)
 qt_add_shaders(shodan_huskar gallery_flow PREFIX "/Gallery/shaders" BASE "${huskar_SOURCE_DIR}/gallery/shaders" FILES "${huskar_SOURCE_DIR}/gallery/shaders/effect2.vert" "${huskar_SOURCE_DIR}/gallery/shaders/effect2.frag")
 target_include_directories(shodan_huskar PRIVATE ../eui ../eui/lua
  ${eui_helpers_SOURCE_DIR}/include ${eui_helpers_SOURCE_DIR}/3rd/yyjson-0.12.0/src
@@ -52,17 +49,3 @@ target_link_libraries(shodan_huskar PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::
  HuskarUIBasic ${CMAKE_CURRENT_BINARY_DIR}/liblua51.a zlibstatic ws2_32 bcrypt winhttp comdlg32 crypt32)
 target_compile_definitions(shodan_huskar PRIVATE NOMINMAX HUSKAR_IMPORT_PATH="${CMAKE_BINARY_DIR}/HuskarUI/qml")
 set_target_properties(shodan_huskar PROPERTIES OUTPUT_NAME "SHODAN Huskar" WIN32_EXECUTABLE TRUE)
-add_executable(shodan_steam_bridge WIN32 steam_bridge.cpp)
-set_target_properties(shodan_steam_bridge PROPERTIES AUTOMOC OFF OUTPUT_NAME "shodan-steam-bridge")
-target_link_libraries(shodan_steam_bridge PRIVATE shell32 ws2_32)
-if(MINGW)
- target_link_options(shodan_steam_bridge PRIVATE -municode -static -static-libgcc -static-libstdc++)
-endif()
-option(SHODAN_PROXY_TESTS "Build isolated war proxy adapter tests" OFF)
-if(SHODAN_PROXY_TESTS)
- qt_add_executable(test_war_proxy ../../tests/test_war_proxy.cpp war_proxy.cpp war_proxy.h)
- add_dependencies(test_war_proxy shodan_steam_bridge)
- target_include_directories(test_war_proxy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
- target_link_libraries(test_war_proxy PRIVATE Qt6::Widgets Qt6::Network crypt32)
- qt_add_resources(test_war_proxy proxy_test_resource PREFIX "/shodan" FILES ../../offline/war_status_addon.py ../../assets/war_catalog.json)
-endif()
