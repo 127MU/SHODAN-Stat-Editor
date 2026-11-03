@@ -1,4 +1,5 @@
 //! Typed little-endian numeric editing. Baselines are immutable original bytes.
+pub mod baseline;
 pub mod correction;
 pub mod dlbin;
 pub mod document;

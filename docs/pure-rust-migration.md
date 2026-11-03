@@ -26,6 +26,8 @@
 
 ## 验证
 
+新增原生 `baseline` 模块：仅接受清单中六份原值文件的固定 SHA-256 指纹；按数据块类型和记录 ID/哈希读取原值，不使用当前文件的行位置推断默认值。记录重排、新增记录、重复 ID 和越界字段均有独立检查。指纹验证不代替游戏版本核对；此模块尚未接入正式界面的恢复按钮。
+
 ```sh
 cargo test --workspace
 cargo build --release --bin shodan-native
