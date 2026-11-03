@@ -94,6 +94,7 @@ labels["Back right wheel hub"]="右后轮毂"
 labels["MORGUNSON HOLO-SIGHT"]="莫枪森全息瞄具"
 labels["P-34 Breacher"]="P-34 爆破者"
 labels["0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s."]="0：立即引爆。RL-77 延迟 0.2 秒；P-34 爆破者先粘附并燃烧，延迟 1 秒。"
+labels["RE-824 Bearer of the Standard"]="RE-824（中文名称待核对）"
 local lower={};for k,v in pairs(labels) do lower[k:lower()]=v end
 local M={}
 function M.translate(text,recurse)
@@ -117,6 +118,10 @@ function M.translate(text,recurse)
   end
  end
  if not recurse then return end
+ local helmet=text:match('^Helmet: (.+)$')
+ if helmet then return '头盔：'..recurse(helmet) end
+ local cape=text:match('^Cape: (.+)$')
+ if cape then return '披风：'..recurse(cape) end
  local tier=text:match('^SEAF MK(%d+)$')
  if tier then return '超级地球武装部队 MK'..tier end
  local carried=text:match('^(.-)（背包）$')

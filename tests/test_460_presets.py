@@ -8,6 +8,12 @@ lua=LuaRuntime();lua.globals().SHODAN_EUI=True;lua.execute('arg={...}',(root/'sr
 lua.execute(r"""
 require('install').write_files=function()error('Game writes forbidden')end
 require('armory').profiles={};require('armory').dirty=false
+local divers=B.items('Helldiver','');assert(#divers==1,'Missing direct Helldiver page')
+for _,w in ipairs(B.items('Armors',''))do
+    assert(w.id~=divers[1].id,'Duplicate Helldiver in armor catalog')
+    assert(not w.name:match('Helmet:') and not w.name:match('Cape:'),'Untranslated equipment prefix')
+end
+B.select(divers[1].id);assert(#B.rows()>0,'Helldiver page lost parameters')
 local owner,first
 for _,w in ipairs(B.items('Armors',''))do local info=B.armor_item(w.id);if info.available then owner=w;first=info;break end end
 assert(owner,'No per-armor page')

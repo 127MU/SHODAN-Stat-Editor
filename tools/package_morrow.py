@@ -8,6 +8,8 @@ def main():
  ui=ROOT/'desktop/morrow/build/windows/x64/runner/Release';host=ROOT/'target/release/shodan-core.exe'
  if not (ui/'shodan_desktop.exe').exists() or not host.exists():p.error('Build Flutter release and cargo build --release first')
  shutil.copytree(ui,a.output)
+ from verify_material_icons import verify_material_icons
+ icons,repaired=verify_material_icons(ROOT,a.output)
  for f in a.output.rglob('*'):
   if f.is_file() and f.suffix.lower() in ('.pdb','.lib','.exp','.ilk'):f.unlink()
  (a.output/'shodan_desktop.exe').rename(a.output/'SHODAN 数值编辑器.exe')

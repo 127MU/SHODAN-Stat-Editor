@@ -34422,8 +34422,10 @@ if MOD.offline then
         ui.tab=tab;ui.search.text=query or ''
         local out={}
         for _,w in ipairs(weapons_in(query and query~='' and '?search' or tab)) do
+            if not (tab=='Armors' and w.player) then
             state.desktop.registry[w.hash]=w
             out[#out+1]={id=w.hash,name=MOD.desktop_name(w),english=w.name,groups=MOD.desktop_groups(w),note=settings.tr(w.note or ''),english_note=w.note or '',changed=modified(w)}
+            end
         end
         return out
     end
