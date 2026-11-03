@@ -34433,13 +34433,15 @@ if MOD.offline then
         local w=state.desktop.registry[hash] or by_hash[hash]
         assert(w,'找不到此数据记录');select_weapon(w);return true
     end
-    function state.desktop.rows(requested)
+    function state.desktop.rows(requested,include_shared,defer_patch)
         if ui.weapon and ui.weapon.stratagem and ui.weapon.stratagem.drone then resolve(ui.weapon) end
         local out={}
-        local impact=require('desktop_features');local index=impact.shared_index(by_hash)
+        local impact=require('desktop_features');local index=include_shared~=false and impact.shared_index(by_hash) or nil
         for n,row in ipairs(ui.weapon and ui.weapon.rows or {}) do
             if not requested or requested[n] then
-            local v,d=row_value(row),row_value(row,true)
+            local patch_pending=defer_patch and (row.choice=='resomode' or row.choice=='smmode')
+            local v,d
+            if patch_pending then v,d=0,0 else v,d=row_value(row),row_value(row,true) end
             local faction_value=ui.weapon.enemy and not ui.weapon.enemy.faction and MOD.enemy.by_all_value(row)
             local faction_only=type(faction_value)=='number' and d~=nil and math.abs(faction_value-d)>1e-4
             if faction_only then v=faction_value end
@@ -34450,7 +34452,9 @@ if MOD.offline then
                 help[#help+1]=settings.tr(line)
             end
             local note=row.note
-            if type(note)=='function' then local ok,text=pcall(note,MOD._migration_shared_with(ui.weapon,row));note=ok and text or '' end
+            if type(note)=='function' then
+                if patch_pending then note='' else local ok,text=pcall(note,MOD._migration_shared_with(ui.weapon,row));note=ok and text or '' end
+            end
             if type(note)=='string' and note~='' then help[#help+1]=settings.tr(note) end
             local inline_note=row.inline_note or ''
             if type(inline_note)=='function' then local ok,text=pcall(inline_note);inline_note=ok and text or '' end
@@ -34495,6 +34499,7 @@ if MOD.offline then
             local reference=row.choice=='package' or row.choice=='rackitem' or row.choice=='mountitem' or row.choice=='dogweapon' or row.choice=='dogmag'
             local default_text=row.code and MOD.code.text(d) or settings.tr(fmt(d,row.storage))
             local value_text=row.code and MOD.code.text(v) or settings.tr(fmt(v,row.storage))
+            if patch_pending then value_text,default_text,choice_name='待检查','待检查','打开分类后检查' end
             if row.hash32 then
                 value_text=string.format('0x%08X',v)
                 default_text=type(d)=='number' and string.format('0x%08X',d) or '未知'
@@ -34515,10 +34520,23 @@ if MOD.offline then
                 baseline_source=d==nil and '基准不可用' or '恢复基准（备份/版本数据）',
                 projectile_source=row.choice==true,projectile_conflict=projectile_conflict,choice=not not row.choice,choice_kind=type(row.choice)=='string' and row.choice or '',choice_name=choice_name,flag=row.storage=='flag' or row.storage=='bit',min=nil,max=nil,
                 note=settings.tr(type(note)=='string' and note or ''),inline_note=settings.tr(inline_note),help=help,faction_only=faction_only,changed=(v~=d and not faction_only) or ui.weapon.enemy and MOD.enemy.pinned(row) or false,
-                shared=impact.shared(ui.weapon,row.parts,settings.tr,index)}
+                shared=include_shared~=false and impact.shared(ui.weapon,row.parts,settings.tr,index) or nil,
+                shared_pending=include_shared==false,patch_pending=not not patch_pending}
             end
         end
         return out
+    end
+    -- Catalog-to-parameter navigation must not enumerate the entire shared-user
+    -- graph. The exact same values/defaults are returned; the UI requests shared
+    -- impact through `shared` only when the user opens that report.
+    function state.desktop.rows_fast() return state.desktop.rows(nil,false,true) end
+    function state.desktop.rows_section(section)
+        assert(type(section)=='string','分类名称无效')
+        local requested={}
+        for n,row in ipairs(ui.weapon and ui.weapon.rows or {})do
+            if settings.tr(row.section or '')==section then requested[n]=true end
+        end
+        return state.desktop.rows(requested,false)
     end
     function state.desktop.rows_delta(n)
         local rows=ui.weapon and ui.weapon.rows or {}

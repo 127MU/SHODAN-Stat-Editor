@@ -682,6 +682,11 @@ local function main()
             return {ok=write_succeeded,message=message or ''}
         end
         B.restore=function() return tr(dispatch('restore')) end
+        B.restore_task=function()
+            write_succeeded=false
+            local message=tr(dispatch('restore'))
+            return {ok=write_succeeded,message=message or ''}
+        end
         B.merge_named=function(name,inputs)
             local p,n=G.open_sealed(assert(originals[name],'没有可信原版：'..tostring(name)))
             assert(p,n);local base=ffi.string(p,n);G.free(p)

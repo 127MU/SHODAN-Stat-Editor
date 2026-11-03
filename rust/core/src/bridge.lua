@@ -22,7 +22,7 @@ local function encode(v,depth,array)
  end
  error('不支持的数据类型 '..t)
 end
-local arrays={items=true,rows=true,choices=true,full_presets=true,armor_rows=true,pending_preview=true}
+local arrays={items=true,rows=true,rows_fast=true,rows_section=true,shared=true,choices=true,full_presets=true,armor_rows=true,pending_preview=true}
 SHODAN_EUI_PROGRESS=function(stage,done,total)
  if stage=='Installing: finding what changed...' then stage='正在核对修改内容'
  elseif stage=='Installing: writing the files...' then stage='正在写入游戏文件'

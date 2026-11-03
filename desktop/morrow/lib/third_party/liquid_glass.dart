@@ -87,8 +87,10 @@ class LiquidGlassSurface extends StatefulWidget {
     this.readable = false,
     this.transparentCanvas = true,
     this.material,
+    this.liveResize = false,
   });
   final GlassMaterial? material;
+  final bool liveResize;
   final Widget child;
   final Color tint;
   final bool dark, canvas, readable;
@@ -133,6 +135,7 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
   void didUpdateWidget(LiquidGlassSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_needsRefraction) _resetInteraction();
+    if (widget.liveResize) _resetInteraction();
     if (_filterEnabled &&
         _needsRefraction &&
         _shader == null &&
@@ -148,6 +151,7 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
   }
 
   bool get _motionEnabled =>
+      !widget.liveResize &&
       !MediaQuery.disableAnimationsOf(context) &&
       TickerMode.valuesOf(context).enabled;
 
@@ -256,7 +260,7 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
             ? null
             : (_) => _light.value = const Offset(-.65, -.8),
         child: CustomPaint(
-          painter: widget.canvas
+          painter: widget.canvas || widget.liveResize
               ? null
               : _OuterGlassShadowPainter(
                   borderRadius: widget.borderRadius,
@@ -273,14 +277,26 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
                     child: AnimatedBuilder(
                       animation: _optics,
                       builder: (_, _) => LayoutBuilder(
-                        builder: (_, constraints) => BackdropFilter.grouped(
-                          filter: _filter(constraints.biggest, material),
-                          child: DecoratedBox(
-                            decoration: material.decoration.copyWith(
-                              boxShadow: const [],
-                            ),
-                          ),
-                        ),
+                        builder: (_, constraints) => widget.liveResize
+                            ? DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: widget.tint.withValues(alpha: .94),
+                                  borderRadius: widget.borderRadius,
+                                  border: Border.all(
+                                    color: widget.dark
+                                        ? Colors.white24
+                                        : Colors.white70,
+                                  ),
+                                ),
+                              )
+                            : BackdropFilter.grouped(
+                                filter: _filter(constraints.biggest, material),
+                                child: DecoratedBox(
+                                  decoration: material.decoration.copyWith(
+                                    boxShadow: const [],
+                                  ),
+                                ),
+                              ),
                       ),
                     ),
                   ),
@@ -295,7 +311,7 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
                           light: _light.value,
                           dark: widget.dark,
                           canvas: widget.canvas,
-                          intensity: material.liquid,
+                          intensity: widget.liveResize ? 0 : material.liquid,
                           press: _press.value,
                         ),
                       ),

@@ -1,6 +1,7 @@
 #include "flutter_window.h"
 
 #include <optional>
+#include <dwmapi.h>
 #include <flutter/standard_method_codec.h>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -14,6 +15,11 @@ bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
   }
+  // Windows 11 rounds the actual HWND, including the custom title bar. Older
+  // systems may reject this attribute; keep their normal window behavior.
+  const DWORD corner_preference = 2;  // DWMWCP_ROUND
+  ::DwmSetWindowAttribute(GetHandle(), 33, &corner_preference,
+                         sizeof(corner_preference));
 
   RECT frame = GetClientArea();
 

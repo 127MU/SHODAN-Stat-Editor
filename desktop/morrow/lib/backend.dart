@@ -108,7 +108,11 @@ class Backend {
         Duration(
           minutes: method == 'install_task'
               ? 20
-              : method == 'install_preview'
+              : [
+                  'install_preview',
+                  'diagnostic_resources',
+                  'ragdoll_apply',
+                ].contains(method)
               ? 5
               : 1,
         ),
