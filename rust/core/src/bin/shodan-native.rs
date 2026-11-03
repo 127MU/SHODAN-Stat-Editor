@@ -9,6 +9,12 @@ fn run() -> Result<(), String> {
         .next()
         .ok_or("缺少操作：inspect / inspect-sealed / seal-copy / unseal-copy")?;
     let command = command.to_str().ok_or("无效的操作名称")?;
+    if command == "--stdio" {
+        if args.next().is_some() {
+            return Err("参数过多".into());
+        }
+        return shodan_core::native_api::serve(std::io::stdin().lock(), std::io::stdout().lock());
+    }
     if command == "prepare-copy" {
         let snapshot = args.next().ok_or("缺少修改前的明文快照")?;
         let edited = args.next().ok_or("缺少修改后的明文数据")?;

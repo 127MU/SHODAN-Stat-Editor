@@ -80,6 +80,10 @@ impl Session {
     pub fn pending_count(&self) -> usize {
         self.document.pending_count()
     }
+
+    pub fn snapshot(&self) -> &[u8] {
+        self.document.snapshot()
+    }
     pub fn render(&self, current_disk: &[u8]) -> Result<Vec<u8>, String> {
         self.document.render(current_disk).map_err(str::to_string)
     }

@@ -1,0 +1,177 @@
+//! Line-delimited JSON transport for the Rust-only editing engine.
+//! No Lua fallback, installation or implicit game-directory writes.
+use crate::{
+    baseline::Baseline,
+    session::{Field, Session},
+    tables::{Key, Layout},
+    Kind,
+};
+use serde_json::{json, Value};
+use std::{
+    fs,
+    io::{BufRead, Write},
+    path::PathBuf,
+};
+
+#[derive(Default)]
+pub struct Api {
+    active: Option<(Session, PathBuf)>,
+}
+fn number(v: &Value, key: &str) -> Result<usize, String> {
+    usize::try_from(
+        v[key]
+            .as_u64()
+            .ok_or_else(|| format!("缺少有效整数：{key}"))?,
+    )
+    .map_err(|_| "整数超出平台范围".into())
+}
+fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str, String> {
+    v[key].as_str().ok_or_else(|| format!("缺少文本：{key}"))
+}
+fn field(v: &Value) -> Result<Field, String> {
+    let record = text(v, "record")?;
+    let record = if let Some(id) = record.strip_prefix("id:") {
+        Key::Id(id.parse().map_err(|_| "记录 ID 无效")?)
+    } else if let Some(hash) = record.strip_prefix("hash:") {
+        Key::Hash(u64::from_str_radix(hash, 16).map_err(|_| "记录哈希无效")?)
+    } else {
+        return Err("记录必须使用 id: 或 hash: 前缀".into());
+    };
+    let kind = match text(v, "kind")? {
+        "f32" => Kind::F32,
+        "u32" => Kind::U32,
+        "i32" => Kind::I32,
+        _ => return Err("不支持的字段类型".into()),
+    };
+    Ok(Field {
+        block: number(v, "block")?,
+        record,
+        relative: number(v, "relative")?,
+        kind,
+    })
+}
+impl Api {
+    pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
+        let method = text(request, "method")?;
+        let p = &request["params"];
+        if method == "info" {
+            return Ok(
+                json!({"runtime":"rust-native","version":"4.6.0","lua":false,"installation":false}),
+            );
+        }
+        if method == "close" {
+            self.active = None;
+            return Ok(json!(true));
+        }
+        if method == "open" {
+            let path = PathBuf::from(text(p, "path")?);
+            let bytes = fs::read(&path).map_err(|_| "无法读取数据文件")?;
+            let baseline = if p["baseline_path"].is_null() {
+                None
+            } else {
+                let filename = text(p, "baseline_name")?;
+                let bytes = fs::read(text(p, "baseline_path")?).map_err(|_| "无法读取原值文件")?;
+                Some(Baseline::shipped(filename, bytes)?)
+            };
+            let blocks = crate::dlbin::index(&bytes).map_err(|e| e.to_string())?;
+            let report = json!({"blocks":blocks.iter().enumerate().map(|(index,b)|json!({"index":index,"type":format!("{:08X}",b.type_id),"bytes":b.payload.len()})).collect::<Vec<_>>()});
+            let session = Session::new(bytes, baseline)?;
+            self.active = Some((session, path));
+            return Ok(report);
+        }
+        let (session, path) = self.active.as_mut().ok_or("请先打开数据文件")?;
+        match method {
+            "index" => {
+                let layout = match text(p, "layout")? {
+                    "rows" => Layout::Rows {
+                        stride: number(p, "stride")?,
+                        id_offset: number(p, "id_offset")?,
+                    },
+                    "keyed" => Layout::Keyed {
+                        stride: number(p, "stride")?,
+                        slack: number(p, "slack")?,
+                    },
+                    _ => return Err("未知表布局".into()),
+                };
+                session.index_table(number(p, "block")?, layout)?;
+                Ok(json!(true))
+            }
+            "get" => {
+                let value = session.value(field(p)?)?;
+                Ok(json!({"value":value.current,"original":value.original}))
+            }
+            "set" => {
+                session.set(field(p)?, p["value"].as_f64().ok_or("数值无效")?)?;
+                Ok(json!({"pending":session.pending_count()}))
+            }
+            "restore" => {
+                session.restore(field(p)?)?;
+                Ok(json!({"pending":session.pending_count()}))
+            }
+            "preview" => Ok(json!({"pending":session.pending_count(),"installed":false})),
+            "export-copy" => {
+                // Re-read before export: external tools must not be overwritten by stale edits.
+                let current = fs::read(path).map_err(|_| "无法重新读取磁盘快照")?;
+                let edited = session.render(&current)?;
+                let mut output = fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(text(p, "path")?)
+                    .map_err(|_| "无法创建新文件，不会覆盖已有文件")?;
+                output
+                    .write_all(&edited)
+                    .and_then(|_| output.sync_all())
+                    .map_err(|_| "导出写入失败")?;
+                Ok(
+                    json!({"bytes":edited.len(),"sha256":crate::hash::sha256_hex(&edited),"installed":false,"sealed":false}),
+                )
+            }
+            _ => Err(format!("未提供原生接口：{method}")),
+        }
+    }
+}
+pub fn serve(input: impl BufRead, mut output: impl Write) -> Result<(), String> {
+    let mut api = Api::default();
+    for line in input.lines() {
+        let line = line.map_err(|_| "请求读取失败")?;
+        let parsed = if line.len() > 1_048_576 {
+            Err("请求过大".to_string())
+        } else {
+            serde_json::from_str::<Value>(&line).map_err(|_| "请求 JSON 无效".to_string())
+        };
+        let id = parsed
+            .as_ref()
+            .ok()
+            .and_then(|r| r.get("id"))
+            .cloned()
+            .unwrap_or(Value::Null);
+        let result = parsed.and_then(|r| api.invoke(&r));
+        let response = match result {
+            Ok(value) => json!({"id":id,"ok":true,"result":value}),
+            Err(e) => json!({"id":id,"ok":false,"error":e}),
+        };
+        writeln!(output, "{response}")
+            .and_then(|_| output.flush())
+            .map_err(|_| "响应写入失败")?;
+    }
+    Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn transport_preserves_ids_and_recovers_after_bad_requests() {
+        let input=b"bad\n{\"id\":7,\"method\":\"get\",\"params\":{}}\n{\"id\":\"hello\",\"method\":\"info\"}\n";
+        let mut output = Vec::new();
+        serve(&input[..], &mut output).unwrap();
+        let replies: Vec<Value> = String::from_utf8(output)
+            .unwrap()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+        assert_eq!(replies[0]["ok"], false);
+        assert_eq!(replies[1]["id"], 7);
+        assert_eq!(replies[2]["id"], "hello");
+        assert_eq!(replies[2]["result"]["lua"], false);
+    }
+}
