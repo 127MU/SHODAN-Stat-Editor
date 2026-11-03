@@ -90,6 +90,12 @@ impl Api {
         }
         let (session, path) = self.active.as_mut().ok_or("请先打开数据文件")?;
         match method {
+            "history" => {
+                let (undo, redo) = session.history();
+                Ok(json!({"undo":undo,"redo":redo}))
+            }
+            "undo" => Ok(json!({"changed":session.undo(),"pending":session.pending_count()})),
+            "redo" => Ok(json!({"changed":session.redo(),"pending":session.pending_count()})),
             "index" => {
                 let layout = match text(p, "layout")? {
                     "rows" => Layout::Rows {

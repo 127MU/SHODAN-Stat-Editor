@@ -45,6 +45,12 @@ impl Document {
     pub fn snapshot(&self) -> &[u8] {
         &self.snapshot
     }
+    pub(crate) fn checkpoint(&self) -> BTreeMap<usize, [u8; 4]> {
+        self.pending.clone()
+    }
+    pub(crate) fn resume(&mut self, checkpoint: BTreeMap<usize, [u8; 4]>) {
+        self.pending = checkpoint;
+    }
 
     fn check_field(&self, offset: usize) -> Result<(), &'static str> {
         if !self.blocks.iter().any(|b| b.contains(offset, 4)) {

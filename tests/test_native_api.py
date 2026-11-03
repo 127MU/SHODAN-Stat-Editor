@@ -35,6 +35,11 @@ with tempfile.TemporaryDirectory(prefix="native-api-", dir=ROOT / "dist/build-te
         assert call("set", **field, value=1000000)["ok"]
         assert not call("apply-batch", fields=[dict(field,value=20),dict(field,value=30)])["ok"]
         assert call("get", **field)["result"]["value"] == 1000000
+        assert call("history")["result"] == dict(undo=1,redo=0)
+        assert call("undo")["result"]["changed"]
+        assert call("get", **field)["result"]["value"] == -2.5
+        assert call("redo")["result"]["changed"]
+        assert call("get", **field)["result"]["value"] == 1000000
         assert not call("apply-batch", fields=[dict(field,value=20),dict(field,record="id:999",value=30)])["ok"]
         assert call("get", **field)["result"]["value"] == 1000000
         portable = "SHODAN-PRESET 1\nkind full\nname e4b8ade69687\narmor 7061737369766573\nvalue FFFFFFFFFFFFFFFF slot1_strength 0.125\n"

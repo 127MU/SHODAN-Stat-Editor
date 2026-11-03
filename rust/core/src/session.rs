@@ -22,6 +22,8 @@ pub struct Session {
     document: Document,
     baseline: Option<Baseline>,
     tables: BTreeMap<usize, (Layout, Table)>,
+    undo: Vec<BTreeMap<usize, [u8; 4]>>,
+    redo: Vec<BTreeMap<usize, [u8; 4]>>,
 }
 impl Session {
     pub fn new(snapshot: Vec<u8>, baseline: Option<Baseline>) -> Result<Self, String> {
@@ -29,6 +31,8 @@ impl Session {
             document: Document::new(snapshot, None)?,
             baseline,
             tables: BTreeMap::new(),
+            undo: Vec::new(),
+            redo: Vec::new(),
         })
     }
     /// Index an explicit schema once. Refuse duplicate IDs rather than editing an arbitrary row.
@@ -65,10 +69,7 @@ impl Session {
         })
     }
     pub fn set(&mut self, field: Field, value: f64) -> Result<(), String> {
-        let offset = self.offset(field)?;
-        self.document
-            .set(offset, field.kind, value)
-            .map_err(str::to_string)
+        self.apply_batch(&[(field, value)])
     }
     pub fn restore(&mut self, field: Field) -> Result<(), String> {
         let original = self
@@ -82,7 +83,37 @@ impl Session {
             .iter()
             .map(|(f, v)| Ok((self.offset(*f)?, f.kind, *v)))
             .collect::<Result<Vec<_>, String>>()?;
-        self.document.set_batch(&edits).map_err(str::to_string)
+        let before = self.document.checkpoint();
+        self.document.set_batch(&edits).map_err(str::to_string)?;
+        if self.document.checkpoint() != before {
+            self.undo.push(before);
+            if self.undo.len() > 100 {
+                self.undo.remove(0);
+            }
+            self.redo.clear();
+        }
+        Ok(())
+    }
+    pub fn history(&self) -> (usize, usize) {
+        (self.undo.len(), self.redo.len())
+    }
+    pub fn undo(&mut self) -> bool {
+        if let Some(before) = self.undo.pop() {
+            self.redo.push(self.document.checkpoint());
+            self.document.resume(before);
+            true
+        } else {
+            false
+        }
+    }
+    pub fn redo(&mut self) -> bool {
+        if let Some(after) = self.redo.pop() {
+            self.undo.push(self.document.checkpoint());
+            self.document.resume(after);
+            true
+        } else {
+            false
+        }
     }
     pub fn pending_count(&self) -> usize {
         self.document.pending_count()
@@ -166,5 +197,46 @@ mod tests {
                 }
             )
             .is_err());
+    }
+    #[test]
+    fn history_treats_batches_as_one_action_and_preserves_redo_on_failure() {
+        let disk = fixture(false);
+        let mut s = Session::new(disk.clone(), None).unwrap();
+        s.index_table(
+            0,
+            Layout::Rows {
+                stride: 8,
+                id_offset: 0,
+            },
+        )
+        .unwrap();
+        let a = Field {
+            block: 0,
+            record: Key::Id(5),
+            relative: 4,
+            kind: Kind::F32,
+        };
+        let b = Field {
+            record: Key::Id(9),
+            ..a
+        };
+        s.apply_batch(&[(a, 10.0), (b, 20.0)]).unwrap();
+        assert_eq!(s.history(), (1, 0));
+        assert!(s.undo());
+        assert_eq!(s.render(&disk).unwrap(), disk);
+        assert!(s.set(a, f64::NAN).is_err());
+        assert_eq!(s.history(), (0, 1));
+        s.set(b, -2.5).unwrap();
+        assert_eq!(s.history(), (0, 1));
+        assert!(s.redo());
+        assert_eq!(s.value(a).unwrap().current, 10.0);
+        assert_eq!(s.value(b).unwrap().current, 20.0);
+        assert!(s.undo());
+        s.set(a, 30.0).unwrap();
+        assert!(!s.redo());
+        for n in 0..120 {
+            s.set(a, n as f64).unwrap();
+        }
+        assert_eq!(s.history(), (100, 0));
     }
 }
