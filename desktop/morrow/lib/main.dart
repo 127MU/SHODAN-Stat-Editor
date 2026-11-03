@@ -1,3 +1,5 @@
+import 'catalog_groups.dart';
+import 'group_chooser.dart';
 import 'editor_tools.dart';
 import 'game_tweaks.dart';
 import 'glass_theme.dart';
@@ -179,6 +181,19 @@ class _WorkbenchState extends State<Workbench> {
     } finally {
       if (mounted && ticket == epoch) setState(() => busy = false);
     }
+  }
+
+  Future<void> openCatalogGroup(CatalogGroup group) async {
+    if (busy) return;
+    if (group.entries.length == 1) {
+      await select(group.entries.single);
+      return;
+    }
+    final entry = await showDialog<Map>(
+      context: navigator.currentContext!,
+      builder: (_) => GroupChooser(group: group),
+    );
+    if (entry != null && mounted) await select(entry);
   }
 
   Future<void> select(Map item) async {
@@ -1450,17 +1465,12 @@ class _WorkbenchState extends State<Workbench> {
                                       ? LayoutBuilder(
                                           builder: (context, box) {
                                             const columns = 4;
-                                            final visible = items
-                                                .where(
-                                                  (x) =>
-                                                      x
-                                                          .toString()
-                                                          .toLowerCase()
-                                                          .contains(query) &&
-                                                      (!catalogOnlyChanged ||
-                                                          x['changed'] == true),
-                                                )
-                                                .toList();
+                                            final visible = buildCatalogGroups(
+                                              items,
+                                              tab,
+                                              query: query,
+                                              onlyChanged: catalogOnlyChanged,
+                                            );
                                             return GridView.builder(
                                               gridDelegate:
                                                   SliverGridDelegateWithFixedCrossAxisCount(
@@ -1472,7 +1482,7 @@ class _WorkbenchState extends State<Workbench> {
                                                   ),
                                               itemCount: visible.length,
                                               itemBuilder: (context, i) {
-                                                final item = visible[i] as Map;
+                                                final group = visible[i];
                                                 return surface(
                                                   Column(
                                                     crossAxisAlignment:
@@ -1480,7 +1490,7 @@ class _WorkbenchState extends State<Workbench> {
                                                             .start,
                                                     children: [
                                                       Text(
-                                                        item['name'] ?? '',
+                                                        group.name,
                                                         style: const TextStyle(
                                                           fontSize: 19,
                                                           fontWeight:
@@ -1491,7 +1501,9 @@ class _WorkbenchState extends State<Workbench> {
                                                             .ellipsis,
                                                       ),
                                                       Text(
-                                                        item['changed'] == true
+                                                        group.entries.length > 1
+                                                            ? '${group.entries.length} 个关联条目${group.changed ? ' · 含修改' : ''}'
+                                                            : group.changed
                                                             ? '已修改'
                                                             : '原版参数',
                                                       ),
@@ -1499,19 +1511,27 @@ class _WorkbenchState extends State<Workbench> {
                                                       Align(
                                                         alignment: Alignment
                                                             .centerRight,
-                                                        child:
-                                                            FilledButton.tonal(
-                                                              onPressed: () =>
-                                                                  select(item),
-                                                              child: const Text(
-                                                                '打开',
-                                                              ),
-                                                            ),
+                                                        child: FilledButton.tonal(
+                                                          onPressed: busy
+                                                              ? null
+                                                              : () =>
+                                                                    openCatalogGroup(
+                                                                      group,
+                                                                    ),
+                                                          child: Text(
+                                                            group
+                                                                        .entries
+                                                                        .length >
+                                                                    1
+                                                                ? '选择打开'
+                                                                : '打开',
+                                                          ),
+                                                        ),
                                                       ),
                                                     ],
                                                   ),
                                                   key: ValueKey(
-                                                    'item:${item['id']}',
+                                                    'item:${group.id}',
                                                   ),
                                                 );
                                               },
