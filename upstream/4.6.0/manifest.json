@@ -1,0 +1,13 @@
+{
+  "version": "4.6.0",
+  "source": "https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor/tree/v4.6.0",
+  "files": {
+    "src/stat_editor_offline.lua": "cadfe5b642f89240dcd34b2d40b376995d9d900bf3c70388665a6824880dce45",
+    "offline/host.lua": "2829d882b0f7558da6c1c7a58d8fb3deb42e6cb9993e4310c1dfd943e03c06f5",
+    "offline/hostdata.lua": "26fa8e080e46c1fc44441ad98e779cd660b254262c430a4d1af93d4ae670f0ad",
+    "offline/install.lua": "5e9bb29ef0babda6c6d58dd288047bb596881eae8c07b8a78991700ba45b68f2",
+    "offline/gamedata.lua": "16431058c64a0aef4628a1d13a7a75d43167ab9e8f0af7e7adf17d8e1da4ff7c",
+    "offline/vehicles.lua": "4484aa614e8f03d0c70020afae45f5264a56818f7759a770680f69f61f6f4b5a",
+    "LICENSE": "e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052"
+  }
+}

@@ -10,11 +10,22 @@
 
 [![最新发行版](https://img.shields.io/github/v/release/127MU/SHODAN-Stat-Editor?label=最新版本&color=1677ff)](https://github.com/127MU/SHODAN-Stat-Editor/releases/latest)
 [![许可](https://img.shields.io/badge/License-GPL--3.0-0b8b6b)](LICENSE)
-[![界面](https://img.shields.io/badge/UI-HuskarUI-8b5cf6)](https://github.com/mengps/HuskarUI)
+[![界面](https://img.shields.io/badge/UI-Morrow-8b5cf6)](https://github.com/StarrySky7D4/morrow)
 
 **[下载最新版](https://github.com/127MU/SHODAN-Stat-Editor/releases/latest)** · [使用方法](#快速开始) · [功能一览](#功能一览) · [反馈问题](https://github.com/127MU/SHODAN-Stat-Editor/issues) · [特别鸣谢](#特别鸣谢)
 
 </div>
+
+## 4.6.0 桌面界面
+
+新版采用 Morrow / Flutter 界面和 Rust 宿主，数据解析及写入仍通过 Lua 兼容层执行。主导航按工作类型整理，参数分类以四列卡片展示，点击“打开”在弹窗编辑。
+
+- 安装前检查和实际写入均有窗口内进度与动画，显示当前阶段、文件数及完成结果。
+- 设置中的“日志与诊断”可开启详细诊断、执行只读检查或导出 JSON 日志。日志保存在本地，不会自动上传。
+- MiSans 字体保留中英文，支持字号、自定义背景及卡片和弹窗的玻璃 / 磨砂材质。
+- 数值最多显示两位小数，底层原始精度保留；输入回车或离焦确认。
+
+详细迁移范围及尚待迁移的独立入口见 [迁移说明](docs/rust-morrow-migration.md)。下方截图和功能说明包含旧桌面版本内容。
 
 ![SHODAN 装备参数编辑界面](images/readme/editor.png)
 
@@ -62,10 +73,8 @@
 | 🧍 潜兵数值 | 调整生命值、部位、移动、耐力等现有可解析字段 |
 | 👾 敌人与生成 | 查看敌人单位，以及支持的增援、巡逻与生成参数 |
 | 🗂️ 数据库与预设 | 直接编辑弹丸、爆炸、电弧等记录；管理装备预设与全局方案 |
-| 🌐 变种（实验性） | 按名称搜索星球与效果，管理独立方案，通过 HTTP／Steam 桥接应用战况效果 |
 | 🎨 外观与设置 | 深浅主题、背景图片、字体、侧边栏、三列／四列、卡片材质与动画设置 |
 
-变种功能默认关闭，独立于数值修改的“写入游戏”。首次使用需要安装本机证书并设置 Steam 启动选项；使用方法见[变种与连接说明](docs/war-proxy-integration.md)。效果组合能否生成作战取决于当前游戏内容，不保证任意组合可用。
 
 页面按实际组件生成，**不是每件装备都拥有表中所有参数**。锁定、制导、喷流、过热、粘附等选项只会在对应记录存在时出现。
 
@@ -180,9 +189,7 @@
 
 **感谢持续分享研究过程、验证方法与工具，让后续开发能够建立在可核对的资料上。** 具体偏移和实验结论仍需按游戏 build 复验。
 
-### [deepseekv41flash / hd2-network-proxy](https://github.com/deepseekv41flash/hd2-network-proxy)
 
-感谢该项目公开分享战况响应、星球效果与战役机制的研究，以及代理实验记录、验证方法和工具，为本项目的变种功能开发与连接问题排查提供了参考依据。
 
 ### [deepseekv41flash / hd2-srkit](https://github.com/deepseekv41flash/hd2-srkit)
 

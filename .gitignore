@@ -18,3 +18,7 @@ __pycache__/
 build/
 desktop/eui/*.lib
 desktop/eui/*.exp
+
+/target/
+/desktop/morrow/.dart_tool/
+/desktop/morrow/build/

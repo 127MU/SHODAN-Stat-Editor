@@ -50,7 +50,6 @@ jobs:
           $runtime = "$env:RUNNER_TEMP\runtime\SHODAN_4.5.1-r1"
           New-Item -ItemType Directory -Force offline\runtime | Out-Null
           Copy-Item "$runtime\libsodium.dll" offline\runtime\
-          "SHODAN_PROXY_RUNTIME=$runtime\mitmproxy" >> $env:GITHUB_ENV
 
       - name: Build LuaJIT, the launcher and shodan_hash.dll
         shell: cmd
@@ -81,7 +80,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'CMake configure failed' }
           cmake --build build/huskar --parallel 2
           if ($LASTEXITCODE) { throw 'HuskarUI build failed' }
-          python tools/package_huskar.py --build-dir build/huskar --qt-dir "$env:QT_ROOT_DIR" --compiler-bin "$compiler" --huskar-root build/huskar/_deps/huskar-src --proxy-runtime "$env:SHODAN_PROXY_RUNTIME" --output-root dist/desktop
+          python tools/package_huskar.py --build-dir build/huskar --qt-dir "$env:QT_ROOT_DIR" --compiler-bin "$compiler" --huskar-root build/huskar/_deps/huskar-src --output-root dist/desktop
           if ($LASTEXITCODE) { throw 'Desktop packaging failed' }
           $release = Get-ChildItem dist/desktop -Directory | Where-Object Name -like 'SHODAN_*' | Select-Object -First 1
           python tools/package_onefile.py --release $release.FullName --compiler-bin "$compiler"

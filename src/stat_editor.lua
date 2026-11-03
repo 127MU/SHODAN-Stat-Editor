@@ -1,6 +1,6 @@
 -- HD2-Addon: mods/shodan/stat_editor
--- SHODAN Stat Editor v4.5.1-r2 by SHODAN. Run by SHODAN Stat Editor Offline (offline/host.lua).
-local MOD = { global = 'ShodanStatEditor', title = 'SHODAN Stat Editor', version = '4.5.1-r2', author = 'SHODAN', log = 'SHODANStatEditor.log' }
+-- SHODAN Stat Editor v4.6.0 by SHODAN. Run by SHODAN Stat Editor Offline (offline/host.lua).
+local MOD = { global = 'ShodanStatEditor', title = 'SHODAN Stat Editor', version = '4.6.0', author = 'SHODAN', log = 'SHODANStatEditor.log' }
 -- magazines, heatsinks and ammunition types: the game's names, by the text id of the item (its English text)
 MOD.item_names = {
     [0x046FF548] = '5.5x50mm Ripper',
@@ -488,7 +488,7 @@ MOD.kit_names = {
     [0xE85E6600] = 'AC-2 Obedient',
     [0xE867121D] = 'CPR-80 Bulwark',
     [0xE9248FAC] = 'GS-17 Frontier Marshall',
-    [0xECA42A1F] = '',
+    [0xECA42A1F] = 'RE-824 Bearer of the Standard',
     [0xECB02294] = 'I-102 Draconaught',
     [0xEE8E36D3] = 'DP-53 Saviour of the Free',
     [0xF0ABC83F] = 'FS-38 Eradicator',
@@ -726,6 +726,26 @@ MOD.ENEMY_LIST = {
     { 'illuminate', 'structure', 'Warp Ship (invasion)', '', '2AD2E055DAD21F6E', '', '' },
     { 'illuminate', 'structure', 'Warp Gateway', '', '7DF314C744F0D935', '', '' },
     { 'terminids', 'structure', 'Infested Tower', '', 'AFC719AF96F10DC3', '', '' },
+    { 'automatons', 'enemy', 'Bunker Turret', 'Turret Small Autocannon', '9926876B2375A1BB', '0=back', '' },
+    { 'illuminate', 'enemy', 'Gazer Spire', 'Orbital Cannon', '262351741C53FF0C', '', '' },
+    { 'automatons', 'enemy', 'MG Raider', 'Entry 0034', '089833D2880D9E06', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'automatons', 'enemy', 'Trooper', 'Entry 0040', '09DFB04B2E578BC3', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'automatons', 'enemy', 'Commissar', 'Entry 0121', '1B5B9AC4F96B36E5', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'automatons', 'enemy', 'Rocket Raider', 'Entry 0185', '2A12104F2853AE16', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'automatons', 'enemy', 'Hulk Bruiser', 'Entry 0235', '32CDEADA234FB8DF', '0=left_arm;1=right_arm;2=left_leg;3=right_leg;4=head;5=', '' },
+    { 'automatons', 'enemy', 'Trooper', 'Entry 0396', '52018DEB9AB6827E', '0=head;1=chest;2=left_arm;3=right_arm;4=backpack;5=leg_left', '' },
+    { 'automatons', 'enemy', 'Vox Engine', 'Entry 0459', '611BA777783B08A2', '0=', '' },
+    { 'automatons', 'enemy', 'Reinforced Scout Strider', 'Entry 0654', '9076EEED17FCEE35', '0=leg_left;1=leg_right;2=turret;3=torso', '' },
+    { 'automatons', 'enemy', 'Devastator', 'Entry 0658', '91EBD77931110AFC', '0=head;1=chest;2=boss;3=pelvis;4=;5=;6=right_arm;7=left_arm;8=right_hip;9=right_hip;10=right_leg;11=left_leg;12=backpack', '' },
+    { 'illuminate', 'enemy', 'Cannon Turret', 'Entry 0673', '96110F9D6B010E02', '', '' },
+    { 'automatons', 'enemy', 'MG Raider', 'Entry 0747', 'A4552F97033392F4', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'automatons', 'enemy', 'Trooper', 'Entry 0790', 'AE57FCDB49F74E98', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'automatons', 'enemy', 'Trooper', 'Entry 0806', 'B056F8FC74ABA02D', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'automatons', 'enemy', 'MG Raider', 'Entry 0831', 'B4ED319B39F5457B', '0=head;1=chest;2=left_arm;3=right_arm;4=leg_right;5=leg_left', '' },
+    { 'terminids', 'enemy', 'Predator Stalker', 'Entry 0957', 'D1E990BAF22D5A52', '0=;1=;2=;3=;4=r_claw;5=l_claw;6=;7=;8=;9=wings', '' },
+    { 'automatons', 'enemy', 'Hulk Scorcher', 'Entry 1059', 'E44EC9F9B3FE1D2A', '0=left_arm;1=right_arm;2=left_leg;3=right_leg;4=head;5=', '' },
+    { 'automatons', 'enemy', 'Devastator', 'Entry 1166', 'FC8DEC78BE8AB47D', '0=head;1=chest;2=boss;3=pelvis;4=;5=;6=right_arm;7=left_arm;8=right_hip;9=right_hip;10=right_leg;11=left_leg;16=backpack', '' },
+    { 'terminids', 'enemy', 'Charger Behemoth', 'Entry 1169', 'FD5247653C897803', '0=head;1=body_rear;2=;3=torso_underside;4=torso_inside;5=;6=;7=;8=;9=;10=;11=;12=;13=;14=;15=;16=', '' },
     { 'seaf', 'enemy', 'SEAF Soldier', 'Variant 1', '75F7E96AF7DCD303', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
     { 'seaf', 'enemy', 'SEAF Soldier', 'Variant 2', '6B22AE8E5F669D4F', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
     { 'seaf', 'enemy', 'SEAF Soldier', 'Variant 3', 'A00331F24DEEF2EE', '0=head;1=torso;2=left_arm;3=right_arm;4=left_leg;5=right_leg', '' },
@@ -974,6 +994,7 @@ MOD.ENEMY_ANIM_KIND = {
     ['F540CA9D9D4A422E'] = 'ooooooooooooooooooooooooooooaaaaaaaaaaaaaaaaaaaaaoooohohooooooooooooohhhhoohhhhooooooooooooooooooaooaoooooooooooooo',
     ['F8131632AA867107'] = 'oooooooooooaaaaaaoooooooooohhhhhhoooooohhhhhhhoooooooooooooohhhhhohoooooooooo',
 }
+MOD.CODE_IDS = 'sway damage durable rpm all_health health mags_max mags_start all_damage capacity mags_supply all_sight all_speed cap ergonomics patrol_max reinf_budget stagger_resist stagger_resist_1 stagger_resist_2 stun_resist stun_resist_1 stun_resist_2 ap_direct ap_large ap_slight hearing pen_slowdown phys_mass reinf_rate zone4_health all_armor heat_cool patrol_rate reload_time cap_1 cap_2 cap_3 cap_4 cap_5 guard guard_1 guard_10 guard_11 guard_12 guard_13 guard_14 guard_15 guard_16 guard_17 guard_18 guard_19 guard_2 guard_20 guard_3 guard_4 guard_5 guard_6 guard_7 guard_8 guard_9 patrol_max_1 patrol_max_10 patrol_max_11 patrol_max_12 patrol_max_13 patrol_max_14 patrol_max_15 patrol_max_16 patrol_max_17 patrol_max_18 patrol_max_19 patrol_max_2 patrol_max_20 patrol_max_3 patrol_max_4 patrol_max_5 patrol_max_6 patrol_max_7 patrol_max_8 patrol_max_9 phys_com phys_front_damping phys_front_damping_2 phys_front_grip phys_front_grip_2 phys_front_radius phys_front_radius_2 phys_front_travel phys_front_travel_2 phys_handbrake phys_rear_damping phys_rear_damping_2 phys_rear_grip phys_rear_grip_2 phys_rear_radius phys_rear_radius_2 phys_rear_travel phys_rear_travel_2 reinf_budget_1 reinf_budget_10 reinf_budget_11 reinf_budget_12 reinf_budget_13 reinf_budget_14 reinf_budget_15 reinf_budget_16 reinf_budget_17 reinf_budget_18 reinf_budget_19 reinf_budget_2 reinf_budget_20 reinf_budget_3 reinf_budget_4 reinf_budget_5 reinf_budget_6 reinf_budget_7 reinf_budget_8 reinf_budget_9 rounds_max rounds_start rounds_supply slot spread_h spread_v traveler_size traveler_size_1 traveler_size_10 traveler_size_11 traveler_size_12 traveler_size_13 traveler_size_14 traveler_size_15 traveler_size_16 traveler_size_17 traveler_size_18 traveler_size_19 traveler_size_2 traveler_size_20 traveler_size_3 traveler_size_4 traveler_size_5 traveler_size_6 traveler_size_7 traveler_size_8 traveler_size_9 blast_inner blast_outer blast_shockwave cap_6 cooldown extra fuse guard_21 guard_22 guard_23 guard_24 passive_1 patrol_max_21 patrol_max_22 patrol_max_23 patrol_max_24 pellets phys_rpm phys_torque push reinf_budget_21 reinf_budget_22 reinf_budget_23 reinf_budget_24 reinf_rate_1 reinf_rate_10 reinf_rate_11 reinf_rate_12 reinf_rate_13 reinf_rate_14 reinf_rate_15 reinf_rate_16 reinf_rate_17 reinf_rate_18 reinf_rate_19 reinf_rate_2 reinf_rate_20 reinf_rate_3 reinf_rate_4 reinf_rate_5 reinf_rate_6 reinf_rate_7 reinf_rate_8 reinf_rate_9 stagger stagger_resist_3 status5_strength traveler_rate traveler_rate_1 traveler_rate_10 traveler_rate_11 traveler_rate_12 traveler_rate_13 traveler_rate_14 traveler_rate_15 traveler_rate_16 traveler_rate_17 traveler_rate_18 traveler_rate_19 traveler_rate_2 traveler_rate_20 traveler_rate_21 traveler_rate_22 traveler_rate_23 traveler_rate_24 traveler_rate_3 traveler_rate_4 traveler_rate_5 traveler_rate_6 traveler_rate_7 traveler_rate_8 traveler_rate_9 traveler_size_21 traveler_size_22 traveler_size_23 traveler_size_24 velocity armor blast_arc_damage blast_arc_durable bleed bleed_2 bp_ammo bp_ammo_supply bp_hover_fuel bp_recharge cap_7 drag gravity guard_25 guard_26 guard_27 guard_28 health_2 hearing_2 heat_cool_overheated heatlvl1_damage heatlvl1_durable heatlvl2_self heatlvl2_self_durable holster holster_1 holster_2 holster_3 holster_4 holster_5 holster_6 item2B798DFB_mags_max item2B798DFB_mags_start item2B798DFB_mags_supply item47E45B79_mags_max item47E45B79_mags_start item47E45B79_mags_supply item4F5D28F6_mags_max item4F5D28F6_mags_start item4F5D28F6_mags_supply itemAE7BADEF_mags_max itemAE7BADEF_mags_start itemAE7BADEF_mags_supply itemCA77DC98_mags_max itemCA77DC98_mags_start itemCA77DC98_mags_supply missile_deviation missile_deviation_1 missile_deviation_2 missile_deviation_3 missile_deviation_4 missile_deviation_5 missile_deviation_6 missile_deviation_7 mod_11A3C04C patrol_max_25 patrol_max_26 patrol_max_27 patrol_max_28 patrol_rate_1 patrol_rate_10 patrol_rate_11 patrol_rate_12 patrol_rate_13 patrol_rate_14 patrol_rate_15 patrol_rate_16 patrol_rate_17 patrol_rate_18 patrol_rate_19 patrol_rate_2 patrol_rate_20 patrol_rate_21 patrol_rate_22 patrol_rate_23 patrol_rate_24 patrol_rate_3 patrol_rate_4 patrol_rate_5 patrol_rate_6 patrol_rate_7 patrol_rate_8 patrol_rate_9 proj_fire proj_rounds recoil_ch recoil_cv recoil_dh recoil_dv reinf_budget_25 reinf_budget_26 reinf_budget_27 reinf_budget_28 reinf_rate_21 reinf_rate_22 reinf_rate_23 reinf_rate_24 reinf_rate_25 reinf_rate_26 reinf_rate_27 reinf_rate_28 rpm_1 rpm_3 seaf_reinf seaf_reinf_1 seaf_reinf_2 seaf_reinf_3 seaf_reinf_4 seaf_wave seaf_wave_1 seaf_wave_2 seaf_wave_3 seaf_wave_4 spawner_count spawner_count_1 spawner_count_10 spawner_count_11 spawner_count_12 spawner_count_13 spawner_count_14 spawner_count_15 spawner_count_16 spawner_count_17 spawner_count_18 spawner_count_19 spawner_count_2 spawner_count_20 spawner_count_21 spawner_count_22 spawner_count_23 spawner_count_24 spawner_count_3 spawner_count_4 spawner_count_5 spawner_count_6 spawner_count_7 spawner_count_8 spawner_count_9 spawner_production spawner_production_1 spawner_production_10 spawner_production_11 spawner_production_12 spawner_production_13 spawner_production_14 spawner_production_15 spawner_production_16 spawner_production_17 spawner_production_18 spawner_production_19 spawner_production_2 spawner_production_20 spawner_production_21 spawner_production_22 spawner_production_23 spawner_production_24 spawner_production_3 spawner_production_4 spawner_production_5 spawner_production_6 spawner_production_7 spawner_production_8 spawner_production_9 spawner_queue spawner_queue_1 spawner_queue_10 spawner_queue_11 spawner_queue_12 spawner_queue_13 spawner_queue_14 spawner_queue_15 spawner_queue_16 spawner_queue_17 spawner_queue_18 spawner_queue_19 spawner_queue_2 spawner_queue_20 spawner_queue_21 spawner_queue_22 spawner_queue_23 spawner_queue_24 spawner_queue_3 spawner_queue_4 spawner_queue_5 spawner_queue_6 spawner_queue_7 spawner_queue_8 spawner_queue_9 spawner_release spawner_release_1 spawner_release_10 spawner_release_11 spawner_release_12 spawner_release_13 spawner_release_14 spawner_release_15 spawner_release_16 spawner_release_17 spawner_release_18 spawner_release_19 spawner_release_2 spawner_release_20 spawner_release_21 spawner_release_22 spawner_release_23 spawner_release_24 spawner_release_3 spawner_release_4 spawner_release_5 spawner_release_6 spawner_release_7 spawner_release_8 spawner_release_9 speed speed_1 speed_2 speed_3 speed_4 speed_5 speed_6 stagger_resist_4 stationary stun_resist_3 stun_resist_4 throw_max throw_start traveler_rate_25 traveler_rate_26 traveler_rate_27 traveler_rate_28 traveler_size_25 traveler_size_26 traveler_size_27 traveler_size_28 windup zone0_armor zone10_armor zone11_armor zone16_health zone17_health zone17_health_2 zone1_health zone1_health_2 zone4_health_2 zone6_armor zone7_armor zone8_armor zone9_armor demolition ap_extreme slot1 slot2 slot3 slot3_strength slot4 slot4_strength slot2_strength infinite_ammo expiry_explosion impact_explosion slot1_strength one_handed suppressed suppressed_noise regen regen_delay scale scale_2 explosive infinite_ammo_2 code callin zone0_to_body faction zone0_fatal zone0_durable zone0_health sight sight_h sight_v retention retention_1 zone1_armor sight_side flinch flinch_recover sight_rear zone2_armor danger_radius blast_ap_direct blast_ap_extreme blast_ap_large blast_ap_slight blast_damage blast_demolition blast_durable blast_push blast_stagger recoil_h zone4_armor recoil_v zone1_durable zone1_fatal zone1_to_body zone2_health zone3_armor zone2_durable zone2_fatal zone2_to_body zone5_armor zone3_health projectile_2 zone4_durable zone4_fatal zone4_to_body zone3_durable zone3_fatal zone3_to_body zone5_health fire_taken fire_taken_1 move_2 move_3 recoil_h_alt recoil_v_alt move_1 zone5_durable zone5_fatal zone5_to_body gas_resist gas_resist_1 gas_resist_2 gas_taken gas_taken_1 move_4 always blast_shrapnel_count blast_shrapnel_projectile blast_angle fuse_delay fuse_proximity gas_resist_3 gas_resist_4 gas_taken_2 speed_7 zone6_health zone6_durable zone6_fatal zone6_to_body zone7_health move_5 pod_items zone7_durable zone7_fatal zone7_to_body zone8_health zone8_durable zone8_fatal zone8_to_body zone9_health zone10_health zone11_health zone9_durable zone9_fatal zone9_to_body zone12_armor zone12_health armor_2 regen_2 regen_delay_2 status5_ap_direct status5_ap_extreme status5_ap_large status5_ap_slight status5_damage status5_durable status5_duration zone10_durable zone10_fatal zone10_to_body zone11_durable zone11_fatal zone11_to_body durable_2 explosive_2 scale_2_2 speed_8 pickup_slot zone0_armor_2 zone0_durable_2 zone0_fatal_2 zone0_health_2 zone0_to_body_2 zone12_durable zone12_fatal zone12_to_body faction_2 uses zone13_armor zone13_health danger_radius_2 flinch_2 flinch_recover_2 retention_2 sight_2 sight_h_2 sight_rear_2 sight_side_2 sight_v_2 sight_zoom1 sight_zoom2 sight_zoom3 speed_9 zone1_armor_2 zone2_armor_2 zone2_health_2 fire_taken_2 move_1_2 move_2_2 move_3_2 speed_10 zone16_armor zone1_durable_2 zone1_fatal_2 zone1_to_body_2 zone2_durable_2 zone2_fatal_2 zone2_to_body_2 zone3_armor_2 zone4_armor_2 throw_distance zone14_armor zone14_health zone15_armor zone15_health zone3_durable_2 zone3_fatal_2 zone3_health_2 zone3_to_body_2 zone4_durable_2 zone4_fatal_2 zone4_to_body_2 zone5_armor_2 zone5_health_2 heat_shot speed_11 speed_12 throw_supply zone5_durable_2 zone5_fatal_2 zone5_to_body_2 heat_capacity rounds_capacity rounds_per_reload zone13_durable zone13_fatal zone13_to_body zone17_armor blast_slot1 blast_slot2 blast_slot2_strength blast_slot3 blast_slot3_strength blast_slot4 blast_slot4_strength gas_resist_5 gas_resist_6 gas_taken_3 move_4_2 zone18_armor zone18_health gas_resist_7 gas_resist_8 gas_taken_4 zone16_durable zone16_fatal zone16_to_body zone19_armor zone19_health zone20_armor zone21_armor zone22_armor zoom1 zoom2 zoom3 heatsinks_max heatsinks_start heatsinks_supply speed_13 speed_14 zone0_explosive zone14_durable zone14_fatal zone14_to_body zone15_durable zone15_fatal zone15_to_body zone20_health zone21_health zone22_health zone23_armor spray_cooldown spray_cost spray_mines spray_radius spray_warmup zone24_armor zone24_health zone25_armor stagger_resist_5 stagger_resist_6 zone17_durable zone17_fatal zone17_to_body zone25_health beam_range beam_ticks zone18_durable zone18_fatal zone18_to_body climb_h zone19_durable zone19_fatal zone19_to_body zone20_durable zone20_fatal zone20_to_body zone21_durable zone21_fatal zone21_to_body zone22_durable zone22_fatal zone22_to_body zone23_health armor_3 bleed_drain durable_3 explosive_3 faction_3 health_3 move_5_2 regen_3 regen_delay_3 scale_3 scale_3_2 zone23_durable zone23_fatal zone23_to_body zone_drain blast_slot1_strength climb_v zone1_explosive zone24_durable zone24_fatal zone24_to_body zone25_durable zone25_fatal zone25_to_body zone3_bleed zone9_explosive barrage_area barrage_delay barrage_drift_max barrage_drift_min barrage_height barrage_salvo_gap barrage_salvos barrage_shell barrage_shell_gap barrage_shell_random barrage_shells danger_radius_3 flinch_3 flinch_recover_3 heat_second reload_move retention_3 sight_3 sight_h_3 sight_rear_3 sight_side_3 sight_v_3 unit_armor unit_durable unit_health zone0_armor_3 zone0_durable_3 zone0_fatal_3 zone0_health_3 zone0_to_body_3 zone10_explosive zone11_explosive zone12_explosive zone2_explosive zone6_armor_2 zone6_explosive zone6_health_2 atk605_ap atk605_damage atk605_durable atk605_push atk605_stagger atk606_ap atk606_damage atk606_durable atk606_push atk606_stagger fire_taken_3 follow1 follow2 follow3 hearing_3 move_1_3 move_2_3 move_3_3 proj_ammo speed_15 stun_resist_5 stun_resist_6 unit_armor_z0 unit_durable_z0 unit_health_z0 winddown zone1_armor_3 zone1_durable_3 zone1_fatal_3 zone1_health_3 zone1_to_body_3 zone26_armor zone2_armor_3 zone2_durable_3 zone2_fatal_3 zone2_health_3 zone2_to_body_3 zone3_explosive zone4_armor_3 zone4_durable_3 zone4_fatal_3 zone4_to_body_3 zone6_durable_2 zone6_fatal_2 zone6_to_body_2 zone7_explosive eagle_approach eagle_approach_2 eagle_speed speed_16 speed_17 speed_18 unit_lifetime zone0_bleed zone3_armor_3 zone3_durable_3 zone3_fatal_3 zone3_to_body_3 zone4_health_3 zone5_armor_3 zone5_durable_3 zone5_explosive zone5_fatal_3 zone5_health_3 zone5_to_body_3 zone7_armor_2 zone7_health_2 zone8_explosive bp_charges bp_charges_start bp_charges_supply eagle_run_length gas_resist_10 gas_resist_11 gas_resist_12 gas_resist_9 gas_taken_5 gas_taken_6 move_4_3 rearm regen_phase unit_faction unit_search_max unit_search_min unit_sight zone26_health zone27_armor zone28_armor zone3_health_3 zone7_durable_2 zone7_fatal_2 zone7_to_body_2 zone8_armor_2 atk614_ap atk614_damage atk614_durable atk614_push atk614_stagger demolition3 missile_acceleration missile_cruise_speed missile_launch_speed missile_lifetime missile_min_speed move_8 speed_19 speed_20 stagger_resist_7 stagger_resist_8 status38_duration status38_strength unit_aim_down unit_aim_left unit_aim_right unit_aim_up unit_turn_h unit_turn_v zero1 zero2 zero3 zone4_explosive zone8_durable_2 zone8_fatal_2 zone8_health_2 zone8_to_body_2 zone9_armor_2 arm_armor arm_health atk594_ap atk594_damage atk594_durable atk594_push atk594_stagger charge_1 charge_2 charge_3 m2_ap_direct m2_ap_extreme m2_ap_large m2_ap_slight m2_damage m2_demolition m2_drag m2_durable m2_expiry_explosion m2_gravity m2_impact_explosion m2_pellets m2_pen_slowdown m2_push m2_slot1 m2_slot1_strength m2_slot2 m2_slot2_strength m2_slot3 m2_slot3_strength m2_slot4 m2_slot4_strength m2_stagger m2_velocity mul_damage_max mul_damage_min mul_pen_max mul_pen_min mul_range_max mul_range_min mul_speed_max mul_speed_min speed_21 unit_demolition zone13_explosive zone14_explosive zone27_health zone28_health zone29_armor zone29_health zone9_durable_2 zone9_fatal_2 zone9_health_2 zone9_to_body_2 arc_chain arc_range arc_split arm_zone_armor arm_zone_health atk611_ap atk611_damage atk611_durable atk611_push atk611_stagger eagle_bomb_gap eagle_pattern eagle_projectile m2_blast_angle m2_blast_ap_direct m2_blast_ap_extreme m2_blast_ap_large m2_blast_ap_slight m2_blast_damage m2_blast_demolition m2_blast_durable m2_blast_inner m2_blast_outer m2_blast_push m2_blast_shockwave m2_blast_shrapnel_count m2_blast_shrapnel_projectile m2_blast_stagger m2_fuse_delay m2_fuse_proximity missile_guidance_after missile_lost_angle missile_turn_cruise missile_turn_slow move_5_3 pod_twin pod_twin_1 pod_twin_10 pod_twin_11 pod_twin_12 pod_twin_13 pod_twin_14 pod_twin_15 pod_twin_2 pod_twin_3 pod_twin_4 pod_twin_5 pod_twin_6 pod_twin_7 pod_twin_8 pod_twin_9 pod_twin_count stagger_resist_9 status11_ap_direct status11_ap_extreme status11_ap_large status11_ap_slight status11_damage status11_durable status11_duration status11_strength zone10_armor_2 zone10_durable_2 zone10_fatal_2 zone10_health_2 zone10_to_body_2 zone11_armor_2 zone11_durable_2 zone11_fatal_2 zone11_health_2 zone11_to_body_2 zone26_durable zone26_fatal zone26_to_body zone30_armor zone30_health atk595_ap atk595_damage atk595_durable atk595_push atk595_stagger atk596_ap atk596_damage atk596_durable atk596_push atk596_stagger charge_explodes shield_broken shield_capacity shield_delay shield_rate zone12_armor_2 zone12_durable_2 zone12_fatal_2 zone12_health_2 zone12_to_body_2 zone24_explosive zone2_bleed zone5_bleed atk607_ap atk607_damage atk607_durable atk607_push atk607_stagger atk608_ap atk608_damage atk608_durable atk608_push atk608_stagger atk609_ap atk609_damage atk609_durable atk609_push atk609_stagger atk610_ap atk610_damage atk610_durable atk610_push atk610_stagger barrage_shell2 barrage_shell2_2 bleed_drain_2 d244_ap_direct d244_ap_extreme d244_ap_large d244_ap_slight d244_damage d244_demolition d244_durable d244_push d244_stagger drone_faction drone_health drone_search_max drone_search_min drone_sight mod_1F98D152 mod_AFAE3B47 second_toggle stagger_resist_10 stagger_resist_11 stagger_resist_12 zone11_bleed zone15_explosive zone16_explosive zone25_explosive zone27_durable zone27_fatal zone27_to_body zone28_durable zone28_fatal zone28_to_body zone29_durable zone29_fatal zone29_to_body zone31_armor zone31_health zone32_armor zone32_health zone6_armor_3 zone6_durable_3 zone6_fatal_3 zone6_health_3 zone6_to_body_3 zone7_bleed all_anim all_capacity all_danger_radius all_explosive all_fire all_flinch all_hearing all_melee_ap all_reload all_rpm all_sight_rear all_sight_side all_spread all_stagger all_status atk579_ap atk579_damage atk579_durable atk579_push atk579_stagger atk580_ap atk580_damage atk580_durable atk580_push atk580_stagger atk581_ap atk581_damage atk581_durable atk581_push atk581_stagger atk582_ap atk582_damage atk582_durable atk582_push atk582_stagger atk583_ap atk583_damage atk583_durable atk583_push atk583_stagger atk586_ap atk586_damage atk586_durable atk586_push atk586_stagger atk587_ap atk587_damage atk587_durable atk587_push atk587_stagger atk588_ap atk588_damage atk588_durable atk588_push atk588_stagger atk589_ap atk589_damage atk589_durable atk589_push atk589_stagger atk597_ap atk597_damage atk597_durable atk597_push atk597_stagger bayonet_ap bayonet_damage bayonet_durable bayonet_push bayonet_stagger blast_status5_ap_direct blast_status5_ap_extreme blast_status5_ap_large blast_status5_ap_slight blast_status5_damage blast_status5_durable blast_status5_duration blast_status5_strength bp_steer d271_ap_direct d271_ap_extreme d271_ap_large d271_ap_slight d271_damage d271_demolition d271_durable d271_push d271_stagger eagle_fire_time gun_primary gun_primary_2 item73CA1B5E_capacity item73CA1B5E_mags_max item73CA1B5E_mags_start item73CA1B5E_mags_supply item73CA1B5E_reload_time lock_range mine_arming mine_chain mine_panels mine_per_panel mine_spread mine_throw_max mine_throw_min mine_trigger mine_x_ap_direct mine_x_ap_extreme mine_x_ap_large mine_x_ap_slight mine_x_damage mine_x_demolition mine_x_durable mine_x_inner mine_x_outer mine_x_push mine_x_shockwave mine_x_slot1 mine_x_slot2 mine_x_slot2_strength mine_x_slot3 mine_x_slot3_strength mine_x_slot4 mine_x_slot4_strength mine_x_stagger mod_8933E7F4 move_7 pod_armor pod_durable pod_health proj_mag1 proj_mag2 proj_mag3 proj_mag4 proj_mag5 regen_arm_0 regen_arm_1 regen_arm_phase_0 regen_arm_phase_1 rounds_capacity2 shield_restart spin_down spin_up stomp_ap stomp_damage stomp_durable stomp_push stomp_stagger t_drag t_expiry_explosion t_gravity t_impact_explosion t_pellets t_pen_slowdown t_velocity zone13_armor_2 zone13_durable_2 zone13_fatal_2 zone13_health_2 zone13_to_body_2 zone15_bleed zone17_explosive zone18_explosive zone19_explosive zone20_explosive zone21_explosive zone22_explosive zone30_durable zone30_fatal zone30_to_body zone31_durable zone31_fatal zone31_to_body zone32_durable zone32_fatal zone32_to_body zone7_armor_3 zone7_durable_3 zone7_fatal_3 zone7_health_3 zone7_to_body_3 zone8_armor_3 zone8_durable_3 zone8_fatal_3 zone8_to_body_3 zone9_armor_3 zone9_durable_3 zone9_fatal_3 zone9_to_body_3 zone_drain_2 armor_4 atk621_ap atk621_damage atk621_durable atk621_push atk621_stagger atk622_ap atk622_damage atk622_durable atk622_push atk622_stagger atk623_ap atk623_damage atk623_durable atk623_push atk623_stagger atk624_ap atk624_damage atk624_durable atk624_push atk624_stagger atk625_ap atk625_damage atk625_durable atk625_push atk625_stagger atk626_ap atk626_damage atk626_durable atk626_push atk626_stagger bleed_3 bleed_drain_3 body1_armor body1_health bp_ammo_start bp_forward bp_landing_time bp_launch bp_takeoff durable_4 explosive_4 faction_4 health_4 item01B37BEC_capacity item01B37BEC_mags_max item01B37BEC_mags_start item01B37BEC_mags_supply item01B37BEC_reload_time item08AF081B_capacity item08AF081B_ergonomics item08AF081B_mags_max item08AF081B_mags_start item08AF081B_mags_supply item08AF081B_reload_time itemDF4F1322_capacity itemDF4F1322_ergonomics itemDF4F1322_mags_max itemDF4F1322_mags_start itemDF4F1322_mags_supply itemDF4F1322_reload_time itemDF7E8E38_capacity itemDF7E8E38_ergonomics itemDF7E8E38_mags_max itemDF7E8E38_mags_start itemDF7E8E38_mags_supply itemDF7E8E38_reload_time itemE4ABBAF6_capacity itemE4ABBAF6_ergonomics itemE4ABBAF6_mags_max itemE4ABBAF6_mags_start itemE4ABBAF6_mags_supply itemE4ABBAF6_reload_time jam_radius mod_2559B40D mod_AF8B7112 mod_F6FA9626 move_6 proj_c1 proj_c2 proj_c3 regen_4 regen_delay_4 reinf_on reinf_on_2 reinf_on_3 reinf_on_4 reinf_on_5 scale_4 scale_4_2 shield_radius shrapnel_ap_direct shrapnel_ap_extreme shrapnel_ap_large shrapnel_ap_slight shrapnel_count shrapnel_damage shrapnel_demolition shrapnel_durable shrapnel_gravity shrapnel_push shrapnel_stagger shrapnel_velocity status40_duration status40_strength x_inner x_outer zone0_armor_4 zone0_durable_4 zone0_explosive_2 zone0_fatal_4 zone0_health_4 zone0_to_body_4 zone10_armor_3 zone10_durable_3 zone10_explosive_2 zone10_fatal_3 zone10_health_3 zone10_to_body_3 zone11_armor_3 zone11_durable_3 zone11_explosive_2 zone11_fatal_3 zone11_health_3 zone11_to_body_3 zone12_explosive_2 zone14_armor_2 zone14_durable_2 zone14_fatal_2 zone14_health_2 zone14_to_body_2 zone15_armor_2 zone15_durable_2 zone15_fatal_2 zone15_health_2 zone15_to_body_2 zone16_armor_2 zone16_durable_2 zone16_fatal_2 zone16_health_2 zone16_to_body_2 zone1_bleed zone23_explosive zone26_explosive zone27_explosive zone28_explosive zone29_explosive zone33_armor zone33_health zone3_bleed_2 zone8_health_3 zone9_explosive_2 zone9_health_3 arc_rpm atk307_ap atk307_damage atk307_durable atk307_push atk307_stagger atk442_ap atk442_damage atk442_durable atk442_push atk442_stagger atk576_ap atk576_damage atk576_durable atk576_push atk576_stagger atk577_ap atk577_damage atk577_durable atk577_push atk577_stagger atk578_ap atk578_damage atk578_durable atk578_push atk578_stagger atk603_ap atk603_damage atk603_durable atk603_push atk603_stagger atk604_ap atk604_damage atk604_durable atk604_push atk604_stagger atk613_ap atk613_damage atk613_durable atk613_push atk613_stagger barrage_speed barrage_walk_angle barrage_walk_start beam_count beam_duration beam_radius beam_speed beam_stay beam_tick blast_status40_duration blast_status40_strength c1_ap_direct c1_ap_extreme c1_ap_large c1_ap_slight c1_blast_angle c1_blast_ap_direct c1_blast_ap_extreme c1_blast_ap_large c1_blast_ap_slight c1_blast_damage c1_blast_demolition c1_blast_durable c1_blast_inner c1_blast_outer c1_blast_push c1_blast_shockwave c1_blast_shrapnel_count c1_blast_shrapnel_projectile c1_blast_stagger c1_damage c1_demolition c1_drag c1_durable c1_expiry_explosion c1_fuse_delay c1_fuse_proximity c1_gravity c1_impact_explosion c1_pellets c1_pen_slowdown c1_push c1_slot1 c1_slot1_strength c1_slot2 c1_slot2_strength c1_slot3 c1_slot3_strength c1_slot4 c1_slot4_strength c1_stagger c1_velocity c2_ap_direct c2_ap_extreme c2_ap_large c2_ap_slight c2_blast_angle c2_blast_ap_direct c2_blast_ap_extreme c2_blast_ap_large c2_blast_ap_slight c2_blast_damage c2_blast_demolition c2_blast_durable c2_blast_inner c2_blast_outer c2_blast_push c2_blast_shockwave c2_blast_shrapnel_count c2_blast_shrapnel_projectile c2_blast_stagger c2_damage c2_demolition c2_drag c2_durable c2_expiry_explosion c2_fuse_delay c2_fuse_proximity c2_gravity c2_impact_explosion c2_pellets c2_pen_slowdown c2_push c2_slot1 c2_slot1_strength c2_slot2 c2_slot2_strength c2_slot3 c2_slot3_strength c2_slot4 c2_slot4_strength c2_stagger c2_velocity charge_health charge_limit d228_ap_direct d228_ap_extreme d228_ap_large d228_ap_slight d228_damage d228_demolition d228_durable d228_push d228_stagger d273_ap_direct d273_ap_extreme d273_ap_large d273_ap_slight d273_damage d273_demolition d273_durable d273_push d273_stagger d377_ap_direct d377_ap_extreme d377_ap_large d377_ap_slight d377_damage d377_demolition d377_durable d377_push d377_stagger d399_ap_direct d399_ap_extreme d399_ap_large d399_ap_slight d399_damage d399_demolition d399_durable d399_push d399_stagger d456_ap_direct d456_ap_extreme d456_ap_large d456_ap_slight d456_damage d456_demolition d456_durable d456_push d456_stagger danger_radius_4 demolition2 expiry_ap_direct expiry_ap_extreme expiry_ap_large expiry_ap_slight expiry_damage expiry_demolition expiry_durable expiry_inner expiry_outer expiry_push expiry_shockwave expiry_shrapnel_count expiry_shrapnel_projectile expiry_stagger fire_taken_4 flinch_4 flinch_recover_4 gun_primary_3 hearing_4 item2B798DFB_capacity item2B798DFB_ergonomics item2B798DFB_reload_time itemAE7BADEF_capacity itemAE7BADEF_ergonomics itemAE7BADEF_reload_time itemCA77DC98_capacity itemCA77DC98_reload_time mine_x_slot1_strength missile_weave mod_0DFF0E42 mod_14ECCE15 mod_21A7BA64 mod_22035F3C mod_25A59469 mod_26C969A1 mod_4BDF39C4 mod_4DF29271 mod_6E99CCE5 mod_93EB16A7 mod_A68930C2 mod_B5A50096 mod_C36935A9 mod_C8CCB6FA mod_CC530B21 mod_FBF54A40 move_1_4 move_2_4 move_3_4 mul_arc_chains_max mul_arc_chains_min mul_arc_splits_max mul_arc_splits_min no_bolt_948 p270_gravity p270_velocity p82_gravity p82_velocity proj_ammo_feed1 reinf_on_6 reload_below retention_4 scramble_radius sight_4 sight_h_4 sight_rear_4 sight_side_4 sight_v_4 stat_13 stat_17 status39_duration status39_strength status43_ap_direct status43_ap_extreme status43_ap_large status43_ap_slight status43_damage status43_durable status43_duration status43_strength status44_ap_direct status44_ap_extreme status44_ap_large status44_ap_slight status44_damage status44_durable status44_duration status44_strength stun_resist_7 stun_resist_8 x301_inner x301_outer x301_shockwave x75_inner x75_outer x75_shockwave x94_inner x94_outer x94_shockwave x_ap_direct x_ap_extreme x_ap_large x_ap_slight x_damage x_demolition x_durable x_push x_shockwave x_slot1 x_slot2 x_slot2_strength x_slot3 x_slot3_strength x_slot4 x_slot4_strength x_stagger zone0_bleed_2 zone12_armor_3 zone12_durable_3 zone12_fatal_3 zone12_health_3 zone12_to_body_3 zone13_armor_3 zone13_durable_3 zone13_explosive_2 zone13_fatal_3 zone13_health_3 zone13_to_body_3 zone14_explosive_2 zone17_armor_2 zone17_durable_2 zone17_fatal_2 zone17_to_body_2 zone18_armor_2 zone18_durable_2 zone18_fatal_2 zone18_health_2 zone18_to_body_2 zone19_armor_2 zone19_durable_2 zone19_fatal_2 zone19_health_2 zone19_to_body_2 zone1_armor_4 zone1_durable_4 zone1_explosive_2 zone1_fatal_4 zone1_health_4 zone1_to_body_4 zone20_armor_2 zone20_durable_2 zone20_fatal_2 zone20_health_2 zone20_to_body_2 zone21_armor_2 zone21_durable_2 zone21_fatal_2 zone21_health_2 zone21_to_body_2 zone22_armor_2 zone22_durable_2 zone22_fatal_2 zone22_health_2 zone22_to_body_2 zone23_armor_2 zone23_durable_2 zone23_fatal_2 zone23_health_2 zone23_to_body_2 zone24_armor_2 zone24_durable_2 zone24_fatal_2 zone24_health_2 zone24_to_body_2 zone25_armor_2 zone25_durable_2 zone25_fatal_2 zone25_health_2 zone25_to_body_2 zone26_armor_2 zone26_durable_2 zone26_fatal_2 zone26_health_2 zone26_to_body_2 zone27_armor_2 zone27_durable_2 zone27_fatal_2 zone27_health_2 zone27_to_body_2 zone28_armor_2 zone28_bleed zone28_durable_2 zone28_fatal_2 zone28_health_2 zone28_to_body_2 zone29_armor_2 zone29_bleed zone29_durable_2 zone29_fatal_2 zone29_health_2 zone29_to_body_2 zone2_armor_4 zone2_bleed_2 zone2_durable_4 zone2_explosive_2 zone2_fatal_4 zone2_health_4 zone2_to_body_4 zone30_armor_2 zone30_durable_2 zone30_explosive zone30_fatal_2 zone30_health_2 zone30_to_body_2 zone31_armor_2 zone31_durable_2 zone31_explosive zone31_fatal_2 zone31_health_2 zone31_to_body_2 zone32_armor_2 zone32_durable_2 zone32_fatal_2 zone32_health_2 zone32_to_body_2 zone33_durable zone33_fatal zone33_to_body zone34_armor zone34_health zone3_armor_4 zone3_durable_4 zone3_fatal_4 zone3_health_4 zone3_to_body_4 zone4_armor_4 zone4_durable_4 zone4_fatal_4 zone4_health_4 zone4_to_body_4 zone5_armor_4 zone5_bleed_2 zone5_durable_4 zone5_explosive_2 zone5_fatal_4 zone5_health_4 zone5_to_body_4 zone6_explosive_2 zone7_explosive_2 zone8_explosive_2 zone_drain_3 a2_ap_direct a2_ap_extreme a2_ap_large a2_ap_slight a2_damage a2_demolition a2_drag a2_durable a2_expiry_explosion a2_gravity a2_impact_explosion a2_pellets a2_pen_slowdown a2_push a2_slot1 a2_slot2 a2_slot2_strength a2_slot3 a2_slot3_strength a2_slot4 a2_slot4_strength a2_stagger a2_status40_duration a2_status40_strength a2_velocity aim arc_ap_direct arc_ap_extreme arc_ap_large arc_ap_slight arc_damage arc_demolition arc_durable arc_push arc_stagger armor_5 atk585_ap atk585_damage atk585_durable atk585_push atk585_stagger atk590_ap atk590_damage atk590_durable atk590_push atk590_stagger atk598_ap atk598_damage atk598_durable atk598_push atk598_stagger atk599_ap atk599_damage atk599_durable atk599_push atk599_stagger atk600_ap atk600_damage atk600_durable atk600_push atk600_stagger atk601_ap atk601_damage atk601_durable atk601_push atk601_stagger atk602_ap atk602_damage atk602_durable atk602_push atk602_stagger barrage_shell2_3 bash_ap bash_damage bash_durable bash_push bash_stagger beam_area beam_area_2 beam_area_3 beam_shot_delay blast_arc_ap_direct blast_arc_ap_extreme blast_arc_ap_large blast_arc_ap_slight blast_arc_chain blast_arc_demolition blast_arc_push blast_arc_range blast_arc_slot1 blast_arc_slot2 blast_arc_slot2_strength blast_arc_slot3 blast_arc_slot3_strength blast_arc_slot4 blast_arc_slot4_strength blast_arc_split blast_arc_stagger blast_arc_status38_duration blast_arc_status38_strength blast_status38_duration blast_status38_strength blast_status43_ap_direct blast_status43_ap_extreme blast_status43_ap_large blast_status43_ap_slight blast_status43_damage blast_status43_durable blast_status43_duration blast_status43_strength bleed_4 bleed_drain_4 body1_durable body1_durable_z0 body2_armor body2_health bomblet_ap_direct bomblet_ap_extreme bomblet_ap_large bomblet_ap_slight bomblet_damage bomblet_demolition bomblet_durable bomblet_inner bomblet_outer bomblet_push bomblet_shockwave bomblet_slot1 bomblet_slot1_strength bomblet_slot2 bomblet_slot2_strength bomblet_slot3 bomblet_slot3_strength bomblet_slot4 bomblet_slot4_strength bomblet_stagger bp_agility bp_agility_high bp_climb_accel bp_climb_fuel bp_climb_speed bp_climb_target bp_climb_time bp_hover_speed bp_warp_arms bp_warp_arms_2 bp_warp_cool bp_warp_down bp_warp_head bp_warp_heat bp_warp_legs bp_warp_legs_2 bp_warp_range bp_warp_safe bp_warp_unsafe bp_warp_up bp_warp_x_ap_direct bp_warp_x_ap_extreme bp_warp_x_ap_large bp_warp_x_ap_slight bp_warp_x_damage bp_warp_x_demolition bp_warp_x_durable bp_warp_x_inner bp_warp_x_outer bp_warp_x_push bp_warp_x_shockwave bp_warp_x_slot1 bp_warp_x_slot1_strength bp_warp_x_slot2 bp_warp_x_slot2_strength bp_warp_x_slot3 bp_warp_x_slot3_strength bp_warp_x_slot4 bp_warp_x_slot4_strength bp_warp_x_stagger burn burn_removal callin2 charge_faction charge_sight climb_height cooldown2 cost_dive cost_jump crouch_aim crouch_jog crouch_sprint crouch_walk d199_ap_direct d199_ap_extreme d199_ap_large d199_ap_slight d199_damage d199_demolition d199_durable d199_push d199_stagger d258_ap_direct d258_ap_extreme d258_ap_large d258_ap_slight d258_damage d258_demolition d258_durable d258_push d258_stagger d261_ap_direct d261_ap_extreme d261_ap_large d261_ap_slight d261_damage d261_demolition d261_durable d261_push d261_stagger d272_ap_direct d272_ap_extreme d272_ap_large d272_ap_slight d272_damage d272_demolition d272_durable d272_push d272_stagger d274_ap_direct d274_ap_extreme d274_ap_large d274_ap_slight d274_damage d274_demolition d274_durable d274_push d274_stagger d275_ap_direct d275_ap_extreme d275_ap_large d275_ap_slight d275_damage d275_demolition d275_durable d275_push d275_stagger d276_ap_direct d276_ap_extreme d276_ap_large d276_ap_slight d276_damage d276_demolition d276_durable d276_push d276_stagger d277_ap_direct d277_ap_extreme d277_ap_large d277_ap_slight d277_damage d277_demolition d277_durable d277_push d277_stagger d39_ap_direct d39_ap_extreme d39_ap_large d39_ap_slight d39_damage d39_demolition d39_durable d39_push d39_stagger d401_ap_direct d401_ap_extreme d401_ap_large d401_ap_slight d401_damage d401_demolition d401_durable d401_push d401_stagger d402_ap_direct d402_ap_extreme d402_ap_large d402_ap_slight d402_damage d402_demolition d402_durable d402_push d402_stagger d414_ap_direct d414_ap_extreme d414_ap_large d414_ap_slight d414_damage d414_demolition d414_durable d414_push d414_stagger d432_ap_direct d432_ap_extreme d432_ap_large d432_ap_slight d432_damage d432_demolition d432_durable d432_push d432_stagger d433_ap_direct d433_ap_extreme d433_ap_large d433_ap_slight d433_damage d433_demolition d433_durable d433_push d433_stagger d455_ap_direct d455_ap_extreme d455_ap_large d455_ap_slight d455_damage d455_demolition d455_durable d455_push d455_stagger d457_ap_direct d457_ap_extreme d457_ap_large d457_ap_slight d457_damage d457_demolition d457_durable d457_push d457_stagger d458_ap_direct d458_ap_extreme d458_ap_large d458_ap_slight d458_damage d458_demolition d458_durable d458_push d458_stagger d459_ap_direct d459_ap_extreme d459_ap_large d459_ap_slight d459_damage d459_demolition d459_durable d459_push d459_stagger d463_ap_direct d463_ap_extreme d463_ap_large d463_ap_slight d463_damage d463_demolition d463_durable d463_push d463_stagger d465_ap_direct d465_ap_extreme d465_ap_large d465_ap_slight d465_damage d465_demolition d465_durable d465_push d465_stagger d525_ap_direct d525_ap_extreme d525_ap_large d525_ap_slight d525_damage d525_demolition d525_durable d525_push d525_stagger damage_taken danger_max danger_miss drain_damage drain_durable drown_depth drown_time durable_5 duration explosive_5 faction_5 flight_height float_depth floor_patrol floor_patrol_1 floor_patrol_2 floor_reinf floor_reinf_1 floor_reinf_2 gas_resist_13 gas_resist_14 gas_resist_15 gas_resist_16 gas_taken_7 gas_taken_8 gun_primary_4 gun_sidearm gun_sidearm_2 gun_sidearm_3 gun_support gun_support_2 health_5 health_regen heatlvl1_ap_direct heatlvl1_ap_extreme heatlvl1_ap_large heatlvl1_ap_slight heatlvl1_at heatlvl1_demolition heatlvl1_push heatlvl1_self heatlvl1_self_durable heatlvl1_stagger heatlvl2_ap_direct heatlvl2_ap_extreme heatlvl2_ap_large heatlvl2_ap_slight heatlvl2_at heatlvl2_damage heatlvl2_demolition heatlvl2_durable heatlvl2_push heatlvl2_stagger heatlvl3_ap_direct heatlvl3_ap_extreme heatlvl3_ap_large heatlvl3_ap_slight heatlvl3_at heatlvl3_damage heatlvl3_demolition heatlvl3_durable heatlvl3_push heatlvl3_self heatlvl3_self_burn heatlvl3_self_durable heatlvl3_stagger item116E8A0F_capacity item116E8A0F_mags_max item116E8A0F_mags_start item116E8A0F_mags_supply item116E8A0F_reload_time item33EAAA65_capacity item33EAAA65_mags_max item33EAAA65_mags_start item33EAAA65_mags_supply item33EAAA65_reload_time item3D0687C6_heat_cool item3D0687C6_heat_second item3D0687C6_heatsinks_max item3D0687C6_heatsinks_start item3D0687C6_heatsinks_supply item3D0687C6_winddown item3D0687C6_windup item3D08FB56_capacity item3D08FB56_ergonomics item3D08FB56_mags_max item3D08FB56_mags_start item3D08FB56_mags_supply item3D08FB56_reload_time item45A1B03E_capacity item45A1B03E_ergonomics item45A1B03E_mags_max item45A1B03E_mags_start item45A1B03E_mags_supply item47E45B79_capacity item47E45B79_reload_time item4F3F221D_capacity item4F3F221D_ergonomics item4F3F221D_mags_max item4F3F221D_mags_start item4F3F221D_mags_supply item4F3F221D_reload_time item4F5D28F6_capacity item4F5D28F6_ergonomics item4F5D28F6_reload_time item50540CB9_capacity item50540CB9_ergonomics item50540CB9_mags_max item50540CB9_mags_start item50540CB9_mags_supply item50540CB9_reload_time item50B096F2_capacity item50B096F2_mags_max item50B096F2_mags_start item50B096F2_mags_supply item50B096F2_reload_time item53120A73_heat_cool item53120A73_heat_second item53120A73_heatsinks_max item53120A73_heatsinks_start item53120A73_heatsinks_supply item53120A73_winddown item53120A73_windup item5335D215_capacity item5335D215_mags_max item5335D215_mags_start item5335D215_mags_supply item536662C0_capacity item536662C0_ergonomics item536662C0_mags_max item536662C0_mags_start item536662C0_mags_supply item536662C0_reload_time item562192C1_capacity item562192C1_ergonomics item562192C1_mags_max item562192C1_mags_start item562192C1_mags_supply item562192C1_reload_time item5672E4B7_heat_cool item5672E4B7_heat_second item5672E4B7_heatsinks_max item5672E4B7_heatsinks_start item5672E4B7_heatsinks_supply item5672E4B7_winddown item5672E4B7_windup item5FBC2C8A_capacity item5FBC2C8A_ergonomics item5FBC2C8A_mags_max item5FBC2C8A_mags_start item5FBC2C8A_mags_supply item5FBC2C8A_reload_time item643262CC_ergonomics item643262CC_heat_cool item643262CC_reload_time item692EABF3_capacity item692EABF3_mags_max item692EABF3_mags_start item692EABF3_mags_supply item692EABF3_reload_time item6AF10FB5_capacity item6AF10FB5_mags_max item6AF10FB5_mags_start item6AF10FB5_mags_supply item6AF47A1D_capacity item6AF47A1D_ergonomics item6AF47A1D_mags_max item6AF47A1D_mags_start item6AF47A1D_mags_supply item6AF47A1D_reload_time item6C1F86EA_capacity item6C1F86EA_ergonomics item6C1F86EA_mags_max item6C1F86EA_mags_start item6C1F86EA_mags_supply item6C1F86EA_reload_time item6F65C295_capacity item6F65C295_ergonomics item6F65C295_mags_max item6F65C295_mags_start item6F65C295_mags_supply item6F65C295_reload_time item71FBEF8C_capacity item71FBEF8C_mags_max item71FBEF8C_mags_start item71FBEF8C_mags_supply item71FBEF8C_reload_time item7C51A74A_capacity item7C51A74A_ergonomics item7C51A74A_mags_max item7C51A74A_mags_start item7C51A74A_mags_supply item7C51A74A_reload_time item8189A695_capacity item8189A695_mags_max item8189A695_mags_start item8189A695_mags_supply item87770B73_heat_capacity item87770B73_heat_cool item87770B73_heatsinks_max item87770B73_heatsinks_start item87770B73_heatsinks_supply item87B6BE3A_ergonomics item87B6BE3A_heat_shot item87B6BE3A_heatsinks_max item87B6BE3A_heatsinks_start item87B6BE3A_reload_time item8D7DFD68_capacity item8D7DFD68_ergonomics item8D7DFD68_mags_max item8D7DFD68_mags_start item8D7DFD68_mags_supply item8D7DFD68_reload_time item9FE412AD_capacity item9FE412AD_ergonomics item9FE412AD_mags_max item9FE412AD_mags_start item9FE412AD_mags_supply item9FE412AD_reload_time itemA8F88FA1_capacity itemA8F88FA1_ergonomics itemA8F88FA1_mags_max itemA8F88FA1_mags_start itemA8F88FA1_mags_supply itemA8F88FA1_reload_time itemB269A0B3_capacity itemB269A0B3_ergonomics itemB269A0B3_mags_max itemB269A0B3_mags_start itemB269A0B3_mags_supply itemB269A0B3_reload_time itemB71E1C41_capacity itemB71E1C41_ergonomics itemB71E1C41_mags_max itemB71E1C41_mags_start itemB71E1C41_mags_supply itemB71E1C41_reload_time itemB7FA90FD_capacity itemB7FA90FD_mags_max itemB7FA90FD_mags_start itemB7FA90FD_mags_supply itemB7FA90FD_reload_time itemC47F4FBE_capacity itemC47F4FBE_ergonomics itemC47F4FBE_mags_max itemC47F4FBE_mags_start itemC47F4FBE_mags_supply itemC47F4FBE_reload_time itemCD85679E_capacity itemCD85679E_mags_max itemCD85679E_mags_start itemCD85679E_mags_supply itemCD85679E_reload_time itemD510632D_capacity itemD510632D_mags_max itemD510632D_mags_start itemD510632D_mags_supply itemD510632D_reload_time itemDC2ADA1D_capacity itemDC2ADA1D_mags_max itemDC2ADA1D_mags_start itemDC2ADA1D_mags_supply itemDC2ADA1D_reload_time itemEB75D04E_capacity itemEB75D04E_ergonomics itemEB75D04E_mags_max itemEB75D04E_mags_start itemEB75D04E_mags_supply itemEB75D04E_reload_time itemF3D0DF39_heat_capacity itemF3D0DF39_heatsinks_max itemF3D0DF39_heatsinks_start itemF3D0DF39_heatsinks_supply itemF9D96D40_ergonomics itemF9D96D40_heat_capacity itemF9D96D40_heatsinks_max itemF9D96D40_heatsinks_start itemF9D96D40_heatsinks_supply itemF9D96D40_reload_time jog jog_drain m2_blast_cone melee_ap melee_damage melee_durable melee_push melee_stagger mine_x_status43_ap_direct mine_x_status43_ap_extreme mine_x_status43_ap_large mine_x_status43_ap_slight mine_x_status43_damage mine_x_status43_durable mine_x_status43_duration mine_x_status43_strength mine_x_status5_ap_direct mine_x_status5_ap_extreme mine_x_status5_ap_large mine_x_status5_ap_slight mine_x_status5_damage mine_x_status5_durable mine_x_status5_duration mine_x_status5_strength mod_0FF508EB mod_2875F44A mod_2CFAECA3 mod_33235131 mod_33C9C713 mod_35F17BEC mod_432A7993 mod_54A69284 mod_6938BD56 mod_73734D67 mod_776A91FF mod_86A99BB9 mod_A189ADB6 mod_AD5289FE mod_B4F88129 mod_B62B4AFD mod_CB814D05 mod_CD79A687 mod_F0B70521 mod_F6D67313 move_4_4 move_5_4 move_8_2 move_8_3 no_bolt_1208 no_bolt_936 p102_gravity p102_velocity p12_gravity p12_velocity p132_gravity p132_velocity p133_gravity p133_velocity p139_gravity p139_velocity p143_gravity p143_velocity p160_gravity p160_velocity p173_gravity p173_velocity p17_gravity p17_velocity p192_gravity p192_velocity p197_gravity p197_velocity p200_gravity p200_velocity p238_gravity p238_velocity p242_gravity p242_velocity p243_gravity p243_velocity p251_gravity p251_velocity p282_gravity p282_velocity p291_gravity p291_velocity p43_gravity p43_velocity p76_gravity p76_velocity p79_gravity p79_velocity p84_gravity p84_velocity patrol_rate_25 patrol_rate_26 patrol_rate_27 patrol_rate_28 pod1_brake_height pod1_brake_speed pod1_brake_time pod1_height pod1_speed pod2_brake_height pod2_brake_speed pod2_brake_time pod2_height pod2_speed pod_demolition proj_h1 proj_h2 proj_h3 proj_mag6 proj_mag7 proj_mag8 projectile_a2 projectile_a2_ammo prone recover_crouch recover_delay recover_prone recover_stand regen_5 regen_delay_5 regen_phase_2 reinf_on_7 reversing scale_5 scale_5_2 shield_arm_armor shield_broken_2 shield_capacity_2 shield_delay_2 shield_plate_armor shield_plate_health shield_rate_2 silo_armor silo_health silo_regen slide_enter slide_exit spark_ap_direct spark_ap_extreme spark_ap_large spark_ap_slight spark_damage spark_demolition spark_durable spark_push spark_slot1 spark_slot2 spark_slot2_strength spark_slot3 spark_slot3_strength spark_slot4 spark_slot4_strength spark_stagger spark_status5_ap_direct spark_status5_ap_extreme spark_status5_ap_large spark_status5_ap_slight spark_status5_damage spark_status5_durable spark_status5_duration spark_status5_strength spawner_count_25 spawner_count_26 spawner_count_27 spawner_count_28 spawner_production_25 spawner_production_26 spawner_production_27 spawner_production_28 spawner_queue_25 spawner_queue_26 spawner_queue_27 spawner_queue_28 spawner_release_25 spawner_release_26 spawner_release_27 spawner_release_28 speed_22 speed_23 speed_24 speed_25 speed_26 speed_27 speed_28 sprint sprint_drain sprint_exerted stat_11 stat_12 stat_14 stat_15 stat_16 status33_ap_direct status33_ap_extreme status33_ap_large status33_ap_slight status33_damage status33_durable status33_duration status33_strength swim walk weapon_sway weight_04533C7A weight_04533C7A_1 weight_04533C7A_10 weight_04533C7A_11 weight_04533C7A_12 weight_04533C7A_13 weight_04533C7A_14 weight_04533C7A_15 weight_04533C7A_16 weight_04533C7A_18 weight_04533C7A_19 weight_04533C7A_2 weight_04533C7A_20 weight_04533C7A_21 weight_04533C7A_22 weight_04533C7A_23 weight_04533C7A_24 weight_04533C7A_25 weight_04533C7A_26 weight_04533C7A_27 weight_04533C7A_28 weight_04533C7A_29 weight_04533C7A_3 weight_04533C7A_4 weight_04533C7A_5 weight_04533C7A_6 weight_04533C7A_7 weight_04533C7A_8 weight_04533C7A_9 weight_04E317CA weight_04E317CA_1 weight_04E317CA_10 weight_04E317CA_11 weight_04E317CA_13 weight_04E317CA_14 weight_04E317CA_15 weight_04E317CA_16 weight_04E317CA_17 weight_04E317CA_18 weight_04E317CA_19 weight_04E317CA_2 weight_04E317CA_20 weight_04E317CA_21 weight_04E317CA_22 weight_04E317CA_23 weight_04E317CA_24 weight_04E317CA_25 weight_04E317CA_26 weight_04E317CA_27 weight_04E317CA_28 weight_04E317CA_29 weight_04E317CA_3 weight_04E317CA_4 weight_04E317CA_5 weight_04E317CA_6 weight_04E317CA_7 weight_04E317CA_8 weight_04E317CA_9 weight_056E4441 weight_056E4441_1 weight_056E4441_10 weight_056E4441_11 weight_056E4441_12 weight_056E4441_13 weight_056E4441_14 weight_056E4441_16 weight_056E4441_17 weight_056E4441_18 weight_056E4441_19 weight_056E4441_2 weight_056E4441_20 weight_056E4441_21 weight_056E4441_22 weight_056E4441_23 weight_056E4441_3 weight_056E4441_4 weight_056E4441_5 weight_056E4441_6 weight_056E4441_7 weight_056E4441_8 weight_056E4441_9 weight_09D77183 weight_09D77183_1 weight_09D77183_10 weight_09D77183_11 weight_09D77183_12 weight_09D77183_13 weight_09D77183_15 weight_09D77183_16 weight_09D77183_17 weight_09D77183_18 weight_09D77183_19 weight_09D77183_2 weight_09D77183_20 weight_09D77183_21 weight_09D77183_22 weight_09D77183_23 weight_09D77183_3 weight_09D77183_4 weight_09D77183_5 weight_09D77183_6 weight_09D77183_7 weight_09D77183_8 weight_09D77183_9 weight_0E5C4AD4 weight_0E5C4AD4_1 weight_0E5C4AD4_10 weight_0E5C4AD4_11 weight_0E5C4AD4_12 weight_0E5C4AD4_13 weight_0E5C4AD4_14 weight_0E5C4AD4_15 weight_0E5C4AD4_16 weight_0E5C4AD4_17 weight_0E5C4AD4_18 weight_0E5C4AD4_19 weight_0E5C4AD4_2 weight_0E5C4AD4_20 weight_0E5C4AD4_21 weight_0E5C4AD4_22 weight_0E5C4AD4_23 weight_0E5C4AD4_3 weight_0E5C4AD4_4 weight_0E5C4AD4_5 weight_0E5C4AD4_6 weight_0E5C4AD4_7 weight_0E5C4AD4_9 weight_0F8B6B05 weight_0F8B6B05_1 weight_0F8B6B05_10 weight_0F8B6B05_11 weight_0F8B6B05_12 weight_0F8B6B05_13 weight_0F8B6B05_15 weight_0F8B6B05_16 weight_0F8B6B05_17 weight_0F8B6B05_18 weight_0F8B6B05_19 weight_0F8B6B05_2 weight_0F8B6B05_20 weight_0F8B6B05_21 weight_0F8B6B05_22 weight_0F8B6B05_23 weight_0F8B6B05_24 weight_0F8B6B05_25 weight_0F8B6B05_26 weight_0F8B6B05_27 weight_0F8B6B05_3 weight_0F8B6B05_4 weight_0F8B6B05_5 weight_0F8B6B05_6 weight_0F8B6B05_7 weight_0F8B6B05_8 weight_0F8B6B05_9 weight_10D32856 weight_10D32856_1 weight_10D32856_10 weight_10D32856_11 weight_10D32856_12 weight_10D32856_13 weight_10D32856_15 weight_10D32856_16 weight_10D32856_17 weight_10D32856_18 weight_10D32856_19 weight_10D32856_2 weight_10D32856_20 weight_10D32856_21 weight_10D32856_22 weight_10D32856_23 weight_10D32856_24 weight_10D32856_3 weight_10D32856_4 weight_10D32856_5 weight_10D32856_6 weight_10D32856_7 weight_10D32856_8 weight_10D32856_9 weight_112A1FEE weight_112A1FEE_1 weight_112A1FEE_10 weight_112A1FEE_11 weight_112A1FEE_12 weight_112A1FEE_13 weight_112A1FEE_14 weight_112A1FEE_15 weight_112A1FEE_16 weight_112A1FEE_2 weight_112A1FEE_3 weight_112A1FEE_4 weight_112A1FEE_6 weight_112A1FEE_7 weight_112A1FEE_8 weight_112A1FEE_9 weight_11644CBD weight_11644CBD_1 weight_11644CBD_10 weight_11644CBD_11 weight_11644CBD_12 weight_11644CBD_13 weight_11644CBD_14 weight_11644CBD_16 weight_11644CBD_17 weight_11644CBD_18 weight_11644CBD_19 weight_11644CBD_2 weight_11644CBD_20 weight_11644CBD_21 weight_11644CBD_22 weight_11644CBD_23 weight_11644CBD_3 weight_11644CBD_4 weight_11644CBD_5 weight_11644CBD_6 weight_11644CBD_7 weight_11644CBD_8 weight_11644CBD_9 weight_11E71326 weight_11E71326_1 weight_11E71326_10 weight_11E71326_11 weight_11E71326_12 weight_11E71326_13 weight_11E71326_14 weight_11E71326_16 weight_11E71326_17 weight_11E71326_18 weight_11E71326_19 weight_11E71326_2 weight_11E71326_20 weight_11E71326_21 weight_11E71326_22 weight_11E71326_23 weight_11E71326_3 weight_11E71326_4 weight_11E71326_5 weight_11E71326_6 weight_11E71326_7 weight_11E71326_8 weight_11E71326_9 weight_15385B49 weight_15385B49_1 weight_15385B49_10 weight_15385B49_12 weight_15385B49_13 weight_15385B49_14 weight_15385B49_15 weight_15385B49_16 weight_15385B49_17 weight_15385B49_18 weight_15385B49_19 weight_15385B49_2 weight_15385B49_20 weight_15385B49_21 weight_15385B49_22 weight_15385B49_23 weight_15385B49_3 weight_15385B49_4 weight_15385B49_5 weight_15385B49_6 weight_15385B49_7 weight_15385B49_8 weight_15385B49_9 weight_1B1CF8E3 weight_1B1CF8E3_1 weight_1B1CF8E3_10 weight_1B1CF8E3_11 weight_1B1CF8E3_12 weight_1B1CF8E3_13 weight_1B1CF8E3_14 weight_1B1CF8E3_15 weight_1B1CF8E3_16 weight_1B1CF8E3_17 weight_1B1CF8E3_18 weight_1B1CF8E3_19 weight_1B1CF8E3_2 weight_1B1CF8E3_3 weight_1B1CF8E3_4 weight_1B1CF8E3_5 weight_1B1CF8E3_6 weight_1B1CF8E3_7 weight_1B1CF8E3_8 weight_1D305570 weight_1D305570_1 weight_1D305570_11 weight_1D305570_12 weight_1D305570_13 weight_1D305570_14 weight_1D305570_15 weight_1D305570_16 weight_1D305570_17 weight_1D305570_18 weight_1D305570_19 weight_1D305570_2 weight_1D305570_20 weight_1D305570_21 weight_1D305570_22 weight_1D305570_23 weight_1D305570_3 weight_1D305570_4 weight_1D305570_5 weight_1D305570_6 weight_1D305570_7 weight_1D305570_8 weight_1D305570_9 weight_1E0BABAE weight_1E0BABAE_1 weight_1E0BABAE_10 weight_1E0BABAE_11 weight_1E0BABAE_12 weight_1E0BABAE_13 weight_1E0BABAE_15 weight_1E0BABAE_16 weight_1E0BABAE_17 weight_1E0BABAE_18 weight_1E0BABAE_19 weight_1E0BABAE_2 weight_1E0BABAE_20 weight_1E0BABAE_21 weight_1E0BABAE_22 weight_1E0BABAE_23 weight_1E0BABAE_24 weight_1E0BABAE_25 weight_1E0BABAE_3 weight_1E0BABAE_4 weight_1E0BABAE_5 weight_1E0BABAE_6 weight_1E0BABAE_7 weight_1E0BABAE_8 weight_1E0BABAE_9 weight_1EFFB74C weight_1EFFB74C_1 weight_1EFFB74C_10 weight_1EFFB74C_11 weight_1EFFB74C_12 weight_1EFFB74C_13 weight_1EFFB74C_14 weight_1EFFB74C_15 weight_1EFFB74C_16 weight_1EFFB74C_17 weight_1EFFB74C_18 weight_1EFFB74C_19 weight_1EFFB74C_2 weight_1EFFB74C_20 weight_1EFFB74C_21 weight_1EFFB74C_22 weight_1EFFB74C_23 weight_1EFFB74C_3 weight_1EFFB74C_4 weight_1EFFB74C_5 weight_1EFFB74C_6 weight_1EFFB74C_7 weight_1EFFB74C_9 weight_1F5B4D7A weight_1F5B4D7A_1 weight_1F5B4D7A_10 weight_1F5B4D7A_11 weight_1F5B4D7A_12 weight_1F5B4D7A_13 weight_1F5B4D7A_14 weight_1F5B4D7A_16 weight_1F5B4D7A_17 weight_1F5B4D7A_18 weight_1F5B4D7A_19 weight_1F5B4D7A_2 weight_1F5B4D7A_20 weight_1F5B4D7A_21 weight_1F5B4D7A_22 weight_1F5B4D7A_23 weight_1F5B4D7A_24 weight_1F5B4D7A_25 weight_1F5B4D7A_26 weight_1F5B4D7A_27 weight_1F5B4D7A_28 weight_1F5B4D7A_29 weight_1F5B4D7A_3 weight_1F5B4D7A_30 weight_1F5B4D7A_31 weight_1F5B4D7A_32 weight_1F5B4D7A_33 weight_1F5B4D7A_34 weight_1F5B4D7A_35 weight_1F5B4D7A_36 weight_1F5B4D7A_37 weight_1F5B4D7A_38 weight_1F5B4D7A_39 weight_1F5B4D7A_4 weight_1F5B4D7A_40 weight_1F5B4D7A_41 weight_1F5B4D7A_42 weight_1F5B4D7A_43 weight_1F5B4D7A_44 weight_1F5B4D7A_45 weight_1F5B4D7A_46 weight_1F5B4D7A_47 weight_1F5B4D7A_48 weight_1F5B4D7A_5 weight_1F5B4D7A_6 weight_1F5B4D7A_7 weight_1F5B4D7A_8 weight_1F5B4D7A_9 weight_2064551F weight_2064551F_1 weight_2064551F_10 weight_2064551F_11 weight_2064551F_12 weight_2064551F_14 weight_2064551F_15 weight_2064551F_16 weight_2064551F_17 weight_2064551F_18 weight_2064551F_19 weight_2064551F_2 weight_2064551F_20 weight_2064551F_21 weight_2064551F_22 weight_2064551F_23 weight_2064551F_3 weight_2064551F_4 weight_2064551F_5 weight_2064551F_6 weight_2064551F_7 weight_2064551F_8 weight_2064551F_9 weight_23A903AE weight_23A903AE_1 weight_23A903AE_10 weight_23A903AE_11 weight_23A903AE_12 weight_23A903AE_13 weight_23A903AE_14 weight_23A903AE_15 weight_23A903AE_16 weight_23A903AE_17 weight_23A903AE_18 weight_23A903AE_19 weight_23A903AE_2 weight_23A903AE_20 weight_23A903AE_21 weight_23A903AE_3 weight_23A903AE_4 weight_23A903AE_5 weight_23A903AE_6 weight_23A903AE_8 weight_23A903AE_9 weight_249D7091 weight_249D7091_1 weight_249D7091_10 weight_249D7091_11 weight_249D7091_12 weight_249D7091_13 weight_249D7091_15 weight_249D7091_16 weight_249D7091_17 weight_249D7091_18 weight_249D7091_19 weight_249D7091_2 weight_249D7091_20 weight_249D7091_21 weight_249D7091_22 weight_249D7091_23 weight_249D7091_3 weight_249D7091_4 weight_249D7091_5 weight_249D7091_6 weight_249D7091_7 weight_249D7091_8 weight_249D7091_9 weight_27825499 weight_27825499_1 weight_27825499_10 weight_27825499_11 weight_27825499_12 weight_27825499_13 weight_27825499_14 weight_27825499_16 weight_27825499_17 weight_27825499_18 weight_27825499_19 weight_27825499_2 weight_27825499_20 weight_27825499_21 weight_27825499_22 weight_27825499_23 weight_27825499_3 weight_27825499_4 weight_27825499_5 weight_27825499_6 weight_27825499_7 weight_27825499_8 weight_27825499_9 weight_282F3770 weight_282F3770_1 weight_282F3770_10 weight_282F3770_11 weight_282F3770_12 weight_282F3770_13 weight_282F3770_15 weight_282F3770_16 weight_282F3770_17 weight_282F3770_18 weight_282F3770_19 weight_282F3770_2 weight_282F3770_20 weight_282F3770_21 weight_282F3770_22 weight_282F3770_23 weight_282F3770_3 weight_282F3770_4 weight_282F3770_5 weight_282F3770_6 weight_282F3770_7 weight_282F3770_8 weight_282F3770_9 weight_2BF1345D weight_2BF1345D_1 weight_2BF1345D_10 weight_2BF1345D_11 weight_2BF1345D_12 weight_2BF1345D_13 weight_2BF1345D_14 weight_2BF1345D_15 weight_2BF1345D_16 weight_2BF1345D_18 weight_2BF1345D_19 weight_2BF1345D_2 weight_2BF1345D_20 weight_2BF1345D_21 weight_2BF1345D_22 weight_2BF1345D_23 weight_2BF1345D_24 weight_2BF1345D_25 weight_2BF1345D_26 weight_2BF1345D_27 weight_2BF1345D_3 weight_2BF1345D_4 weight_2BF1345D_5 weight_2BF1345D_6 weight_2BF1345D_7 weight_2BF1345D_8 weight_2BF1345D_9 weight_2D487598 weight_2D487598_1 weight_2D487598_10 weight_2D487598_11 weight_2D487598_12 weight_2D487598_14 weight_2D487598_15 weight_2D487598_16 weight_2D487598_17 weight_2D487598_18 weight_2D487598_19 weight_2D487598_2 weight_2D487598_20 weight_2D487598_21 weight_2D487598_22 weight_2D487598_23 weight_2D487598_24 weight_2D487598_25 weight_2D487598_26 weight_2D487598_27 weight_2D487598_3 weight_2D487598_4 weight_2D487598_5 weight_2D487598_6 weight_2D487598_7 weight_2D487598_8 weight_2D487598_9 weight_2EF383C1 weight_2EF383C1_1 weight_2EF383C1_10 weight_2EF383C1_11 weight_2EF383C1_12 weight_2EF383C1_13 weight_2EF383C1_14 weight_2EF383C1_16 weight_2EF383C1_17 weight_2EF383C1_18 weight_2EF383C1_19 weight_2EF383C1_2 weight_2EF383C1_20 weight_2EF383C1_21 weight_2EF383C1_22 weight_2EF383C1_23 weight_2EF383C1_24 weight_2EF383C1_25 weight_2EF383C1_3 weight_2EF383C1_4 weight_2EF383C1_5 weight_2EF383C1_6 weight_2EF383C1_7 weight_2EF383C1_8 weight_2EF383C1_9 weight_366B891B weight_366B891B_1 weight_366B891B_10 weight_366B891B_12 weight_366B891B_13 weight_366B891B_14 weight_366B891B_15 weight_366B891B_16 weight_366B891B_17 weight_366B891B_18 weight_366B891B_19 weight_366B891B_2 weight_366B891B_20 weight_366B891B_21 weight_366B891B_22 weight_366B891B_23 weight_366B891B_24 weight_366B891B_25 weight_366B891B_26 weight_366B891B_27 weight_366B891B_28 weight_366B891B_3 weight_366B891B_4 weight_366B891B_5 weight_366B891B_6 weight_366B891B_7 weight_366B891B_8 weight_366B891B_9 weight_38168B90 weight_38168B90_1 weight_38168B90_10 weight_38168B90_11 weight_38168B90_12 weight_38168B90_13 weight_38168B90_14 weight_38168B90_15 weight_38168B90_16 weight_38168B90_17 weight_38168B90_18 weight_38168B90_19 weight_38168B90_2 weight_38168B90_20 weight_38168B90_21 weight_38168B90_22 weight_38168B90_23 weight_38168B90_24 weight_38168B90_25 weight_38168B90_3 weight_38168B90_4 weight_38168B90_5 weight_38168B90_6 weight_38168B90_7 weight_38168B90_9 weight_38298D27 weight_38298D27_1 weight_38298D27_10 weight_38298D27_11 weight_38298D27_12 weight_38298D27_14 weight_38298D27_15 weight_38298D27_16 weight_38298D27_17 weight_38298D27_18 weight_38298D27_19 weight_38298D27_2 weight_38298D27_20 weight_38298D27_21 weight_38298D27_22 weight_38298D27_23 weight_38298D27_24 weight_38298D27_25 weight_38298D27_26 weight_38298D27_27 weight_38298D27_3 weight_38298D27_4 weight_38298D27_5 weight_38298D27_6 weight_38298D27_7 weight_38298D27_8 weight_38298D27_9 weight_3E9C501E weight_3E9C501E_1 weight_3E9C501E_10 weight_3E9C501E_12 weight_3E9C501E_13 weight_3E9C501E_14 weight_3E9C501E_15 weight_3E9C501E_16 weight_3E9C501E_17 weight_3E9C501E_18 weight_3E9C501E_19 weight_3E9C501E_2 weight_3E9C501E_20 weight_3E9C501E_21 weight_3E9C501E_22 weight_3E9C501E_23 weight_3E9C501E_24 weight_3E9C501E_25 weight_3E9C501E_26 weight_3E9C501E_27 weight_3E9C501E_28 weight_3E9C501E_29 weight_3E9C501E_3 weight_3E9C501E_30 weight_3E9C501E_31 weight_3E9C501E_32 weight_3E9C501E_33 weight_3E9C501E_34 weight_3E9C501E_35 weight_3E9C501E_36 weight_3E9C501E_37 weight_3E9C501E_38 weight_3E9C501E_39 weight_3E9C501E_4 weight_3E9C501E_40 weight_3E9C501E_41 weight_3E9C501E_42 weight_3E9C501E_43 weight_3E9C501E_44 weight_3E9C501E_45 weight_3E9C501E_46 weight_3E9C501E_47 weight_3E9C501E_48 weight_3E9C501E_49 weight_3E9C501E_5 weight_3E9C501E_50 weight_3E9C501E_51 weight_3E9C501E_52 weight_3E9C501E_53 weight_3E9C501E_54 weight_3E9C501E_55 weight_3E9C501E_56 weight_3E9C501E_57 weight_3E9C501E_58 weight_3E9C501E_59 weight_3E9C501E_6 weight_3E9C501E_60 weight_3E9C501E_61 weight_3E9C501E_62 weight_3E9C501E_63 weight_3E9C501E_64 weight_3E9C501E_65 weight_3E9C501E_66 weight_3E9C501E_67 weight_3E9C501E_68 weight_3E9C501E_69 weight_3E9C501E_7 weight_3E9C501E_8 weight_3E9C501E_9 weight_4269DD2F weight_4269DD2F_1 weight_4269DD2F_10 weight_4269DD2F_11 weight_4269DD2F_12 weight_4269DD2F_13 weight_4269DD2F_15 weight_4269DD2F_16 weight_4269DD2F_17 weight_4269DD2F_18 weight_4269DD2F_19 weight_4269DD2F_2 weight_4269DD2F_20 weight_4269DD2F_21 weight_4269DD2F_22 weight_4269DD2F_23 weight_4269DD2F_24 weight_4269DD2F_3 weight_4269DD2F_4 weight_4269DD2F_5 weight_4269DD2F_6 weight_4269DD2F_7 weight_4269DD2F_8 weight_4269DD2F_9 weight_43BD29BB weight_43BD29BB_1 weight_43BD29BB_10 weight_43BD29BB_11 weight_43BD29BB_12 weight_43BD29BB_13 weight_43BD29BB_14 weight_43BD29BB_16 weight_43BD29BB_17 weight_43BD29BB_18 weight_43BD29BB_19 weight_43BD29BB_2 weight_43BD29BB_20 weight_43BD29BB_21 weight_43BD29BB_22 weight_43BD29BB_23 weight_43BD29BB_3 weight_43BD29BB_4 weight_43BD29BB_5 weight_43BD29BB_6 weight_43BD29BB_7 weight_43BD29BB_8 weight_43BD29BB_9 weight_44DC4579 weight_44DC4579_1 weight_44DC4579_10 weight_44DC4579_11 weight_44DC4579_12 weight_44DC4579_13 weight_44DC4579_14 weight_44DC4579_15 weight_44DC4579_16 weight_44DC4579_17 weight_44DC4579_18 weight_44DC4579_19 weight_44DC4579_2 weight_44DC4579_3 weight_44DC4579_4 weight_44DC4579_5 weight_44DC4579_6 weight_44DC4579_7 weight_44DC4579_8 weight_49225B9A weight_49225B9A_1 weight_49225B9A_10 weight_49225B9A_11 weight_49225B9A_12 weight_49225B9A_13 weight_49225B9A_14 weight_49225B9A_16 weight_49225B9A_17 weight_49225B9A_18 weight_49225B9A_19 weight_49225B9A_2 weight_49225B9A_20 weight_49225B9A_21 weight_49225B9A_22 weight_49225B9A_23 weight_49225B9A_3 weight_49225B9A_4 weight_49225B9A_5 weight_49225B9A_6 weight_49225B9A_7 weight_49225B9A_8 weight_49225B9A_9 weight_4B6FD4A6 weight_4B6FD4A6_1 weight_4B6FD4A6_10 weight_4B6FD4A6_11 weight_4B6FD4A6_12 weight_4B6FD4A6_13 weight_4B6FD4A6_14 weight_4B6FD4A6_16 weight_4B6FD4A6_17 weight_4B6FD4A6_18 weight_4B6FD4A6_19 weight_4B6FD4A6_2 weight_4B6FD4A6_20 weight_4B6FD4A6_21 weight_4B6FD4A6_22 weight_4B6FD4A6_23 weight_4B6FD4A6_3 weight_4B6FD4A6_4 weight_4B6FD4A6_5 weight_4B6FD4A6_6 weight_4B6FD4A6_7 weight_4B6FD4A6_8 weight_4B6FD4A6_9 weight_4CFFABE9 weight_4CFFABE9_1 weight_4CFFABE9_10 weight_4CFFABE9_11 weight_4CFFABE9_12 weight_4CFFABE9_13 weight_4CFFABE9_14 weight_4CFFABE9_16 weight_4CFFABE9_17 weight_4CFFABE9_18 weight_4CFFABE9_19 weight_4CFFABE9_2 weight_4CFFABE9_20 weight_4CFFABE9_21 weight_4CFFABE9_22 weight_4CFFABE9_23 weight_4CFFABE9_24 weight_4CFFABE9_25 weight_4CFFABE9_3 weight_4CFFABE9_4 weight_4CFFABE9_5 weight_4CFFABE9_6 weight_4CFFABE9_7 weight_4CFFABE9_8 weight_4CFFABE9_9 weight_4FD99C0F weight_4FD99C0F_1 weight_4FD99C0F_10 weight_4FD99C0F_11 weight_4FD99C0F_12 weight_4FD99C0F_13 weight_4FD99C0F_14 weight_4FD99C0F_16 weight_4FD99C0F_17 weight_4FD99C0F_18 weight_4FD99C0F_19 weight_4FD99C0F_2 weight_4FD99C0F_20 weight_4FD99C0F_21 weight_4FD99C0F_22 weight_4FD99C0F_23 weight_4FD99C0F_3 weight_4FD99C0F_4 weight_4FD99C0F_5 weight_4FD99C0F_6 weight_4FD99C0F_7 weight_4FD99C0F_8 weight_4FD99C0F_9 weight_523BA461 weight_523BA461_1 weight_523BA461_10 weight_523BA461_11 weight_523BA461_12 weight_523BA461_13 weight_523BA461_14 weight_523BA461_16 weight_523BA461_17 weight_523BA461_18 weight_523BA461_19 weight_523BA461_2 weight_523BA461_20 weight_523BA461_21 weight_523BA461_22 weight_523BA461_23 weight_523BA461_3 weight_523BA461_4 weight_523BA461_5 weight_523BA461_6 weight_523BA461_7 weight_523BA461_8 weight_523BA461_9 weight_538E1ED3 weight_538E1ED3_1 weight_538E1ED3_11 weight_538E1ED3_12 weight_538E1ED3_13 weight_538E1ED3_14 weight_538E1ED3_15 weight_538E1ED3_16 weight_538E1ED3_17 weight_538E1ED3_18 weight_538E1ED3_19 weight_538E1ED3_2 weight_538E1ED3_20 weight_538E1ED3_21 weight_538E1ED3_22 weight_538E1ED3_23 weight_538E1ED3_24 weight_538E1ED3_25 weight_538E1ED3_26 weight_538E1ED3_27 weight_538E1ED3_3 weight_538E1ED3_4 weight_538E1ED3_5 weight_538E1ED3_6 weight_538E1ED3_7 weight_538E1ED3_8 weight_538E1ED3_9 weight_540BA0B2 weight_540BA0B2_1 weight_540BA0B2_10 weight_540BA0B2_11 weight_540BA0B2_12 weight_540BA0B2_13 weight_540BA0B2_15 weight_540BA0B2_16 weight_540BA0B2_17 weight_540BA0B2_18 weight_540BA0B2_19 weight_540BA0B2_2 weight_540BA0B2_20 weight_540BA0B2_21 weight_540BA0B2_22 weight_540BA0B2_23 weight_540BA0B2_24 weight_540BA0B2_25 weight_540BA0B2_3 weight_540BA0B2_4 weight_540BA0B2_5 weight_540BA0B2_6 weight_540BA0B2_7 weight_540BA0B2_8 weight_540BA0B2_9 weight_56D77FAC weight_56D77FAC_1 weight_56D77FAC_10 weight_56D77FAC_12 weight_56D77FAC_13 weight_56D77FAC_14 weight_56D77FAC_15 weight_56D77FAC_16 weight_56D77FAC_17 weight_56D77FAC_18 weight_56D77FAC_19 weight_56D77FAC_2 weight_56D77FAC_20 weight_56D77FAC_21 weight_56D77FAC_22 weight_56D77FAC_23 weight_56D77FAC_24 weight_56D77FAC_25 weight_56D77FAC_26 weight_56D77FAC_27 weight_56D77FAC_28 weight_56D77FAC_3 weight_56D77FAC_4 weight_56D77FAC_5 weight_56D77FAC_6 weight_56D77FAC_7 weight_56D77FAC_8 weight_56D77FAC_9 weight_56ECCA5C weight_56ECCA5C_1 weight_56ECCA5C_10 weight_56ECCA5C_11 weight_56ECCA5C_12 weight_56ECCA5C_14 weight_56ECCA5C_15 weight_56ECCA5C_16 weight_56ECCA5C_17 weight_56ECCA5C_18 weight_56ECCA5C_19 weight_56ECCA5C_2 weight_56ECCA5C_20 weight_56ECCA5C_21 weight_56ECCA5C_22 weight_56ECCA5C_23 weight_56ECCA5C_3 weight_56ECCA5C_4 weight_56ECCA5C_5 weight_56ECCA5C_6 weight_56ECCA5C_7 weight_56ECCA5C_8 weight_56ECCA5C_9 weight_57B55E42 weight_57B55E42_1 weight_57B55E42_10 weight_57B55E42_11 weight_57B55E42_13 weight_57B55E42_14 weight_57B55E42_15 weight_57B55E42_16 weight_57B55E42_17 weight_57B55E42_18 weight_57B55E42_19 weight_57B55E42_2 weight_57B55E42_20 weight_57B55E42_21 weight_57B55E42_22 weight_57B55E42_23 weight_57B55E42_3 weight_57B55E42_4 weight_57B55E42_5 weight_57B55E42_6 weight_57B55E42_7 weight_57B55E42_8 weight_57B55E42_9 weight_59DBA404 weight_59DBA404_1 weight_59DBA404_10 weight_59DBA404_11 weight_59DBA404_12 weight_59DBA404_13 weight_59DBA404_15 weight_59DBA404_16 weight_59DBA404_17 weight_59DBA404_18 weight_59DBA404_19 weight_59DBA404_2 weight_59DBA404_20 weight_59DBA404_21 weight_59DBA404_22 weight_59DBA404_23 weight_59DBA404_24 weight_59DBA404_25 weight_59DBA404_26 weight_59DBA404_27 weight_59DBA404_3 weight_59DBA404_4 weight_59DBA404_5 weight_59DBA404_6 weight_59DBA404_7 weight_59DBA404_8 weight_59DBA404_9 weight_5A1E06D4 weight_5A1E06D4_1 weight_5A1E06D4_10 weight_5A1E06D4_12 weight_5A1E06D4_13 weight_5A1E06D4_14 weight_5A1E06D4_15 weight_5A1E06D4_16 weight_5A1E06D4_17 weight_5A1E06D4_18 weight_5A1E06D4_19 weight_5A1E06D4_2 weight_5A1E06D4_20 weight_5A1E06D4_21 weight_5A1E06D4_22 weight_5A1E06D4_23 weight_5A1E06D4_24 weight_5A1E06D4_3 weight_5A1E06D4_4 weight_5A1E06D4_5 weight_5A1E06D4_6 weight_5A1E06D4_7 weight_5A1E06D4_8 weight_5A1E06D4_9 weight_5A24D0D0 weight_5A24D0D0_1 weight_5A24D0D0_10 weight_5A24D0D0_11 weight_5A24D0D0_12 weight_5A24D0D0_13 weight_5A24D0D0_14 weight_5A24D0D0_15 weight_5A24D0D0_16 weight_5A24D0D0_17 weight_5A24D0D0_18 weight_5A24D0D0_19 weight_5A24D0D0_2 weight_5A24D0D0_20 weight_5A24D0D0_21 weight_5A24D0D0_22 weight_5A24D0D0_23 weight_5A24D0D0_24 weight_5A24D0D0_25 weight_5A24D0D0_26 weight_5A24D0D0_27 weight_5A24D0D0_3 weight_5A24D0D0_4 weight_5A24D0D0_5 weight_5A24D0D0_6 weight_5A24D0D0_7 weight_5A24D0D0_8 weight_5DD5E780 weight_5DD5E780_1 weight_5DD5E780_10 weight_5DD5E780_11 weight_5DD5E780_12 weight_5DD5E780_13 weight_5DD5E780_14 weight_5DD5E780_15 weight_5DD5E780_16 weight_5DD5E780_17 weight_5DD5E780_18 weight_5DD5E780_19 weight_5DD5E780_2 weight_5DD5E780_20 weight_5DD5E780_21 weight_5DD5E780_22 weight_5DD5E780_23 weight_5DD5E780_3 weight_5DD5E780_4 weight_5DD5E780_5 weight_5DD5E780_6 weight_5DD5E780_7 weight_5DD5E780_9 weight_606233AB weight_606233AB_1 weight_606233AB_10 weight_606233AB_11 weight_606233AB_12 weight_606233AB_13 weight_606233AB_14 weight_606233AB_15 weight_606233AB_16 weight_606233AB_17 weight_606233AB_18 weight_606233AB_19 weight_606233AB_2 weight_606233AB_20 weight_606233AB_21 weight_606233AB_22 weight_606233AB_23 weight_606233AB_3 weight_606233AB_4 weight_606233AB_5 weight_606233AB_6 weight_606233AB_7 weight_606233AB_8 weight_620A18C5 weight_620A18C5_1 weight_620A18C5_10 weight_620A18C5_11 weight_620A18C5_12 weight_620A18C5_14 weight_620A18C5_15 weight_620A18C5_16 weight_620A18C5_17 weight_620A18C5_18 weight_620A18C5_19 weight_620A18C5_2 weight_620A18C5_3 weight_620A18C5_4 weight_620A18C5_5 weight_620A18C5_6 weight_620A18C5_7 weight_620A18C5_8 weight_620A18C5_9 weight_62EA456F weight_62EA456F_1 weight_62EA456F_10 weight_62EA456F_11 weight_62EA456F_12 weight_62EA456F_14 weight_62EA456F_15 weight_62EA456F_16 weight_62EA456F_17 weight_62EA456F_18 weight_62EA456F_19 weight_62EA456F_2 weight_62EA456F_3 weight_62EA456F_4 weight_62EA456F_5 weight_62EA456F_6 weight_62EA456F_7 weight_62EA456F_8 weight_62EA456F_9 weight_6857AC79 weight_6857AC79_1 weight_6857AC79_10 weight_6857AC79_11 weight_6857AC79_13 weight_6857AC79_14 weight_6857AC79_15 weight_6857AC79_16 weight_6857AC79_17 weight_6857AC79_18 weight_6857AC79_19 weight_6857AC79_2 weight_6857AC79_20 weight_6857AC79_21 weight_6857AC79_22 weight_6857AC79_23 weight_6857AC79_3 weight_6857AC79_4 weight_6857AC79_5 weight_6857AC79_6 weight_6857AC79_7 weight_6857AC79_8 weight_6857AC79_9 weight_6CCC59A7 weight_6CCC59A7_1 weight_6CCC59A7_10 weight_6CCC59A7_11 weight_6CCC59A7_12 weight_6CCC59A7_13 weight_6CCC59A7_14 weight_6CCC59A7_16 weight_6CCC59A7_17 weight_6CCC59A7_18 weight_6CCC59A7_19 weight_6CCC59A7_2 weight_6CCC59A7_20 weight_6CCC59A7_21 weight_6CCC59A7_22 weight_6CCC59A7_23 weight_6CCC59A7_3 weight_6CCC59A7_4 weight_6CCC59A7_5 weight_6CCC59A7_6 weight_6CCC59A7_7 weight_6CCC59A7_8 weight_6CCC59A7_9 weight_6E531B9A weight_6E531B9A_1 weight_6E531B9A_10 weight_6E531B9A_11 weight_6E531B9A_12 weight_6E531B9A_14 weight_6E531B9A_15 weight_6E531B9A_16 weight_6E531B9A_17 weight_6E531B9A_18 weight_6E531B9A_19 weight_6E531B9A_2 weight_6E531B9A_20 weight_6E531B9A_21 weight_6E531B9A_22 weight_6E531B9A_23 weight_6E531B9A_24 weight_6E531B9A_25 weight_6E531B9A_26 weight_6E531B9A_27 weight_6E531B9A_3 weight_6E531B9A_4 weight_6E531B9A_5 weight_6E531B9A_6 weight_6E531B9A_7 weight_6E531B9A_8 weight_6E531B9A_9 weight_6F0218B0 weight_6F0218B0_1 weight_6F0218B0_10 weight_6F0218B0_11 weight_6F0218B0_12 weight_6F0218B0_13 weight_6F0218B0_14 weight_6F0218B0_15 weight_6F0218B0_16 weight_6F0218B0_17 weight_6F0218B0_18 weight_6F0218B0_19 weight_6F0218B0_2 weight_6F0218B0_20 weight_6F0218B0_21 weight_6F0218B0_22 weight_6F0218B0_23 weight_6F0218B0_3 weight_6F0218B0_4 weight_6F0218B0_5 weight_6F0218B0_6 weight_6F0218B0_7 weight_6F0218B0_9 weight_70CF3B78 weight_70CF3B78_1 weight_70CF3B78_10 weight_70CF3B78_11 weight_70CF3B78_12 weight_70CF3B78_13 weight_70CF3B78_14 weight_70CF3B78_16 weight_70CF3B78_17 weight_70CF3B78_18 weight_70CF3B78_19 weight_70CF3B78_2 weight_70CF3B78_20 weight_70CF3B78_21 weight_70CF3B78_22 weight_70CF3B78_23 weight_70CF3B78_3 weight_70CF3B78_4 weight_70CF3B78_5 weight_70CF3B78_6 weight_70CF3B78_7 weight_70CF3B78_8 weight_70CF3B78_9 weight_7523B88D weight_7523B88D_1 weight_7523B88D_10 weight_7523B88D_11 weight_7523B88D_12 weight_7523B88D_13 weight_7523B88D_14 weight_7523B88D_15 weight_7523B88D_16 weight_7523B88D_17 weight_7523B88D_18 weight_7523B88D_19 weight_7523B88D_2 weight_7523B88D_20 weight_7523B88D_21 weight_7523B88D_22 weight_7523B88D_23 weight_7523B88D_3 weight_7523B88D_4 weight_7523B88D_5 weight_7523B88D_6 weight_7523B88D_7 weight_7523B88D_9 weight_779C24F9 weight_779C24F9_1 weight_779C24F9_10 weight_779C24F9_11 weight_779C24F9_12 weight_779C24F9_13 weight_779C24F9_14 weight_779C24F9_15 weight_779C24F9_16 weight_779C24F9_17 weight_779C24F9_18 weight_779C24F9_19 weight_779C24F9_2 weight_779C24F9_20 weight_779C24F9_21 weight_779C24F9_22 weight_779C24F9_3 weight_779C24F9_4 weight_779C24F9_6 weight_779C24F9_7 weight_779C24F9_8 weight_779C24F9_9 weight_780CCA87 weight_780CCA87_1 weight_780CCA87_11 weight_780CCA87_12 weight_780CCA87_13 weight_780CCA87_14 weight_780CCA87_15 weight_780CCA87_16 weight_780CCA87_17 weight_780CCA87_18 weight_780CCA87_19 weight_780CCA87_2 weight_780CCA87_20 weight_780CCA87_21 weight_780CCA87_22 weight_780CCA87_23 weight_780CCA87_24 weight_780CCA87_3 weight_780CCA87_4 weight_780CCA87_5 weight_780CCA87_6 weight_780CCA87_7 weight_780CCA87_8 weight_780CCA87_9 weight_7834520F weight_7834520F_1 weight_7834520F_10 weight_7834520F_11 weight_7834520F_12 weight_7834520F_13 weight_7834520F_14 weight_7834520F_16 weight_7834520F_17 weight_7834520F_18 weight_7834520F_19 weight_7834520F_2 weight_7834520F_20 weight_7834520F_21 weight_7834520F_22 weight_7834520F_23 weight_7834520F_24 weight_7834520F_25 weight_7834520F_3 weight_7834520F_4 weight_7834520F_5 weight_7834520F_6 weight_7834520F_7 weight_7834520F_8 weight_7834520F_9 weight_78755FA1 weight_78755FA1_1 weight_78755FA1_10 weight_78755FA1_100 weight_78755FA1_101 weight_78755FA1_102 weight_78755FA1_103 weight_78755FA1_104 weight_78755FA1_105 weight_78755FA1_106 weight_78755FA1_107 weight_78755FA1_108 weight_78755FA1_109 weight_78755FA1_11 weight_78755FA1_110 weight_78755FA1_111 weight_78755FA1_112 weight_78755FA1_113 weight_78755FA1_114 weight_78755FA1_115 weight_78755FA1_116 weight_78755FA1_117 weight_78755FA1_118 weight_78755FA1_119 weight_78755FA1_12 weight_78755FA1_120 weight_78755FA1_121 weight_78755FA1_122 weight_78755FA1_123 weight_78755FA1_124 weight_78755FA1_125 weight_78755FA1_126 weight_78755FA1_127 weight_78755FA1_128 weight_78755FA1_129 weight_78755FA1_13 weight_78755FA1_130 weight_78755FA1_131 weight_78755FA1_132 weight_78755FA1_133 weight_78755FA1_134 weight_78755FA1_135 weight_78755FA1_136 weight_78755FA1_137 weight_78755FA1_138 weight_78755FA1_139 weight_78755FA1_14 weight_78755FA1_140 weight_78755FA1_141 weight_78755FA1_142 weight_78755FA1_143 weight_78755FA1_144 weight_78755FA1_145 weight_78755FA1_146 weight_78755FA1_147 weight_78755FA1_148 weight_78755FA1_149 weight_78755FA1_150 weight_78755FA1_151 weight_78755FA1_152 weight_78755FA1_153 weight_78755FA1_154 weight_78755FA1_155 weight_78755FA1_156 weight_78755FA1_157 weight_78755FA1_158 weight_78755FA1_159 weight_78755FA1_16 weight_78755FA1_160 weight_78755FA1_161 weight_78755FA1_162 weight_78755FA1_163 weight_78755FA1_164 weight_78755FA1_165 weight_78755FA1_166 weight_78755FA1_167 weight_78755FA1_168 weight_78755FA1_169 weight_78755FA1_17 weight_78755FA1_170 weight_78755FA1_171 weight_78755FA1_172 weight_78755FA1_173 weight_78755FA1_174 weight_78755FA1_175 weight_78755FA1_176 weight_78755FA1_177 weight_78755FA1_178 weight_78755FA1_179 weight_78755FA1_18 weight_78755FA1_180 weight_78755FA1_181 weight_78755FA1_182 weight_78755FA1_183 weight_78755FA1_184 weight_78755FA1_185 weight_78755FA1_186 weight_78755FA1_187 weight_78755FA1_188 weight_78755FA1_189 weight_78755FA1_19 weight_78755FA1_190 weight_78755FA1_191 weight_78755FA1_192 weight_78755FA1_193 weight_78755FA1_194 weight_78755FA1_195 weight_78755FA1_196 weight_78755FA1_197 weight_78755FA1_198 weight_78755FA1_199 weight_78755FA1_2 weight_78755FA1_20 weight_78755FA1_200 weight_78755FA1_201 weight_78755FA1_202 weight_78755FA1_203 weight_78755FA1_204 weight_78755FA1_205 weight_78755FA1_206 weight_78755FA1_207 weight_78755FA1_21 weight_78755FA1_22 weight_78755FA1_23 weight_78755FA1_24 weight_78755FA1_25 weight_78755FA1_26 weight_78755FA1_27 weight_78755FA1_28 weight_78755FA1_29 weight_78755FA1_3 weight_78755FA1_30 weight_78755FA1_31 weight_78755FA1_32 weight_78755FA1_33 weight_78755FA1_34 weight_78755FA1_35 weight_78755FA1_36 weight_78755FA1_37 weight_78755FA1_38 weight_78755FA1_39 weight_78755FA1_4 weight_78755FA1_40 weight_78755FA1_41 weight_78755FA1_42 weight_78755FA1_43 weight_78755FA1_44 weight_78755FA1_45 weight_78755FA1_46 weight_78755FA1_47 weight_78755FA1_48 weight_78755FA1_49 weight_78755FA1_5 weight_78755FA1_50 weight_78755FA1_51 weight_78755FA1_52 weight_78755FA1_53 weight_78755FA1_54 weight_78755FA1_55 weight_78755FA1_56 weight_78755FA1_57 weight_78755FA1_58 weight_78755FA1_59 weight_78755FA1_6 weight_78755FA1_60 weight_78755FA1_61 weight_78755FA1_62 weight_78755FA1_63 weight_78755FA1_64 weight_78755FA1_65 weight_78755FA1_66 weight_78755FA1_67 weight_78755FA1_68 weight_78755FA1_69 weight_78755FA1_7 weight_78755FA1_70 weight_78755FA1_71 weight_78755FA1_72 weight_78755FA1_73 weight_78755FA1_74 weight_78755FA1_75 weight_78755FA1_76 weight_78755FA1_77 weight_78755FA1_78 weight_78755FA1_79 weight_78755FA1_8 weight_78755FA1_80 weight_78755FA1_81 weight_78755FA1_82 weight_78755FA1_83 weight_78755FA1_84 weight_78755FA1_85 weight_78755FA1_86 weight_78755FA1_87 weight_78755FA1_88 weight_78755FA1_89 weight_78755FA1_9 weight_78755FA1_90 weight_78755FA1_91 weight_78755FA1_92 weight_78755FA1_93 weight_78755FA1_94 weight_78755FA1_95 weight_78755FA1_96 weight_78755FA1_97 weight_78755FA1_98 weight_78755FA1_99 weight_791E13F7 weight_791E13F7_1 weight_791E13F7_10 weight_791E13F7_11 weight_791E13F7_12 weight_791E13F7_13 weight_791E13F7_15 weight_791E13F7_16 weight_791E13F7_17 weight_791E13F7_18 weight_791E13F7_19 weight_791E13F7_2 weight_791E13F7_20 weight_791E13F7_21 weight_791E13F7_22 weight_791E13F7_23 weight_791E13F7_24 weight_791E13F7_25 weight_791E13F7_3 weight_791E13F7_4 weight_791E13F7_5 weight_791E13F7_6 weight_791E13F7_7 weight_791E13F7_8 weight_791E13F7_9 weight_795C12F4 weight_795C12F4_1 weight_795C12F4_11 weight_795C12F4_12 weight_795C12F4_13 weight_795C12F4_14 weight_795C12F4_15 weight_795C12F4_16 weight_795C12F4_17 weight_795C12F4_18 weight_795C12F4_19 weight_795C12F4_2 weight_795C12F4_20 weight_795C12F4_21 weight_795C12F4_22 weight_795C12F4_23 weight_795C12F4_3 weight_795C12F4_4 weight_795C12F4_5 weight_795C12F4_6 weight_795C12F4_7 weight_795C12F4_8 weight_795C12F4_9 weight_7D5E463F weight_7D5E463F_1 weight_7D5E463F_10 weight_7D5E463F_11 weight_7D5E463F_12 weight_7D5E463F_13 weight_7D5E463F_14 weight_7D5E463F_15 weight_7D5E463F_16 weight_7D5E463F_17 weight_7D5E463F_18 weight_7D5E463F_19 weight_7D5E463F_2 weight_7D5E463F_20 weight_7D5E463F_3 weight_7D5E463F_4 weight_7D5E463F_6 weight_7D5E463F_7 weight_7D5E463F_8 weight_7D5E463F_9 weight_7EF0D18B weight_7EF0D18B_1 weight_7EF0D18B_10 weight_7EF0D18B_11 weight_7EF0D18B_13 weight_7EF0D18B_14 weight_7EF0D18B_15 weight_7EF0D18B_16 weight_7EF0D18B_17 weight_7EF0D18B_18 weight_7EF0D18B_19 weight_7EF0D18B_2 weight_7EF0D18B_3 weight_7EF0D18B_4 weight_7EF0D18B_5 weight_7EF0D18B_6 weight_7EF0D18B_7 weight_7EF0D18B_8 weight_7EF0D18B_9 weight_7FEF5D6D weight_7FEF5D6D_1 weight_7FEF5D6D_10 weight_7FEF5D6D_11 weight_7FEF5D6D_12 weight_7FEF5D6D_13 weight_7FEF5D6D_14 weight_7FEF5D6D_16 weight_7FEF5D6D_17 weight_7FEF5D6D_18 weight_7FEF5D6D_19 weight_7FEF5D6D_2 weight_7FEF5D6D_20 weight_7FEF5D6D_21 weight_7FEF5D6D_22 weight_7FEF5D6D_23 weight_7FEF5D6D_3 weight_7FEF5D6D_4 weight_7FEF5D6D_5 weight_7FEF5D6D_6 weight_7FEF5D6D_7 weight_7FEF5D6D_8 weight_7FEF5D6D_9 weight_83C41D03 weight_83C41D03_1 weight_83C41D03_10 weight_83C41D03_11 weight_83C41D03_13 weight_83C41D03_14 weight_83C41D03_15 weight_83C41D03_16 weight_83C41D03_17 weight_83C41D03_18 weight_83C41D03_19 weight_83C41D03_2 weight_83C41D03_3 weight_83C41D03_4 weight_83C41D03_5 weight_83C41D03_6 weight_83C41D03_7 weight_83C41D03_8 weight_83C41D03_9 weight_83D0BBDC weight_83D0BBDC_1 weight_83D0BBDC_10 weight_83D0BBDC_11 weight_83D0BBDC_12 weight_83D0BBDC_14 weight_83D0BBDC_15 weight_83D0BBDC_16 weight_83D0BBDC_17 weight_83D0BBDC_18 weight_83D0BBDC_19 weight_83D0BBDC_2 weight_83D0BBDC_20 weight_83D0BBDC_21 weight_83D0BBDC_3 weight_83D0BBDC_4 weight_83D0BBDC_5 weight_83D0BBDC_6 weight_83D0BBDC_7 weight_83D0BBDC_8 weight_83D0BBDC_9 weight_87F6B239 weight_87F6B239_1 weight_87F6B239_10 weight_87F6B239_11 weight_87F6B239_12 weight_87F6B239_13 weight_87F6B239_14 weight_87F6B239_15 weight_87F6B239_17 weight_87F6B239_18 weight_87F6B239_19 weight_87F6B239_2 weight_87F6B239_20 weight_87F6B239_21 weight_87F6B239_22 weight_87F6B239_23 weight_87F6B239_24 weight_87F6B239_3 weight_87F6B239_4 weight_87F6B239_5 weight_87F6B239_6 weight_87F6B239_7 weight_87F6B239_8 weight_87F6B239_9 weight_893271F8 weight_893271F8_1 weight_893271F8_10 weight_893271F8_11 weight_893271F8_12 weight_893271F8_13 weight_893271F8_14 weight_893271F8_15 weight_893271F8_17 weight_893271F8_18 weight_893271F8_19 weight_893271F8_2 weight_893271F8_20 weight_893271F8_21 weight_893271F8_22 weight_893271F8_23 weight_893271F8_24 weight_893271F8_25 weight_893271F8_26 weight_893271F8_27 weight_893271F8_3 weight_893271F8_4 weight_893271F8_5 weight_893271F8_6 weight_893271F8_7 weight_893271F8_8 weight_893271F8_9 weight_8A22602B weight_8A22602B_1 weight_8A22602B_10 weight_8A22602B_11 weight_8A22602B_12 weight_8A22602B_14 weight_8A22602B_15 weight_8A22602B_16 weight_8A22602B_17 weight_8A22602B_18 weight_8A22602B_19 weight_8A22602B_2 weight_8A22602B_3 weight_8A22602B_4 weight_8A22602B_5 weight_8A22602B_6 weight_8A22602B_7 weight_8A22602B_8 weight_8A22602B_9 weight_8F2D7126 weight_8F2D7126_1 weight_8F2D7126_10 weight_8F2D7126_11 weight_8F2D7126_12 weight_8F2D7126_13 weight_8F2D7126_14 weight_8F2D7126_15 weight_8F2D7126_17 weight_8F2D7126_18 weight_8F2D7126_19 weight_8F2D7126_2 weight_8F2D7126_20 weight_8F2D7126_21 weight_8F2D7126_22 weight_8F2D7126_23 weight_8F2D7126_24 weight_8F2D7126_25 weight_8F2D7126_26 weight_8F2D7126_27 weight_8F2D7126_3 weight_8F2D7126_4 weight_8F2D7126_5 weight_8F2D7126_6 weight_8F2D7126_7 weight_8F2D7126_8 weight_8F2D7126_9 weight_90D5F96F weight_90D5F96F_1 weight_90D5F96F_10 weight_90D5F96F_11 weight_90D5F96F_12 weight_90D5F96F_13 weight_90D5F96F_14 weight_90D5F96F_15 weight_90D5F96F_16 weight_90D5F96F_17 weight_90D5F96F_18 weight_90D5F96F_19 weight_90D5F96F_2 weight_90D5F96F_20 weight_90D5F96F_21 weight_90D5F96F_22 weight_90D5F96F_23 weight_90D5F96F_3 weight_90D5F96F_4 weight_90D5F96F_5 weight_90D5F96F_6 weight_90D5F96F_7 weight_90D5F96F_8 weight_94DE5F89 weight_94DE5F89_1 weight_94DE5F89_10 weight_94DE5F89_11 weight_94DE5F89_12 weight_94DE5F89_13 weight_94DE5F89_14 weight_94DE5F89_15 weight_94DE5F89_16 weight_94DE5F89_17 weight_94DE5F89_18 weight_94DE5F89_19 weight_94DE5F89_2 weight_94DE5F89_20 weight_94DE5F89_21 weight_94DE5F89_22 weight_94DE5F89_23 weight_94DE5F89_24 weight_94DE5F89_25 weight_94DE5F89_3 weight_94DE5F89_4 weight_94DE5F89_5 weight_94DE5F89_6 weight_94DE5F89_7 weight_94DE5F89_9 weight_994B4ECC weight_994B4ECC_1 weight_994B4ECC_10 weight_994B4ECC_11 weight_994B4ECC_12 weight_994B4ECC_13 weight_994B4ECC_14 weight_994B4ECC_15 weight_994B4ECC_16 weight_994B4ECC_17 weight_994B4ECC_18 weight_994B4ECC_19 weight_994B4ECC_2 weight_994B4ECC_20 weight_994B4ECC_21 weight_994B4ECC_22 weight_994B4ECC_3 weight_994B4ECC_4 weight_994B4ECC_6 weight_994B4ECC_7 weight_994B4ECC_8 weight_994B4ECC_9 weight_996FDD44 weight_996FDD44_1 weight_996FDD44_10 weight_996FDD44_11 weight_996FDD44_12 weight_996FDD44_13 weight_996FDD44_14 weight_996FDD44_15 weight_996FDD44_16 weight_996FDD44_17 weight_996FDD44_18 weight_996FDD44_19 weight_996FDD44_2 weight_996FDD44_20 weight_996FDD44_21 weight_996FDD44_22 weight_996FDD44_23 weight_996FDD44_3 weight_996FDD44_4 weight_996FDD44_5 weight_996FDD44_6 weight_996FDD44_7 weight_996FDD44_8 weight_9EBCAD7F weight_9EBCAD7F_1 weight_9EBCAD7F_10 weight_9EBCAD7F_11 weight_9EBCAD7F_12 weight_9EBCAD7F_13 weight_9EBCAD7F_14 weight_9EBCAD7F_15 weight_9EBCAD7F_16 weight_9EBCAD7F_17 weight_9EBCAD7F_18 weight_9EBCAD7F_19 weight_9EBCAD7F_2 weight_9EBCAD7F_20 weight_9EBCAD7F_21 weight_9EBCAD7F_22 weight_9EBCAD7F_23 weight_9EBCAD7F_24 weight_9EBCAD7F_25 weight_9EBCAD7F_26 weight_9EBCAD7F_27 weight_9EBCAD7F_3 weight_9EBCAD7F_4 weight_9EBCAD7F_5 weight_9EBCAD7F_6 weight_9EBCAD7F_8 weight_9EBCAD7F_9 weight_A1653599 weight_A1653599_1 weight_A1653599_10 weight_A1653599_11 weight_A1653599_12 weight_A1653599_13 weight_A1653599_14 weight_A1653599_15 weight_A1653599_16 weight_A1653599_17 weight_A1653599_18 weight_A1653599_19 weight_A1653599_2 weight_A1653599_20 weight_A1653599_21 weight_A1653599_22 weight_A1653599_23 weight_A1653599_24 weight_A1653599_25 weight_A1653599_26 weight_A1653599_27 weight_A1653599_3 weight_A1653599_4 weight_A1653599_5 weight_A1653599_6 weight_A1653599_7 weight_A1653599_9 weight_A23CABAE weight_A23CABAE_1 weight_A23CABAE_10 weight_A23CABAE_11 weight_A23CABAE_12 weight_A23CABAE_13 weight_A23CABAE_14 weight_A23CABAE_15 weight_A23CABAE_16 weight_A23CABAE_17 weight_A23CABAE_18 weight_A23CABAE_19 weight_A23CABAE_2 weight_A23CABAE_20 weight_A23CABAE_21 weight_A23CABAE_22 weight_A23CABAE_23 weight_A23CABAE_24 weight_A23CABAE_25 weight_A23CABAE_3 weight_A23CABAE_4 weight_A23CABAE_5 weight_A23CABAE_6 weight_A23CABAE_7 weight_A23CABAE_8 weight_A270CA6E weight_A270CA6E_1 weight_A270CA6E_10 weight_A270CA6E_11 weight_A270CA6E_12 weight_A270CA6E_13 weight_A270CA6E_14 weight_A270CA6E_15 weight_A270CA6E_2 weight_A270CA6E_3 weight_A270CA6E_4 weight_A270CA6E_5 weight_A270CA6E_6 weight_A270CA6E_8 weight_A270CA6E_9 weight_A2D73A98 weight_A2D73A98_1 weight_A2D73A98_11 weight_A2D73A98_12 weight_A2D73A98_13 weight_A2D73A98_14 weight_A2D73A98_15 weight_A2D73A98_16 weight_A2D73A98_17 weight_A2D73A98_2 weight_A2D73A98_3 weight_A2D73A98_4 weight_A2D73A98_5 weight_A2D73A98_6 weight_A2D73A98_7 weight_A2D73A98_8 weight_A2D73A98_9 weight_A3222D58 weight_A3222D58_1 weight_A3222D58_11 weight_A3222D58_12 weight_A3222D58_13 weight_A3222D58_14 weight_A3222D58_15 weight_A3222D58_16 weight_A3222D58_17 weight_A3222D58_18 weight_A3222D58_19 weight_A3222D58_2 weight_A3222D58_20 weight_A3222D58_21 weight_A3222D58_22 weight_A3222D58_23 weight_A3222D58_24 weight_A3222D58_25 weight_A3222D58_3 weight_A3222D58_4 weight_A3222D58_5 weight_A3222D58_6 weight_A3222D58_7 weight_A3222D58_8 weight_A3222D58_9 weight_A3536DD3 weight_A3536DD3_1 weight_A3536DD3_10 weight_A3536DD3_11 weight_A3536DD3_12 weight_A3536DD3_13 weight_A3536DD3_14 weight_A3536DD3_16 weight_A3536DD3_17 weight_A3536DD3_18 weight_A3536DD3_19 weight_A3536DD3_2 weight_A3536DD3_20 weight_A3536DD3_21 weight_A3536DD3_22 weight_A3536DD3_23 weight_A3536DD3_3 weight_A3536DD3_4 weight_A3536DD3_5 weight_A3536DD3_6 weight_A3536DD3_7 weight_A3536DD3_8 weight_A3536DD3_9 weight_A4E420FB weight_A4E420FB_1 weight_A4E420FB_10 weight_A4E420FB_11 weight_A4E420FB_12 weight_A4E420FB_13 weight_A4E420FB_14 weight_A4E420FB_16 weight_A4E420FB_17 weight_A4E420FB_18 weight_A4E420FB_19 weight_A4E420FB_2 weight_A4E420FB_20 weight_A4E420FB_21 weight_A4E420FB_22 weight_A4E420FB_23 weight_A4E420FB_24 weight_A4E420FB_25 weight_A4E420FB_26 weight_A4E420FB_27 weight_A4E420FB_3 weight_A4E420FB_4 weight_A4E420FB_5 weight_A4E420FB_6 weight_A4E420FB_7 weight_A4E420FB_8 weight_A4E420FB_9 weight_A5972E25 weight_A5972E25_1 weight_A5972E25_10 weight_A5972E25_11 weight_A5972E25_12 weight_A5972E25_13 weight_A5972E25_14 weight_A5972E25_16 weight_A5972E25_17 weight_A5972E25_18 weight_A5972E25_19 weight_A5972E25_2 weight_A5972E25_20 weight_A5972E25_21 weight_A5972E25_22 weight_A5972E25_23 weight_A5972E25_24 weight_A5972E25_25 weight_A5972E25_26 weight_A5972E25_27 weight_A5972E25_3 weight_A5972E25_4 weight_A5972E25_5 weight_A5972E25_6 weight_A5972E25_7 weight_A5972E25_8 weight_A5972E25_9 weight_AA028EAF weight_AA028EAF_1 weight_AA028EAF_11 weight_AA028EAF_12 weight_AA028EAF_13 weight_AA028EAF_14 weight_AA028EAF_15 weight_AA028EAF_16 weight_AA028EAF_17 weight_AA028EAF_18 weight_AA028EAF_19 weight_AA028EAF_2 weight_AA028EAF_20 weight_AA028EAF_21 weight_AA028EAF_22 weight_AA028EAF_23 weight_AA028EAF_3 weight_AA028EAF_4 weight_AA028EAF_5 weight_AA028EAF_6 weight_AA028EAF_7 weight_AA028EAF_8 weight_AA028EAF_9 weight_AA21A238 weight_AA21A238_1 weight_AA21A238_11 weight_AA21A238_12 weight_AA21A238_13 weight_AA21A238_14 weight_AA21A238_15 weight_AA21A238_16 weight_AA21A238_17 weight_AA21A238_18 weight_AA21A238_19 weight_AA21A238_2 weight_AA21A238_20 weight_AA21A238_21 weight_AA21A238_22 weight_AA21A238_23 weight_AA21A238_24 weight_AA21A238_25 weight_AA21A238_26 weight_AA21A238_3 weight_AA21A238_4 weight_AA21A238_5 weight_AA21A238_6 weight_AA21A238_7 weight_AA21A238_8 weight_AA21A238_9 weight_AD028A55 weight_AD028A55_1 weight_AD028A55_10 weight_AD028A55_11 weight_AD028A55_12 weight_AD028A55_13 weight_AD028A55_14 weight_AD028A55_15 weight_AD028A55_16 weight_AD028A55_17 weight_AD028A55_18 weight_AD028A55_19 weight_AD028A55_2 weight_AD028A55_20 weight_AD028A55_21 weight_AD028A55_22 weight_AD028A55_23 weight_AD028A55_3 weight_AD028A55_4 weight_AD028A55_5 weight_AD028A55_6 weight_AD028A55_7 weight_AD028A55_8 weight_AD456275 weight_AD456275_1 weight_AD456275_10 weight_AD456275_11 weight_AD456275_12 weight_AD456275_13 weight_AD456275_14 weight_AD456275_15 weight_AD456275_16 weight_AD456275_17 weight_AD456275_18 weight_AD456275_2 weight_AD456275_20 weight_AD456275_21 weight_AD456275_22 weight_AD456275_23 weight_AD456275_24 weight_AD456275_25 weight_AD456275_26 weight_AD456275_27 weight_AD456275_28 weight_AD456275_29 weight_AD456275_3 weight_AD456275_4 weight_AD456275_5 weight_AD456275_6 weight_AD456275_7 weight_AD456275_8 weight_AD456275_9 weight_AD6A4B44 weight_AD6A4B44_1 weight_AD6A4B44_10 weight_AD6A4B44_11 weight_AD6A4B44_12 weight_AD6A4B44_13 weight_AD6A4B44_14 weight_AD6A4B44_15 weight_AD6A4B44_16 weight_AD6A4B44_17 weight_AD6A4B44_18 weight_AD6A4B44_19 weight_AD6A4B44_2 weight_AD6A4B44_20 weight_AD6A4B44_21 weight_AD6A4B44_22 weight_AD6A4B44_23 weight_AD6A4B44_24 weight_AD6A4B44_25 weight_AD6A4B44_3 weight_AD6A4B44_4 weight_AD6A4B44_5 weight_AD6A4B44_6 weight_AD6A4B44_7 weight_AD6A4B44_8 weight_B4FE6545 weight_B4FE6545_1 weight_B4FE6545_11 weight_B4FE6545_12 weight_B4FE6545_13 weight_B4FE6545_14 weight_B4FE6545_15 weight_B4FE6545_16 weight_B4FE6545_17 weight_B4FE6545_18 weight_B4FE6545_19 weight_B4FE6545_2 weight_B4FE6545_20 weight_B4FE6545_21 weight_B4FE6545_22 weight_B4FE6545_23 weight_B4FE6545_3 weight_B4FE6545_4 weight_B4FE6545_5 weight_B4FE6545_6 weight_B4FE6545_7 weight_B4FE6545_8 weight_B4FE6545_9 weight_B70378BC weight_B70378BC_1 weight_B70378BC_10 weight_B70378BC_11 weight_B70378BC_12 weight_B70378BC_14 weight_B70378BC_15 weight_B70378BC_16 weight_B70378BC_17 weight_B70378BC_18 weight_B70378BC_19 weight_B70378BC_2 weight_B70378BC_20 weight_B70378BC_21 weight_B70378BC_22 weight_B70378BC_23 weight_B70378BC_24 weight_B70378BC_25 weight_B70378BC_26 weight_B70378BC_27 weight_B70378BC_28 weight_B70378BC_29 weight_B70378BC_3 weight_B70378BC_30 weight_B70378BC_31 weight_B70378BC_32 weight_B70378BC_33 weight_B70378BC_34 weight_B70378BC_35 weight_B70378BC_36 weight_B70378BC_37 weight_B70378BC_38 weight_B70378BC_39 weight_B70378BC_4 weight_B70378BC_40 weight_B70378BC_41 weight_B70378BC_42 weight_B70378BC_43 weight_B70378BC_44 weight_B70378BC_45 weight_B70378BC_46 weight_B70378BC_47 weight_B70378BC_48 weight_B70378BC_49 weight_B70378BC_5 weight_B70378BC_50 weight_B70378BC_51 weight_B70378BC_52 weight_B70378BC_53 weight_B70378BC_54 weight_B70378BC_55 weight_B70378BC_56 weight_B70378BC_57 weight_B70378BC_58 weight_B70378BC_59 weight_B70378BC_6 weight_B70378BC_60 weight_B70378BC_61 weight_B70378BC_62 weight_B70378BC_63 weight_B70378BC_64 weight_B70378BC_65 weight_B70378BC_66 weight_B70378BC_67 weight_B70378BC_68 weight_B70378BC_69 weight_B70378BC_7 weight_B70378BC_8 weight_B70378BC_9 weight_BC776BF1 weight_BC776BF1_1 weight_BC776BF1_10 weight_BC776BF1_12 weight_BC776BF1_13 weight_BC776BF1_14 weight_BC776BF1_15 weight_BC776BF1_16 weight_BC776BF1_17 weight_BC776BF1_18 weight_BC776BF1_19 weight_BC776BF1_2 weight_BC776BF1_20 weight_BC776BF1_21 weight_BC776BF1_22 weight_BC776BF1_23 weight_BC776BF1_24 weight_BC776BF1_25 weight_BC776BF1_26 weight_BC776BF1_27 weight_BC776BF1_28 weight_BC776BF1_29 weight_BC776BF1_3 weight_BC776BF1_30 weight_BC776BF1_31 weight_BC776BF1_32 weight_BC776BF1_33 weight_BC776BF1_34 weight_BC776BF1_35 weight_BC776BF1_36 weight_BC776BF1_37 weight_BC776BF1_38 weight_BC776BF1_39 weight_BC776BF1_4 weight_BC776BF1_40 weight_BC776BF1_41 weight_BC776BF1_42 weight_BC776BF1_43 weight_BC776BF1_44 weight_BC776BF1_45 weight_BC776BF1_46 weight_BC776BF1_5 weight_BC776BF1_6 weight_BC776BF1_7 weight_BC776BF1_8 weight_BC776BF1_9 weight_BEB90174 weight_BEB90174_1 weight_BEB90174_10 weight_BEB90174_11 weight_BEB90174_12 weight_BEB90174_13 weight_BEB90174_14 weight_BEB90174_16 weight_BEB90174_17 weight_BEB90174_18 weight_BEB90174_19 weight_BEB90174_2 weight_BEB90174_20 weight_BEB90174_21 weight_BEB90174_22 weight_BEB90174_23 weight_BEB90174_3 weight_BEB90174_4 weight_BEB90174_5 weight_BEB90174_6 weight_BEB90174_7 weight_BEB90174_8 weight_BEB90174_9 weight_C25D4D98 weight_C25D4D98_1 weight_C25D4D98_10 weight_C25D4D98_11 weight_C25D4D98_12 weight_C25D4D98_13 weight_C25D4D98_15 weight_C25D4D98_16 weight_C25D4D98_17 weight_C25D4D98_18 weight_C25D4D98_19 weight_C25D4D98_2 weight_C25D4D98_20 weight_C25D4D98_21 weight_C25D4D98_22 weight_C25D4D98_23 weight_C25D4D98_3 weight_C25D4D98_4 weight_C25D4D98_5 weight_C25D4D98_6 weight_C25D4D98_7 weight_C25D4D98_8 weight_C25D4D98_9 weight_C692CC5E weight_C692CC5E_1 weight_C692CC5E_10 weight_C692CC5E_11 weight_C692CC5E_12 weight_C692CC5E_14 weight_C692CC5E_15 weight_C692CC5E_16 weight_C692CC5E_17 weight_C692CC5E_18 weight_C692CC5E_19 weight_C692CC5E_2 weight_C692CC5E_20 weight_C692CC5E_21 weight_C692CC5E_3 weight_C692CC5E_4 weight_C692CC5E_5 weight_C692CC5E_6 weight_C692CC5E_7 weight_C692CC5E_8 weight_C692CC5E_9 weight_C7D6E5ED weight_C7D6E5ED_1 weight_C7D6E5ED_10 weight_C7D6E5ED_11 weight_C7D6E5ED_12 weight_C7D6E5ED_13 weight_C7D6E5ED_14 weight_C7D6E5ED_15 weight_C7D6E5ED_16 weight_C7D6E5ED_18 weight_C7D6E5ED_19 weight_C7D6E5ED_2 weight_C7D6E5ED_20 weight_C7D6E5ED_21 weight_C7D6E5ED_22 weight_C7D6E5ED_23 weight_C7D6E5ED_24 weight_C7D6E5ED_25 weight_C7D6E5ED_26 weight_C7D6E5ED_27 weight_C7D6E5ED_28 weight_C7D6E5ED_29 weight_C7D6E5ED_3 weight_C7D6E5ED_4 weight_C7D6E5ED_5 weight_C7D6E5ED_6 weight_C7D6E5ED_7 weight_C7D6E5ED_8 weight_C7D6E5ED_9 weight_CDD75838 weight_CDD75838_1 weight_CDD75838_10 weight_CDD75838_11 weight_CDD75838_12 weight_CDD75838_13 weight_CDD75838_14 weight_CDD75838_15 weight_CDD75838_16 weight_CDD75838_17 weight_CDD75838_18 weight_CDD75838_19 weight_CDD75838_2 weight_CDD75838_20 weight_CDD75838_21 weight_CDD75838_3 weight_CDD75838_4 weight_CDD75838_5 weight_CDD75838_6 weight_CDD75838_7 weight_CDD75838_9 weight_D1923A46 weight_D1923A46_1 weight_D1923A46_10 weight_D1923A46_11 weight_D1923A46_12 weight_D1923A46_13 weight_D1923A46_14 weight_D1923A46_15 weight_D1923A46_16 weight_D1923A46_17 weight_D1923A46_18 weight_D1923A46_19 weight_D1923A46_2 weight_D1923A46_20 weight_D1923A46_21 weight_D1923A46_22 weight_D1923A46_23 weight_D1923A46_3 weight_D1923A46_4 weight_D1923A46_5 weight_D1923A46_6 weight_D1923A46_7 weight_D1923A46_8 weight_D3DED852 weight_D3DED852_1 weight_D3DED852_10 weight_D3DED852_11 weight_D3DED852_12 weight_D3DED852_13 weight_D3DED852_14 weight_D3DED852_16 weight_D3DED852_17 weight_D3DED852_18 weight_D3DED852_19 weight_D3DED852_2 weight_D3DED852_20 weight_D3DED852_21 weight_D3DED852_22 weight_D3DED852_23 weight_D3DED852_3 weight_D3DED852_4 weight_D3DED852_5 weight_D3DED852_6 weight_D3DED852_7 weight_D3DED852_8 weight_D3DED852_9 weight_D54B8082 weight_D54B8082_1 weight_D54B8082_11 weight_D54B8082_12 weight_D54B8082_13 weight_D54B8082_14 weight_D54B8082_15 weight_D54B8082_16 weight_D54B8082_17 weight_D54B8082_18 weight_D54B8082_19 weight_D54B8082_2 weight_D54B8082_20 weight_D54B8082_21 weight_D54B8082_22 weight_D54B8082_23 weight_D54B8082_3 weight_D54B8082_4 weight_D54B8082_5 weight_D54B8082_6 weight_D54B8082_7 weight_D54B8082_8 weight_D54B8082_9 weight_DA47855A weight_DA47855A_1 weight_DA47855A_10 weight_DA47855A_11 weight_DA47855A_12 weight_DA47855A_14 weight_DA47855A_15 weight_DA47855A_16 weight_DA47855A_17 weight_DA47855A_18 weight_DA47855A_19 weight_DA47855A_2 weight_DA47855A_20 weight_DA47855A_21 weight_DA47855A_22 weight_DA47855A_23 weight_DA47855A_24 weight_DA47855A_25 weight_DA47855A_3 weight_DA47855A_4 weight_DA47855A_5 weight_DA47855A_6 weight_DA47855A_7 weight_DA47855A_8 weight_DA47855A_9 weight_DD009AD7 weight_DD009AD7_1 weight_DD009AD7_10 weight_DD009AD7_11 weight_DD009AD7_12 weight_DD009AD7_13 weight_DD009AD7_15 weight_DD009AD7_16 weight_DD009AD7_17 weight_DD009AD7_18 weight_DD009AD7_19 weight_DD009AD7_2 weight_DD009AD7_20 weight_DD009AD7_21 weight_DD009AD7_22 weight_DD009AD7_23 weight_DD009AD7_3 weight_DD009AD7_4 weight_DD009AD7_5 weight_DD009AD7_6 weight_DD009AD7_7 weight_DD009AD7_8 weight_DD009AD7_9 weight_DD05CD51 weight_DD05CD51_1 weight_DD05CD51_10 weight_DD05CD51_11 weight_DD05CD51_12 weight_DD05CD51_14 weight_DD05CD51_15 weight_DD05CD51_16 weight_DD05CD51_17 weight_DD05CD51_18 weight_DD05CD51_19 weight_DD05CD51_2 weight_DD05CD51_20 weight_DD05CD51_21 weight_DD05CD51_22 weight_DD05CD51_3 weight_DD05CD51_4 weight_DD05CD51_5 weight_DD05CD51_6 weight_DD05CD51_7 weight_DD05CD51_8 weight_DD05CD51_9 weight_DD537C15 weight_DD537C15_1 weight_DD537C15_10 weight_DD537C15_11 weight_DD537C15_12 weight_DD537C15_13 weight_DD537C15_14 weight_DD537C15_16 weight_DD537C15_17 weight_DD537C15_18 weight_DD537C15_19 weight_DD537C15_2 weight_DD537C15_20 weight_DD537C15_21 weight_DD537C15_22 weight_DD537C15_23 weight_DD537C15_3 weight_DD537C15_4 weight_DD537C15_5 weight_DD537C15_6 weight_DD537C15_7 weight_DD537C15_8 weight_DD537C15_9 weight_E060E14F weight_E060E14F_1 weight_E060E14F_11 weight_E060E14F_12 weight_E060E14F_13 weight_E060E14F_14 weight_E060E14F_15 weight_E060E14F_16 weight_E060E14F_17 weight_E060E14F_18 weight_E060E14F_19 weight_E060E14F_2 weight_E060E14F_20 weight_E060E14F_21 weight_E060E14F_22 weight_E060E14F_23 weight_E060E14F_24 weight_E060E14F_25 weight_E060E14F_3 weight_E060E14F_4 weight_E060E14F_5 weight_E060E14F_6 weight_E060E14F_7 weight_E060E14F_8 weight_E060E14F_9 weight_E333B56E weight_E333B56E_1 weight_E333B56E_11 weight_E333B56E_12 weight_E333B56E_13 weight_E333B56E_14 weight_E333B56E_15 weight_E333B56E_16 weight_E333B56E_17 weight_E333B56E_18 weight_E333B56E_19 weight_E333B56E_2 weight_E333B56E_20 weight_E333B56E_21 weight_E333B56E_22 weight_E333B56E_23 weight_E333B56E_3 weight_E333B56E_4 weight_E333B56E_5 weight_E333B56E_6 weight_E333B56E_7 weight_E333B56E_8 weight_E333B56E_9 weight_E4D5B461 weight_E4D5B461_1 weight_E4D5B461_10 weight_E4D5B461_11 weight_E4D5B461_12 weight_E4D5B461_13 weight_E4D5B461_14 weight_E4D5B461_15 weight_E4D5B461_17 weight_E4D5B461_18 weight_E4D5B461_19 weight_E4D5B461_2 weight_E4D5B461_20 weight_E4D5B461_21 weight_E4D5B461_22 weight_E4D5B461_23 weight_E4D5B461_24 weight_E4D5B461_3 weight_E4D5B461_4 weight_E4D5B461_5 weight_E4D5B461_6 weight_E4D5B461_7 weight_E4D5B461_8 weight_E4D5B461_9 weight_E8162B4A weight_E8162B4A_1 weight_E8162B4A_10 weight_E8162B4A_11 weight_E8162B4A_12 weight_E8162B4A_13 weight_E8162B4A_15 weight_E8162B4A_16 weight_E8162B4A_17 weight_E8162B4A_18 weight_E8162B4A_19 weight_E8162B4A_2 weight_E8162B4A_20 weight_E8162B4A_21 weight_E8162B4A_22 weight_E8162B4A_23 weight_E8162B4A_3 weight_E8162B4A_4 weight_E8162B4A_5 weight_E8162B4A_6 weight_E8162B4A_7 weight_E8162B4A_8 weight_E8162B4A_9 weight_E85249F5 weight_E85249F5_1 weight_E85249F5_10 weight_E85249F5_11 weight_E85249F5_12 weight_E85249F5_13 weight_E85249F5_14 weight_E85249F5_15 weight_E85249F5_16 weight_E85249F5_17 weight_E85249F5_18 weight_E85249F5_19 weight_E85249F5_2 weight_E85249F5_20 weight_E85249F5_21 weight_E85249F5_22 weight_E85249F5_23 weight_E85249F5_24 weight_E85249F5_25 weight_E85249F5_3 weight_E85249F5_4 weight_E85249F5_5 weight_E85249F5_6 weight_E85249F5_7 weight_E85249F5_9 weight_E85E6600 weight_E85E6600_1 weight_E85E6600_10 weight_E85E6600_12 weight_E85E6600_13 weight_E85E6600_14 weight_E85E6600_15 weight_E85E6600_16 weight_E85E6600_17 weight_E85E6600_2 weight_E85E6600_3 weight_E85E6600_4 weight_E85E6600_5 weight_E85E6600_6 weight_E85E6600_7 weight_E85E6600_8 weight_E85E6600_9 weight_E867121D weight_E867121D_1 weight_E867121D_10 weight_E867121D_11 weight_E867121D_12 weight_E867121D_13 weight_E867121D_14 weight_E867121D_15 weight_E867121D_16 weight_E867121D_17 weight_E867121D_18 weight_E867121D_19 weight_E867121D_2 weight_E867121D_20 weight_E867121D_21 weight_E867121D_22 weight_E867121D_23 weight_E867121D_3 weight_E867121D_4 weight_E867121D_5 weight_E867121D_6 weight_E867121D_7 weight_E867121D_9 weight_E9248FAC weight_E9248FAC_1 weight_E9248FAC_10 weight_E9248FAC_11 weight_E9248FAC_12 weight_E9248FAC_14 weight_E9248FAC_15 weight_E9248FAC_16 weight_E9248FAC_17 weight_E9248FAC_18 weight_E9248FAC_19 weight_E9248FAC_2 weight_E9248FAC_20 weight_E9248FAC_21 weight_E9248FAC_22 weight_E9248FAC_23 weight_E9248FAC_24 weight_E9248FAC_25 weight_E9248FAC_26 weight_E9248FAC_3 weight_E9248FAC_4 weight_E9248FAC_5 weight_E9248FAC_6 weight_E9248FAC_7 weight_E9248FAC_8 weight_E9248FAC_9 weight_ECA42A1F weight_ECA42A1F_1 weight_ECA42A1F_10 weight_ECA42A1F_11 weight_ECA42A1F_12 weight_ECA42A1F_13 weight_ECA42A1F_14 weight_ECA42A1F_15 weight_ECA42A1F_16 weight_ECA42A1F_17 weight_ECA42A1F_18 weight_ECA42A1F_19 weight_ECA42A1F_2 weight_ECA42A1F_20 weight_ECA42A1F_21 weight_ECA42A1F_22 weight_ECA42A1F_23 weight_ECA42A1F_3 weight_ECA42A1F_4 weight_ECA42A1F_5 weight_ECA42A1F_6 weight_ECA42A1F_7 weight_ECA42A1F_9 weight_ECB02294 weight_ECB02294_1 weight_ECB02294_10 weight_ECB02294_12 weight_ECB02294_13 weight_ECB02294_14 weight_ECB02294_15 weight_ECB02294_16 weight_ECB02294_17 weight_ECB02294_18 weight_ECB02294_19 weight_ECB02294_2 weight_ECB02294_20 weight_ECB02294_21 weight_ECB02294_22 weight_ECB02294_23 weight_ECB02294_3 weight_ECB02294_4 weight_ECB02294_5 weight_ECB02294_6 weight_ECB02294_7 weight_ECB02294_8 weight_ECB02294_9 weight_EE8E36D3 weight_EE8E36D3_1 weight_EE8E36D3_10 weight_EE8E36D3_11 weight_EE8E36D3_12 weight_EE8E36D3_13 weight_EE8E36D3_14 weight_EE8E36D3_16 weight_EE8E36D3_17 weight_EE8E36D3_18 weight_EE8E36D3_19 weight_EE8E36D3_2 weight_EE8E36D3_20 weight_EE8E36D3_21 weight_EE8E36D3_22 weight_EE8E36D3_23 weight_EE8E36D3_3 weight_EE8E36D3_4 weight_EE8E36D3_5 weight_EE8E36D3_6 weight_EE8E36D3_7 weight_EE8E36D3_8 weight_EE8E36D3_9 weight_F0ABC83F weight_F0ABC83F_1 weight_F0ABC83F_10 weight_F0ABC83F_11 weight_F0ABC83F_12 weight_F0ABC83F_14 weight_F0ABC83F_15 weight_F0ABC83F_16 weight_F0ABC83F_17 weight_F0ABC83F_18 weight_F0ABC83F_19 weight_F0ABC83F_2 weight_F0ABC83F_20 weight_F0ABC83F_21 weight_F0ABC83F_22 weight_F0ABC83F_23 weight_F0ABC83F_24 weight_F0ABC83F_25 weight_F0ABC83F_3 weight_F0ABC83F_4 weight_F0ABC83F_5 weight_F0ABC83F_6 weight_F0ABC83F_7 weight_F0ABC83F_8 weight_F0ABC83F_9 weight_F5787144 weight_F5787144_1 weight_F5787144_10 weight_F5787144_11 weight_F5787144_13 weight_F5787144_14 weight_F5787144_15 weight_F5787144_16 weight_F5787144_17 weight_F5787144_18 weight_F5787144_19 weight_F5787144_2 weight_F5787144_20 weight_F5787144_3 weight_F5787144_4 weight_F5787144_5 weight_F5787144_6 weight_F5787144_7 weight_F5787144_8 weight_F5787144_9 weight_FE5E96BE weight_FE5E96BE_1 weight_FE5E96BE_10 weight_FE5E96BE_11 weight_FE5E96BE_12 weight_FE5E96BE_13 weight_FE5E96BE_14 weight_FE5E96BE_16 weight_FE5E96BE_17 weight_FE5E96BE_18 weight_FE5E96BE_19 weight_FE5E96BE_2 weight_FE5E96BE_20 weight_FE5E96BE_21 weight_FE5E96BE_22 weight_FE5E96BE_23 weight_FE5E96BE_3 weight_FE5E96BE_4 weight_FE5E96BE_5 weight_FE5E96BE_6 weight_FE5E96BE_7 weight_FE5E96BE_8 weight_FE5E96BE_9 x103_ap_direct x103_ap_extreme x103_ap_large x103_ap_slight x103_damage x103_demolition x103_durable x103_inner x103_outer x103_push x103_shockwave x103_stagger x106_inner x106_outer x106_shockwave x10_ap_direct x10_ap_extreme x10_ap_large x10_ap_slight x10_damage x10_demolition x10_durable x10_inner x10_outer x10_push x10_shockwave x10_stagger x114_ap_direct x114_ap_extreme x114_ap_large x114_ap_slight x114_damage x114_demolition x114_durable x114_inner x114_outer x114_push x114_shockwave x114_stagger x137_ap_direct x137_ap_extreme x137_ap_large x137_ap_slight x137_damage x137_demolition x137_durable x137_inner x137_outer x137_push x137_shockwave x137_stagger x13_ap_direct x13_ap_extreme x13_ap_large x13_ap_slight x13_damage x13_demolition x13_durable x13_inner x13_outer x13_push x13_shockwave x13_stagger x153_ap_direct x153_ap_extreme x153_ap_large x153_ap_slight x153_damage x153_demolition x153_durable x153_inner x153_outer x153_push x153_shockwave x153_stagger x162_inner x162_outer x162_shockwave x177_inner x177_outer x177_shockwave x188_inner x188_outer x188_shockwave x193_inner x193_outer x193_shockwave x194_inner x194_outer x194_shockwave x213_inner x213_outer x213_shockwave x229_inner x229_outer x229_shockwave x266_inner x266_outer x266_shockwave x275_ap_direct x275_ap_extreme x275_ap_large x275_ap_slight x275_damage x275_demolition x275_durable x275_inner x275_outer x275_push x275_shockwave x275_stagger x276_ap_direct x276_ap_extreme x276_ap_large x276_ap_slight x276_damage x276_demolition x276_durable x276_inner x276_outer x276_push x276_shockwave x276_stagger x277_inner x277_outer x277_shockwave x310_ap_direct x310_ap_extreme x310_ap_large x310_ap_slight x310_damage x310_demolition x310_durable x310_inner x310_outer x310_push x310_shockwave x310_stagger x311_ap_direct x311_ap_extreme x311_ap_large x311_ap_slight x311_damage x311_demolition x311_durable x311_inner x311_outer x311_push x311_shockwave x311_stagger x331_inner x331_outer x331_shockwave x343_inner x343_outer x343_shockwave x346_ap_direct x346_ap_extreme x346_ap_large x346_ap_slight x346_damage x346_demolition x346_durable x346_inner x346_outer x346_push x346_shockwave x346_stagger x360_inner x360_outer x360_shockwave x37_ap_direct x37_ap_extreme x37_ap_large x37_ap_slight x37_damage x37_demolition x37_durable x37_inner x37_outer x37_push x37_shockwave x37_stagger x380_cone x380_inner x380_outer x380_shockwave x39_ap_direct x39_ap_extreme x39_ap_large x39_ap_slight x39_damage x39_demolition x39_durable x39_inner x39_outer x39_push x39_shockwave x39_stagger x419_cone x419_inner x419_outer x419_shockwave x50_inner x50_outer x50_shockwave x52_inner x52_outer x52_shockwave x61_ap_direct x61_ap_extreme x61_ap_large x61_ap_slight x61_damage x61_demolition x61_durable x61_inner x61_outer x61_push x61_shockwave x61_stagger x63_inner x63_outer x63_shockwave x71_ap_direct x71_ap_extreme x71_ap_large x71_ap_slight x71_damage x71_demolition x71_durable x71_inner x71_outer x71_push x71_shockwave x71_stagger x74_inner x74_outer x74_shockwave x82_inner x82_outer x82_shockwave x_status41_duration x_status41_strength x_status5_ap_direct x_status5_ap_extreme x_status5_ap_large x_status5_ap_slight x_status5_damage x_status5_durable x_status5_duration x_status5_strength zone0_armor_5 zone0_bleed_3 zone0_durable_5 zone0_explosive_3 zone0_fatal_5 zone0_health_5 zone0_to_body_5 zone10_bleed zone10_explosive_3 zone11_bleed_2 zone11_explosive_3 zone12_bleed zone12_explosive_3 zone13_bleed zone13_explosive_3 zone14_armor_3 zone14_bleed zone14_durable_3 zone14_explosive_3 zone14_fatal_3 zone14_health_3 zone14_to_body_3 zone15_armor_3 zone15_bleed_2 zone15_durable_3 zone15_explosive_2 zone15_fatal_3 zone15_health_3 zone15_to_body_3 zone16_armor_3 zone16_durable_3 zone16_explosive_2 zone16_fatal_3 zone16_health_3 zone16_to_body_3 zone17_explosive_2 zone18_explosive_2 zone19_explosive_2 zone20_explosive_2 zone21_explosive_2 zone22_explosive_2 zone24_explosive_2 zone25_explosive_2 zone26_bleed zone26_explosive_2 zone27_bleed zone27_explosive_2 zone28_bleed_2 zone28_explosive_2 zone29_bleed_2 zone29_explosive_2 zone2_bleed_3 zone30_bleed zone30_bleed_2 zone30_explosive_2 zone31_bleed zone31_bleed_2 zone31_explosive_2 zone32_explosive zone33_armor_2 zone33_durable_2 zone33_explosive zone33_fatal_2 zone33_health_2 zone33_to_body_2 zone34_durable zone34_explosive zone34_fatal zone34_to_body zone35_armor zone35_durable zone35_explosive zone35_fatal zone35_health zone35_to_body zone36_armor zone36_durable zone36_explosive zone36_fatal zone36_health zone36_to_body zone37_armor zone37_durable zone37_explosive zone37_fatal zone37_health zone37_to_body zone3_bleed_3 zone3_explosive_2 zone4_bleed zone4_explosive_2 zone5_bleed_3 zone5_explosive_3 zone6_bleed zone6_explosive_3 zone7_bleed_2 zone7_explosive_3 zone8_bleed zone8_explosive_3 zone9_bleed zone9_explosive_3'
 MOD.songs = {
     ['1'] = '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',
     ['2'] = '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',
@@ -994,6 +1015,7 @@ MOD.langs = {
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '“+ 新建预设”（或 Insert 键）会把当前修改存为一组，接着你可以为它命名。',
       ['(Not Used) Additional Strafing Runs'] = '（未使用）额外机枪扫射',
       ['(Not Used) Air-TO-Air Missles'] = '（未使用）空对空导弹',
+      ['(changed)'] = '（已更改）',
       ['+ Add passive'] = '+ 添加被动',
       ['+ Armor rating'] = '护甲值',
       ['+ Ergonomics'] = '人机工效',
@@ -1004,6 +1026,7 @@ MOD.langs = {
       ['+ Throwables (start, max)'] = '投掷物数量（初始 / 上限）',
       ['- / + steps through the stratagems by name (-- / ++: 10 at a time).'] = '- / + 按名称切换战略配备（-- / ++ 每次切换 10 项）。',
       ['-180 with right at 180: all the way round'] = '-180 且右限为 180：可转一整圈',
+      ['-1: as far as straight ahead'] = '-1：与正前方相同',
       ['0 = normal projectile; - / + selects a throwable grenade by name above.'] = '0 = 常规弹丸；- / + 按上方名称选择投掷手雷。',
       ['0 for flak and cluster rounds; 1 for every other round in this build.'] = '本版本中仅高射炮弹与集束炸弹为 0，其余射弹为 1。',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0：命中造成常规伤害；1：造成耐久伤害（取武器两者中较低的一项）',
@@ -1011,6 +1034,8 @@ MOD.langs = {
       ['0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s.'] = '0：立即。RL-77 等待 0.2 秒，P-34 Breacher（先粘附燃烧）1 秒。',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0：命中造成普通伤害，1：造成耐久伤害（武器较低的那个）',
       ['0: no patrols'] = '0：没有巡逻',
+      ['0: these wheels do not brake at all.'] = '0：这些车轮完全不刹车。',
+      ['0: walks away from the beacon, 0.5: centred on it, 1: ends on it'] = '0：从信标向外移动，0.5：以信标为中心，1：在信标处结束',
       ['100kg Bomb'] = '100KG炸弹',
       ['100kg Bomb Mk2'] = '100KG炸弹 MK2',
       ['100kg Bomb Mk3'] = '100KG炸弹 MK3',
@@ -1170,6 +1195,8 @@ MOD.langs = {
       ['A pathetic creature of meat and bone.'] = '一个由血肉和骨头组成的可怜生物。',
       ['A preset keeps every change you have made as one set, under a name you choose.'] = '预设会把你所有的修改作为一组保存，并取一个你指定的名字。',
       ['A preset keeps every enemy and spawning change as one custom difficulty, under a name you choose. Your weapon changes are kept apart.'] = '预设会把所有敌人与生成的改动保存为一个自定义难度，名称由你决定。武器改动单独保存。',
+      ['A resupply box gives this many. An ammo box on the map gives half, rounded down (at least 1).'] = '补给箱提供这么多。地图上的弹药箱提供一半，向下取整（至少 1）。',
+      ['A resupply box gives this much. An ammo box on the map gives half, rounded down.'] = '补给箱提供这么多。地图上的弹药箱提供一半，向下取整。',
       ['A value changed on an enemy\'s own page stays red: this page leaves it as it is.'] = '在敌人自己页面上更改的数值保持红色：此页面不会改动它。',
       ['A weapon whose own Sway multiplier you changed keeps it. Sway this row changes shows in blue.'] = '你单独改过晃动系数的武器保留其数值。此行改变的晃动以蓝色显示。',
       ['A/AC-8 Autocannon Sentry'] = 'A/AC-8 自动哨戒炮',
@@ -1185,7 +1212,9 @@ MOD.langs = {
       ['AA Emplacement'] = '防空炮台',
       ['AC-8 Autocannon'] = 'AC-8 机炮',
       ['AMMO'] = '弹药',
+      ['AMMUNITION'] = '弹药',
       ['AMW-20 Apex'] = 'AMW-20 尖峰',
+      ['ANTI-TANK'] = '反坦克',
       ['APW-1 Anti-Materiel Rifle'] = 'APW-1 反器材步枪',
       ['AR-11 Arbitrator'] = 'AR-11 仲裁者',
       ['AR-11 Arbitrator (underbarrel shotgun)'] = 'AR-11 仲裁者（下挂霰弹枪）',
@@ -1205,6 +1234,9 @@ MOD.langs = {
       ['ARC-12 Blitzer'] = 'ARC-12 雷霆',
       ['ARC-3 Arc Thrower'] = 'ARC-3 电弧发射器',
       ['Audio'] = '音效',
+      ['ARMORS'] = '盔甲',
+      ['ASSAULT RIFLE'] = '突击步枪',
+      ['ATTACHMENTS'] = '配件',
       ['AX/AR-23 "Guard Dog"'] = 'AX/AR-23 “护卫犬”',
       ['AX/ARC-3 "Guard Dog" K-9'] = 'AX/ARC-3 “护卫犬” K-9',
       ['AX/FLAM-75 "Guard Dog" Hot Dog'] = 'AX/FLAM-75 “护卫犬”热狗',
@@ -1244,6 +1276,7 @@ MOD.langs = {
       ['Alpha Commander'] = '阿尔法指挥官',
       ['Also includes'] = '同时包含',
       ['Alternate ammunition'] = '另一种弹药',
+      ['Always bring it'] = '始终携带',
       ['Amendment'] = '修正',
       ['Ammo'] = '弹药',
       ['Ammo Cache'] = '弹药储备箱',
@@ -1298,6 +1331,7 @@ MOD.langs = {
       ['Assault'] = '突击',
       ['Assault Raider'] = '特攻奇袭者',
       ['Assault Rifle'] = '突击步枪',
+      ['At most 4 across all stratagems: more can crash the game at deployment.'] = '所有战备合计最多 4 个：更多可能在部署时导致游戏崩溃。',
       ['Attachment'] = '配件',
       ['Attachments'] = '配件',
       ['Attack animation speed (x)'] = '攻击动画速度 (x)',
@@ -1313,10 +1347,12 @@ MOD.langs = {
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 焚燃者',
       ['B/MD C4 Pack'] = 'B/MD C4背包',
       ['BACKPACK'] = '背包',
+      ['BACKPACKS'] = '背包',
       ['BARRAGE'] = '弹幕',
       ['BLAST'] = '爆炸',
       ['BLAST RADIUS'] = '爆炸半径',
       ['BODY PARTS'] = '身体部位',
+      ['BOOSTERS'] = '强化资源',
       ['BR-14 Adjudicator'] = 'BR-14 审判者',
       ['BURST'] = '二次爆炸',
       ['BURST RADIUS'] = '二次爆炸半径',
@@ -1329,9 +1365,13 @@ MOD.langs = {
       ['Back hatch'] = '后舱盖',
       ['Back hip'] = '后髋部',
       ['Back left wheel hub'] = '左后轮毂',
+      ['Back leg'] = '后腿',
+      ['Back lower leg'] = '后下腿',
       ['Back periscope side 8'] = '潜望镜后侧 8',
       ['Back pump flamer'] = '后部喷火器泵',
       ['Back right wheel hub'] = '右后轮毂',
+      ['Back upper leg'] = '后上腿',
+      ['Back upper leg top'] = '后上腿顶部',
       ['Background opacity'] = '背景不透明度',
       ['Backpack'] = '背包',
       ['Ballistic Missile'] = '弹道导弹',
@@ -1345,11 +1385,15 @@ MOD.langs = {
       ['Bastion MK XVI'] = '堡垒Mk XVI',
       ['Battery'] = '电池',
       ['Bayonet melee'] = '刺刀近战',
+      ['Beam range (m)'] = '光束射程（米）',
+      ['Beam stays after the shot (s)'] = '射击后光束持续 (秒)',
       ['Beamer'] = '光束器',
+      ['Beams per barrel'] = '每管光束数',
       ['Belt-Fed Grenade Launcher'] = '弹链式榴弹发射器',
       ['Berserker'] = '狂暴者',
       ['Better stratagem bounce'] = '改进战略配备弹跳',
       ['Big walker cannon'] = '步行机巨炮',
+      ['Bigger wheels: a higher top speed and more room under the body, but a weaker pull.'] = '轮子越大：最高速度更高、底盘离地更高，但拉力更弱。',
       ['Bile Spewer'] = '胆汁喷涌虫',
       ['Bile Spewer acid burst'] = '胆汁喷涌虫酸液爆裂',
       ['Bile Spitter'] = '胆汁吐沫虫',
@@ -1364,6 +1408,7 @@ MOD.langs = {
       ['Bleed (experimental)'] = '流血（实验性）',
       ['Bleed-out drain (health/s)'] = '失血流失 (生命值/秒)',
       ['Bleed-out health'] = '流血状态生命值',
+      ['Bleed-out time (s)'] = '流血时间 (秒)',
       ['Blind (experimental)'] = '致盲（实验性）',
       ['Blitzer'] = '雷霆',
       ['Block game input while open'] = '打开时屏蔽游戏输入',
@@ -1380,6 +1425,7 @@ MOD.langs = {
       ['Body parts'] = '身体部位',
       ['Body rear'] = '身体后部',
       ['Bolt Pistol'] = '爆弹手枪',
+      ['Bomb dropped (id)'] = '投下的炸弹（ID）',
       ['Bomb pattern'] = '投弹模式',
       ['Bonnet'] = '引擎盖',
       ['Boost after the launch (s)'] = '起跳后的推进时间（秒）',
@@ -1387,7 +1433,11 @@ MOD.langs = {
       ['Boosters'] = '强化资源',
       ['Boss'] = '核心',
       ['Boss back'] = '核心后部',
+      ['Boss head'] = '首领头部',
       ['Bottom wing'] = '下翼',
+      ['Bounce'] = '弹跳',
+      ['Bounce angle (deg)'] = '弹跳角度（度）',
+      ['Bounce speed (m/s)'] = '弹跳速度（米/秒）',
       ['Brake strength'] = '刹车力度',
       ['Braking height (m)'] = '制动高度（米）',
       ['Braking speed (m/s)'] = '制动速度（米/秒）',
@@ -1432,6 +1482,7 @@ MOD.langs = {
       ['C hex 17'] = '六边形 17',
       ['C hex 18'] = '六边形 18',
       ['C hex 19'] = '六边形 19',
+      ['CAPES'] = '披肩',
       ['CB-9 Exploding Crossbow'] = 'CB-9 爆燃弩',
       ['CHARGE'] = '充能',
       ['CLUSTER BOMB'] = '集束炸弹',
@@ -1478,16 +1529,21 @@ MOD.langs = {
       ['Chest damage taken'] = '受到胸部伤害',
       ['Choked (experimental)'] = '窒息（实验性）',
       ['Choose a weapon on the left.'] = '请在左侧选择武器。',
+      ['Choose the presets, then Copy. Values they share take this preset\'s, the rest of theirs stays.'] = '选择预设后点击复制。相同的数值改用此预设的，其余保持不变。',
+      ['Choose the vehicles, then Copy. They get every value shown in this section.'] = '选择载具，然后点击复制。它们会获得此部分显示的所有数值。',
       ['Clear'] = '清除',
       ['Click * to show only what you changed, from every tab.'] = '点 * 只显示你改过的内容（所有标签页）。',
-      ['Click a box to type. Install puts it in the game, in every language.'] = '点击输入框即可输入。安装后会写入游戏的所有语言。',
+      ['Click again'] = '再点一次确认',
       ['Click again to overwrite'] = '再次点击以覆盖',
+      ['Click again within 4 seconds to end the game. Unsaved progress is lost.'] = '4 秒内再点一次即结束游戏，未保存的进度会丢失。',
       ['Climb acceleration'] = '爬升加速度',
       ['Climb multiplier (horizontal)'] = '枪口上扬倍率（水平）',
       ['Climb multiplier (vertical)'] = '枪口上扬倍率（垂直）',
       ['Climb speed (m/s)'] = '爬升速度(米/秒)',
       ['Climb time limit (s)'] = '爬升时限(秒)',
       ['Climbing and sliding'] = '攀爬与滑行',
+      ['Close all'] = '全部收起',
+      ['Close game'] = '关闭游戏',
       ['Cluster Bomb'] = '集束炸弹',
       ['Cognitive Disruptor'] = '感知干扰器',
       ['Collision'] = '碰撞体',
@@ -1516,6 +1572,12 @@ MOD.langs = {
       ['Cooldown (s)'] = '冷却时间(秒)',
       ['Cooling (% per s)'] = '散热(每秒%)',
       ['Copy'] = '复制',
+      ['Copy code'] = '复制代码',
+      ['Copy to...'] = '复制到...',
+      ['Copy values to'] = '复制数值到',
+      ['Copy values to...'] = '复制数值到...',
+      ['Could not ask Steam to start the game.'] = '无法让 Steam 启动游戏。',
+      ['Could not close Helldivers 2.'] = '无法关闭游戏。',
       ['Countdown before delivery (s)'] = '投送前倒计时（秒）',
       ['Coyote'] = '野狼',
       ['Cremator'] = '焚燃者',
@@ -1528,6 +1590,7 @@ MOD.langs = {
       ['Crown'] = '冠部',
       ['Cruise speed (m/s)'] = '巡航速度(米/秒)',
       ['Crusher'] = '粉碎者',
+      ['Ctrl+V pastes a code, or type it: Enter adds the preset, Esc cancels.'] = 'Ctrl+V 粘贴代码，也可手动输入：Enter 添加预设，Esc 取消。',
       ['Custom difficulties'] = '自定义难度',
       ['Cyborg Carry Data'] = '运送生化人数据',
       ['Cyborg fire (experimental)'] = '赛博格火焰（实验性）',
@@ -1565,6 +1628,7 @@ MOD.langs = {
       ['Deployer'] = '部署舱',
       ['Description'] = '描述',
       ['Desert Stormer'] = '沙漠突击者',
+      ['Designation'] = '型号',
       ['Destroyed'] = '已摧毁',
       ['Devastator'] = '蹂躏者',
       ['Devastator jump pack'] = '蹂躏者喷射背包',
@@ -1606,16 +1670,21 @@ MOD.langs = {
       ['E/GL-21 Grenadier Battlement'] = 'E/GL-21 掷弹兵防卫墙',
       ['E/MG-101 HMG Emplacement'] = 'E/MG-101 重机枪部署支架',
       ['EAGLE'] = '飞鹰',
+      ['EAGLE STRIKES'] = '飞鹰',
       ['EAT-17 Expendable Anti-Tank'] = 'EAT-17 消耗性反坦克武器',
       ['EAT-17 Expendable Anti-Tank (SEAF)'] = 'EAT-17 消耗性反坦克武器（SEAF）',
       ['EAT-411 Leveller'] = 'EAT-411 荡平者',
       ['EAT-700 Expendable Napalm'] = 'EAT-700 消耗性凝固汽油弹',
       ['Effects'] = '效果',
+      ['EMPLACEMENTS'] = '工事',
       ['EMS Mortar Sentry'] = '电磁冲击波迫击哨戒炮',
+      ['ENERGY-BASED'] = '能量武器',
       ['EXO-45 Patriot Exosuit'] = 'EXO-45 “爱国者”外骨骼装甲',
       ['EXO-49 Emancipator Exosuit'] = 'EXO-49 “解放者”外骨骼装甲',
       ['EXO-51 Lumberer Exosuit'] = 'EXO-51 “伐木者”外骨骼装甲',
       ['EXO-55 Breakthrough Exosuit'] = 'EXO-55 “突破”外骨骼装甲',
+      ['EXOSUITS'] = '外骨骼装甲',
+      ['EXPLOSIVE'] = '爆炸品',
       ['EXTRA STRATAGEM'] = '额外战略配备',
       ['Each arm'] = '每条手臂',
       ['Each leg'] = '每条腿',
@@ -1633,6 +1702,7 @@ MOD.langs = {
       ['Eagle strike. The rearm time is shared by every Eagle.'] = '飞鹰打击。所有飞鹰共用重新武装时间。',
       ['Eagles cannot be called within this distance while it stands'] = '在其被摧毁前，此范围内无法呼叫飞鹰',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = '在“投掷物”页编辑该手雷即可调整。资源加载完成后选择才会生效。',
+      ['Editor'] = '编辑器',
       ['Effect'] = '效果',
       ['Egg'] = '虫卵',
       ['Egg cluster'] = '虫卵簇',
@@ -1654,6 +1724,7 @@ MOD.langs = {
       ['Enemy.'] = '敌人。',
       ['Engine front'] = '前引擎',
       ['Engine rear'] = '后引擎',
+      ['Engine rear weakspot'] = '引擎后部弱点',
       ['Engine torque'] = '发动机扭矩',
       ['Engineering Kit'] = '工程包',
       ['Enter the code...'] = '输入代码...',
@@ -1664,11 +1735,16 @@ MOD.langs = {
       ['Eruptor'] = '爆裂铳',
       ['Esc cancels. The HUD shows the new code too.'] = 'Esc 取消。HUD 也会显示新代码。',
       ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = '一次调整所有 SEAF 士兵。在各自页面修改过的士兵保留其数值。',
+      ['Every armor set with this name.'] = '同名的所有护甲套装。',
+      ['Every armor set with this name. Its passive text is shared by every armor with that passive.'] = '所有同名护甲。被动文本由拥有该被动的所有护甲共用。',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = '拥有此被动的所有护甲也会获得它们的效果（在各自页面设置）。',
+      ['Every cape with this name.'] = '所有同名披风。',
       ['Every change as soon as it is pushed, before testing: it may break.'] = '每项更改一经推送即更新，未经测试：可能出错。',
       ['Every commit'] = '每次提交',
       ['Every enemy of this faction at once. Enemies you have edited on their own page keep their values.'] = '一次调整该阵营的所有敌人。在各自页面修改过的敌人保留其数值。',
+      ['Every exosuit shares this stomp.'] = '所有机甲共用此践踏。',
       ['Every helldiver in your game. Restore the game\'s files before joining other players\' lobbies.'] = '你游戏中的所有绝地潜兵。加入其他玩家的大厅前，请先恢复游戏文件。',
+      ['Every helmet with this name.'] = '所有同名头盔。',
       ['Every passive is in already.'] = '所有被动都已添加。',
       ['Every weapon you aim yourself, emplacements and vehicle guns too: the game\'s sway times this. 0 = no sway.'] = '你亲手瞄准的所有武器，包括固定炮台和载具武器：游戏的晃动乘以此数。0 = 无晃动。',
       ['Evictor'] = '驱逐者',
@@ -1693,12 +1769,14 @@ MOD.langs = {
       ['Extraction'] = '撤离',
       ['Extraction Beacon'] = '撤离信标',
       ['Eye'] = '眼睛',
+      ['Eye top'] = '顶部眼睛',
       ['FAF-14 Spear'] = 'FAF-14 飞矛',
       ['FIRE'] = '开火',
       ['Fire template'] = '火焰模板',
       ['Flags'] = '标志位',
       ['FLAM-40 Flamethrower'] = 'FLAM-40 火焰喷射器',
       ['FLAM-66 Torcher'] = 'FLAM-66 火炬手',
+      ['FLAME AND GAS'] = '火焰与毒气',
       ['Fabricator'] = '构筑者',
       ['Fabricator / bug hole batch size (x)'] = '构筑者 / 虫洞批量 (x)',
       ['Fabricator / bug hole queue (x)'] = '构筑者 / 虫洞队列 (x)',
@@ -1727,8 +1805,10 @@ MOD.langs = {
       ['Fire duration (s)'] = '持续开火时间（秒）',
       ['Fire panic'] = '着火恐慌',
       ['Fire rate (RPM)'] = '射速（RPM）',
+      ['Fire rate (x)'] = '射速 (x)',
       ['Fire/gas/acid/arc damage taken'] = '受到火焰 / 毒气 / 酸液 / 电弧伤害',
       ['Firebomb Hellpods'] = '火焰炸弹绝地喷射舱',
+      ['First shell (id)'] = '第一发炮弹（ID）',
       ['Flame Sentry'] = '火焰喷射哨戒炮',
       ['Flames'] = '喷射火焰',
       ['Flames Mk2'] = '喷射火焰 MK2',
@@ -1757,6 +1837,7 @@ MOD.langs = {
       ['Front brake strength'] = '前轮制动力',
       ['Front damping'] = '前悬挂阻尼',
       ['Front face'] = '前面',
+      ['Front grip lower than the rear: it turns wide. Rear lower than the front: the back slides out.'] = '前轮抓地比后轮低：转弯会冲外侧。后轮比前轮低：车尾会甩出去。',
       ['Front hull'] = '前车体',
       ['Front left cockpit'] = '左前驾驶舱',
       ['Front left wheel hub'] = '左前轮毂',
@@ -1803,6 +1884,7 @@ MOD.langs = {
       ['GR-8 Recoilless Rifle'] = 'GR-8 无后坐力炮',
       ['GRENADE SWAP'] = '手雷交换',
       ['Gallant'] = '英勇无畏',
+      ['Gameplay'] = '游戏玩法',
       ['Gas'] = '毒气榴弹',
       ['Gas (Sterilizer)'] = '毒气（灭菌器）',
       ['Gas Mine Deployer'] = '毒气布雷器',
@@ -1815,6 +1897,8 @@ MOD.langs = {
       ['Gatekeeper'] = '御门者',
       ['Gatling Sentry'] = '加特林哨戒炮',
       ['Gazer'] = '凝视者',
+      ['Gazer Spire'] = '凝视者尖塔',
+      ['General'] = '常规',
       ['Generator'] = '发电机',
       ['Generator Pack'] = '护盾生成背包',
       ['Get in and out speed (x)'] = '进出速度 (x)',
@@ -1828,6 +1912,7 @@ MOD.langs = {
       ['Grenade Launcher'] = '榴弹发射器',
       ['Grenade Pistol'] = '榴弹手枪',
       ['Grenade fired (choice)'] = '发射手雷(选择)',
+      ['Grenade launcher rounds use 80, most rounds 83.'] = '榴弹发射器的射弹为 80，大多数射弹为 83。',
       ['Grenade selection takes priority over Projectile swap. Fire rate, ammo and handling stay.'] = '手雷选择优先于弹种交换。射速、弹药与操控保持不变。',
       ['Grenade swap'] = '手雷交换',
       ['Grenade swap stopped (see the log); launchers fire their own projectiles again.'] = '已停止榴弹替换（详见日志）；发射器恢复使用自身弹丸。',
@@ -1847,6 +1932,8 @@ MOD.langs = {
       ['Gunslinger'] = '神枪手',
       ['HANDLING'] = '操控',
       ['Hit effect damage type'] = '命中效果伤害类型',
+      ['HEAVY'] = '重型',
+      ['HELMETS'] = '头盔',
       ['HMG Emplacement'] = '重机枪部署支架',
       ['Halt'] = '止息',
       ['Handbrake strength'] = '手刹力度',
@@ -1859,6 +1946,7 @@ MOD.langs = {
       ['Head health'] = '头部生命值',
       ['Head hits: damage to your health (x)'] = '头部命中：对生命值的伤害 (x)',
       ['Head zone'] = '头部',
+      ['Headplate'] = '头甲',
       ['Health'] = '生命值',
       ['Health (x)'] = '生命值（x）',
       ['Health Pack Rack'] = '医疗包架',
@@ -1868,7 +1956,9 @@ MOD.langs = {
       ['Heat per second firing'] = '射击时每秒积热',
       ['Heat per shot'] = '每发积热',
       ['Heat per warp (%)'] = '每次跃迁热量（%）',
+      ['Heatsink'] = '散热器',
       ['Heatsinks from supply'] = '补给获得的散热器数',
+      ['Heavier: speeds up and stops more slowly, shoves enemies and wrecks aside, and is harder to flip.'] = '越重：加速和刹车越慢，能撞开敌人和残骸，更难翻车。',
       ['Heavy Devastator'] = '重型蹂躏者',
       ['Heavy Devastator shield'] = '重型蹂躏者盾牌',
       ['Heavy Fusion Cannon'] = '重型聚变炮',
@@ -1880,10 +1970,13 @@ MOD.langs = {
       ['Held this long, it blows up. 600 = it never does.'] = '蓄力保持这么久就会爆炸。600 = 永不爆炸。',
       ['Hellbomb'] = '地狱火炸弹',
       ['Helldiver'] = '绝地潜兵',
+      ['Helldivers 2 is already running.'] = '游戏已在运行。',
+      ['Helldivers 2 is not running.'] = '游戏没有在运行。',
       ['Helldivers 2 is running: close it first.'] = '《绝地潜兵 2》正在运行：请先关闭游戏。',
       ['Helldivers 2 is running: close it, then Install.'] = '《绝地潜兵 2》正在运行：请先关闭游戏，再点击“写入游戏”。',
       ['Helldivers 2 is running: close it, then restore.'] = 'Helldivers 2 正在运行：请先关闭游戏，再恢复。',
       ['Helldivers 2 is running: you can edit, but close it before you Install.'] = '《绝地潜兵 2》正在运行：可以编辑，但写入前必须关闭游戏。',
+      ['Helldivers 2 was closed.'] = '游戏已关闭。',
       ['Hellpod'] = '地狱舱',
       ['Hellpod: initial drop'] = '地狱舱：初始空投',
       ['Hellpod: reinforcement'] = '地狱舱：增援',
@@ -1893,6 +1986,9 @@ MOD.langs = {
       ['High Dissipation Heatsink'] = '高功率散热器',
       ['High Explosive'] = '高爆弹',
       ['High-Velocity Shrapnel'] = '高速破片',
+      ['Higher: a stiffer ride, less lean in turns, bumps kick harder.'] = '越高：行驶更硬，转弯侧倾更少，颠簸冲击更大。',
+      ['Higher: leans more and tips over in sharp turns.'] = '越高：倾斜更多，急转弯时容易翻车。',
+      ['Higher: stops in a shorter distance. Too high locks the wheels, and it skids instead of stopping.'] = '越高：刹车距离越短。太高会抱死车轮，车会打滑而不是停下。',
       ['Highest ledge it climbs (m)'] = '可攀爬的最高边缘（米）',
       ['Hijack Tech Hub Nexus Machine'] = '技术中心枢纽机器',
       ['Hips'] = '腰部',
@@ -1920,10 +2016,17 @@ MOD.langs = {
       ['How close the view gets when you aim: 1 is the normal view, 2 twice as close, 4 four times.'] = '瞄准时视野拉近多少：1 为正常视野，2 拉近两倍，4 拉近四倍。',
       ['How close this zoom step looks: 1 is the normal view, 2 twice as close, 4 four times.'] = '这一档的放大程度：1 为正常视野，2 拉近两倍，4 拉近四倍。',
       ['How far away the jet starts its run. With its speed, it sets how long the Eagle takes to arrive.'] = '飞鹰开始攻击航线时距目标的距离，与飞行速度共同决定抵达时间。',
+      ['How fast the engine may spin before it stops pulling. Higher: a higher top speed in every gear,'] = '引擎停止发力前能转多快。越高：每个挡位的最高速度都更高，',
+      ['How fast the springs settle after a bump. Higher: settles at once, a firmer ride.'] = '弹簧在颠簸后稳定下来的速度。越高：立刻稳定，行驶更硬。',
       ['How fast their animations play. Most attacks follow the animation, so they come sooner or later too.'] = '它们的动画播放速度。大多数攻击跟随动画，所以攻击也会更早或更晚发生。',
+      ['How hard the engine pushes. Higher: faster acceleration and steeper hills, but more wheelspin.'] = '引擎的推力。越高：加速更快、能爬更陡的坡，但更容易打滑。',
+      ['How high the balance point sits. Lower (even below 0): stays flat in hard turns and over rocks.'] = '重心的高度。越低（甚至低于 0）：急转弯和过石头时更平稳。',
       ['How long the round waits after the hit (or after the blast proximity trips) before it goes off.'] = '射弹命中后（或近炸距离触发后）等待多久才爆炸。',
       ['How many bombs one run drops and how they land. The bombs stay this Eagle\'s own.'] = '一次飞越投下多少枚炸弹以及落点分布。炸弹仍是该飞鹰自己的。',
+      ['How many times the round can bounce off a surface. 0: it never bounces back at you.'] = '射弹能从表面弹开多少次。0：它永远不会弹回到你身上。',
+      ['How much this gear multiplies the engine. Higher: stronger pull, but it tops out sooner.'] = '这个挡位把引擎放大多少倍。越高：拉力更强，但更早到顶。',
       ['How quickly the scoped view catches up when you move your aim at this zoom (0.6 on most optics).'] = '此倍率下移动瞄准时，瞄准镜视野跟上的速度（大多数瞄具为 0.6）。',
+      ['How well the tyres hold the ground. Higher: sharper turns, less sliding and wheelspin.'] = '轮胎抓地的程度。越高：转弯更急，更少侧滑和打滑。',
       ['Hulk'] = '巨型者',
       ['Hulk Bruiser'] = '巨型碾压者',
       ['Hulk Firebomber'] = '巨型烈焰轰炸者',
@@ -1947,6 +2050,8 @@ MOD.langs = {
       ['Impact flag (+140)'] = '撞击标志(+140)',
     ['Can expire after impact (+140)'] = '撞击后可失效(+140)',
       ['Impaler'] = '穿刺虫',
+      ['In every mission, whatever your loadout. It takes no loadout slot. Applies on Install.'] = '每次任务都会携带，与配装无关，不占配装栏位。安装后生效。',
+      ['In the primary slot it is not thrown away when empty: it stays in your hands until you pick up another weapon.'] = '在主武器栏中打空后不会丢弃：会留在手中，直到你拾取其他武器。',
       ['In-game text'] = '游戏内文本',
       ['Incendiary'] = '燃烧弹',
       ['Incendiary Impact'] = '燃烧冲击弹',
@@ -1963,6 +2068,8 @@ MOD.langs = {
       ['Inner torso'] = '内躯干',
       ['Insides'] = '内部',
       ['Install into the game'] = '写入游戏',
+      ['Install loads up to 6 such weapons into every mission, so nobody has to bring them. A support weapon brings its own.'] = '安装后每个任务最多加载 6 把此类武器，无需携带。支援武器会自带其效果。',
+      ['Installed, but not everything fits. Some projectiles may show no trail, and some Always bring it stratagems stay out of missions.'] = '已安装,但无法全部载入。部分弹药可能没有轨迹,部分“始终携带”的战略配备不会进入任务。',
       ['Installing: finding what changed...'] = '写入中：正在查找改动…',
       ['Installing: writing the files...'] = '写入中：正在写入文件…',
       ['Integrated Explosives'] = '集成炸药',
@@ -1972,6 +2079,7 @@ MOD.langs = {
       ['Iron Sights'] = '机械瞄具',
       ['Iron Sights Long'] = '长型机械瞄具',
       ['Iron fleet'] = '钢铁舰队',
+      ['It does not raise the top speed by itself: that comes from the engine speed and the gears.'] = '它本身不提高最高速度：最高速度由引擎转速和挡位决定。',
       ['It doesn\'t take a loadout slot, but the HUD\'s stratagem list can fill up.'] = '不占配装栏位，但可能占满屏幕上的战略配备列表。',
       ['Items per drop'] = '每次投放数量',
       ['Its effects are added to every armor with this passive.'] = '其效果会添加到拥有此被动的所有护甲上。',
@@ -1985,6 +2093,7 @@ MOD.langs = {
       ['Jammer'] = '干扰器',
       ['Jamming'] = '干扰',
       ['Jaws'] = '颚',
+      ['Jetpack'] = '喷气背包',
       ['Jog speed (m/s)'] = '慢跑速度(米/秒)',
       ['Jogging empties it in (s)'] = '慢跑耗尽用时(秒)',
       ['Jump'] = '跳跃',
@@ -2015,6 +2124,7 @@ MOD.langs = {
       ['LIFT-182 Warp Pack'] = 'LIFT-182 传送背包',
       ['LIFT-850 Jump Pack'] = 'LIFT-850 喷射背包',
       ['LIFT-860 Hover Pack'] = 'LIFT-860 悬浮背包',
+      ['LIGHT'] = '轻型',
       ['Landed ship door shield'] = '着陆舰舱门护盾',
       ['Language'] = '语言',
       ['Large'] = '大型',
@@ -2038,10 +2148,13 @@ MOD.langs = {
       ['Lb wing'] = '左后翼',
       ['Left'] = '左',
       ['Left arm'] = '左手臂',
+      ['Left arm armor'] = '左手臂装甲',
       ['Left arm health'] = '左臂生命值',
+      ['Left arm weakspot'] = '左手臂弱点',
       ['Left armor'] = '左装甲',
       ['Left arms'] = '左手臂',
       ['Left back leg'] = '左后腿',
+      ['Left back leg armor'] = '左后腿装甲',
       ['Left back panel'] = '左后板',
       ['Left back thruster'] = '左后推进器',
       ['Left back track bar'] = '左后履带支杆',
@@ -2053,6 +2166,7 @@ MOD.langs = {
       ['Left box 2'] = '左储物箱 2',
       ['Left chest'] = '左胸部',
       ['Left claw'] = '左爪',
+      ['Left collar'] = '左颈圈',
       ['Left elbow'] = '左肘部',
       ['Left extra elbow'] = '左额外肘部',
       ['Left foot'] = '左脚',
@@ -2061,12 +2175,14 @@ MOD.langs = {
       ['Left front door'] = '左前门',
       ['Left front face'] = '左前面',
       ['Left front leg'] = '左前腿',
+      ['Left front leg armor'] = '左前腿装甲',
       ['Left front light'] = '左前灯',
       ['Left front thruster'] = '左前推进器',
       ['Left front track bar'] = '左前履带支杆',
       ['Left front track knee'] = '左前履带膝部',
       ['Left front wing flap'] = '左前襟翼',
       ['Left gun'] = '左炮',
+      ['Left gun weakspot'] = '左炮弱点',
       ['Left hand'] = '左手',
       ['Left head'] = '左头部',
       ['Left head flap'] = '左头部护片',
@@ -2076,6 +2192,8 @@ MOD.langs = {
       ['Left leg health'] = '左腿生命值',
       ['Left leg shield'] = '左腿护盾',
       ['Left legs'] = '左腿',
+      ['Left lower arm'] = '左下臂',
+      ['Left lower leg'] = '左下腿',
       ['Left middle leg'] = '左中腿',
       ['Left middle wing'] = '左中翼',
       ['Left mirror'] = '左后视镜',
@@ -2101,10 +2219,13 @@ MOD.langs = {
       ['Left torso'] = '左躯干',
       ['Left track'] = '左履带',
       ['Left tracks'] = '左履带',
+      ['Left upper leg'] = '左上腿',
+      ['Left upper leg top'] = '左上腿顶部',
       ['Left weapon bay'] = '左武器舱',
       ['Left wing'] = '左翼',
       ['Left wrist blade'] = '左腕刀刃',
       ['Leg injury immunity (1 on)'] = '免疫腿部受伤（1 为开启）',
+      ['Less: bumps go straight into the body and it wobbles.'] = '越少：颠簸直接传到车身，车身会晃动。',
       ['Leveller'] = '荡平者',
       ['Leviathan'] = '利维坦',
       ['Leviathan bomb'] = '利维坦炸弹',
@@ -2118,6 +2239,7 @@ MOD.langs = {
       ['Lifetime (s)'] = '存续时间(秒)',
       ['Light armor'] = '轻型护甲',
       ['Light, medium or heavy, per armor (every armor set with that name).'] = '每件护甲的轻型、中型或重型（同名的所有护甲套装）。',
+      ['Lighter: quicker off the line, but bounces over bumps and gets thrown around by explosions.'] = '越轻：起步更快，但过坑洼会弹跳，容易被爆炸掀飞。',
       ['Limb health'] = '四肢生命值',
       ['Limb injury avoidance'] = '避免肢体受伤的几率',
       ['Load'] = '读取',
@@ -2132,6 +2254,9 @@ MOD.langs = {
       ['Lower back'] = '下背部',
       ['Lower it if a high zoom spins the view.'] = '如果高倍率时视野旋转，请调低。',
       ['Lower spine'] = '下脊椎',
+      ['Lower: a softer ride, the body leans in turns and sags.'] = '越低：行驶更软，转弯时车身侧倾并下沉。',
+      ['Lower: faster in this gear, weaker on hills and from a stop.'] = '越低：这个挡位更快，上坡和起步更弱。',
+      ['Lower: keeps bouncing after every bump.'] = '越低：每次颠簸后都会一直弹跳。',
       ['Lowest patrol frequency (x)'] = '最低巡逻频率 (x)',
       ['Lowest rates'] = '最低频率',
       ['Lowest reinforcement frequency (x)'] = '最低增援频率 (x)',
@@ -2152,7 +2277,13 @@ MOD.langs = {
       ['M90A Shotgun'] = 'M90A 霰弹枪',
       ['MA5C Assault Rifle'] = 'MA5C 突击步枪',
       ['Max ricochets'] = '最大跳弹数',
+      ['MACHINE GUN'] = '机枪',
+      ['MARKSMAN RIFLE'] = '精确射手步枪',
+      ['MECHAS'] = '机甲与载具',
+      ['MEDIUM'] = '中型',
+      ['MELEE'] = '近战',
       ['MG Emplacement'] = '机枪部署支架',
+      ['MG Raider'] = '机枪奇袭者',
       ['MG-206 Heavy Machine Gun'] = 'MG-206 重机枪',
       ['MG-206 Heavy Machine Gun (mounted B)'] = 'MG-206 重机枪（固定式 B）',
       ['MG-43 Machine Gun'] = 'MG-43 机枪',
@@ -2160,9 +2291,11 @@ MOD.langs = {
       ['MGX-42 Bullet Storm'] = 'MGX-42 子弹风暴',
       ['MINEFIELD'] = '雷区',
       ['MISSILE FLIGHT'] = '导弹飞行',
+      ['MISSION'] = '任务',
       ['MLS-4X Commando'] = 'MLS-4X 突击兵',
       ['MP-98 Knight'] = 'MP-98 骑士',
       ['MS-11 Solo Silo'] = 'MS-11 单兵导弹发射井',
+      ['MUZZLE'] = '枪口',
       ['Machete'] = '砍刀',
       ['Machine Gun'] = '机枪',
       ['Machine Gun Sentry'] = '哨戒机枪',
@@ -2170,6 +2303,7 @@ MOD.langs = {
       ['Made by SHODAN'] = '作者 SHODAN',
       ['Maelstrom'] = '风暴漩涡',
       ['Magazine size'] = '弹匣容量',
+      ['Magazine size (x)'] = '弹匣容量 (x)',
       ['Magazines from supply'] = '补给获得的弹匣数',
       ['Main'] = '主体',
       ['Main body'] = '主身体',
@@ -2177,6 +2311,7 @@ MOD.langs = {
       ['Marauder'] = '劫掠者',
       ['Marker radar scan every (s)'] = '标记雷达扫描间隔（秒）',
       ['Mass (kg)'] = '质量(千克)',
+      ['Max bounces'] = '最大弹跳次数',
       ['Max carried'] = '最大携带',
       ['Max flight time (s)'] = '最大飞行时间(秒)',
       ['Max spare heatsinks'] = '备用散热器上限',
@@ -2190,6 +2325,7 @@ MOD.langs = {
       ['Medium Plasma Bolt'] = '中型等离子弹',
       ['Medium armor'] = '中型护甲',
       ['Melee'] = '近战',
+      ['Melee armor penetration (+)'] = '近战穿甲 (+)',
       ['Melee damage'] = '近战伤害',
       ['Melta Mine'] = '热熔地雷',
       ['Meltagun'] = '热熔枪',
@@ -2211,6 +2347,7 @@ MOD.langs = {
       ['Mobile Comms Relay'] = '移动通信中继器',
       ['Modifier patrol frequency (x)'] = '修正巡逻频率 (x)',
       ['Modifier patrol size (x)'] = '修正巡逻规模 (x)',
+      ['More: soaks up big bumps and keeps the wheels on the ground on rough terrain.'] = '越多：能吸收大的颠簸，在崎岖地形上车轮保持着地。',
       ['Mortar Sentry'] = '迫击哨戒炮',
       ['Most suppression'] = '最大压制',
       ['Mouth'] = '口部',
@@ -2230,13 +2367,21 @@ MOD.langs = {
       ['Neck armor'] = '颈部装甲',
       ['Neck body'] = '颈部（本体）',
       ['Never'] = '从不',
+      ['No bolt pull'] = '取消拉栓',
       ['No changes: loading it puts every value back to the game\'s.'] = '没有修改：读取它会把所有数值恢复为游戏原值。',
+      ['No description'] = '无描述',
+      ['No free preset place: delete one first.'] = '没有空位：请先删除一个预设。',
+      ['No other vehicle has this section.'] = '没有其他载具有此部分。',
+      ['No page in this editor uses this id.'] = '此编辑器中没有页面使用此 id。',
+      ['No passive.'] = '无被动。',
+      ['No passives'] = '无被动',
       ['No presets yet.'] = '还没有预设。',
       ['Noise'] = '噪音',
       ['Noise template'] = '噪音模板',
       ['None'] = '无',
       ['Normal projectile'] = '常规弹丸',
       ['Not offered by the game: a laser built on the Scythe.'] = '游戏本身未提供：基于“长柄镰”改造的激光武器。',
+      ['Not offered on backpack weapons: their backpack does not attach when the weapon is in your primary slot.'] = '背包武器不提供此项：武器在主武器栏时背包无法连接。',
       ['Not used by any weapon or stratagem in this list.'] = '本列表中的武器与战备都没有用到它。',
       ['Nothing matches.'] = '没有匹配项。',
       ['Nothing to install: your values are the game\'s own.'] = '无需写入：所有数值均为游戏原值。',
@@ -2245,7 +2390,10 @@ MOD.langs = {
       ['Nursing Spewer'] = '抚育喷涌虫',
       ['OFFLINE  -  edits the game\'s files; they apply when the game starts'] = '离线  -  编辑游戏文件；游戏启动时生效',
       ['OK'] = '确定',
+      ['OPTICS'] = '准镜',
       ['ORBITAL BEAM'] = '轨道光束',
+      ['ORBITAL STRIKES'] = '轨道武器',
+      ['OTHER'] = '其他',
       ['Objective'] = '任务目标',
       ['Off'] = '关',
       ['Off: its stats above are left out; only the passives below apply.'] = '关闭：上方的数值不生效；只有下方的被动生效。',
@@ -2256,6 +2404,7 @@ MOD.langs = {
       ['On'] = '开',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = '开启：单次配装可携带多台 外骨骼装甲、FRV 或坦克。',
       ['On: in your armory / stratagem list.'] = '开启：出现在你的军械库 / 战略配备列表中。',
+      ['On: shows the Up, Down, < and > buttons by the lists. The mouse wheel, scroll bars and keys work either way.'] = '开启：在列表旁显示上、下、< 和 > 按钮。鼠标滚轮、滚动条和按键始终可用。',
       ['On: sniper rifles show a crosshair when you aim in third person.'] = '开启：以第三人称瞄准时，狙击步枪显示准星。',
       ['On: stratagem balls stick on more surfaces instead of bouncing off.'] = '开启：战略配备信标可粘附在更多表面上，而不会弹开。',
       ['On: your '] = '开启：你的',
@@ -2264,9 +2413,12 @@ MOD.langs = {
       ['One True Flag'] = '唯一真旗',
       ['One-Two'] = '幺二',
       ['One-handed'] = '单手持握',
+      ['Only this armor gets it.'] = '只有此护甲获得。',
+      ['Only this armor. Each passive\'s values are on its own page, below the armors.'] = '仅此护甲。每个被动的数值在护甲下方各自的页面中。',
       ['Only works with the blast angle at 360, and the distance has to be larger than one step of the round:'] = '只在爆炸角为 360 时生效，且距离要大于射弹每帧的位移：',
       ['Open'] = '打开',
       ['Open / close key'] = '打开 / 关闭热键',
+      ['Open all'] = '全部展开',
       ['Opened the GitHub page in your browser.'] = '已在浏览器中打开 GitHub 页面。',
       ['Opened the folder.'] = '已打开文件夹。',
       ['Opened the log folder.'] = '已打开日志文件夹。',
@@ -2291,7 +2443,6 @@ MOD.langs = {
       ['Orbital strike.'] = '轨道打击。',
       ['Other'] = '其他',
       ['Other players are in your game: arc chain length / split use the game\'s values.'] = '你的对局中存在其他玩家：电弧连锁长度 / 分裂将使用游戏数值。',
-      ['Otherwise the shot still works but may fly without its trail.'] = '否则射击仍然有效，但可能没有尾迹。',
       ['Outcast'] = '流放者',
       ['Outer radius (m)'] = '外半径(米)',
       ['Outpost garrison size (x)'] = '前哨驻军规模 (x)',
@@ -2318,12 +2469,15 @@ MOD.langs = {
       ['P-92 Warrant'] = 'P-92 法令',
       ['P/40-K Bolt Pistol'] = 'P/40-K 爆弹手枪',
       ['PASSIVE'] = '被动',
+      ['PASSIVES'] = '被动',
+      ['PISTOL'] = '手枪',
       ['PLAS-1 Scorcher'] = 'PLAS-1 焦土',
       ['PLAS-101 Purifier'] = 'PLAS-101 净化者',
       ['PLAS-15 Loyalist'] = 'PLAS-15 忠诚者',
       ['PLAS-39 Accelerator Rifle'] = 'PLAS-39 加速步枪',
       ['PLAS-45 Epoch'] = 'PLAS-45 纪元',
       ['PRESETS'] = '预设',
+      ['PRIMARY'] = '主要武器',
       ['PROJECTILE'] = '弹丸',
       ['Projectile flags (bits)'] = '射弹标志位(位域)',
       ['PROJECTILE SWAP'] = '弹种交换',
@@ -2338,6 +2492,11 @@ MOD.langs = {
       ['Partial charge explosion'] = '部分蓄力爆炸',
       ['Partial charge shot'] = '部分蓄力射击',
       ['Passive'] = '被动',
+      ['Passive text'] = '被动文本',
+      ['Past that, the trail needs someone in the mission to bring that weapon.'] = '超出此数量后，只有任务中有人携带该武器才会显示尾迹。',
+      ['Paste a code here'] = '在此粘贴代码',
+      ['Paste code'] = '粘贴代码',
+      ['Path start (0 to 1)'] = '路径起点（0 到 1）',
       ['Patriot Exosuit'] = '“爱国者”外骨骼装甲',
       ['Patrol frequency (x)'] = '巡逻频率 (x)',
       ['Patrolling speed (m/s)'] = '巡逻速度 (米/秒)',
@@ -2355,6 +2514,7 @@ MOD.langs = {
       ['Picked up into: Support slot'] = '拾取到：支援武器栏',
       ['Picking it up puts it in your primary slot instead (1), in place of your primary. 3 = the support slot.'] = '拾取后放入主武器栏 (1)，替换你的主武器。3 = 支援武器栏。',
       ['Pickup'] = '拾取',
+      ['Pilot'] = '驾驶员',
       ['Pilot light goes out after (s)'] = '引火熄灭时间（秒）',
       ['Pilot seat'] = '驾驶座',
       ['Pineapple'] = '菠萝',
@@ -2367,6 +2527,9 @@ MOD.langs = {
       ['Position scatter (m)'] = '布雷位置随机偏移（米）',
       ['Pouncer'] = '猛扑虫',
       ['Predator Hunter'] = '掠食追猎虫',
+      ['Predator Stalker'] = '掠食追踪虫',
+      ['Preset:'] = '预设：',
+      ['Preset: none'] = '预设：无',
       ['Presets'] = '预设',
       ['President rewards'] = '总统奖励',
       ['Press a key (Esc cancels)'] = '请按一个键(Esc 取消)',
@@ -2377,7 +2540,9 @@ MOD.langs = {
       ['Projectile explosion id'] = '弹丸爆炸编号',
       ['Projectile fired (id)'] = '发射的弹丸(编号)',
       ['Projectile swap'] = '弹种交换',
+      ['Projectile swap shares those 4, so weapons it loads leave fewer here.'] = '弹药替换共用这 4 个名额，它加载的武器会占用名额。',
       ['Projectiles per shot'] = '每次射击弹丸数',
+      ['Projectiles with no trail:'] = '没有轨迹的弹药:',
       ['Prone speed (m/s)'] = '匍匐速度(米/秒)',
       ['Prospecting Drill'] = '勘探钻机',
       ['Punisher'] = '制裁者',
@@ -2408,6 +2573,7 @@ MOD.langs = {
       ['Ricochet spread vertical (deg)'] = '跳弹垂直散布(度)',
       ['Ricochet threshold angle (deg)'] = '跳弹阈值角度(度)',
       ['Ricochet threshold speed (m/s)'] = '跳弹阈值速度(米/秒)',
+      ['RECORDS'] = '记录',
       ['RL-77 Airburst Rocket Launcher'] = 'RL-77 空爆火箭弹发射器',
       ['ROUND 1 BLAST'] = '第 1 发爆炸',
       ['ROUND 1 BLAST RADIUS'] = '第 1 发爆炸半径',
@@ -2442,6 +2608,7 @@ MOD.langs = {
       ['Rear brake strength'] = '后轮制动力',
       ['Rear cockpit'] = '后驾驶舱',
       ['Rear damping'] = '后悬挂阻尼',
+      ['Rear sight range (m)'] = '后方视野距离（米）',
       ['Rear spring stiffness'] = '后悬挂刚度',
       ['Rear suspension travel'] = '后悬挂行程',
       ['Rear wheel grip'] = '后轮抓地力',
@@ -2467,6 +2634,7 @@ MOD.langs = {
       ['Regeneration (health/s)'] = '再生 (生命值/秒)',
       ['Regeneration delay after damage (s)'] = '受伤后再生延迟（秒）',
       ['Reinforced Epaulettes'] = '强化肩章',
+      ['Reinforced Scout Strider'] = '强化侦察纵步者',
       ['Reinforcement Beacon'] = '增援信标',
       ['Reinforcement frequency (x)'] = '增援频率 (x)',
       ['Reinforcement size (x)'] = '增援规模 (x)',
@@ -2482,8 +2650,10 @@ MOD.langs = {
       ['Rename'] = '重命名',
       ['Reprimand'] = '训斥',
       ['Reset all values'] = '重置全部数值',
+      ['Reset armor'] = '重置护甲',
       ['Reset booster'] = '重置增强配备',
       ['Reset enemy'] = '重置敌人',
+      ['Reset every value in this current preset to default.'] = '将当前预设的所有数值恢复为默认。',
       ['Reset helldiver'] = '重置潜兵',
       ['Reset passive'] = '重置被动',
       ['Reset record'] = '重置记录',
@@ -2499,10 +2669,13 @@ MOD.langs = {
       ['Rifle Justice. Short '] = '“正义”步枪：短弹匣',
       ['Right'] = '右',
       ['Right arm'] = '右手臂',
+      ['Right arm armor'] = '右手臂装甲',
       ['Right arm health'] = '右臂生命值',
+      ['Right arm weakspot'] = '右手臂弱点',
       ['Right armor'] = '右装甲',
       ['Right arms'] = '右手臂',
       ['Right back leg'] = '右后腿',
+      ['Right back leg armor'] = '右后腿装甲',
       ['Right back panel'] = '右后板',
       ['Right back thruster'] = '右后推进器',
       ['Right back track bar'] = '右后履带支杆',
@@ -2513,6 +2686,7 @@ MOD.langs = {
       ['Right box 1'] = '右储物箱 1',
       ['Right box 2'] = '右储物箱 2',
       ['Right claw'] = '右爪',
+      ['Right collar'] = '右颈圈',
       ['Right elbow'] = '右肘部',
       ['Right extra elbow'] = '右额外肘部',
       ['Right foot'] = '右脚',
@@ -2521,11 +2695,13 @@ MOD.langs = {
       ['Right front door'] = '右前门',
       ['Right front face'] = '右前面',
       ['Right front leg'] = '右前腿',
+      ['Right front leg armor'] = '右前腿装甲',
       ['Right front light'] = '右前灯',
       ['Right front track bar'] = '右前履带支杆',
       ['Right front track knee'] = '右前履带膝部',
       ['Right front wing flap'] = '右前襟翼',
       ['Right gun'] = '右炮',
+      ['Right gun weakspot'] = '右炮弱点',
       ['Right hand'] = '右手',
       ['Right head'] = '右头部',
       ['Right head flap'] = '右头部护片',
@@ -2536,6 +2712,8 @@ MOD.langs = {
       ['Right leg health'] = '右腿生命值',
       ['Right leg shield'] = '右腿护盾',
       ['Right legs'] = '右腿',
+      ['Right lower arm'] = '右下臂',
+      ['Right lower leg'] = '右下腿',
       ['Right middle leg'] = '右中腿',
       ['Right middle wing'] = '右中翼',
       ['Right mirror'] = '右后视镜',
@@ -2561,12 +2739,16 @@ MOD.langs = {
       ['Right torso'] = '右躯干',
       ['Right track'] = '右履带',
       ['Right tracks'] = '右履带',
+      ['Right upper leg'] = '右上腿',
+      ['Right upper leg top'] = '右上腿顶部',
       ['Right weapon bay'] = '右武器舱',
       ['Right wing'] = '右翼',
       ['Right wrist blade'] = '右腕刀刃',
       ['Rock Solid'] = '坚如磐石',
       ['Rocket Devastator'] = '火箭蹂躏者',
+      ['Rocket Raider'] = '火箭奇袭者',
       ['Rocket Sentry'] = '火箭哨戒炮',
+      ['Rocket fired (id)'] = '发射的火箭（ID）',
       ['Rocket pods'] = '火箭舱',
       ['Rooted (experimental)'] = '定身（实验性）',
       ['Rotator'] = '转子',
@@ -2601,6 +2783,8 @@ MOD.langs = {
       ['SEAF soldier: an ally.'] = 'SEAF 士兵：友军。',
       ['SEAF wave cooldown (x)'] = 'SEAF 波次冷却 (x)',
       ['SECOND MODE'] = '第二模式',
+      ['SECONDARY'] = '次要武器',
+      ['SENTRIES'] = '哨戒炮',
       ['SG-20 Halt'] = 'SG-20 止息',
       ['SG-22 Bushwhacker'] = 'SG-22 游击兵',
       ['SG-225 Breaker'] = 'SG-225 破裂者',
@@ -2617,9 +2801,11 @@ MOD.langs = {
       ['SH-51 Directional Shield'] = 'SH-51 定向护盾',
       ['SHARED WITH'] = '共用',
       ['SHIELD'] = '护盾',
+      ['SHIELD BASH'] = '盾牌猛击',
       ['SHODAN ENEMY EDITOR'] = 'SHODAN 敌人编辑器',
       ['SHODAN STAT EDITOR'] = 'SHODAN 数值编辑器',
       ['SHODAN weapon mods are running too: they put their own values back every 5 s'] = '检测到 SHODAN 武器 mod 同时运行：它们每 5 秒会把数值改回自己的设定',
+      ['SHOTGUN'] = '霰弹枪',
       ['SHRAPNEL'] = '破片',
       ['SHRAPNEL BLAST RADIUS'] = '破片爆炸半径',
       ['SHRAPNEL DIRECT HIT'] = '破片直击',
@@ -2636,13 +2822,22 @@ MOD.langs = {
       ['SMG/FLAM-34 Stoker (underbarrel flamer)'] = 'SMG/FLAM-34 司炉者（下挂喷火器）',
       ['Status effect template'] = '状态效果模板',
       ['Status effect volume'] = '状态效果体积模板',
+      ['SNIPER RIFLE'] = '狙击步枪',
       ['SPARKS'] = '火花',
+      ['SPECIAL'] = '特殊',
+      ['STANDARD'] = '标准',
       ['STATUS EFFECTS'] = '状态效果',
+      ['STOMP'] = '践踏',
       ['STRATAGEM'] = '战略配备',
+      ['STRATAGEMS'] = '战略配备',
+      ['SUBMACHINE GUN'] = '冲锋枪',
+      ['SUPPORT'] = '支援',
+      ['SUPPORT WEAPONS'] = '支援武器',
       ['Safe below heat (%)'] = '安全热量(%)',
       ['Sai'] = '钗',
       ['Salvos'] = '齐射次数',
       ['Save'] = '保存',
+      ['Save current changes'] = '保存当前更改',
       ['Save current changes here'] = '在此保存当前修改',
       ['Scavenger'] = '食腐虫',
       ['Scavenger acid burst'] = '清道夫酸液爆裂',
@@ -2656,11 +2851,29 @@ MOD.langs = {
       ['Scythe'] = '长柄镰',
       ['Seaf Gun'] = 'SEAF 火炮',
       ['Seaf Squad'] = 'SEAF 小队',
+      ['Search Automatons'] = '搜索机器人',
+      ['Search Illuminate'] = '搜索光能者',
+      ['Search SEAF'] = '搜索SEAF',
+      ['Search Terminids'] = '搜索虫族',
+      ['Search armors'] = '搜索护甲',
+      ['Search attachments'] = '搜索配件',
+      ['Search boosters'] = '搜索增强',
       ['Search enemies'] = '搜索敌人',
+      ['Search items'] = '搜索物品',
+      ['Search mechas'] = '搜索载具',
+      ['Search primary weapons'] = '搜索主武器',
       ['Search radius (m)'] = '搜索半径(米)',
+      ['Search records'] = '搜索记录',
+      ['Search secondary weapons'] = '搜索副武器',
+      ['Search spawning'] = '搜索敌人生成',
+      ['Search stratagems'] = '搜索战略配备',
+      ['Search support weapons'] = '搜索支援武器',
+      ['Search throwables'] = '搜索投掷物',
       ['Search weapons and stratagems'] = '搜索武器与战略配备',
       ['Searching speed (m/s)'] = '搜索速度 (米/秒)',
       ['Second ammo'] = '第二弹种',
+      ['Second ammo (id)'] = '第二弹药 (id)',
+      ['Second ammo replaces (1 or 2)'] = '第二弹药替换（1 或 2）',
       ['Second mode'] = '第二模式',
       ['Second mode explosion'] = '第二模式爆炸',
       ['Second mode fires (id)'] = '第二模式发射的弹丸(编号)',
@@ -2683,12 +2896,16 @@ MOD.langs = {
       ['Several vehicles of a kind'] = '同类载具数量',
       ['Shape'] = '形状',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = '所有带此被动的护甲共用。倍率：1 = 不变。',
+      ['Shares its name and description with the armor of this name: a change here changes both.'] = '与同名护甲共用名称和描述：在此处修改会同时改变两者。',
       ['Shear'] = '切变',
+      ['Shell fired (id)'] = '发射的炮弹（ID）',
+      ['Shells after it (id)'] = '之后的炮弹（ID）',
       ['Shells per salvo'] = '每次齐射弹数',
       ['Shield'] = '护盾',
       ['Shield Generator Pack'] = '防护罩生成包',
       ['Shield Generator Relay'] = '防护罩生成中继器',
       ['Shield arm zone armor'] = '护盾臂部位护甲',
+      ['Shield bash'] = '盾牌猛击',
       ['Shield capacity'] = '护盾容量',
       ['Shield emitter'] = '护盾发生器',
       ['Shield forcefield'] = '护盾力场',
@@ -2715,6 +2932,7 @@ MOD.langs = {
       ['Shrieker Nest'] = '尖啸虫巢穴',
       ['Sickle'] = '镰刀',
       ['Side'] = '侧面',
+      ['Side sight range (m)'] = '侧方视野距离（米）',
       ['Siege-Ready'] = '蓄势出击',
       ['Sight cone height (degrees)'] = '视野锥高度 (度)',
       ['Sight cone width (degrees)'] = '视野锥宽度 (度)',
@@ -2725,6 +2943,7 @@ MOD.langs = {
       ['Simo Iron Sights'] = '“西莫”机械瞄具',
       ['Size'] = '体型',
       ['Size (x)'] = '体型 (x)',
+      ['Skips the bolt pull after each shot. Fire rate, ammo and damage stay as they are.'] = '跳过每次射击后的拉栓动作。射速、弹药与伤害不变。',
       ['Slide speed / duration'] = '滑行速度 / 持续时间',
       ['Slope slide ends at (degrees)'] = '斜坡滑行结束角度（度）',
       ['Slope slide starts at (degrees)'] = '斜坡滑行起始角度（度）',
@@ -2735,6 +2954,7 @@ MOD.langs = {
       ['Slowed (experimental)'] = '减速（实验性）',
       ['Slugger'] = '重炮手',
       ['Small Plasma Bolt'] = '小型等离子弹',
+      ['Smaller: quicker to speed up, slower at the top, and it scrapes over rocks.'] = '越小：加速更快，最高速度更低，会刮到石头。',
       ['Smoke'] = '烟雾弹',
       ['Smoke radius, edge (m)'] = '烟雾半径，边缘(米)',
       ['Smoke radius, full (m)'] = '烟雾半径，浓密(米)',
@@ -2798,6 +3018,8 @@ MOD.langs = {
       ['Standard Drum'] = '标准弹鼓',
       ['Standard Heatsink'] = '标准散热器',
       ['Standard Plasma Container'] = '标准等离子弹药匣',
+      ['Start game'] = '启动游戏',
+      ['Starting Helldivers 2 through Steam...'] = '正在通过 Steam 启动游戏...',
       ['Starting charges'] = '初始使用次数',
       ['Starting count'] = '初始数量',
       ['Starting heatsinks'] = '初始备用散热器数',
@@ -2814,6 +3036,7 @@ MOD.langs = {
       ['Stingray'] = '刺魟',
       ['Stoker'] = '司炉者',
       ['Stomach zone'] = '腹部',
+      ['Stomp'] = '践踏',
       ['Stomp speed (x)'] = '踩踏速度 (x)',
       ['Stops you while firing'] = '开火时锁定移动',
       ['Strafing speed (m/s)'] = '侧移速度 (米/秒)',
@@ -2823,6 +3046,7 @@ MOD.langs = {
       ['Stratagem jamming radius (m)'] = '战略配备干扰半径（米）',
       ['Stratagem scrambling radius (m)'] = '战略配备扰乱半径（米）',
       ['Stratagems'] = '战略配备',
+      ['Stratagems left out of missions:'] = '未进入任务的战略配备:',
       ['Structure.'] = '建筑。',
       ['Stun'] = '眩晕弹',
       ['Stun (Illuminate) (experimental)'] = '眩晕弹（光能者）（实验性）',
@@ -2859,6 +3083,7 @@ MOD.langs = {
       ['Sway multiplier'] = '晃动系数',
       ['Sweeper'] = '扫荡者',
       ['Swim speed (m/s)'] = '游泳速度(米/秒)',
+      ['TANKS'] = '坦克',
       ['TCS 03 Thumper'] = 'TCS 03 震动装置',
       ['TCS support'] = 'TCS支架',
       ['TD-110 Maelstrom'] = 'TD-110 风暴漩涡',
@@ -2867,6 +3092,7 @@ MOD.langs = {
       ['Terrain deformation'] = '弹坑类型',
       ['THROWABLE'] = '投掷物',
       ['Thruster effect length (s)'] = '推进器特效时长(秒)',
+      ['THROWABLES'] = '投掷武器',
       ['TM-1 Lure Mine'] = 'TM-1 诱饵地雷',
       ['Trail audio start (id)'] = '尾迹音效起(ID)',
       ['Trail audio stop (id)'] = '尾迹音效止(ID)',
@@ -2889,6 +3115,7 @@ MOD.langs = {
       ['Tesla Tower'] = '特斯拉塔',
       ['Tested releases only.'] = '仅限经过测试的正式版。',
       ['That did not work; see the log.'] = '操作失败，请查看日志。',
+      ['That is not a valid preset code.'] = '这不是有效的预设代码。',
       ['That would make a loop of extra stratagems.'] = '此选择会使额外战略配备形成循环。',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = '“仲裁者”的下挂霰弹枪，不是步枪本身。',
       ['The Defender SEAF soldiers carry. Not yours.'] = 'SEAF 士兵携带的“防卫者”。不是你的那把。',
@@ -2898,16 +3125,19 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = '你携带的冲锋枪。其下挂火焰喷射器单独列出。',
       ['The Scythe you carry.'] = '你携带的“长柄镰”。',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = '“司炉者”的下挂火焰喷射器，不是冲锋枪本身。',
+      ['The Trident shows 4 beams at its default of 2.'] = '三叉戟默认值为 2 时显示 4 道光束。',
       ['The armor passives could not be stacked'] = '无法叠加护甲被动',
+      ['The armory shows the first passive\'s name and at most 3 effects. All of them apply.'] = '军械库显示第一个被动的名称，最多 3 个效果。全部生效。',
       ['The arrows you enter to call it in: click Record (or press Enter on this row), then enter'] = '呼叫时输入的方向键：点击“录制”（或在此行按 Enter），然后',
       ['The beacon\'s countdown before the delivery is sent.'] = '信标启动后、开始投送前的倒计时。',
       ['The beacon\'s timer still counts down the usual time (tested).'] = '信标仍显示原本的倒计时（已由作者测试）。',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = '炸药背包、炸药包及其爆炸。冷却时间见“战略配备”页。',
+      ['The clipboard has no valid preset code.'] = '剪贴板中没有有效的预设代码。',
       ['The explosion the round sets off when it hits something. 0: no explosion.'] = '射弹命中物体时引发的爆炸。0：不爆炸。',
+      ['The explosion the round sets off when its life time runs out before it hits anything. 0: no explosion.'] = '弹药在命中任何目标之前寿命耗尽时触发的爆炸。0:无爆炸。',
       ['The flamethrower you carry.'] = '你携带的火焰喷射器。',
       ['The game holds at most 1023 rounds in a backpack.'] = '游戏中一个背包最多容纳 1023 发。',
       ['The game holds at most 2048 rounds in a magazine.'] = '游戏中一个弹匣最多容纳 2048 发。',
-      ['The game only loads them when someone in the mission brings that weapon.'] = '只有任务中有人携带该武器时，游戏才会加载它们。',
       ['The game treats the weapon as one-handed. On two-handed weapons it breaks the hip-fire animations.'] = '游戏将该武器视为单手武器。双手武器会因此破坏腰射动画。',
       ['The game\'s own files are already in place.'] = '当前已是游戏原始文件。',
       ['The game\'s own files are back. Your values stay saved here (Install puts them in again).'] = '已恢复游戏原始文件。你的数值仍保存在此，点击“写入游戏”可再次写入。',
@@ -2923,12 +3153,15 @@ MOD.langs = {
       ['The rifle you carry. The grenade launcher is listed separately.'] = '你携带的步枪。榴弹发射器单独列出。',
       ['The rifle you carry. The underbarrel shotgun is listed separately.'] = '你携带的步枪。下挂霰弹枪单独列出。',
       ['The round goes off when it passes this close to an enemy, without hitting it. 0: off (the RL-77 uses 2 m).'] = '射弹从敌人这么近的距离经过时即使没有命中也会爆炸。0：关闭（RL-77 为 2 米）。',
+      ['The round only bounces when it hits faster than this. Grenade launcher rounds use 20 m/s, most rounds 60 m/s.'] = '射弹只有在命中速度高于此值时才会弹开。榴弹发射器的射弹为 20 米/秒，大多数射弹为 60 米/秒。',
+      ['The round only bounces when it hits further than this from head on (0 = head on, 90 = grazing).'] = '射弹只有在命中角度偏离正面超过此值时才会弹开（0 = 正面，90 = 擦过）。',
       ['The shot\'s trail and other effects belong to the chosen weapon.'] = '弹道尾迹和其他特效属于所选武器。',
       ['The support hammer delivered by hellpod. The game data files it next to the Machete.'] = '由空投舱投送的支援锤。游戏数据将它列在砍刀旁边。',
       ['The support weapon. The CQC-73 is listed under Secondary.'] = '支援武器。CQC-73 列在“副武器”下。',
       ['Thermite'] = '铝热弹',
       ['Thermite (experimental)'] = '铝热（实验性）',
       ['These values are shared by ALL bayonets: they change the Constitution, Sweeper and Amendment at once.'] = '这些数值由所有刺刀共用：会同时改变 Constitution、Sweeper 和 Amendment。',
+      ['This code is shared, so changing it also changes:'] = '此代号为共用,修改后也会改变:',
       ['Throw range'] = '投掷距离',
       ['Throw spread (degrees)'] = '投掷散布(度)',
       ['Throw velocity, max (m/s)'] = '投掷速度上限(米/秒)',
@@ -2981,9 +3214,10 @@ MOD.langs = {
       ['Tutorial Reinforcement Beacon'] = '教学增援信标',
       ['Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.'] = '输入预设名称：Enter 确认，Esc 取消。',
       ['Type the percent (%d-%d): Enter sets it, Esc cancels.'] = '输入百分比(%d-%d)：回车确认，Esc 取消。',
-      ['Type the text: Enter keeps it, Esc cancels. Install puts it in the game, in every language.'] = '输入文本：Enter 保存，Esc 取消。安装后会写入游戏的所有语言。',
+      ['Type the text: Enter keeps it, Shift+Enter starts a new line (twice leaves a gap), Esc cancels.'] = '输入文本：Enter 保存，Shift+Enter 换行（按两次留空行），Esc 取消。',
       ['Type the value: Enter sets it, Esc cancels. Values out of range are set to the nearest allowed one.'] = '输入数值：回车确认，Esc 取消。超出范围的数值会取最接近的合法值。',
       ['Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.'] = '输入搜索内容：Enter 保留结果，Esc 清空搜索。',
+      ['UNDERBARREL'] = '下挂',
       ['Ultimatum'] = '最后通牒',
       ['Uncharged'] = '未蓄力',
       ['Uncharged explosion'] = '未蓄力爆炸',
@@ -2997,12 +3231,14 @@ MOD.langs = {
       ['Unsafe warp: damage to you'] = '不安全跃迁：对你造成的伤害',
       ['Unsafe warp: explosion'] = '不安全跃迁：爆炸',
       ['Up'] = '上移',
+      ['Up/Down and arrow buttons'] = '上/下和箭头按钮',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = '上下键选择数值项，左右键调整（Shift 为大步长），点击数值或按回车直接输入，',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = '上下键选择，回车读取，Insert 新建，Shift+Insert 存入当前预设，F2 重命名，Del 删除。',
       ['Update channel'] = '更新渠道',
       ['Updates'] = '更新',
       ['Upload Discovery'] = '上传发现',
       ['Urchin'] = '海胆',
+      ['Used by:'] = '使用者：',
       ['Uses per mission'] = '每次任务使用次数',
       ['Uses per rearm'] = '每次重新武装后的可用次数',
       ['V2'] = 'v2',
@@ -3041,6 +3277,7 @@ MOD.langs = {
       ['Walk speed (x)'] = '行走速度 (x)',
       ['Walking Barrage Smoke'] = '移动弹幕烟雾',
       ['Walking backwards (multiplier)'] = '后退行走(倍率)',
+      ['Walking direction (deg)'] = '移动方向（度）',
       ['Walking speed (m/s)'] = '弹幕推进速度（米/秒）',
       ['War Strider'] = '战争纵步者',
       ['Warm-up before it sprays (s)'] = '喷射前预热（秒）',
@@ -3055,6 +3292,8 @@ MOD.langs = {
       ['Warrior acid burst'] = '战士酸液爆裂',
       ['Watcher'] = '守望者',
       ['Water'] = '水',
+      ['Weakspot'] = '弱点',
+      ['Weakspot engine'] = '引擎弱点',
       ['Weapon spread (x)'] = '武器散布 (x)',
       ['Weapon stats'] = '武器数值',
       ['Weapon sway (x)'] = '武器晃动 (x)',
@@ -3081,6 +3320,7 @@ MOD.langs = {
       ['a slot is 1 (primary) or 3 (secondary)'] = '栏位为 1（主武器）或 3（副武器）',
       ['a table moved; scanning again'] = '数据表已移动，正在重新扫描',
       ['added to every armor value, up to 10; lowered: down to 0'] = '加到每个护甲值上，最高 10；降低时最低 0',
+      ['added to every melee attack, up to 10; lowered: down to 0'] = '加到每种近战攻击上，最高 10；降低时最低为 0',
       ['airborne'] = '空降',
       ['all four exosuits share it'] = '四种外骨骼共用此值',
       ['also in your loadout when you bring this one'] = '携带此战略配备时也会一并获得',
@@ -3088,8 +3328,10 @@ MOD.langs = {
       ['arc weapon'] = '电弧武器',
       ['armor passive'] = '护甲被动',
       ['armor penetration, forces, velocity, drag, gravity, pellets and explosions. Kept: this'] = '穿甲、作用力、速度、阻力、重力、弹丸数及爆炸的修改。当前武器的',
+      ['as long as the engine torque is enough to get there.'] = '前提是扭矩足够把车推到那个速度。',
       ['assassinate'] = '刺杀',
       ['assault'] = '突击',
+      ['at least 1 round, at most 2048'] = '最少 1 发，最多 2048 发',
       ['attachment deltas'] = '配件修正量',
       ['attachment items'] = '配件物品',
       ['backpack charges'] = '背包使用次数',
@@ -3107,6 +3349,7 @@ MOD.langs = {
       ['elite'] = '精英',
       ['enemies at 0 stay immune'] = '为 0 的敌人仍然免疫',
       ['every enemy with this attack shares it'] = '所有拥有此攻击的敌人共用',
+      ['extra health for this part, it does not run out by itself'] = '该部位的额外生命值，不会自行流失',
       ['fake'] = '伪装',
       ['fire mode'] = '射击模式',
       ['gloom'] = '幽暗',
@@ -3128,10 +3371,12 @@ MOD.langs = {
       ['how fast a body part\'s bleed-out health runs out'] = '部位失血生命值耗尽的速度',
       ['how fast its aim settles again; higher: sooner'] = '其瞄准恢复稳定的速度；越高越快',
       ['how fast the bleed-out health runs out'] = '失血生命值耗尽的速度',
+      ['how fast their guns shoot; flamers, beams and melee stay as they are'] = '枪械的射击速度；喷火器、光束和近战不变',
       ['how fast they attack, turn and react'] = '它们攻击、转身和反应的速度',
       ['how hard your fire throws off its aim; 0: never; higher: a little fire throws it off fully'] = '你的火力对其瞄准的干扰强度；0：从不；越高：少量火力就能完全打乱其瞄准',
       ['how long it keeps after you once you break line of sight'] = '脱离视线后它继续追击你的时长',
       ['how long it keeps hunting you once you break line of sight; x1: as in the game, x2: twice as long'] = '你脱离其视线后它继续追击你的时长；x1：与游戏相同，x2：两倍时长',
+      ['how long it lasts once its health is gone; this sets its bleed-out health, so it also takes more shots to finish'] = '生命值耗尽后还能持续多久；这会改变其流血状态生命值，所以也需要更多攻击才能打掉',
       ['how long its aim stays thrown off after your fire stops'] = '你停火后其瞄准保持混乱的时长',
       ['how long its aim stays thrown off after your fire stops; Never: it never steadies'] = '你停火后其瞄准保持混乱的时长；从不：瞄准永远不会恢复稳定',
       ['how many of the items on its rack come down in one pod'] = '一个舱里落下它架子上的几件物品',
@@ -3167,6 +3412,7 @@ MOD.langs = {
       ['none'] = '无',
       ['none (no explosion)'] = '无（不爆炸）',
       ['none (no projectile)'] = '无（没有弹丸）',
+      ['none. - / + : add one, hold Reload in game to switch'] = '无。- / + ：添加，游戏中按住装填键切换',
       ['normal projectile'] = '常规弹丸',
       ['not a faction'] = '不是有效阵营',
       ['not a finite number'] = '不是有限数值',
@@ -3200,6 +3446,7 @@ MOD.langs = {
       ['the body and every body part, bleed-out health too'] = '身体与每个部位，以及失血生命值',
       ['the download helper (shodan_hash.dll) is missing'] = '缺少下载辅助库（shodan_hash.dll）',
       ['the faction multipliers cannot slow patrols below this: lower it with them'] = '阵营倍率无法让巡逻低于此值：请一同调低',
+      ['the fire mode switch'] = '射击模式开关',
       ['the force a hit needs to stagger it (hit sizes it never staggers from stay that way)'] = '使其硬直所需的命中力度（原本不会造成硬直的命中仍然不会）',
       ['the force a hit needs to stagger them'] = '使其硬直所需的命中力度',
       ['the game holds back reinforcements past about 100 enemies at x1; it has crashed past 200-240 enemies alive'] = '在 x1 时，游戏在约 100 名敌人后停止增援；存活敌人超过 200-240 时曾出现崩溃',
@@ -3208,6 +3455,9 @@ MOD.langs = {
       ['the holster is on the back or the hip'] = '收枪位置在背部或腰部',
       ['the model and its body parts; on some enemies the hitboxes may not match the model, and on others it may not work at all'] = '模型及其身体部位；部分敌人的受击判定可能与模型不符，另一些敌人可能完全无效',
       ['the new code with the arrow keys or WASD, 1 to 9 arrows. Enter keeps it, Backspace takes one back,'] = '用方向键或 WASD 输入新代码，1 到 9 个箭头。Enter 保留，Backspace 退回一个，',
+      ['the rate of fire switch'] = '射速开关',
+      ['the same distance for every enemy; 0: the game\'s own (most are 1 m, so no multiplier)'] = '所有敌人使用相同距离；0：游戏默认值（大多数为 1 米，因此不用倍数）',
+      ['the same time for every gun; 0: the game\'s own (enemy reloads are 0 in the data, so no multiplier)'] = '所有枪械使用同一时间；0：游戏原值（敌人装填在数据中为 0，因此没有倍率）',
       ['the shot fired from this heat on, and what it does to you'] = '从该热量值起发射的弹丸，以及它对你自己造成的效果',
       ['the spare ammo in its backpack; read when the backpack is called in'] = '背包里的备用弹药；在被投放时读取',
       ['Inherit velocity'] = '继承速度',
@@ -3400,6 +3650,7 @@ MOD.langs = {
       ['weapon\'s fire rate, ammo, handling and heat. To tune the shot, edit the chosen weapon.'] = '的射速、弹药、操控与热量。要调整这一发，请去编辑所选武器。',
       ['proximity fuse that fires from any side (the game\'s own flak airburst rounds use it);'] = '可从任意方向触发的近炸引信（游戏自带的防空空爆弹就用它）；',
       ['also in your loadout when you bring this one'] = '带上这件时它也会出现在你的配装里',
+      ['the underbarrel switch'] = '下挂武器开关',
       ['the update helper (shodan_hash.dll) is missing'] = '缺少更新辅助库（shodan_hash.dll）',
       ['their wind-ups and attacks'] = '蓄力和攻击',
       ['tier 1 captive'] = '1级俘虏',
@@ -3976,6 +4227,7 @@ MOD.langs = {
       ['gatekeeper'] = '御门者',
       ['gatling sentry'] = '加特林哨戒炮',
       ['gazer'] = '凝视者',
+      ['gazer spire'] = '凝视者尖塔',
       ['generator'] = '发电机',
       ['generator pack'] = '护盾生成背包',
       ['giga grenade'] = '千兆级榴弹',
@@ -4187,6 +4439,7 @@ MOD.langs = {
       ['melee weapon'] = '近战武器',
       ['melta mine'] = '热熔地雷',
       ['meltagun'] = '热熔枪',
+      ['mg raider'] = '机枪奇袭者',
       ['mg-206 heavy machine gun'] = 'MG-206 重机枪',
       ['mg-206 heavy machine gun (mounted b)'] = 'MG-206 重机枪（固定式 B）',
       ['mg-43 machine gun'] = 'MG-43 机枪',
@@ -4309,6 +4562,7 @@ MOD.langs = {
       ['position scatter (m)'] = '布雷位置随机偏移（米）',
       ['pouncer'] = '猛扑虫',
       ['predator hunter'] = '掠食追猎虫',
+      ['predator stalker'] = '掠食追踪虫',
       ['presets'] = '预设',
       ['president rewards'] = '总统奖励',
       ['press a key (esc cancels)'] = '请按一个键(Esc 取消)',
@@ -4373,6 +4627,7 @@ MOD.langs = {
       ['regeneration (health/s)'] = '再生(生命/秒)',
       ['regeneration delay after damage (s)'] = '受伤后再生延迟（秒）',
       ['reinforced epaulettes'] = '强化肩章',
+      ['reinforced scout strider'] = '强化侦察纵步者',
       ['reinforcement beacon'] = '增援信标',
       ['reload allowed below (rounds)'] = '允许装填的剩余弹数上限',
       ['reload time (s)'] = '装填时间（秒）',
@@ -4404,6 +4659,7 @@ MOD.langs = {
       ['rl-77 airburst rocket launcher'] = 'RL-77 空爆火箭弹发射器',
       ['rock solid'] = '坚如磐石',
       ['rocket devastator'] = '火箭蹂躏者',
+      ['rocket raider'] = '火箭奇袭者',
       ['rocket sentry'] = '火箭哨戒炮',
       ['round 1 blast'] = '第 1 发爆炸',
       ['round 1 blast radius'] = '第 1 发爆炸半径',
@@ -4800,6 +5056,16 @@ MOD.langs = {
       { '^(.+): Heavy$', '%1：重型' },
       { '^Bomb pattern (%d): (%d) bombs$', '投弹模式 %1：%2 枚炸弹' },
       { '^Gear (%d+) ratio$', '%1 挡传动比' },
+      { '^fires (.+)$', '发射：%1' },
+      { '^drops (.+)$', '投下：%1' },
+      { '^Copy (.+) to$', '将 %1 复制到' },
+      { '^Copied (%d+) value%(s%) to (%d+) vehicle%(s%)%.$', '已复制 %1 个数值到 %2 辆载具。' },
+      { '^Copied (%d+) value%(s%) into (%d+) preset%(s%)$', '已将 %1 个数值复制到 %2 个预设' },
+      { '^Code copied %((%d+) characters%)$', '代码已复制（%1 个字符）' },
+      { '^Added "(.+)"$', '已添加“%1”' },
+      { '^Added "(.+)" to the Enemy Editor presets$', '已添加到敌人编辑器预设：“%1”' },
+      { '^Added "(.+)" to the Stat Editor presets$', '已添加到属性编辑器预设：“%1”' },
+      { '^Saved as StatEditor\\(%S+)%. Copy code shares it%. A code you were sent goes in the box on the left%.$', '已保存为 StatEditor\\%1。“复制代码”用于分享。别人发来的代码请填入左侧的框。' },
       { '^Heat level (%d+)$', '热量等级 %1' },
       { '^(.+); ammo type shared with (.+)$', '%1；弹种与以下共用：%L2' },
       { '^fires: (.+)%. The rows above stay its own$', '发射：%1。上方各行仍为其自身数值' },
@@ -4839,7 +5105,7 @@ MOD.langs = {
       { '^(%d+) listed$', '共 %1 项' },
       { '^(%d+)%-(%d+) of (%d+) %(max (%d+)%)$', '第 %1-%2 项 / 共 %3 项（上限 %4）' },
       { '^(%d+) %(max (%d+)%)$', '共 %1 项（上限 %2）' },
-      { '^(%d+) value%(s%) for (%d+) weapon%(s%) / stratagem%(s%):$', '%1 项改动，涉及 %2 个武器 / 战略配备：' },
+      { '^(%d+) value%(s%) for (%d+) item%(s%):$', '%1 项改动，涉及 %2 个项目：' },
       { '^(%d+) value%(s%)$', '%1 项' },
       { '^On: your (%d+) change%(s%) are applied%.$', '开启：你的 %1 项改动已生效。' },
       { '^Off: the game\'s values everywhere; your (%d+) change%(s%) are kept for when you turn them on%.$', '关闭：使用游戏原值；你的 %1 项修改已保留，重新开启后生效。' },
@@ -4987,6 +5253,7 @@ MOD.langs = {
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '「+ 新建預設」（或 Insert 鍵）會把當前修改存為一組，接著你可以為它命名。',
       ['(Not Used) Additional Strafing Runs'] = '（未使用）額外機槍掃射',
       ['(Not Used) Air-TO-Air Missles'] = '（未使用）空對空導彈',
+      ['(changed)'] = '（已更改）',
       ['+ Add passive'] = '+ 新增被動',
       ['+ Armor rating'] = '護甲值',
       ['+ Ergonomics'] = '人機工效',
@@ -4997,6 +5264,7 @@ MOD.langs = {
       ['+ Throwables (start, max)'] = '投擲物數量（初始 / 上限）',
       ['- / + steps through the stratagems by name (-- / ++: 10 at a time).'] = '- / + 按名稱切換戰略配備（-- / ++ 每次切換 10 項）。',
       ['-180 with right at 180: all the way round'] = '-180 且右限為 180：可轉一整圈',
+      ['-1: as far as straight ahead'] = '-1：與正前方相同',
       ['0 = normal projectile; - / + selects a throwable grenade by name above.'] = '0 = 常規射彈；- / + 按上方名稱選擇投擲手雷。',
       ['0 for flak and cluster rounds; 1 for every other round in this build.'] = '本版本中僅高射炮彈與集束炸彈為 0，其餘射彈為 1。',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0：命中造成常規傷害；1：造成耐久傷害（取武器兩者中較低的一項）',
@@ -5004,6 +5272,8 @@ MOD.langs = {
       ['0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s.'] = '0：立即。RL-77 等待 0.2 秒，P-34 Breacher（先粘附燃燒）1 秒。',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0：命中造成普通傷害，1：造成耐久傷害（武器較低的那個）',
       ['0: no patrols'] = '0：沒有巡邏',
+      ['0: these wheels do not brake at all.'] = '0：這些車輪完全不剎車。',
+      ['0: walks away from the beacon, 0.5: centred on it, 1: ends on it'] = '0：從信標向外移動，0.5：以信標為中心，1：在信標處結束',
       ['100kg Bomb'] = '100KG炸彈',
       ['100kg Bomb Mk2'] = '100KG炸彈MK2',
       ['100kg Bomb Mk3'] = '100KG炸彈MK3',
@@ -5163,6 +5433,8 @@ MOD.langs = {
       ['A pathetic creature of meat and bone.'] = '一個由血肉和骨頭組成的可憐生物。',
       ['A preset keeps every change you have made as one set, under a name you choose.'] = '預設會把你所有的修改作為一組儲存，並取一個你指定的名字。',
       ['A preset keeps every enemy and spawning change as one custom difficulty, under a name you choose. Your weapon changes are kept apart.'] = '預設會把所有敵人與生成的改動儲存為一個自定義難度，名稱由你決定。武器改動單獨儲存。',
+      ['A resupply box gives this many. An ammo box on the map gives half, rounded down (at least 1).'] = '補給箱提供這麼多。地圖上的彈藥箱提供一半，向下取整（至少 1）。',
+      ['A resupply box gives this much. An ammo box on the map gives half, rounded down.'] = '補給箱提供這麼多。地圖上的彈藥箱提供一半，向下取整。',
       ['A value changed on an enemy\'s own page stays red: this page leaves it as it is.'] = '在敵人自己頁面上更改的數值保持紅色：此頁面不會改動它。',
       ['A weapon whose own Sway multiplier you changed keeps it. Sway this row changes shows in blue.'] = '你單獨改過晃動係數的武器保留其數值。此行改變的晃動以藍色顯示。',
       ['A/AC-8 Autocannon Sentry'] = 'A/AC-8 哨戒機炮',
@@ -5178,7 +5450,9 @@ MOD.langs = {
       ['AA Emplacement'] = '防空炮台',
       ['AC-8 Autocannon'] = 'AC-8 機炮',
       ['AMMO'] = '彈藥',
+      ['AMMUNITION'] = '彈藥',
       ['AMW-20 Apex'] = 'AMW-20 巔峰',
+      ['ANTI-TANK'] = '反坦克',
       ['APW-1 Anti-Materiel Rifle'] = 'APW-1 反器材步槍',
       ['AR-11 Arbitrator'] = 'AR-11 仲裁者',
       ['AR-11 Arbitrator (underbarrel shotgun)'] = 'AR-11 仲裁者（下掛霰彈槍）',
@@ -5198,6 +5472,9 @@ MOD.langs = {
       ['ARC-12 Blitzer'] = 'ARC-12 閃擊者',
       ['ARC-3 Arc Thrower'] = 'ARC-3 電弧發射器',
       ['Audio'] = '音效',
+      ['ARMORS'] = '盔甲',
+      ['ASSAULT RIFLE'] = '突擊步槍',
+      ['ATTACHMENTS'] = '配件',
       ['AX/AR-23 "Guard Dog"'] = 'AX/AR-23 護衛犬',
       ['AX/ARC-3 "Guard Dog" K-9'] = 'AX/ARC-3 護衛犬 K-9',
       ['AX/FLAM-75 "Guard Dog" Hot Dog'] = 'AX/FLAM-75 護衛犬熱狗',
@@ -5237,6 +5514,7 @@ MOD.langs = {
       ['Alpha Commander'] = '阿爾法蟲族指揮官',
       ['Also includes'] = '同時包含',
       ['Alternate ammunition'] = '另一種彈藥',
+      ['Always bring it'] = '始終攜帶',
       ['Amendment'] = '修正',
       ['Ammo'] = '彈藥',
       ['Ammo Cache'] = '彈藥儲備箱',
@@ -5291,6 +5569,7 @@ MOD.langs = {
       ['Assault'] = '突擊',
       ['Assault Raider'] = '特攻襲擊者',
       ['Assault Rifle'] = '突擊步槍',
+      ['At most 4 across all stratagems: more can crash the game at deployment.'] = '所有戰備合計最多 4 個：更多可能在部署時導致遊戲崩潰。',
       ['Attachment'] = '配件',
       ['Attachments'] = '配件',
       ['Attack animation speed (x)'] = '攻擊動畫速度 (x)',
@@ -5306,10 +5585,12 @@ MOD.langs = {
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 火葬者',
       ['B/MD C4 Pack'] = 'B/MD C4背包',
       ['BACKPACK'] = '背包',
+      ['BACKPACKS'] = '背包',
       ['BARRAGE'] = '彈幕',
       ['BLAST'] = '爆炸',
       ['BLAST RADIUS'] = '爆炸半徑',
       ['BODY PARTS'] = '身體部位',
+      ['BOOSTERS'] = '強化資源',
       ['BR-14 Adjudicator'] = 'BR-14 審判者',
       ['BURST'] = '二次爆炸',
       ['BURST RADIUS'] = '二次爆炸半徑',
@@ -5322,9 +5603,13 @@ MOD.langs = {
       ['Back hatch'] = '後艙蓋',
       ['Back hip'] = '後髖部',
       ['Back left wheel hub'] = '左後輪轂',
+      ['Back leg'] = '後腿',
+      ['Back lower leg'] = '後下腿',
       ['Back periscope side 8'] = '潛望鏡後側 8',
       ['Back pump flamer'] = '後部噴火器泵',
       ['Back right wheel hub'] = '右後輪轂',
+      ['Back upper leg'] = '後上腿',
+      ['Back upper leg top'] = '後上腿頂部',
       ['Background opacity'] = '背景不透明度',
       ['Backpack'] = '背包',
       ['Ballistic Missile'] = '彈道導彈',
@@ -5338,11 +5623,15 @@ MOD.langs = {
       ['Bastion MK XVI'] = '堡壘Mk XVI',
       ['Battery'] = '電池',
       ['Bayonet melee'] = '刺刀近戰',
+      ['Beam range (m)'] = '光束射程（米）',
+      ['Beam stays after the shot (s)'] = '射擊後光束持續 (秒)',
       ['Beamer'] = '光束器',
+      ['Beams per barrel'] = '每管光束數',
       ['Belt-Fed Grenade Launcher'] = '彈鏈式榴彈發射器',
       ['Berserker'] = '狂暴者',
       ['Better stratagem bounce'] = '改進戰略配備彈跳',
       ['Big walker cannon'] = '步行機巨炮',
+      ['Bigger wheels: a higher top speed and more room under the body, but a weaker pull.'] = '輪子越大：最高速度更高、底盤離地更高，但拉力更弱。',
       ['Bile Spewer'] = '膽汁噴湧蟲',
       ['Bile Spewer acid burst'] = '膽汁噴湧蟲酸液爆裂',
       ['Bile Spitter'] = '膽汁吐沫蟲',
@@ -5357,6 +5646,7 @@ MOD.langs = {
       ['Bleed (experimental)'] = '流血（實驗性）',
       ['Bleed-out drain (health/s)'] = '失血流失 (生命值/秒)',
       ['Bleed-out health'] = '流血狀態生命值',
+      ['Bleed-out time (s)'] = '流血時間 (秒)',
       ['Blind (experimental)'] = '致盲（實驗性）',
       ['Blitzer'] = '閃擊者',
       ['Block game input while open'] = '開啟時遮蔽遊戲輸入',
@@ -5373,6 +5663,7 @@ MOD.langs = {
       ['Body parts'] = '身體部位',
       ['Body rear'] = '身體後部',
       ['Bolt Pistol'] = '爆彈手槍',
+      ['Bomb dropped (id)'] = '投下的炸彈（ID）',
       ['Bomb pattern'] = '投彈模式',
       ['Bonnet'] = '引擎蓋',
       ['Boost after the launch (s)'] = '起跳後的推進時間（秒）',
@@ -5380,7 +5671,11 @@ MOD.langs = {
       ['Boosters'] = '強化套件',
       ['Boss'] = '核心',
       ['Boss back'] = '核心後部',
+      ['Boss head'] = '首領頭部',
       ['Bottom wing'] = '下翼',
+      ['Bounce'] = '彈跳',
+      ['Bounce angle (deg)'] = '彈跳角度（度）',
+      ['Bounce speed (m/s)'] = '彈跳速度（米/秒）',
       ['Brake strength'] = '剎車力度',
       ['Braking height (m)'] = '制動高度（米）',
       ['Braking speed (m/s)'] = '制動速度（米/秒）',
@@ -5425,6 +5720,7 @@ MOD.langs = {
       ['C hex 17'] = '六邊形 17',
       ['C hex 18'] = '六邊形 18',
       ['C hex 19'] = '六邊形 19',
+      ['CAPES'] = '披肩',
       ['CB-9 Exploding Crossbow'] = 'CB-9 猛爆十字弓',
       ['CHARGE'] = '充能',
       ['CLUSTER BOMB'] = '集束炸彈',
@@ -5471,16 +5767,21 @@ MOD.langs = {
       ['Chest damage taken'] = '受到胸部傷害',
       ['Choked (experimental)'] = '窒息（實驗性）',
       ['Choose a weapon on the left.'] = '請在左側選擇武器。',
+      ['Choose the presets, then Copy. Values they share take this preset\'s, the rest of theirs stays.'] = '選擇預設後點選複製。相同的數值改用此預設的，其餘保持不變。',
+      ['Choose the vehicles, then Copy. They get every value shown in this section.'] = '選擇載具，然後點選複製。它們會獲得此部分顯示的所有數值。',
       ['Clear'] = '清除',
       ['Click * to show only what you changed, from every tab.'] = '點 * 只顯示你改過的內容（所有標籤頁）。',
-      ['Click a box to type. Install puts it in the game, in every language.'] = '點選輸入框即可輸入。安裝後會寫入遊戲的所有語言。',
+      ['Click again'] = '再點一次確認',
       ['Click again to overwrite'] = '再次點選以覆蓋',
+      ['Click again within 4 seconds to end the game. Unsaved progress is lost.'] = '4 秒內再點一次即結束遊戲，未儲存的進度會丟失。',
       ['Climb acceleration'] = '爬升加速度',
       ['Climb multiplier (horizontal)'] = '槍口上揚倍率（水平）',
       ['Climb multiplier (vertical)'] = '槍口上揚倍率（垂直）',
       ['Climb speed (m/s)'] = '爬升速度(米/秒)',
       ['Climb time limit (s)'] = '爬升時限(秒)',
       ['Climbing and sliding'] = '攀爬與滑行',
+      ['Close all'] = '全部收起',
+      ['Close game'] = '關閉遊戲',
       ['Cluster Bomb'] = '集束炸彈',
       ['Cognitive Disruptor'] = '認知干擾器',
       ['Collision'] = '碰撞體',
@@ -5509,6 +5810,12 @@ MOD.langs = {
       ['Cooldown (s)'] = '冷卻時間(秒)',
       ['Cooling (% per s)'] = '散熱(每秒%)',
       ['Copy'] = '複製',
+      ['Copy code'] = '複製程式碼',
+      ['Copy to...'] = '複製到...',
+      ['Copy values to'] = '複製數值到',
+      ['Copy values to...'] = '複製數值到...',
+      ['Could not ask Steam to start the game.'] = '無法讓 Steam 啟動遊戲。',
+      ['Could not close Helldivers 2.'] = '無法關閉遊戲。',
       ['Countdown before delivery (s)'] = '投送前倒計時（秒）',
       ['Coyote'] = '郊狼',
       ['Cremator'] = '火葬者',
@@ -5521,6 +5828,7 @@ MOD.langs = {
       ['Crown'] = '冠部',
       ['Cruise speed (m/s)'] = '巡航速度(米/秒)',
       ['Crusher'] = '粉碎者',
+      ['Ctrl+V pastes a code, or type it: Enter adds the preset, Esc cancels.'] = 'Ctrl+V 貼上程式碼，也可手動輸入：Enter 新增預設，Esc 取消。',
       ['Custom difficulties'] = '自定義難度',
       ['Cyborg Carry Data'] = '運送生化人資料',
       ['Cyborg fire (experimental)'] = '賽博格火焰（實驗性）',
@@ -5558,6 +5866,7 @@ MOD.langs = {
       ['Deployer'] = '部署艙',
       ['Description'] = '描述',
       ['Desert Stormer'] = '沙塵暴之王',
+      ['Designation'] = '型號',
       ['Destroyed'] = '已摧毀',
       ['Devastator'] = '破壞者',
       ['Devastator jump pack'] = '蹂躪者噴射背包',
@@ -5599,16 +5908,21 @@ MOD.langs = {
       ['E/GL-21 Grenadier Battlement'] = 'E/GL-21 擲彈兵掩體',
       ['E/MG-101 HMG Emplacement'] = 'E/MG-101 重機槍炮台',
       ['EAGLE'] = '飛鷹',
+      ['EAGLE STRIKES'] = '飛鷹',
       ['EAT-17 Expendable Anti-Tank'] = 'EAT-17 反坦克消耗品',
       ['EAT-17 Expendable Anti-Tank (SEAF)'] = 'EAT-17 反坦克消耗品（SEAF）',
       ['EAT-411 Leveller'] = 'EAT-411 夷平者',
       ['EAT-700 Expendable Napalm'] = 'EAT-700 消耗型凝固汽油彈',
       ['Effects'] = '效果',
+      ['EMPLACEMENTS'] = '工事',
       ['EMS Mortar Sentry'] = '電磁干擾哨戒迫擊炮',
+      ['ENERGY-BASED'] = '能量武器',
       ['EXO-45 Patriot Exosuit'] = 'EXO-45 愛國者外骨骼裝甲',
       ['EXO-49 Emancipator Exosuit'] = 'EXO-49 解放者外骨骼裝甲',
       ['EXO-51 Lumberer Exosuit'] = 'EXO-51 伐木工外骨骼裝甲',
       ['EXO-55 Breakthrough Exosuit'] = 'EXO-55 突破外骨骼裝甲',
+      ['EXOSUITS'] = '外骨骼裝甲',
+      ['EXPLOSIVE'] = '爆炸品',
       ['EXTRA STRATAGEM'] = '額外戰略配備',
       ['Each arm'] = '每條手臂',
       ['Each leg'] = '每條腿',
@@ -5626,6 +5940,7 @@ MOD.langs = {
       ['Eagle strike. The rearm time is shared by every Eagle.'] = '飛鷹打擊。所有飛鷹共用重新武裝時間。',
       ['Eagles cannot be called within this distance while it stands'] = '在其被摧毀前，此範圍內無法呼叫飛鷹',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = '在「投擲物」頁編輯該手雷即可調整。資源載入完成後選擇才會生效。',
+      ['Editor'] = '編輯器',
       ['Effect'] = '效果',
       ['Egg'] = '蟲卵',
       ['Egg cluster'] = '蟲卵簇',
@@ -5647,6 +5962,7 @@ MOD.langs = {
       ['Enemy.'] = '敵人。',
       ['Engine front'] = '前引擎',
       ['Engine rear'] = '後引擎',
+      ['Engine rear weakspot'] = '引擎後部弱點',
       ['Engine torque'] = '發動機扭矩',
       ['Engineering Kit'] = '工程套組',
       ['Enter the code...'] = '輸入程式碼...',
@@ -5657,11 +5973,16 @@ MOD.langs = {
       ['Eruptor'] = '噴發者',
       ['Esc cancels. The HUD shows the new code too.'] = 'Esc 取消。HUD 也會顯示新程式碼。',
       ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = '一次調整所有 SEAF 士兵。在各自頁面修改過計程車兵保留其數值。',
+      ['Every armor set with this name.'] = '同名的所有護甲套裝。',
+      ['Every armor set with this name. Its passive text is shared by every armor with that passive.'] = '所有同名護甲。被動文字由擁有該被動的所有護甲共用。',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = '擁有此被動的所有護甲也會獲得它們的效果（在各自頁面設定）。',
+      ['Every cape with this name.'] = '所有同名披風。',
       ['Every change as soon as it is pushed, before testing: it may break.'] = '每項更改一經推送即更新，未經測試：可能出錯。',
       ['Every commit'] = '每次提交',
       ['Every enemy of this faction at once. Enemies you have edited on their own page keep their values.'] = '一次調整該陣營的所有敵人。在各自頁面修改過的敵人保留其數值。',
+      ['Every exosuit shares this stomp.'] = '所有機甲共用此踐踏。',
       ['Every helldiver in your game. Restore the game\'s files before joining other players\' lobbies.'] = '你遊戲中的所有絕地潛兵。加入其他玩家的大廳前，請先恢復遊戲檔案。',
+      ['Every helmet with this name.'] = '所有同名頭盔。',
       ['Every passive is in already.'] = '所有被動都已新增。',
       ['Every weapon you aim yourself, emplacements and vehicle guns too: the game\'s sway times this. 0 = no sway.'] = '你親手瞄準的所有武器，包括固定炮台和載具武器：遊戲的晃動乘以此數。0 = 無晃動。',
       ['Evictor'] = '驅離者',
@@ -5686,12 +6007,14 @@ MOD.langs = {
       ['Extraction'] = '撤離',
       ['Extraction Beacon'] = '撤離信標',
       ['Eye'] = '眼睛',
+      ['Eye top'] = '頂部眼睛',
       ['FAF-14 Spear'] = 'FAF-14 長矛',
       ['FIRE'] = '開火',
       ['Fire template'] = '火焰模板',
       ['Flags'] = '標誌位',
       ['FLAM-40 Flamethrower'] = 'FLAM-40 火焰噴射器',
       ['FLAM-66 Torcher'] = 'FLAM-66 噴火者',
+      ['FLAME AND GAS'] = '火焰與毒氣',
       ['Fabricator'] = '製造廠',
       ['Fabricator / bug hole batch size (x)'] = '構築者 / 蟲洞批次 (x)',
       ['Fabricator / bug hole queue (x)'] = '構築者 / 蟲洞佇列 (x)',
@@ -5720,8 +6043,10 @@ MOD.langs = {
       ['Fire duration (s)'] = '持續開火時間（秒）',
       ['Fire panic'] = '著火恐慌',
       ['Fire rate (RPM)'] = '射速（RPM）',
+      ['Fire rate (x)'] = '射速 (x)',
       ['Fire/gas/acid/arc damage taken'] = '受到火焰 / 毒氣 / 酸液 / 電弧傷害',
       ['Firebomb Hellpods'] = '燃燒彈絕地噴射艙',
+      ['First shell (id)'] = '第一發炮彈（ID）',
       ['Flame Sentry'] = '火焰火箭炮',
       ['Flames'] = '火焰噴射器',
       ['Flames Mk2'] = '火焰噴射器MK2',
@@ -5750,6 +6075,7 @@ MOD.langs = {
       ['Front brake strength'] = '前輪制動力',
       ['Front damping'] = '前懸掛阻尼',
       ['Front face'] = '前面',
+      ['Front grip lower than the rear: it turns wide. Rear lower than the front: the back slides out.'] = '前輪抓地比後輪低：轉彎會衝外側。後輪比前輪低：車尾會甩出去。',
       ['Front hull'] = '前車體',
       ['Front left cockpit'] = '左前駕駛艙',
       ['Front left wheel hub'] = '左前輪轂',
@@ -5796,6 +6122,7 @@ MOD.langs = {
       ['GR-8 Recoilless Rifle'] = 'GR-8 無後座力炮',
       ['GRENADE SWAP'] = '手雷交換',
       ['Gallant'] = '英勇',
+      ['Gameplay'] = '遊戲玩法',
       ['Gas'] = '毒氣彈',
       ['Gas (Sterilizer)'] = '毒氣（滅菌器）',
       ['Gas Mine Deployer'] = '毒氣佈雷器',
@@ -5808,6 +6135,8 @@ MOD.langs = {
       ['Gatekeeper'] = '守門者',
       ['Gatling Sentry'] = '哨戒格林炮',
       ['Gazer'] = '凝視者',
+      ['Gazer Spire'] = '凝視者尖塔',
+      ['General'] = '常規',
       ['Generator'] = '發電機',
       ['Generator Pack'] = '護盾生成背包',
       ['Get in and out speed (x)'] = '進出速度 (x)',
@@ -5821,6 +6150,7 @@ MOD.langs = {
       ['Grenade Launcher'] = '榴彈發射器',
       ['Grenade Pistol'] = '榴彈槍',
       ['Grenade fired (choice)'] = '發射手雷(選擇)',
+      ['Grenade launcher rounds use 80, most rounds 83.'] = '榴彈發射器的射彈為 80，大多數射彈為 83。',
       ['Grenade selection takes priority over Projectile swap. Fire rate, ammo and handling stay.'] = '手雷選擇優先於彈種交換。射速、彈藥與操控保持不變。',
       ['Grenade swap'] = '手雷交換',
       ['Grenade swap stopped (see the log); launchers fire their own projectiles again.'] = '已停止榴彈替換（詳見日誌）；發射器恢復使用自身射彈。',
@@ -5840,6 +6170,8 @@ MOD.langs = {
       ['Gunslinger'] = '神槍手',
       ['HANDLING'] = '操控',
       ['Hit effect damage type'] = '命中效果傷害類型',
+      ['HEAVY'] = '重型',
+      ['HELMETS'] = '頭盔',
       ['HMG Emplacement'] = '重機槍炮台',
       ['Halt'] = '制止者',
       ['Handbrake strength'] = '手剎力度',
@@ -5852,6 +6184,7 @@ MOD.langs = {
       ['Head health'] = '頭部生命值',
       ['Head hits: damage to your health (x)'] = '頭部命中：對生命值的傷害 (x)',
       ['Head zone'] = '頭部',
+      ['Headplate'] = '頭甲',
       ['Health'] = '生命值',
       ['Health (x)'] = '生命值（x）',
       ['Health Pack Rack'] = '醫療包架',
@@ -5861,7 +6194,9 @@ MOD.langs = {
       ['Heat per second firing'] = '射擊時每秒積熱',
       ['Heat per shot'] = '每發積熱',
       ['Heat per warp (%)'] = '每次躍遷熱量（%）',
+      ['Heatsink'] = '散熱器',
       ['Heatsinks from supply'] = '補給獲得的散熱器數',
+      ['Heavier: speeds up and stops more slowly, shoves enemies and wrecks aside, and is harder to flip.'] = '越重：加速和剎車越慢，能撞開敵人和殘骸，更難翻車。',
       ['Heavy Devastator'] = '重型破壞者',
       ['Heavy Devastator shield'] = '重型蹂躪者盾牌',
       ['Heavy Fusion Cannon'] = '重型聚變炮',
@@ -5873,10 +6208,13 @@ MOD.langs = {
       ['Held this long, it blows up. 600 = it never does.'] = '蓄力保持這麼久就會爆炸。600 = 永不爆炸。',
       ['Hellbomb'] = '地獄火炸彈',
       ['Helldiver'] = '絕地潛兵',
+      ['Helldivers 2 is already running.'] = '遊戲已在執行。',
+      ['Helldivers 2 is not running.'] = '遊戲沒有在執行。',
       ['Helldivers 2 is running: close it first.'] = '《絕地潛兵 2》正在執行：請先關閉遊戲。',
       ['Helldivers 2 is running: close it, then Install.'] = '《絕地潛兵 2》正在執行：請先關閉遊戲，再點選「寫入遊戲」。',
       ['Helldivers 2 is running: close it, then restore.'] = 'Helldivers 2 正在執行：請先關閉遊戲，再恢復。',
       ['Helldivers 2 is running: you can edit, but close it before you Install.'] = '《絕地潛兵 2》正在執行：可以編輯，但寫入前必須關閉遊戲。',
+      ['Helldivers 2 was closed.'] = '遊戲已關閉。',
       ['Hellpod'] = '地獄艙',
       ['Hellpod: initial drop'] = '地獄艙：初始空投',
       ['Hellpod: reinforcement'] = '地獄艙：增援',
@@ -5886,6 +6224,9 @@ MOD.langs = {
       ['High Dissipation Heatsink'] = '高效能散熱器',
       ['High Explosive'] = '高爆彈',
       ['High-Velocity Shrapnel'] = '高速破片',
+      ['Higher: a stiffer ride, less lean in turns, bumps kick harder.'] = '越高：行駛更硬，轉彎側傾更少，顛簸衝擊更大。',
+      ['Higher: leans more and tips over in sharp turns.'] = '越高：傾斜更多，急轉彎時容易翻車。',
+      ['Higher: stops in a shorter distance. Too high locks the wheels, and it skids instead of stopping.'] = '越高：剎車距離越短。太高會抱死車輪，車會打滑而不是停下。',
       ['Highest ledge it climbs (m)'] = '可攀爬的最高邊緣（米）',
       ['Hijack Tech Hub Nexus Machine'] = '技術中心樞紐機器',
       ['Hips'] = '腰部',
@@ -5913,10 +6254,17 @@ MOD.langs = {
       ['How close the view gets when you aim: 1 is the normal view, 2 twice as close, 4 four times.'] = '瞄準時視野拉近多少：1 為正常視野，2 拉近兩倍，4 拉近四倍。',
       ['How close this zoom step looks: 1 is the normal view, 2 twice as close, 4 four times.'] = '這一檔的放大程度：1 為正常視野，2 拉近兩倍，4 拉近四倍。',
       ['How far away the jet starts its run. With its speed, it sets how long the Eagle takes to arrive.'] = '飛鷹開始攻擊航線時距目標的距離，與飛行速度共同決定抵達時間。',
+      ['How fast the engine may spin before it stops pulling. Higher: a higher top speed in every gear,'] = '引擎停止發力前能轉多快。越高：每個擋位的最高速度都更高，',
+      ['How fast the springs settle after a bump. Higher: settles at once, a firmer ride.'] = '彈簧在顛簸後穩定下來的速度。越高：立刻穩定，行駛更硬。',
       ['How fast their animations play. Most attacks follow the animation, so they come sooner or later too.'] = '它們的動畫播放速度。大多數攻擊跟隨動畫，所以攻擊也會更早或更晚發生。',
+      ['How hard the engine pushes. Higher: faster acceleration and steeper hills, but more wheelspin.'] = '引擎的推力。越高：加速更快、能爬更陡的坡，但更容易打滑。',
+      ['How high the balance point sits. Lower (even below 0): stays flat in hard turns and over rocks.'] = '重心的高度。越低（甚至低於 0）：急轉彎和過石頭時更平穩。',
       ['How long the round waits after the hit (or after the blast proximity trips) before it goes off.'] = '射彈命中後（或近炸距離觸發後）等待多久才爆炸。',
       ['How many bombs one run drops and how they land. The bombs stay this Eagle\'s own.'] = '一次飛越投下多少枚炸彈以及落點分佈。炸彈仍是該飛鷹自己的。',
+      ['How many times the round can bounce off a surface. 0: it never bounces back at you.'] = '射彈能從表面彈開多少次。0：它永遠不會彈回到你身上。',
+      ['How much this gear multiplies the engine. Higher: stronger pull, but it tops out sooner.'] = '這個擋位把引擎放大多少倍。越高：拉力更強，但更早到頂。',
       ['How quickly the scoped view catches up when you move your aim at this zoom (0.6 on most optics).'] = '此倍率下移動瞄準時，瞄準鏡視野跟上的速度（大多數瞄具為 0.6）。',
+      ['How well the tyres hold the ground. Higher: sharper turns, less sliding and wheelspin.'] = '輪胎抓地的程度。越高：轉彎更急，更少側滑和打滑。',
       ['Hulk'] = '巨型者',
       ['Hulk Bruiser'] = '巨型殲滅者',
       ['Hulk Firebomber'] = '巨型火焰炸彈兵',
@@ -5940,6 +6288,8 @@ MOD.langs = {
       ['Impact flag (+140)'] = '撞擊標誌(+140)',
     ['Can expire after impact (+140)'] = '撞擊後可失效(+140)',
       ['Impaler'] = '穿刺蟲',
+      ['In every mission, whatever your loadout. It takes no loadout slot. Applies on Install.'] = '每次任務都會攜帶，與配裝無關，不佔配裝欄位。安裝後生效。',
+      ['In the primary slot it is not thrown away when empty: it stays in your hands until you pick up another weapon.'] = '在主武器欄中打空後不會丟棄：會留在手中，直到你拾取其他武器。',
       ['In-game text'] = '遊戲內文字',
       ['Incendiary'] = '燃燒彈',
       ['Incendiary Impact'] = '衝擊燃燒彈',
@@ -5956,6 +6306,8 @@ MOD.langs = {
       ['Inner torso'] = '內軀幹',
       ['Insides'] = '內部',
       ['Install into the game'] = '寫入遊戲',
+      ['Install loads up to 6 such weapons into every mission, so nobody has to bring them. A support weapon brings its own.'] = '安裝後每個任務最多載入 6 把此類武器，無需攜帶。支援武器會自帶其效果。',
+      ['Installed, but not everything fits. Some projectiles may show no trail, and some Always bring it stratagems stay out of missions.'] = '已安裝,但無法全部載入。部分彈藥可能沒有軌跡,部分「始終攜帶」的戰略配備不會進入任務。',
       ['Installing: finding what changed...'] = '寫入中：正在查詢改動…',
       ['Installing: writing the files...'] = '寫入中：正在寫入檔案…',
       ['Integrated Explosives'] = '整合型炸藥',
@@ -5965,6 +6317,7 @@ MOD.langs = {
       ['Iron Sights'] = '金屬瞄具',
       ['Iron Sights Long'] = '長型機械瞄具',
       ['Iron fleet'] = '鋼鐵艦隊',
+      ['It does not raise the top speed by itself: that comes from the engine speed and the gears.'] = '它本身不提高最高速度：最高速度由引擎轉速和擋位決定。',
       ['It doesn\'t take a loadout slot, but the HUD\'s stratagem list can fill up.'] = '不佔配裝欄位，但可能佔滿螢幕上的戰略配備列表。',
       ['Items per drop'] = '每次投放數量',
       ['Its effects are added to every armor with this passive.'] = '其效果會新增到擁有此被動的所有護甲上。',
@@ -5978,6 +6331,7 @@ MOD.langs = {
       ['Jammer'] = '干擾器',
       ['Jamming'] = '干擾',
       ['Jaws'] = '顎',
+      ['Jetpack'] = '噴氣背包',
       ['Jog speed (m/s)'] = '慢跑速度(米/秒)',
       ['Jogging empties it in (s)'] = '慢跑耗盡用時(秒)',
       ['Jump'] = '跳躍',
@@ -6008,6 +6362,7 @@ MOD.langs = {
       ['LIFT-182 Warp Pack'] = 'LIFT-182 傳送背包',
       ['LIFT-850 Jump Pack'] = 'LIFT-850 彈跳背包',
       ['LIFT-860 Hover Pack'] = 'LIFT-860 懸浮背包',
+      ['LIGHT'] = '輕型',
       ['Landed ship door shield'] = '著陸艦艙門護盾',
       ['Language'] = '語言',
       ['Large'] = '大型',
@@ -6031,10 +6386,13 @@ MOD.langs = {
       ['Lb wing'] = '左後翼',
       ['Left'] = '左',
       ['Left arm'] = '左手臂',
+      ['Left arm armor'] = '左手臂裝甲',
       ['Left arm health'] = '左臂生命值',
+      ['Left arm weakspot'] = '左手臂弱點',
       ['Left armor'] = '左裝甲',
       ['Left arms'] = '左手臂',
       ['Left back leg'] = '左後腿',
+      ['Left back leg armor'] = '左後腿裝甲',
       ['Left back panel'] = '左後板',
       ['Left back thruster'] = '左後推進器',
       ['Left back track bar'] = '左後履帶支桿',
@@ -6046,6 +6404,7 @@ MOD.langs = {
       ['Left box 2'] = '左儲物箱 2',
       ['Left chest'] = '左胸部',
       ['Left claw'] = '左爪',
+      ['Left collar'] = '左頸圈',
       ['Left elbow'] = '左肘部',
       ['Left extra elbow'] = '左額外肘部',
       ['Left foot'] = '左腳',
@@ -6054,12 +6413,14 @@ MOD.langs = {
       ['Left front door'] = '左前門',
       ['Left front face'] = '左前面',
       ['Left front leg'] = '左前腿',
+      ['Left front leg armor'] = '左前腿裝甲',
       ['Left front light'] = '左前燈',
       ['Left front thruster'] = '左前推進器',
       ['Left front track bar'] = '左前履帶支桿',
       ['Left front track knee'] = '左前履帶膝部',
       ['Left front wing flap'] = '左前襟翼',
       ['Left gun'] = '左炮',
+      ['Left gun weakspot'] = '左炮弱點',
       ['Left hand'] = '左手',
       ['Left head'] = '左頭部',
       ['Left head flap'] = '左頭部護片',
@@ -6069,6 +6430,8 @@ MOD.langs = {
       ['Left leg health'] = '左腿生命值',
       ['Left leg shield'] = '左腿護盾',
       ['Left legs'] = '左腿',
+      ['Left lower arm'] = '左下臂',
+      ['Left lower leg'] = '左下腿',
       ['Left middle leg'] = '左中腿',
       ['Left middle wing'] = '左中翼',
       ['Left mirror'] = '左後視鏡',
@@ -6094,10 +6457,13 @@ MOD.langs = {
       ['Left torso'] = '左軀幹',
       ['Left track'] = '左履帶',
       ['Left tracks'] = '左履帶',
+      ['Left upper leg'] = '左上腿',
+      ['Left upper leg top'] = '左上腿頂部',
       ['Left weapon bay'] = '左武器艙',
       ['Left wing'] = '左翼',
       ['Left wrist blade'] = '左腕刀刃',
       ['Leg injury immunity (1 on)'] = '免疫腿部受傷（1 為開啟）',
+      ['Less: bumps go straight into the body and it wobbles.'] = '越少：顛簸直接傳到車身，車身會晃動。',
       ['Leveller'] = '夷平者',
       ['Leviathan'] = '利維坦',
       ['Leviathan bomb'] = '利維坦炸彈',
@@ -6111,6 +6477,7 @@ MOD.langs = {
       ['Lifetime (s)'] = '存續時間(秒)',
       ['Light armor'] = '輕型護甲',
       ['Light, medium or heavy, per armor (every armor set with that name).'] = '每件護甲的輕型、中型或重型（同名的所有護甲套裝）。',
+      ['Lighter: quicker off the line, but bounces over bumps and gets thrown around by explosions.'] = '越輕：起步更快，但過坑窪會彈跳，容易被爆炸掀飛。',
       ['Limb health'] = '四肢生命值',
       ['Limb injury avoidance'] = '避免肢體受傷的機率',
       ['Load'] = '讀取',
@@ -6125,6 +6492,9 @@ MOD.langs = {
       ['Lower back'] = '下背部',
       ['Lower it if a high zoom spins the view.'] = '如果高倍率時視野旋轉，請調低。',
       ['Lower spine'] = '下脊椎',
+      ['Lower: a softer ride, the body leans in turns and sags.'] = '越低：行駛更軟，轉彎時車身側傾並下沉。',
+      ['Lower: faster in this gear, weaker on hills and from a stop.'] = '越低：這個擋位更快，上坡和起步更弱。',
+      ['Lower: keeps bouncing after every bump.'] = '越低：每次顛簸後都會一直彈跳。',
       ['Lowest patrol frequency (x)'] = '最低巡邏頻率 (x)',
       ['Lowest rates'] = '最低頻率',
       ['Lowest reinforcement frequency (x)'] = '最低增援頻率 (x)',
@@ -6145,7 +6515,13 @@ MOD.langs = {
       ['M90A Shotgun'] = 'M90A 霰彈槍',
       ['MA5C Assault Rifle'] = 'MA5C 突擊步槍',
       ['Max ricochets'] = '最大跳彈數',
+      ['MACHINE GUN'] = '機槍',
+      ['MARKSMAN RIFLE'] = '精確射手步槍',
+      ['MECHAS'] = '機甲與載具',
+      ['MEDIUM'] = '中型',
+      ['MELEE'] = '近戰',
       ['MG Emplacement'] = '機槍部署支架',
+      ['MG Raider'] = '機槍襲擊者',
       ['MG-206 Heavy Machine Gun'] = 'MG-206 重機槍',
       ['MG-206 Heavy Machine Gun (mounted B)'] = 'MG-206 重機槍（固定式 B）',
       ['MG-43 Machine Gun'] = 'MG-43 機槍',
@@ -6153,9 +6529,11 @@ MOD.langs = {
       ['MGX-42 Bullet Storm'] = 'MGX-42 子彈風暴',
       ['MINEFIELD'] = '雷區',
       ['MISSILE FLIGHT'] = '導彈飛行',
+      ['MISSION'] = '任務',
       ['MLS-4X Commando'] = 'MLS-4X 突擊兵',
       ['MP-98 Knight'] = 'MP-98 騎士',
       ['MS-11 Solo Silo'] = 'MS-11 單發導彈筒',
+      ['MUZZLE'] = '槍口',
       ['Machete'] = '彎刀',
       ['Machine Gun'] = '機槍',
       ['Machine Gun Sentry'] = '哨戒機槍',
@@ -6163,6 +6541,7 @@ MOD.langs = {
       ['Made by SHODAN'] = '作者 SHODAN',
       ['Maelstrom'] = '風暴渦旋',
       ['Magazine size'] = '彈匣容量',
+      ['Magazine size (x)'] = '彈匣容量 (x)',
       ['Magazines from supply'] = '補給獲得的彈匣數',
       ['Main'] = '主體',
       ['Main body'] = '主身體',
@@ -6170,6 +6549,7 @@ MOD.langs = {
       ['Marauder'] = '掠奪者',
       ['Marker radar scan every (s)'] = '標記雷達掃描間隔（秒）',
       ['Mass (kg)'] = '質量(千克)',
+      ['Max bounces'] = '最大彈跳次數',
       ['Max carried'] = '最大攜帶',
       ['Max flight time (s)'] = '最大飛行時間(秒)',
       ['Max spare heatsinks'] = '備用散熱器上限',
@@ -6183,6 +6563,7 @@ MOD.langs = {
       ['Medium Plasma Bolt'] = '中型電漿彈',
       ['Medium armor'] = '中型護甲',
       ['Melee'] = '近戰',
+      ['Melee armor penetration (+)'] = '近戰穿甲 (+)',
       ['Melee damage'] = '近戰傷害',
       ['Melta Mine'] = '熱熔地雷',
       ['Meltagun'] = '熱熔槍',
@@ -6204,6 +6585,7 @@ MOD.langs = {
       ['Mobile Comms Relay'] = '行動通訊中繼器',
       ['Modifier patrol frequency (x)'] = '修正巡邏頻率 (x)',
       ['Modifier patrol size (x)'] = '修正巡邏規模 (x)',
+      ['More: soaks up big bumps and keeps the wheels on the ground on rough terrain.'] = '越多：能吸收大的顛簸，在崎嶇地形上車輪保持著地。',
       ['Mortar Sentry'] = '哨戒迫擊炮',
       ['Most suppression'] = '最大壓制',
       ['Mouth'] = '口部',
@@ -6223,13 +6605,21 @@ MOD.langs = {
       ['Neck armor'] = '頸部裝甲',
       ['Neck body'] = '頸部（本體）',
       ['Never'] = '從不',
+      ['No bolt pull'] = '取消拉栓',
       ['No changes: loading it puts every value back to the game\'s.'] = '沒有修改：讀取它會把所有數值恢復為遊戲原值。',
+      ['No description'] = '無描述',
+      ['No free preset place: delete one first.'] = '沒有空位：請先刪除一個預設。',
+      ['No other vehicle has this section.'] = '沒有其他載具有此部分。',
+      ['No page in this editor uses this id.'] = '此編輯器中沒有頁面使用此 id。',
+      ['No passive.'] = '無被動。',
+      ['No passives'] = '無被動',
       ['No presets yet.'] = '還沒有預設。',
       ['Noise'] = '噪音',
       ['Noise template'] = '噪音模板',
       ['None'] = '無',
       ['Normal projectile'] = '常規射彈',
       ['Not offered by the game: a laser built on the Scythe.'] = '遊戲本身未提供：基於「長柄鐮」改造的雷射武器。',
+      ['Not offered on backpack weapons: their backpack does not attach when the weapon is in your primary slot.'] = '背包武器不提供此項：武器在主武器欄時背包無法連線。',
       ['Not used by any weapon or stratagem in this list.'] = '本列表中的武器與戰備都沒有用到它。',
       ['Nothing matches.'] = '沒有符合項。',
       ['Nothing to install: your values are the game\'s own.'] = '無需寫入：所有數值均為遊戲原值。',
@@ -6238,7 +6628,10 @@ MOD.langs = {
       ['Nursing Spewer'] = '噴射蟲',
       ['OFFLINE  -  edits the game\'s files; they apply when the game starts'] = '離線  -  編輯遊戲檔案；遊戲啟動時生效',
       ['OK'] = '確定',
+      ['OPTICS'] = '準鏡',
       ['ORBITAL BEAM'] = '軌道光束',
+      ['ORBITAL STRIKES'] = '軌道武器',
+      ['OTHER'] = '其他',
       ['Objective'] = '任務目標',
       ['Off'] = '關',
       ['Off: its stats above are left out; only the passives below apply.'] = '關閉：上方的數值不生效；只有下方的被動生效。',
@@ -6249,6 +6642,7 @@ MOD.langs = {
       ['On'] = '開',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = '開啟：單次配裝可攜帶多台 外骨骼裝甲、FRV 或坦克。',
       ['On: in your armory / stratagem list.'] = '開啟：出現在你的軍械庫 / 戰略配備列表中。',
+      ['On: shows the Up, Down, < and > buttons by the lists. The mouse wheel, scroll bars and keys work either way.'] = '開啟：在列表旁顯示上、下、< 和 > 按鈕。滑鼠滾輪、捲軸和按鍵始終可用。',
       ['On: sniper rifles show a crosshair when you aim in third person.'] = '開啟：以第三人稱瞄準時，狙擊步槍顯示準星。',
       ['On: stratagem balls stick on more surfaces instead of bouncing off.'] = '開啟：戰略配備信標可粘附在更多表面上，而不會彈開。',
       ['On: your '] = '開啟：你的',
@@ -6257,9 +6651,12 @@ MOD.langs = {
       ['One True Flag'] = '唯一真旗',
       ['One-Two'] = '雙響',
       ['One-handed'] = '單手持握',
+      ['Only this armor gets it.'] = '只有此護甲獲得。',
+      ['Only this armor. Each passive\'s values are on its own page, below the armors.'] = '僅此護甲。每個被動的數值在護甲下方各自的頁面中。',
       ['Only works with the blast angle at 360, and the distance has to be larger than one step of the round:'] = '只在爆炸角為 360 時生效，且距離要大於射彈每幀的位移：',
       ['Open'] = '開啟',
       ['Open / close key'] = '開啟 / 關閉熱鍵',
+      ['Open all'] = '全部展開',
       ['Opened the GitHub page in your browser.'] = '已在瀏覽器中開啟 GitHub 頁面。',
       ['Opened the folder.'] = '已開啟資料夾。',
       ['Opened the log folder.'] = '已開啟日誌資料夾。',
@@ -6284,7 +6681,6 @@ MOD.langs = {
       ['Orbital strike.'] = '軌道打擊。',
       ['Other'] = '其他',
       ['Other players are in your game: arc chain length / split use the game\'s values.'] = '你的對局中存在其他玩家：電弧連鎖長度 / 分裂將使用遊戲數值。',
-      ['Otherwise the shot still works but may fly without its trail.'] = '否則射擊仍然有效，但可能沒有尾跡。',
       ['Outcast'] = '流放者',
       ['Outer radius (m)'] = '外半徑(米)',
       ['Outpost garrison size (x)'] = '前哨駐軍規模 (x)',
@@ -6311,12 +6707,15 @@ MOD.langs = {
       ['P-92 Warrant'] = 'P-92 搜查令',
       ['P/40-K Bolt Pistol'] = 'P/40-K 爆彈手槍',
       ['PASSIVE'] = '被動',
+      ['PASSIVES'] = '被動',
+      ['PISTOL'] = '手槍',
       ['PLAS-1 Scorcher'] = 'PLAS-1 焦土',
       ['PLAS-101 Purifier'] = 'PLAS-101 淨化者',
       ['PLAS-15 Loyalist'] = 'PLAS-15 忠誠者',
       ['PLAS-39 Accelerator Rifle'] = 'PLAS-39 加速步槍',
       ['PLAS-45 Epoch'] = 'PLAS-45 紀元',
       ['PRESETS'] = '預設',
+      ['PRIMARY'] = '主要武器',
       ['PROJECTILE'] = '射彈',
       ['Projectile flags (bits)'] = '射彈標誌位(位域)',
       ['PROJECTILE SWAP'] = '彈種交換',
@@ -6331,6 +6730,11 @@ MOD.langs = {
       ['Partial charge explosion'] = '部分蓄力爆炸',
       ['Partial charge shot'] = '部分蓄力射擊',
       ['Passive'] = '被動',
+      ['Passive text'] = '被動文字',
+      ['Past that, the trail needs someone in the mission to bring that weapon.'] = '超出此數量後，只有任務中有人攜帶該武器才會顯示尾跡。',
+      ['Paste a code here'] = '在此貼上程式碼',
+      ['Paste code'] = '貼上程式碼',
+      ['Path start (0 to 1)'] = '路徑起點（0 到 1）',
       ['Patriot Exosuit'] = '愛國者外骨骼裝甲',
       ['Patrol frequency (x)'] = '巡邏頻率 (x)',
       ['Patrolling speed (m/s)'] = '巡邏速度 (米/秒)',
@@ -6348,6 +6752,7 @@ MOD.langs = {
       ['Picked up into: Support slot'] = '拾取到：支援武器欄',
       ['Picking it up puts it in your primary slot instead (1), in place of your primary. 3 = the support slot.'] = '拾取後放入主武器欄 (1)，替換你的主武器。3 = 支援武器欄。',
       ['Pickup'] = '拾取',
+      ['Pilot'] = '駕駛員',
       ['Pilot light goes out after (s)'] = '引火熄滅時間（秒）',
       ['Pilot seat'] = '駕駛座',
       ['Pineapple'] = '鳳梨',
@@ -6360,6 +6765,9 @@ MOD.langs = {
       ['Position scatter (m)'] = '佈雷位置隨機偏移（米）',
       ['Pouncer'] = '食腐蟲',
       ['Predator Hunter'] = '掠食者狩獵蟲',
+      ['Predator Stalker'] = '掠食者跟蹤蟲',
+      ['Preset:'] = '預設：',
+      ['Preset: none'] = '預設：無',
       ['Presets'] = '預設',
       ['President rewards'] = '總統獎勵',
       ['Press a key (Esc cancels)'] = '請按一個鍵(Esc 取消)',
@@ -6370,7 +6778,9 @@ MOD.langs = {
       ['Projectile explosion id'] = '射彈爆炸編號',
       ['Projectile fired (id)'] = '發射的射彈(編號)',
       ['Projectile swap'] = '彈種交換',
+      ['Projectile swap shares those 4, so weapons it loads leave fewer here.'] = '彈藥替換共用這 4 個名額，它載入的武器會佔用名額。',
       ['Projectiles per shot'] = '每次射擊射彈數',
+      ['Projectiles with no trail:'] = '沒有軌跡的彈藥:',
       ['Prone speed (m/s)'] = '匍匐速度(米/秒)',
       ['Prospecting Drill'] = '勘探鑽機',
       ['Punisher'] = '制裁者',
@@ -6401,6 +6811,7 @@ MOD.langs = {
       ['Ricochet spread vertical (deg)'] = '跳彈垂直散佈(度)',
       ['Ricochet threshold angle (deg)'] = '跳彈閾值角度(度)',
       ['Ricochet threshold speed (m/s)'] = '跳彈閾值速度(米/秒)',
+      ['RECORDS'] = '記錄',
       ['RL-77 Airburst Rocket Launcher'] = 'RL-77 空爆火箭發射器',
       ['ROUND 1 BLAST'] = '第 1 發爆炸',
       ['ROUND 1 BLAST RADIUS'] = '第 1 發爆炸半徑',
@@ -6435,6 +6846,7 @@ MOD.langs = {
       ['Rear brake strength'] = '後輪制動力',
       ['Rear cockpit'] = '後駕駛艙',
       ['Rear damping'] = '後懸掛阻尼',
+      ['Rear sight range (m)'] = '後方視野距離（米）',
       ['Rear spring stiffness'] = '後懸掛剛度',
       ['Rear suspension travel'] = '後懸掛行程',
       ['Rear wheel grip'] = '後輪抓地力',
@@ -6460,6 +6872,7 @@ MOD.langs = {
       ['Regeneration (health/s)'] = '再生 (生命值/秒)',
       ['Regeneration delay after damage (s)'] = '受傷後再生延遲（秒）',
       ['Reinforced Epaulettes'] = '強化護肩',
+      ['Reinforced Scout Strider'] = '強化偵察闊步者',
       ['Reinforcement Beacon'] = '增援信標',
       ['Reinforcement frequency (x)'] = '增援頻率 (x)',
       ['Reinforcement size (x)'] = '增援規模 (x)',
@@ -6475,8 +6888,10 @@ MOD.langs = {
       ['Rename'] = '重新命名',
       ['Reprimand'] = '懲戒',
       ['Reset all values'] = '重置全部數值',
+      ['Reset armor'] = '重置護甲',
       ['Reset booster'] = '重置增強配備',
       ['Reset enemy'] = '重置敵人',
+      ['Reset every value in this current preset to default.'] = '將當前預設的所有數值恢復為預設。',
       ['Reset helldiver'] = '重置潛兵',
       ['Reset passive'] = '重置被動',
       ['Reset record'] = '重置記錄',
@@ -6492,10 +6907,13 @@ MOD.langs = {
       ['Rifle Justice. Short '] = '「正義」步槍：短彈匣',
       ['Right'] = '右',
       ['Right arm'] = '右手臂',
+      ['Right arm armor'] = '右手臂裝甲',
       ['Right arm health'] = '右臂生命值',
+      ['Right arm weakspot'] = '右手臂弱點',
       ['Right armor'] = '右裝甲',
       ['Right arms'] = '右手臂',
       ['Right back leg'] = '右後腿',
+      ['Right back leg armor'] = '右後腿裝甲',
       ['Right back panel'] = '右後板',
       ['Right back thruster'] = '右後推進器',
       ['Right back track bar'] = '右後履帶支桿',
@@ -6506,6 +6924,7 @@ MOD.langs = {
       ['Right box 1'] = '右儲物箱 1',
       ['Right box 2'] = '右儲物箱 2',
       ['Right claw'] = '右爪',
+      ['Right collar'] = '右頸圈',
       ['Right elbow'] = '右肘部',
       ['Right extra elbow'] = '右額外肘部',
       ['Right foot'] = '右腳',
@@ -6514,11 +6933,13 @@ MOD.langs = {
       ['Right front door'] = '右前門',
       ['Right front face'] = '右前面',
       ['Right front leg'] = '右前腿',
+      ['Right front leg armor'] = '右前腿裝甲',
       ['Right front light'] = '右前燈',
       ['Right front track bar'] = '右前履帶支桿',
       ['Right front track knee'] = '右前履帶膝部',
       ['Right front wing flap'] = '右前襟翼',
       ['Right gun'] = '右炮',
+      ['Right gun weakspot'] = '右炮弱點',
       ['Right hand'] = '右手',
       ['Right head'] = '右頭部',
       ['Right head flap'] = '右頭部護片',
@@ -6529,6 +6950,8 @@ MOD.langs = {
       ['Right leg health'] = '右腿生命值',
       ['Right leg shield'] = '右腿護盾',
       ['Right legs'] = '右腿',
+      ['Right lower arm'] = '右下臂',
+      ['Right lower leg'] = '右下腿',
       ['Right middle leg'] = '右中腿',
       ['Right middle wing'] = '右中翼',
       ['Right mirror'] = '右後視鏡',
@@ -6554,12 +6977,16 @@ MOD.langs = {
       ['Right torso'] = '右軀幹',
       ['Right track'] = '右履帶',
       ['Right tracks'] = '右履帶',
+      ['Right upper leg'] = '右上腿',
+      ['Right upper leg top'] = '右上腿頂部',
       ['Right weapon bay'] = '右武器艙',
       ['Right wing'] = '右翼',
       ['Right wrist blade'] = '右腕刀刃',
       ['Rock Solid'] = '堅如磐石',
       ['Rocket Devastator'] = '火箭炮破壞者',
+      ['Rocket Raider'] = '火箭襲擊者',
       ['Rocket Sentry'] = '哨戒火箭炮',
+      ['Rocket fired (id)'] = '發射的火箭（ID）',
       ['Rocket pods'] = '火箭艙',
       ['Rooted (experimental)'] = '定身（實驗性）',
       ['Rotator'] = '轉子',
@@ -6594,6 +7021,8 @@ MOD.langs = {
       ['SEAF soldier: an ally.'] = 'SEAF 士兵：友軍。',
       ['SEAF wave cooldown (x)'] = 'SEAF 波次冷卻 (x)',
       ['SECOND MODE'] = '第二模式',
+      ['SECONDARY'] = '次要武器',
+      ['SENTRIES'] = '哨戒炮',
       ['SG-20 Halt'] = 'SG-20 制止者',
       ['SG-22 Bushwhacker'] = 'SG-22 游擊者',
       ['SG-225 Breaker'] = 'SG-225 破裂者',
@@ -6610,9 +7039,11 @@ MOD.langs = {
       ['SH-51 Directional Shield'] = 'SH-51 定向護盾',
       ['SHARED WITH'] = '共用',
       ['SHIELD'] = '護盾',
+      ['SHIELD BASH'] = '盾牌猛擊',
       ['SHODAN ENEMY EDITOR'] = 'SHODAN 敵人編輯器',
       ['SHODAN STAT EDITOR'] = 'SHODAN 數值編輯器',
       ['SHODAN weapon mods are running too: they put their own values back every 5 s'] = '檢測到 SHODAN 武器 mod 同時執行：它們每 5 秒會把數值改回自己的設定',
+      ['SHOTGUN'] = '霰彈槍',
       ['SHRAPNEL'] = '破片',
       ['SHRAPNEL BLAST RADIUS'] = '破片爆炸半徑',
       ['SHRAPNEL DIRECT HIT'] = '破片直擊',
@@ -6629,13 +7060,22 @@ MOD.langs = {
       ['SMG/FLAM-34 Stoker (underbarrel flamer)'] = 'SMG/FLAM-34 爆燃者（下掛噴火器）',
       ['Status effect template'] = '狀態效果模板',
       ['Status effect volume'] = '狀態效果體積模板',
+      ['SNIPER RIFLE'] = '狙擊步槍',
       ['SPARKS'] = '火花',
+      ['SPECIAL'] = '特殊',
+      ['STANDARD'] = '標準',
       ['STATUS EFFECTS'] = '狀態效果',
+      ['STOMP'] = '踐踏',
       ['STRATAGEM'] = '戰略配備',
+      ['STRATAGEMS'] = '戰略配備',
+      ['SUBMACHINE GUN'] = '衝鋒槍',
+      ['SUPPORT'] = '支援',
+      ['SUPPORT WEAPONS'] = '支援武器',
       ['Safe below heat (%)'] = '安全熱量(%)',
       ['Sai'] = '釵',
       ['Salvos'] = '齊射次數',
       ['Save'] = '儲存',
+      ['Save current changes'] = '儲存當前更改',
       ['Save current changes here'] = '在此儲存當前修改',
       ['Scavenger'] = '清掃蟲',
       ['Scavenger acid burst'] = '清道夫酸液爆裂',
@@ -6649,11 +7089,29 @@ MOD.langs = {
       ['Scythe'] = '長柄鐮',
       ['Seaf Gun'] = 'SEAF 火炮',
       ['Seaf Squad'] = 'SEAF 小隊',
+      ['Search Automatons'] = '搜尋機器人',
+      ['Search Illuminate'] = '搜尋光能者',
+      ['Search SEAF'] = '搜尋SEAF',
+      ['Search Terminids'] = '搜尋蟲族',
+      ['Search armors'] = '搜尋護甲',
+      ['Search attachments'] = '搜尋配件',
+      ['Search boosters'] = '搜尋增強',
       ['Search enemies'] = '搜尋敵人',
+      ['Search items'] = '搜尋物品',
+      ['Search mechas'] = '搜尋載具',
+      ['Search primary weapons'] = '搜尋主武器',
       ['Search radius (m)'] = '搜尋半徑(米)',
+      ['Search records'] = '搜尋記錄',
+      ['Search secondary weapons'] = '搜尋副武器',
+      ['Search spawning'] = '搜尋敵人生成',
+      ['Search stratagems'] = '搜尋戰略配備',
+      ['Search support weapons'] = '搜尋支援武器',
+      ['Search throwables'] = '搜尋投擲物',
       ['Search weapons and stratagems'] = '搜尋武器與戰略配備',
       ['Searching speed (m/s)'] = '搜尋速度 (米/秒)',
       ['Second ammo'] = '第二彈種',
+      ['Second ammo (id)'] = '第二彈藥 (id)',
+      ['Second ammo replaces (1 or 2)'] = '第二彈藥替換（1 或 2）',
       ['Second mode'] = '第二模式',
       ['Second mode explosion'] = '第二模式爆炸',
       ['Second mode fires (id)'] = '第二模式發射的射彈(編號)',
@@ -6676,12 +7134,16 @@ MOD.langs = {
       ['Several vehicles of a kind'] = '同類載具數量',
       ['Shape'] = '形狀',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = '所有帶此被動的護甲共用。倍率：1 = 不變。',
+      ['Shares its name and description with the armor of this name: a change here changes both.'] = '與同名護甲共用名稱和描述：在此處修改會同時改變兩者。',
       ['Shear'] = '雷射剪',
+      ['Shell fired (id)'] = '發射的炮彈（ID）',
+      ['Shells after it (id)'] = '之後的炮彈（ID）',
       ['Shells per salvo'] = '每次齊射彈數',
       ['Shield'] = '護盾',
       ['Shield Generator Pack'] = '防護罩生成背包',
       ['Shield Generator Relay'] = '防護罩生成中繼器',
       ['Shield arm zone armor'] = '護盾臂部位護甲',
+      ['Shield bash'] = '盾牌猛擊',
       ['Shield capacity'] = '護盾容量',
       ['Shield emitter'] = '護盾發生器',
       ['Shield forcefield'] = '護盾力場',
@@ -6708,6 +7170,7 @@ MOD.langs = {
       ['Shrieker Nest'] = '尖叫蟲巢穴',
       ['Sickle'] = '鐮刀',
       ['Side'] = '側面',
+      ['Side sight range (m)'] = '側方視野距離（米）',
       ['Siege-Ready'] = '圍攻準備完畢',
       ['Sight cone height (degrees)'] = '視野錐高度 (度)',
       ['Sight cone width (degrees)'] = '視野錐寬度 (度)',
@@ -6718,6 +7181,7 @@ MOD.langs = {
       ['Simo Iron Sights'] = '「西莫」機械瞄具',
       ['Size'] = '體型',
       ['Size (x)'] = '體型 (x)',
+      ['Skips the bolt pull after each shot. Fire rate, ammo and damage stay as they are.'] = '跳過每次射擊後的拉栓動作。射速、彈藥與傷害不變。',
       ['Slide speed / duration'] = '滑行速度 / 持續時間',
       ['Slope slide ends at (degrees)'] = '斜坡滑行結束角度（度）',
       ['Slope slide starts at (degrees)'] = '斜坡滑行起始角度（度）',
@@ -6728,6 +7192,7 @@ MOD.langs = {
       ['Slowed (experimental)'] = '減速（實驗性）',
       ['Slugger'] = '制裁者散彈槍',
       ['Small Plasma Bolt'] = '小型電漿彈',
+      ['Smaller: quicker to speed up, slower at the top, and it scrapes over rocks.'] = '越小：加速更快，最高速度更低，會刮到石頭。',
       ['Smoke'] = '煙霧彈',
       ['Smoke radius, edge (m)'] = '煙霧半徑，邊緣(米)',
       ['Smoke radius, full (m)'] = '煙霧半徑，濃密(米)',
@@ -6791,6 +7256,8 @@ MOD.langs = {
       ['Standard Drum'] = '標準彈鼓',
       ['Standard Heatsink'] = '標準散熱器',
       ['Standard Plasma Container'] = '標準電漿匣',
+      ['Start game'] = '啟動遊戲',
+      ['Starting Helldivers 2 through Steam...'] = '正在透過 Steam 啟動遊戲...',
       ['Starting charges'] = '初始使用次數',
       ['Starting count'] = '初始數量',
       ['Starting heatsinks'] = '初始備用散熱器數',
@@ -6807,6 +7274,7 @@ MOD.langs = {
       ['Stingray'] = '魟艦',
       ['Stoker'] = '爆燃者',
       ['Stomach zone'] = '腹部',
+      ['Stomp'] = '踐踏',
       ['Stomp speed (x)'] = '踩踏速度 (x)',
       ['Stops you while firing'] = '開火時鎖定移動',
       ['Strafing speed (m/s)'] = '側移速度 (米/秒)',
@@ -6816,6 +7284,7 @@ MOD.langs = {
       ['Stratagem jamming radius (m)'] = '戰略配備干擾半徑（米）',
       ['Stratagem scrambling radius (m)'] = '戰略配備擾亂半徑（米）',
       ['Stratagems'] = '戰略配備',
+      ['Stratagems left out of missions:'] = '未進入任務的戰略配備:',
       ['Structure.'] = '建築。',
       ['Stun'] = '暈眩彈',
       ['Stun (Illuminate) (experimental)'] = '暈眩彈（光能者）（實驗性）',
@@ -6852,6 +7321,7 @@ MOD.langs = {
       ['Sway multiplier'] = '晃動係數',
       ['Sweeper'] = '掃蕩者',
       ['Swim speed (m/s)'] = '游泳速度(米/秒)',
+      ['TANKS'] = '坦克',
       ['TCS 03 Thumper'] = 'TCS 03 震動裝置',
       ['TCS support'] = 'TCS支架',
       ['TD-110 Maelstrom'] = 'TD-110 風暴渦旋',
@@ -6860,6 +7330,7 @@ MOD.langs = {
       ['Terrain deformation'] = '彈坑類型',
       ['THROWABLE'] = '投擲物',
       ['Thruster effect length (s)'] = '推進器特效時長(秒)',
+      ['THROWABLES'] = '投擲武器',
       ['TM-1 Lure Mine'] = 'TM-1 誘餌地雷',
       ['Trail audio start (id)'] = '尾跡音效起(ID)',
       ['Trail audio stop (id)'] = '尾跡音效止(ID)',
@@ -6882,6 +7353,7 @@ MOD.langs = {
       ['Tesla Tower'] = '特斯拉塔',
       ['Tested releases only.'] = '僅限經過測試的正式版。',
       ['That did not work; see the log.'] = '操作失敗，請檢視日誌。',
+      ['That is not a valid preset code.'] = '這不是有效的預設程式碼。',
       ['That would make a loop of extra stratagems.'] = '此選擇會使額外戰略配備形成迴圈。',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = '「仲裁者」的下掛霰彈槍，不是步槍本身。',
       ['The Defender SEAF soldiers carry. Not yours.'] = 'SEAF 士兵攜帶的「防衛者」。不是你的那把。',
@@ -6891,16 +7363,19 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = '你攜帶的衝鋒槍。其下掛火焰噴射器單獨列出。',
       ['The Scythe you carry.'] = '你攜帶的「長柄鐮」。',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = '「司爐者」的下掛火焰噴射器，不是衝鋒槍本身。',
+      ['The Trident shows 4 beams at its default of 2.'] = '三叉戟預設值為 2 時顯示 4 道光束。',
       ['The armor passives could not be stacked'] = '無法疊加護甲被動',
+      ['The armory shows the first passive\'s name and at most 3 effects. All of them apply.'] = '軍械庫顯示第一個被動的名稱，最多 3 個效果。全部生效。',
       ['The arrows you enter to call it in: click Record (or press Enter on this row), then enter'] = '呼叫時輸入的方向鍵：點選「錄製」（或在此行按 Enter），然後',
       ['The beacon\'s countdown before the delivery is sent.'] = '信標啟動後、開始投送前的倒計時。',
       ['The beacon\'s timer still counts down the usual time (tested).'] = '信標仍顯示原本的倒計時（已由作者測試）。',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = '炸藥背包、炸藥包及其爆炸。冷卻時間見「戰略配備」頁。',
+      ['The clipboard has no valid preset code.'] = '剪貼簿中沒有有效的預設程式碼。',
       ['The explosion the round sets off when it hits something. 0: no explosion.'] = '射彈命中物體時引發的爆炸。0：不爆炸。',
+      ['The explosion the round sets off when its life time runs out before it hits anything. 0: no explosion.'] = '彈藥在命中任何目標之前壽命耗盡時觸發的爆炸。0:無爆炸。',
       ['The flamethrower you carry.'] = '你攜帶的火焰噴射器。',
       ['The game holds at most 1023 rounds in a backpack.'] = '遊戲中一個背包最多容納 1023 發。',
       ['The game holds at most 2048 rounds in a magazine.'] = '遊戲中一個彈匣最多容納 2048 發。',
-      ['The game only loads them when someone in the mission brings that weapon.'] = '只有任務中有人攜帶該武器時，遊戲才會載入它們。',
       ['The game treats the weapon as one-handed. On two-handed weapons it breaks the hip-fire animations.'] = '遊戲將該武器視為單手武器。雙手武器會因此破壞腰射動畫。',
       ['The game\'s own files are already in place.'] = '當前已是遊戲原始檔案。',
       ['The game\'s own files are back. Your values stay saved here (Install puts them in again).'] = '已恢復遊戲原始檔案。你的數值仍儲存在此，點選「寫入遊戲」可再次寫入。',
@@ -6916,12 +7391,15 @@ MOD.langs = {
       ['The rifle you carry. The grenade launcher is listed separately.'] = '你攜帶的步槍。榴彈發射器單獨列出。',
       ['The rifle you carry. The underbarrel shotgun is listed separately.'] = '你攜帶的步槍。下掛霰彈槍單獨列出。',
       ['The round goes off when it passes this close to an enemy, without hitting it. 0: off (the RL-77 uses 2 m).'] = '射彈從敵人這麼近的距離經過時即使沒有命中也會爆炸。0：關閉（RL-77 為 2 米）。',
+      ['The round only bounces when it hits faster than this. Grenade launcher rounds use 20 m/s, most rounds 60 m/s.'] = '射彈只有在命中速度高於此值時才會彈開。榴彈發射器的射彈為 20 米/秒，大多數射彈為 60 米/秒。',
+      ['The round only bounces when it hits further than this from head on (0 = head on, 90 = grazing).'] = '射彈只有在命中角度偏離正面超過此值時才會彈開（0 = 正面，90 = 擦過）。',
       ['The shot\'s trail and other effects belong to the chosen weapon.'] = '彈道尾跡和其他特效屬於所選武器。',
       ['The support hammer delivered by hellpod. The game data files it next to the Machete.'] = '由空投艙投送的支援錘。遊戲資料將它列在砍刀旁邊。',
       ['The support weapon. The CQC-73 is listed under Secondary.'] = '支援武器。CQC-73 列在「副武器」下。',
       ['Thermite'] = '鋁熱彈',
       ['Thermite (experimental)'] = '鋁熱（實驗性）',
       ['These values are shared by ALL bayonets: they change the Constitution, Sweeper and Amendment at once.'] = '這些數值由所有刺刀共用：會同時改變 Constitution、Sweeper 和 Amendment。',
+      ['This code is shared, so changing it also changes:'] = '此代號為共用,修改後也會改變:',
       ['Throw range'] = '投擲距離',
       ['Throw spread (degrees)'] = '投擲散佈(度)',
       ['Throw velocity, max (m/s)'] = '投擲速度上限(米/秒)',
@@ -6974,9 +7452,10 @@ MOD.langs = {
       ['Tutorial Reinforcement Beacon'] = '教學增援信標',
       ['Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.'] = '輸入預設名稱：Enter 確認，Esc 取消。',
       ['Type the percent (%d-%d): Enter sets it, Esc cancels.'] = '輸入百分比(%d-%d)：回車確認，Esc 取消。',
-      ['Type the text: Enter keeps it, Esc cancels. Install puts it in the game, in every language.'] = '輸入文字：Enter 儲存，Esc 取消。安裝後會寫入遊戲的所有語言。',
+      ['Type the text: Enter keeps it, Shift+Enter starts a new line (twice leaves a gap), Esc cancels.'] = '輸入文字：Enter 儲存，Shift+Enter 換行（按兩次留空行），Esc 取消。',
       ['Type the value: Enter sets it, Esc cancels. Values out of range are set to the nearest allowed one.'] = '輸入數值：回車確認，Esc 取消。超出範圍的數值會取最接近的合法值。',
       ['Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.'] = '輸入搜尋內容：Enter 保留結果，Esc 清空搜尋。',
+      ['UNDERBARREL'] = '下掛',
       ['Ultimatum'] = '最後通牒',
       ['Uncharged'] = '未蓄力',
       ['Uncharged explosion'] = '未蓄力爆炸',
@@ -6990,12 +7469,14 @@ MOD.langs = {
       ['Unsafe warp: damage to you'] = '不安全躍遷：對你造成的傷害',
       ['Unsafe warp: explosion'] = '不安全躍遷：爆炸',
       ['Up'] = '上移',
+      ['Up/Down and arrow buttons'] = '上/下和箭頭按鈕',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = '上下鍵選擇數值項，左右鍵調整（Shift 為大步長），點選數值或按回車直接輸入，',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = '上下鍵選擇，回車讀取，Insert 新建，Shift+Insert 存入當前預設，F2 重新命名，Del 刪除。',
       ['Update channel'] = '更新渠道',
       ['Updates'] = '更新',
       ['Upload Discovery'] = '上傳發現',
       ['Urchin'] = '海膽',
+      ['Used by:'] = '使用者：',
       ['Uses per mission'] = '每次任務使用次數',
       ['Uses per rearm'] = '每次重新武裝後的可用次數',
       ['V2'] = 'v2',
@@ -7034,6 +7515,7 @@ MOD.langs = {
       ['Walk speed (x)'] = '行走速度 (x)',
       ['Walking Barrage Smoke'] = '移動彈幕煙霧',
       ['Walking backwards (multiplier)'] = '後退行走(倍率)',
+      ['Walking direction (deg)'] = '移動方向（度）',
       ['Walking speed (m/s)'] = '彈幕推進速度（米/秒）',
       ['War Strider'] = '戰爭闊步者',
       ['Warm-up before it sprays (s)'] = '噴射前預熱（秒）',
@@ -7048,6 +7530,8 @@ MOD.langs = {
       ['Warrior acid burst'] = '戰士酸液爆裂',
       ['Watcher'] = '看守者',
       ['Water'] = '水',
+      ['Weakspot'] = '弱點',
+      ['Weakspot engine'] = '引擎弱點',
       ['Weapon spread (x)'] = '武器散佈 (x)',
       ['Weapon stats'] = '武器數值',
       ['Weapon sway (x)'] = '武器晃動 (x)',
@@ -7074,6 +7558,7 @@ MOD.langs = {
       ['a slot is 1 (primary) or 3 (secondary)'] = '欄位為 1（主武器）或 3（副武器）',
       ['a table moved; scanning again'] = '資料表已移動，正在重新掃描',
       ['added to every armor value, up to 10; lowered: down to 0'] = '加到每個護甲值上，最高 10；降低時最低 0',
+      ['added to every melee attack, up to 10; lowered: down to 0'] = '加到每種近戰攻擊上，最高 10；降低時最低為 0',
       ['airborne'] = '空降',
       ['all four exosuits share it'] = '四種外骨骼共用此值',
       ['also in your loadout when you bring this one'] = '攜帶此戰略配備時也會一併獲得',
@@ -7081,8 +7566,10 @@ MOD.langs = {
       ['arc weapon'] = '電弧武器',
       ['armor passive'] = '護甲被動',
       ['armor penetration, forces, velocity, drag, gravity, pellets and explosions. Kept: this'] = '穿甲、作用力、速度、阻力、重力、射彈數及爆炸的修改。當前武器的',
+      ['as long as the engine torque is enough to get there.'] = '前提是扭矩足夠把車推到那個速度。',
       ['assassinate'] = '刺殺',
       ['assault'] = '突擊',
+      ['at least 1 round, at most 2048'] = '最少 1 發，最多 2048 發',
       ['attachment deltas'] = '配件修正量',
       ['attachment items'] = '配件物品',
       ['backpack charges'] = '背包使用次數',
@@ -7100,6 +7587,7 @@ MOD.langs = {
       ['elite'] = '精英',
       ['enemies at 0 stay immune'] = '為 0 的敵人仍然免疫',
       ['every enemy with this attack shares it'] = '所有擁有此攻擊的敵人共用',
+      ['extra health for this part, it does not run out by itself'] = '該部位的額外生命值，不會自行流失',
       ['fake'] = '偽裝',
       ['fire mode'] = '射擊模式',
       ['gloom'] = '幽暗',
@@ -7121,10 +7609,12 @@ MOD.langs = {
       ['how fast a body part\'s bleed-out health runs out'] = '部位失血生命值耗盡的速度',
       ['how fast its aim settles again; higher: sooner'] = '其瞄準恢復穩定的速度；越高越快',
       ['how fast the bleed-out health runs out'] = '失血生命值耗盡的速度',
+      ['how fast their guns shoot; flamers, beams and melee stay as they are'] = '槍械的射擊速度；噴火器、光束和近戰不變',
       ['how fast they attack, turn and react'] = '它們攻擊、轉身和反應的速度',
       ['how hard your fire throws off its aim; 0: never; higher: a little fire throws it off fully'] = '你的火力對其瞄準的干擾強度；0：從不；越高：少量火力就能完全打亂其瞄準',
       ['how long it keeps after you once you break line of sight'] = '脫離視線後它繼續追擊你的時長',
       ['how long it keeps hunting you once you break line of sight; x1: as in the game, x2: twice as long'] = '你脫離其視線後它繼續追擊你的時長；x1：與遊戲相同，x2：兩倍時長',
+      ['how long it lasts once its health is gone; this sets its bleed-out health, so it also takes more shots to finish'] = '生命值耗盡後還能持續多久；這會改變其流血狀態生命值，所以也需要更多攻擊才能打掉',
       ['how long its aim stays thrown off after your fire stops'] = '你停火後其瞄準保持混亂的時長',
       ['how long its aim stays thrown off after your fire stops; Never: it never steadies'] = '你停火後其瞄準保持混亂的時長；從不：瞄準永遠不會恢復穩定',
       ['how many of the items on its rack come down in one pod'] = '一個艙裡落下它架子上的幾件物品',
@@ -7160,6 +7650,7 @@ MOD.langs = {
       ['none'] = '無',
       ['none (no explosion)'] = '無（不爆炸）',
       ['none (no projectile)'] = '無（沒有射彈）',
+      ['none. - / + : add one, hold Reload in game to switch'] = '無。- / + ：新增，遊戲中按住裝填鍵切換',
       ['normal projectile'] = '常規射彈',
       ['not a faction'] = '不是有效陣營',
       ['not a finite number'] = '不是有限數值',
@@ -7193,6 +7684,7 @@ MOD.langs = {
       ['the body and every body part, bleed-out health too'] = '身體與每個部位，以及失血生命值',
       ['the download helper (shodan_hash.dll) is missing'] = '缺少下載輔助庫（shodan_hash.dll）',
       ['the faction multipliers cannot slow patrols below this: lower it with them'] = '陣營倍率無法讓巡邏低於此值：請一同調低',
+      ['the fire mode switch'] = '射擊模式開關',
       ['the force a hit needs to stagger it (hit sizes it never staggers from stay that way)'] = '使其硬直所需的命中力度（原本不會造成硬直的命中仍然不會）',
       ['the force a hit needs to stagger them'] = '使其硬直所需的命中力度',
       ['the game holds back reinforcements past about 100 enemies at x1; it has crashed past 200-240 enemies alive'] = '在 x1 時，遊戲在約 100 名敵人後停止增援；存活敵人超過 200-240 時曾出現崩潰',
@@ -7201,12 +7693,16 @@ MOD.langs = {
       ['the holster is on the back or the hip'] = '收槍位置在背部或腰部',
       ['the model and its body parts; on some enemies the hitboxes may not match the model, and on others it may not work at all'] = '模型及其身體部位；部分敵人的受擊判定可能與模型不符，另一些敵人可能完全無效',
       ['the new code with the arrow keys or WASD, 1 to 9 arrows. Enter keeps it, Backspace takes one back,'] = '用方向鍵或 WASD 輸入新程式碼，1 到 9 個箭頭。Enter 保留，Backspace 退回一個，',
+      ['the rate of fire switch'] = '射速開關',
+      ['the same distance for every enemy; 0: the game\'s own (most are 1 m, so no multiplier)'] = '所有敵人使用相同距離；0：遊戲預設值（大多數為 1 米，因此不用倍數）',
+      ['the same time for every gun; 0: the game\'s own (enemy reloads are 0 in the data, so no multiplier)'] = '所有槍械使用同一時間；0：遊戲原值（敵人裝填在資料中為 0，因此沒有倍率）',
       ['the shot fired from this heat on, and what it does to you'] = '從該熱量值起發射的射彈，以及它對你自己造成的效果',
       ['the spare ammo in its backpack; read when the backpack is called in'] = '背包裡的備用彈藥；在被投放時讀取',
       ['Explosions inherit velocity'] = '爆炸繼承速度',
       ['Inherit velocity'] = '繼承速度',
       ['1: the round keeps the velocity of whoever fired it; 0: it starts from rest.'] = '1：彈丸繼承開火者的速度；0：由靜止開始。',
       ['1: the blast this round sets off travels with it; 0: it stays where the round hit.'] = '1：該彈丸引發的爆炸隨彈丸移動；0：停在命中處。',
+      ['the underbarrel switch'] = '下掛武器開關',
       ['the update helper (shodan_hash.dll) is missing'] = '缺少更新輔助庫（shodan_hash.dll）',
       ['their wind-ups and attacks'] = '蓄力和攻擊',
       ['tier 1 captive'] = '1級俘虜',
@@ -7783,6 +8279,7 @@ MOD.langs = {
       ['gatekeeper'] = '守門者',
       ['gatling sentry'] = '哨戒格林炮',
       ['gazer'] = '凝視者',
+      ['gazer spire'] = '凝視者尖塔',
       ['generator'] = '發電機',
       ['generator pack'] = '護盾生成背包',
       ['giga grenade'] = '巨型手榴彈',
@@ -7994,6 +8491,7 @@ MOD.langs = {
       ['melee weapon'] = '近戰武器',
       ['melta mine'] = '熱熔地雷',
       ['meltagun'] = '熱熔槍',
+      ['mg raider'] = '機槍襲擊者',
       ['mg-206 heavy machine gun'] = 'MG-206 重機槍',
       ['mg-206 heavy machine gun (mounted b)'] = 'MG-206 重機槍（固定式 B）',
       ['mg-43 machine gun'] = 'MG-43 機槍',
@@ -8116,6 +8614,7 @@ MOD.langs = {
       ['position scatter (m)'] = '佈雷位置隨機偏移（米）',
       ['pouncer'] = '食腐蟲',
       ['predator hunter'] = '掠食者狩獵蟲',
+      ['predator stalker'] = '掠食者跟蹤蟲',
       ['presets'] = '預設',
       ['president rewards'] = '總統獎勵',
       ['press a key (esc cancels)'] = '請按一個鍵(Esc 取消)',
@@ -8180,6 +8679,7 @@ MOD.langs = {
       ['regeneration (health/s)'] = '再生(生命/秒)',
       ['regeneration delay after damage (s)'] = '受傷後再生延遲（秒）',
       ['reinforced epaulettes'] = '強化護肩',
+      ['reinforced scout strider'] = '強化偵察闊步者',
       ['reinforcement beacon'] = '增援信標',
       ['reload allowed below (rounds)'] = '允許裝填的剩餘彈數上限',
       ['reload time (s)'] = '裝填時間（秒）',
@@ -8211,6 +8711,7 @@ MOD.langs = {
       ['rl-77 airburst rocket launcher'] = 'RL-77 空爆火箭發射器',
       ['rock solid'] = '堅如磐石',
       ['rocket devastator'] = '火箭炮破壞者',
+      ['rocket raider'] = '火箭襲擊者',
       ['rocket sentry'] = '哨戒火箭炮',
       ['round 1 blast'] = '第 1 發爆炸',
       ['round 1 blast radius'] = '第 1 發爆炸半徑',
@@ -8598,6 +9099,16 @@ MOD.langs = {
       { '^(.+): Heavy$', '%1：重型' },
       { '^Bomb pattern (%d): (%d) bombs$', '投彈模式 %1：%2 枚炸彈' },
       { '^Gear (%d+) ratio$', '%1 擋傳動比' },
+      { '^fires (.+)$', '發射：%1' },
+      { '^drops (.+)$', '投下：%1' },
+      { '^Copy (.+) to$', '將 %1 複製到' },
+      { '^Copied (%d+) value%(s%) to (%d+) vehicle%(s%)%.$', '已複製 %1 個數值到 %2 輛載具。' },
+      { '^Copied (%d+) value%(s%) into (%d+) preset%(s%)$', '已將 %1 個數值複製到 %2 個預設' },
+      { '^Code copied %((%d+) characters%)$', '程式碼已複製（%1 個字元）' },
+      { '^Added "(.+)"$', '已新增「%1」' },
+      { '^Added "(.+)" to the Enemy Editor presets$', '已新增到敵人編輯器預設：「%1」' },
+      { '^Added "(.+)" to the Stat Editor presets$', '已新增到屬性編輯器預設：「%1」' },
+      { '^Saved as StatEditor\\(%S+)%. Copy code shares it%. A code you were sent goes in the box on the left%.$', '已儲存為 StatEditor\\%1。「複製程式碼」用於分享。別人發來的程式碼請填入左側的框。' },
       { '^Heat level (%d+)$', '熱量等級 %1' },
       { '^(.+); ammo type shared with (.+)$', '%1；彈種與以下共用：%L2' },
       { '^fires: (.+)%. The rows above stay its own$', '發射：%1。上方各行仍為其自身數值' },
@@ -8637,7 +9148,7 @@ MOD.langs = {
       { '^(%d+) listed$', '共 %1 項' },
       { '^(%d+)%-(%d+) of (%d+) %(max (%d+)%)$', '第 %1-%2 項 / 共 %3 項（上限 %4）' },
       { '^(%d+) %(max (%d+)%)$', '共 %1 項（上限 %2）' },
-      { '^(%d+) value%(s%) for (%d+) weapon%(s%) / stratagem%(s%):$', '%1 項改動，涉及 %2 個武器 / 戰略配備：' },
+      { '^(%d+) value%(s%) for (%d+) item%(s%):$', '%1 項改動，涉及 %2 個專案：' },
       { '^(%d+) value%(s%)$', '%1 項' },
       { '^On: your (%d+) change%(s%) are applied%.$', '開啟：你的 %1 項改動已生效。' },
       { '^Off: the game\'s values everywhere; your (%d+) change%(s%) are kept for when you turn them on%.$', '關閉：使用遊戲原值；你的 %1 項修改已保留，重新開啟後生效。' },
@@ -8783,6 +9294,7 @@ MOD.langs = {
       [' page(s):'] = ' стр.:',
       [' to enemies and spawning with it.'] = ' врагов и их появления.',
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '«+ Новый пресет» (или Insert) сохраняет текущие изменения как пресет; затем вы даете ему имя.',
+      ['(changed)'] = '(изменён)',
       ['+ Add passive'] = '+ Добавить эффект',
       ['+ Armor rating'] = '+ Рейтинг брони',
       ['+ Ergonomics'] = '+ Эргономика',
@@ -8793,6 +9305,7 @@ MOD.langs = {
       ['+ Throwables (start, max)'] = '+ Метательное (в начале, макс.)',
       ['- / + steps through the stratagems by name (-- / ++: 10 at a time).'] = '- / + перебирают стратагемы по названию (-- / ++: по 10 за раз).',
       ['-180 with right at 180: all the way round'] = '-180 при правом 180: полный круг',
+      ['-1: as far as straight ahead'] = '-1: как прямо вперёд',
       ['0 = normal projectile; - / + selects a throwable grenade by name above.'] = '0 = обычный снаряд; - / + выбирает гранату по названию выше.',
       ['0 for flak and cluster rounds; 1 for every other round in this build.'] = 'В этой сборке 0 только у зенитных и кассетных боеприпасов, у остальных 1.',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0: попадания наносят обычный урон, 1: урон по прочным (меньший у оружия)',
@@ -8800,6 +9313,8 @@ MOD.langs = {
       ['0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s.'] = '0: сразу. RL-77 ждёт 0,2 с, P-34 Breacher (сначала прилипает и горит) 1 с.',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0: попадания наносят обычный урон, 1: урон по прочным целям (меньший у оружия)',
       ['0: no patrols'] = '0: без патрулей',
+      ['0: these wheels do not brake at all.'] = '0: эти колёса совсем не тормозят.',
+      ['0: walks away from the beacon, 0.5: centred on it, 1: ends on it'] = '0: уходит от маяка, 0.5: по центру маяка, 1: заканчивается на маяке',
       ['100kg Bomb'] = 'Бомба (100 кг)',
       ['100kg Bomb Mk2'] = 'Бомба Mk2 (100 кг)',
       ['100kg Bomb Mk3'] = 'Бомба Mk3 (100 кг)',
@@ -8959,6 +9474,8 @@ MOD.langs = {
       ['A pathetic creature of meat and bone.'] = 'Жалкое создание из мяса и костей.',
       ['A preset keeps every change you have made as one set, under a name you choose.'] = 'Пресет хранит все ваши изменения одним набором под выбранным вами именем.',
       ['A preset keeps every enemy and spawning change as one custom difficulty, under a name you choose. Your weapon changes are kept apart.'] = 'Пресет хранит все изменения врагов и их появления как свой уровень сложности под выбранным вами именем. Изменения оружия хранятся отдельно.',
+      ['A resupply box gives this many. An ammo box on the map gives half, rounded down (at least 1).'] = 'Ящик снабжения даёт столько. Ящик с боеприпасами на карте даёт половину с округлением вниз (минимум 1).',
+      ['A resupply box gives this much. An ammo box on the map gives half, rounded down.'] = 'Ящик снабжения даёт столько. Ящик с боеприпасами на карте даёт половину с округлением вниз.',
       ['A value changed on an enemy\'s own page stays red: this page leaves it as it is.'] = 'Значение, изменённое на странице самого врага, остаётся красным: эта страница его не трогает.',
       ['A weapon whose own Sway multiplier you changed keeps it. Sway this row changes shows in blue.'] = 'Оружие, у которого вы изменили свой Множитель колебания, сохраняет его. Колебание, изменённое этой строкой, показано синим.',
       ['A/AC-8 Autocannon Sentry'] = 'A/AC-8 «Турель с автопушкой»',
@@ -8974,7 +9491,9 @@ MOD.langs = {
       ['AA Emplacement'] = 'Орудия ПВО',
       ['AC-8 Autocannon'] = 'AC-8 «Автопушка»',
       ['AMMO'] = 'БОЕПРИПАСЫ',
+      ['AMMUNITION'] = 'БОЕПРИПАСЫ',
       ['AMW-20 Apex'] = 'AMW-20 «Апогей»',
+      ['ANTI-TANK'] = 'ПРОТИВОТАНКОВОЕ',
       ['APW-1 Anti-Materiel Rifle'] = 'APW-1 «Крупнокалиберная винтовка»',
       ['AR-11 Arbitrator'] = 'AR-11 Третейский судья',
       ['AR-11 Arbitrator (underbarrel shotgun)'] = 'AR-11 Третейский судья (подствольный дробовик)',
@@ -8994,6 +9513,9 @@ MOD.langs = {
       ['ARC-12 Blitzer'] = 'ARC-12 «Налетчик»',
       ['ARC-3 Arc Thrower'] = 'ARC-3 «Дуговой метатель»',
       ['Audio'] = 'Звук',
+      ['ARMORS'] = 'БРОНЯ',
+      ['ASSAULT RIFLE'] = 'ШТУРМОВАЯ ВИНТОВКА',
+      ['ATTACHMENTS'] = 'МОДУЛИ',
       ['AX/AR-23 "Guard Dog"'] = 'AX/AR-23 «Сторожевой пес»',
       ['AX/ARC-3 "Guard Dog" K-9'] = 'AX/ARC-3 «Сторожевой пес» K-9',
       ['AX/FLAM-75 "Guard Dog" Hot Dog'] = 'AX/FLAM-75 «Сторожевой пес» Хот-дог',
@@ -9033,6 +9555,7 @@ MOD.langs = {
       ['Alpha Commander'] = 'Альфа-командир',
       ['Also includes'] = 'Также включает',
       ['Alternate ammunition'] = 'Альтернативные боеприпасы',
+      ['Always bring it'] = 'Брать всегда',
       ['Amendment'] = 'Поправка',
       ['Ammo'] = 'Боеприпасы',
       ['Ammo at the start'] = 'Боеприпасы в начале',
@@ -9083,6 +9606,7 @@ MOD.langs = {
       ['Assault'] = 'штурм',
       ['Assault Raider'] = 'Налетчик-штурмовик',
       ['Assault Rifle'] = 'Штурмовая винтовка',
+      ['At most 4 across all stratagems: more can crash the game at deployment.'] = 'Не более 4 на все стратагемы: больше может вызвать вылет при высадке.',
       ['Attachment'] = 'Модуль',
       ['Attachments'] = 'Модули',
       ['Attack animation speed (x)'] = 'Скорость анимации атак (x)',
@@ -9098,10 +9622,12 @@ MOD.langs = {
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 Крематорий',
       ['B/MD C4 Pack'] = 'B/MD Комплект C4',
       ['BACKPACK'] = 'РЮКЗАК',
+      ['BACKPACKS'] = 'РЮКЗАКИ',
       ['BARRAGE'] = 'ЗАЛП',
       ['BLAST'] = 'ВЗРЫВ',
       ['BLAST RADIUS'] = 'РАДИУС ВЗРЫВА',
       ['BODY PARTS'] = 'ЧАСТИ КОРПУСА',
+      ['BOOSTERS'] = 'УСИЛИТЕЛИ',
       ['BR-14 Adjudicator'] = 'BR-14 «Эксперт»',
       ['BURST'] = 'РАЗРЫВ',
       ['BURST RADIUS'] = 'РАДИУС РАЗРЫВА',
@@ -9114,9 +9640,13 @@ MOD.langs = {
       ['Back hatch'] = 'Задний люк',
       ['Back hip'] = 'Заднее бедро',
       ['Back left wheel hub'] = 'Ступица заднего левого колеса',
+      ['Back leg'] = 'Задняя нога',
+      ['Back lower leg'] = 'Задняя нижняя часть ноги',
       ['Back periscope side 8'] = 'Задний перископ, сторона 8',
       ['Back pump flamer'] = 'Задний насос огнемёта',
       ['Back right wheel hub'] = 'Ступица заднего правого колеса',
+      ['Back upper leg'] = 'Задняя верхняя часть ноги',
+      ['Back upper leg top'] = 'Верх задней верхней части ноги',
       ['Background opacity'] = 'Непрозрачность фона',
       ['Backpack'] = 'Рюкзак',
       ['Ballistic Missile'] = 'Баллистическая ракета',
@@ -9130,11 +9660,15 @@ MOD.langs = {
       ['Bastion MK XVI'] = 'Mk-XVI «Бастион»',
       ['Battery'] = 'Батарея',
       ['Bayonet melee'] = 'Удар штыком',
+      ['Beam range (m)'] = 'Дальность луча (м)',
+      ['Beam stays after the shot (s)'] = 'Луч держится после выстрела (с)',
       ['Beamer'] = 'Излучатель',
+      ['Beams per barrel'] = 'Лучей на ствол',
       ['Belt-Fed Grenade Launcher'] = 'Ленточный гранатомет',
       ['Berserker'] = 'Берсерк',
       ['Better stratagem bounce'] = 'Улучшенный отскок стратагем',
       ['Big walker cannon'] = 'Пушка шатуна',
+      ['Bigger wheels: a higher top speed and more room under the body, but a weaker pull.'] = 'Колёса больше: выше максимальная скорость и больше просвет, но слабее тяга.',
       ['Bile Spewer'] = 'Желчный блевун',
       ['Bile Spewer acid burst'] = 'Кислотный выплеск желчного блевуна',
       ['Bile Spitter'] = 'Желчный плеватель',
@@ -9149,6 +9683,7 @@ MOD.langs = {
       ['Bleed (experimental)'] = 'Кровотечение (эксперимент.)',
       ['Bleed-out drain (health/s)'] = 'Убывание здоровья при кровотечении (здоровье/с)',
       ['Bleed-out health'] = 'Здоровье при истекании кровью',
+      ['Bleed-out time (s)'] = 'Время истекания кровью (с)',
       ['Blind (experimental)'] = 'Ослепление (эксперимент.)',
       ['Blitzer'] = '«Налетчик»',
       ['Block game input while open'] = 'Блокировать ввод в игре',
@@ -9165,6 +9700,7 @@ MOD.langs = {
       ['Body parts'] = 'Части корпуса',
       ['Body rear'] = 'Задняя часть тела',
       ['Bolt Pistol'] = 'Болтострел',
+      ['Bomb dropped (id)'] = 'Бомба (id)',
       ['Bomb pattern'] = 'Схема бомбометания',
       ['Bonnet'] = 'Капот',
       ['Boost after the launch (s)'] = 'Ускорение после пуска (с)',
@@ -9172,7 +9708,11 @@ MOD.langs = {
       ['Boosters'] = 'Двигатели',
       ['Boss'] = 'Ядро',
       ['Boss back'] = 'Задняя часть ядра',
+      ['Boss head'] = 'Голова босса',
       ['Bottom wing'] = 'Нижнее крыло',
+      ['Bounce'] = 'Отскок',
+      ['Bounce angle (deg)'] = 'Угол отскока (град)',
+      ['Bounce speed (m/s)'] = 'Скорость отскока (м/с)',
       ['Brake strength'] = 'Сила тормоза',
       ['Braking height (m)'] = 'Высота торможения (м)',
       ['Braking speed (m/s)'] = 'Скорость торможения (м/с)',
@@ -9215,6 +9755,7 @@ MOD.langs = {
       ['C hex 17'] = 'Шестигранник 17',
       ['C hex 18'] = 'Шестигранник 18',
       ['C hex 19'] = 'Шестигранник 19',
+      ['CAPES'] = 'ПЛАЩИ',
       ['CB-9 Exploding Crossbow'] = 'CB-9 «Взрывной арбалет»',
       ['CHARGE'] = 'ЗАРЯД',
       ['CLUSTER BOMB'] = 'КЛАСТЕРНАЯ БОМБА',
@@ -9257,16 +9798,21 @@ MOD.langs = {
       ['Chest damage taken'] = 'Получаемый урон в грудь',
       ['Choked (experimental)'] = 'Удушье (эксперимент.)',
       ['Choose a weapon on the left.'] = 'Выберите оружие слева.',
+      ['Choose the presets, then Copy. Values they share take this preset\'s, the rest of theirs stays.'] = 'Выберите пресеты и нажмите «Копировать». Общие значения заменятся значениями этого пресета, остальные останутся.',
+      ['Choose the vehicles, then Copy. They get every value shown in this section.'] = 'Выберите технику и нажмите «Копировать». Она получит все значения этого раздела.',
       ['Clear'] = 'Очистить',
       ['Click * to show only what you changed, from every tab.'] = 'Нажмите *, чтобы показать только изменённое, со всех вкладок.',
-      ['Click a box to type. Install puts it in the game, in every language.'] = 'Нажмите на поле, чтобы ввести текст. Установка внесёт его в игру на всех языках.',
+      ['Click again'] = 'Нажмите ещё раз',
       ['Click again to overwrite'] = 'Нажмите еще раз, чтобы перезаписать',
+      ['Click again within 4 seconds to end the game. Unsaved progress is lost.'] = 'Нажмите ещё раз в течение 4 секунд, чтобы закрыть игру. Несохранённый прогресс будет потерян.',
       ['Climb acceleration'] = 'Ускорение подъема',
       ['Climb multiplier (horizontal)'] = 'Множитель подъема (по горизонтали)',
       ['Climb multiplier (vertical)'] = 'Множитель подъема (по вертикали)',
       ['Climb speed (m/s)'] = 'Скорость подъема (м/с)',
       ['Climb time limit (s)'] = 'Предел времени подъема (с)',
       ['Climbing and sliding'] = 'Лазание и скольжение',
+      ['Close all'] = 'Закрыть все',
+      ['Close game'] = 'Закрыть игру',
       ['Cluster Bomb'] = 'Кластерная бомба',
       ['Cognitive Disruptor'] = 'Искажатель разума',
       ['Collision'] = 'Корпус',
@@ -9292,7 +9838,13 @@ MOD.langs = {
       ['Cool-down time, full heat (s)'] = 'Время остывания с полного нагрева (с)',
       ['Cooldown (s)'] = 'Перезарядка (с)',
       ['Cooling (% per s)'] = 'Охлаждение (% в с)',
-      ['Copy'] = 'Копир.',
+      ['Copy'] = 'Копировать',
+      ['Copy code'] = 'Копировать код',
+      ['Copy to...'] = 'Копировать в...',
+      ['Copy values to'] = 'Копировать значения в',
+      ['Copy values to...'] = 'Копировать в...',
+      ['Could not ask Steam to start the game.'] = 'Не удалось попросить Steam запустить игру.',
+      ['Could not close Helldivers 2.'] = 'Не удалось закрыть Helldivers 2.',
       ['Countdown before delivery (s)'] = 'Отсчёт до доставки (с)',
       ['Coyote'] = 'Койот',
       ['Cremator'] = 'Крематорий',
@@ -9305,6 +9857,7 @@ MOD.langs = {
       ['Crown'] = 'Корона',
       ['Cruise speed (m/s)'] = 'Крейсерская скорость (м/с)',
       ['Crusher'] = 'Крушитель',
+      ['Ctrl+V pastes a code, or type it: Enter adds the preset, Esc cancels.'] = 'Ctrl+V вставляет код, можно ввести вручную: Enter добавляет пресет, Esc отменяет.',
       ['Custom difficulties'] = 'Свои уровни сложности',
       ['Cyborg fire (experimental)'] = 'Огонь киборгов (эксперимент.)',
       ['DAMAGE'] = 'УРОН',
@@ -9339,6 +9892,7 @@ MOD.langs = {
       ['Deployer'] = 'Установщик',
       ['Description'] = 'Описание',
       ['Desert Stormer'] = 'Пустынный штурмовик',
+      ['Designation'] = 'Обозначение',
       ['Destroyed'] = 'уничтожено',
       ['Devastator'] = 'Разрушитель',
       ['Devastator jump pack'] = 'Реактивный ранец разрушителя',
@@ -9376,16 +9930,21 @@ MOD.langs = {
       ['E/GL-21 Grenadier Battlement'] = 'E/GL-21 Амбразура гранатометчика',
       ['E/MG-101 HMG Emplacement'] = 'E/MG-101 «Огневая позиция: тяжелый пулемет»',
       ['EAGLE'] = 'ОРЕЛ',
+      ['EAGLE STRIKES'] = 'ОРЕЛ',
       ['EAT-17 Expendable Anti-Tank'] = 'EAT-17 «Одноразовый бронебой»',
       ['EAT-17 Expendable Anti-Tank (SEAF)'] = 'EAT-17 «Одноразовый бронебой» (ВССЗ)',
       ['EAT-411 Leveller'] = 'EAT-411 Уравнитель',
       ['EAT-700 Expendable Napalm'] = 'EAT-700 Одноразовый напалм',
       ['Effects'] = 'Эффекты',
+      ['EMPLACEMENTS'] = 'УКРЕПЛЕНИЯ',
       ['EMS Mortar Sentry'] = '«Турель с ЭМ-минометом»',
+      ['ENERGY-BASED'] = 'ЭНЕРГЕТИЧЕСКОЕ',
       ['EXO-45 Patriot Exosuit'] = 'EXO-45 Экзокостюм «Патриот»',
       ['EXO-49 Emancipator Exosuit'] = 'EXO-49 Экзокостюм «Благодетель»',
       ['EXO-51 Lumberer Exosuit'] = 'EXO-51 Экзокостюм «Лесоруб»',
       ['EXO-55 Breakthrough Exosuit'] = 'EXO-55 Экзокостюм «Прорыв»',
+      ['EXOSUITS'] = 'ЭКЗОКОСТЮМЫ',
+      ['EXPLOSIVE'] = 'ВЗРЫВНОЕ',
       ['EXTRA STRATAGEM'] = 'ДОП. СТРАТАГЕМА',
       ['Each arm'] = 'Каждая рука',
       ['Each leg'] = 'Каждая нога',
@@ -9402,6 +9961,7 @@ MOD.langs = {
       ['Eagle strike. The rearm time is shared by every Eagle.'] = 'Удар «Орла». Время перевооружения общее для всех ударов «Орла».',
       ['Eagles cannot be called within this distance while it stands'] = 'пока объект цел, в этом радиусе нельзя вызывать «Орлов»',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = 'Настраивайте гранату во вкладке «Метательное». Выбор применяется после загрузки ресурсов.',
+      ['Editor'] = 'Редактор',
       ['Effect'] = 'Эффект',
       ['Egg'] = 'Яйцо',
       ['Egg cluster'] = 'Кладка яиц',
@@ -9421,6 +9981,7 @@ MOD.langs = {
       ['Enemy.'] = 'Враг.',
       ['Engine front'] = 'Передний двигатель',
       ['Engine rear'] = 'Задний двигатель',
+      ['Engine rear weakspot'] = 'Задняя слабая точка двигателя',
       ['Engine torque'] = 'Крутящий момент двигателя',
       ['Engineering Kit'] = 'Инженерный комплект',
       ['Enter the code...'] = 'Введите код...',
@@ -9431,11 +9992,16 @@ MOD.langs = {
       ['Eruptor'] = '«Извергатель»',
       ['Esc cancels. The HUD shows the new code too.'] = 'Esc отменяет. HUD тоже показывает новый код.',
       ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = 'Все солдаты SEAF сразу. Солдаты, изменённые на своей странице, сохраняют свои значения.',
+      ['Every armor set with this name.'] = 'Все комплекты с этим названием.',
+      ['Every armor set with this name. Its passive text is shared by every armor with that passive.'] = 'Все комплекты брони с этим названием. Текст пассивки общий для всей брони с этой пассивкой.',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = 'Вся броня с этим эффектом получает и их эффекты (настраиваются на их страницах).',
+      ['Every cape with this name.'] = 'Все плащи с этим названием.',
       ['Every change as soon as it is pushed, before testing: it may break.'] = 'Каждое изменение сразу после публикации, без проверки: возможны ошибки.',
       ['Every commit'] = 'Каждый коммит',
       ['Every enemy of this faction at once. Enemies you have edited on their own page keep their values.'] = 'Все враги фракции сразу. Враги, изменённые на своей странице, сохраняют свои значения.',
+      ['Every exosuit shares this stomp.'] = 'Этот топот общий для всех экзокостюмов.',
       ['Every helldiver in your game. Restore the game\'s files before joining other players\' lobbies.'] = 'Все десантники в вашей игре. Восстановите файлы игры, прежде чем заходить в лобби других игроков.',
+      ['Every helmet with this name.'] = 'Все шлемы с этим названием.',
       ['Every passive is in already.'] = 'Все пассивные эффекты уже добавлены.',
       ['Every weapon you aim yourself, emplacements and vehicle guns too: the game\'s sway times this. 0 = no sway.'] = 'Всё оружие, которым вы целитесь сами, включая турели-укрепления и оружие техники: колебание игры, умноженное на это число. 0 = без колебания.',
       ['Evictor'] = 'Вытеснитель',
@@ -9457,12 +10023,14 @@ MOD.langs = {
       ['Extra stratagem'] = 'Доп. стратагема',
       ['Extra stratagem (choice)'] = 'Доп. стратагема (выбор)',
       ['Eye'] = 'Глаз',
+      ['Eye top'] = 'Верхний глаз',
       ['FAF-14 Spear'] = 'FAF-14 Копье',
       ['FIRE'] = 'ОГОНЬ',
       ['Fire template'] = 'Шаблон огня',
       ['Flags'] = 'Флаги',
       ['FLAM-40 Flamethrower'] = 'FLAM-40 «Огнемет»',
       ['FLAM-66 Torcher'] = 'FLAM-66 «Сжигатель»',
+      ['FLAME AND GAS'] = 'ОГОНЬ И ГАЗ',
       ['Fabricator'] = 'Изготовитель',
       ['Fabricator / bug hole batch size (x)'] = 'Партия изготовителя / норы (x)',
       ['Fabricator / bug hole queue (x)'] = 'Очередь изготовителя / норы (x)',
@@ -9490,8 +10058,10 @@ MOD.langs = {
       ['Fire damage taken (x)'] = 'Получаемый урон от огня (x)',
       ['Fire duration (s)'] = 'Длительность огня (с)',
       ['Fire rate (RPM)'] = 'Скорострельность (выстр./мин)',
+      ['Fire rate (x)'] = 'Скорострельность (x)',
       ['Fire/gas/acid/arc damage taken'] = 'Получаемый урон от огня/газа/кислоты/дуги',
       ['Firebomb Hellpods'] = 'Зажигательные Адские Капсулы',
+      ['First shell (id)'] = 'Первый снаряд (id)',
       ['Flame Sentry'] = 'Турель-огнемет',
       ['Flames'] = 'Горючая смесь',
       ['Flames Mk2'] = 'Горючая смесь Mk2',
@@ -9519,6 +10089,7 @@ MOD.langs = {
       ['Front brake strength'] = 'Тормоза передних колёс',
       ['Front damping'] = 'Демпфирование спереди',
       ['Front face'] = 'Передняя грань',
+      ['Front grip lower than the rear: it turns wide. Rear lower than the front: the back slides out.'] = 'Перед держит хуже зада: машина идёт по широкой дуге. Зад хуже переда: заносит заднюю часть.',
       ['Front hull'] = 'Передняя часть корпуса',
       ['Front left cockpit'] = 'Кабина спереди слева',
       ['Front left wheel hub'] = 'Ступица переднего левого колеса',
@@ -9565,6 +10136,7 @@ MOD.langs = {
       ['GR-8 Recoilless Rifle'] = 'GR-8 «Безоткатная винтовка»',
       ['GRENADE SWAP'] = 'ЗАМЕНА ГРАНАТЫ',
       ['Gallant'] = '«Кавалер»',
+      ['Gameplay'] = 'Игровой процесс',
       ['Gas'] = 'Газовая',
       ['Gas Mortar Sentry'] = 'Турель с газовым минометом',
       ['Gas damage taken'] = 'Получаемый урон от газа',
@@ -9573,6 +10145,8 @@ MOD.langs = {
       ['Gatekeeper'] = 'Сторож',
       ['Gatling Sentry'] = '«Турель Гатлинга»',
       ['Gazer'] = 'Наблюдатель',
+      ['Gazer Spire'] = 'Шпиль «Наблюдатель»',
+      ['General'] = 'Общие',
       ['Generator'] = 'Генератор',
       ['Get in and out speed (x)'] = 'Скорость посадки и высадки (x)',
       ['Giga Grenade'] = 'Гигаграната',
@@ -9585,6 +10159,7 @@ MOD.langs = {
       ['Grenade Launcher'] = '«Гранатомет»',
       ['Grenade Pistol'] = '«Пистолет-гранатомет»',
       ['Grenade fired (choice)'] = 'Выпускаемая граната (выбор)',
+      ['Grenade launcher rounds use 80, most rounds 83.'] = 'Снаряды гранатомётов используют 80, большинство снарядов 83.',
       ['Grenade selection takes priority over Projectile swap. Fire rate, ammo and handling stay.'] = 'Выбор гранаты важнее замены снаряда. Скорострельность, боеприпасы и управление не меняются.',
       ['Grenade swap'] = 'Замена гранаты',
       ['Grenade swap stopped (see the log); launchers fire their own projectiles again.'] = 'Замена гранат остановлена (см. журнал); гранатометы снова стреляют своими снарядами.',
@@ -9600,6 +10175,8 @@ MOD.langs = {
       ['Gunslinger'] = 'Стрелок',
       ['HANDLING'] = 'УПРАВЛЕНИЕ',
       ['Hit effect damage type'] = 'Тип урона эффекта попадания',
+      ['HEAVY'] = 'ТЯЖЕЛАЯ',
+      ['HELMETS'] = 'ШЛЕМЫ',
       ['HMG Emplacement'] = '«Огневая позиция: тяжелый пулемет»',
       ['Halt'] = 'Стоп',
       ['Handbrake strength'] = 'Сила ручного тормоза',
@@ -9612,6 +10189,7 @@ MOD.langs = {
       ['Head health'] = 'Здоровье головы',
       ['Head hits: damage to your health (x)'] = 'Попадания в голову: урон здоровью (x)',
       ['Head zone'] = 'Голова',
+      ['Headplate'] = 'Головная пластина',
       ['Health'] = 'Здоровье',
       ['Health (x)'] = 'Здоровье (x)',
       ['Health Pack Rack'] = 'Стойка с аптечками',
@@ -9621,7 +10199,9 @@ MOD.langs = {
       ['Heat per second firing'] = 'Нагрев за секунду стрельбы',
       ['Heat per shot'] = 'Нагрев за выстрел',
       ['Heat per warp (%)'] = 'Нагрев за варп (%)',
+      ['Heatsink'] = 'Теплоотвод',
       ['Heatsinks from supply'] = 'Радиаторы из снабжения',
+      ['Heavier: speeds up and stops more slowly, shoves enemies and wrecks aside, and is harder to flip.'] = 'Тяжелее: медленнее разгоняется и тормозит, расталкивает врагов и обломки, труднее перевернуть.',
       ['Heavy Devastator'] = 'Тяжелый разрушитель',
       ['Heavy Devastator shield'] = 'Щит тяжелого разрушителя',
       ['Heavy Fusion Cannon'] = 'Тяжелая термоядерная пушка',
@@ -9632,9 +10212,12 @@ MOD.langs = {
       ['Height the shells fall from (m)'] = 'Высота, с которой падают снаряды (м)',
       ['Held this long, it blows up. 600 = it never does.'] = 'Если держать заряд столько, оружие взрывается. 600 = никогда.',
       ['Helldiver'] = 'Адский десантник',
+      ['Helldivers 2 is already running.'] = 'Helldivers 2 уже запущена.',
+      ['Helldivers 2 is not running.'] = 'Helldivers 2 не запущена.',
       ['Helldivers 2 is running: close it, then Install.'] = 'Helldivers 2 запущена: закройте её, затем нажмите «Установить в игру».',
       ['Helldivers 2 is running: close it, then restore.'] = 'Helldivers 2 запущена: закройте её, затем верните файлы.',
       ['Helldivers 2 is running: you can edit, but close it before you Install.'] = 'Helldivers 2 запущена: редактировать можно, но перед установкой закройте её.',
+      ['Helldivers 2 was closed.'] = 'Helldivers 2 закрыта.',
       ['Hellpod'] = 'Адская капсула',
       ['Hellpod: initial drop'] = 'Адская капсула: первая высадка',
       ['Hellpod: reinforcement'] = 'Адская капсула: подкрепление',
@@ -9644,6 +10227,9 @@ MOD.langs = {
       ['High Dissipation Heatsink'] = 'Высокоэффективный радиатор',
       ['High Explosive'] = '«Фугасная»',
       ['High-Velocity Shrapnel'] = 'Высокоскоростной снаряд со шрапнелью',
+      ['Higher: a stiffer ride, less lean in turns, bumps kick harder.'] = 'Больше: жёстче ход, меньше крен в поворотах, кочки бьют сильнее.',
+      ['Higher: leans more and tips over in sharp turns.'] = 'Выше: сильнее кренится и опрокидывается в крутых поворотах.',
+      ['Higher: stops in a shorter distance. Too high locks the wheels, and it skids instead of stopping.'] = 'Больше: короче тормозной путь. Слишком много: колёса блокируются, и машину заносит.',
       ['Highest ledge it climbs (m)'] = 'Макс. высота уступа для подъёма (м)',
       ['Hijack Tech Hub Nexus Machine'] = 'Машина узла техцентра',
       ['Hips'] = 'Таз',
@@ -9669,10 +10255,17 @@ MOD.langs = {
       ['Hover time, holding height (s)'] = 'Парение: удержание высоты (с)',
       ['How close the view gets when you aim: 1 is the normal view, 2 twice as close, 4 four times.'] = 'Насколько приближается вид при прицеливании: 1 — обычный вид, 2 — вдвое ближе, 4 — вчетверо.',
       ['How close this zoom step looks: 1 is the normal view, 2 twice as close, 4 four times.'] = 'Насколько приближает эта ступень: 1 обычный вид, 2 в два раза ближе, 4 в четыре раза.',
+      ['How fast the engine may spin before it stops pulling. Higher: a higher top speed in every gear,'] = 'До каких оборотов двигатель продолжает тянуть. Больше: выше максимальная скорость на всех передачах,',
+      ['How fast the springs settle after a bump. Higher: settles at once, a firmer ride.'] = 'Как быстро подвеска успокаивается после кочки. Больше: сразу, ход жёстче.',
       ['How fast their animations play. Most attacks follow the animation, so they come sooner or later too.'] = 'Как быстро проигрываются их анимации. Большинство атак следуют анимации, поэтому они тоже происходят раньше или позже.',
+      ['How hard the engine pushes. Higher: faster acceleration and steeper hills, but more wheelspin.'] = 'Сила тяги двигателя. Больше: быстрее разгон и круче подъёмы, но больше пробуксовки.',
+      ['How high the balance point sits. Lower (even below 0): stays flat in hard turns and over rocks.'] = 'Высота центра тяжести. Ниже (даже меньше 0): держится ровно в резких поворотах и на камнях.',
       ['How long the round waits after the hit (or after the blast proximity trips) before it goes off.'] = 'Сколько снаряд ждёт после попадания (или после срабатывания дистанции подрыва), прежде чем взорваться.',
       ['How many bombs one run drops and how they land. The bombs stay this Eagle\'s own.'] = 'Сколько бомб сбрасывает один заход и как они ложатся. Бомбы остаются своими для этого «Орла».',
+      ['How many times the round can bounce off a surface. 0: it never bounces back at you.'] = 'Сколько раз снаряд может отскочить от поверхности. 0: он никогда не отскочит обратно в вас.',
+      ['How much this gear multiplies the engine. Higher: stronger pull, but it tops out sooner.'] = 'Во сколько раз передача усиливает двигатель. Больше: сильнее тяга, но раньше упирается в предел.',
       ['How quickly the scoped view catches up when you move your aim at this zoom (0.6 on most optics).'] = 'Как быстро вид в прицеле догоняет наведение на этом увеличении (0,6 у большинства прицелов).',
+      ['How well the tyres hold the ground. Higher: sharper turns, less sliding and wheelspin.'] = 'Насколько шины держат дорогу. Больше: круче повороты, меньше заносов и пробуксовки.',
       ['Hulk'] = 'Глыба',
       ['Hulk Bruiser'] = 'Глыба-крушитель',
       ['Hulk Firebomber'] = 'Огненная глыба',
@@ -9695,6 +10288,8 @@ MOD.langs = {
       ['Impact flag (+140)'] = 'Флаг удара (+140)',
     ['Can expire after impact (+140)'] = 'Истекает после удара (+140)',
       ['Impaler'] = 'Пронзатель',
+      ['In every mission, whatever your loadout. It takes no loadout slot. Applies on Install.'] = 'В каждой миссии, при любом снаряжении. Не занимает слот. Применяется при установке.',
+      ['In the primary slot it is not thrown away when empty: it stays in your hands until you pick up another weapon.'] = 'В основном слоте не выбрасывается, когда пусто: остаётся в руках, пока не подберёте другое оружие.',
       ['In-game text'] = 'Текст в игре',
       ['Incendiary'] = '«Зажигательная»',
       ['Incendiary Impact'] = 'Зажигательная ударная',
@@ -9710,6 +10305,8 @@ MOD.langs = {
       ['Inner torso'] = 'Внутренний торс',
       ['Insides'] = 'Внутренности',
       ['Install into the game'] = 'Установить в игру',
+      ['Install loads up to 6 such weapons into every mission, so nobody has to bring them. A support weapon brings its own.'] = 'Установка загружает до 6 таких видов оружия в каждую миссию, так что брать их не нужно. Оружие поддержки приносит своё сам.',
+      ['Installed, but not everything fits. Some projectiles may show no trail, and some Always bring it stratagems stay out of missions.'] = 'Установлено, но поместилось не всё. У некоторых снарядов может не быть следа, а часть стратагем «Брать всегда» не попадёт в миссии.',
       ['Installing: finding what changed...'] = 'Установка: поиск изменений...',
       ['Installing: writing the files...'] = 'Установка: запись файлов...',
       ['Integrated Explosives'] = 'Встроенная взрывчатка',
@@ -9717,6 +10314,7 @@ MOD.langs = {
       ['Inverted aim assist (experimental)'] = 'Обратная помощь прицеливания (эксперимент.)',
       ['Iron Sights'] = 'Механический прицел',
       ['Iron fleet'] = 'Железный флот',
+      ['It does not raise the top speed by itself: that comes from the engine speed and the gears.'] = 'Сама по себе не поднимает максимальную скорость: её задают обороты двигателя и передачи.',
       ['It doesn\'t take a loadout slot, but the HUD\'s stratagem list can fill up.'] = 'Она не занимает слот снаряжения, но список стратагем на HUD может заполниться.',
       ['Items per drop'] = 'Предметов за сброс',
       ['Its effects are added to every armor with this passive.'] = 'Его эффекты добавляются всей броне с этим пассивным эффектом.',
@@ -9729,6 +10327,7 @@ MOD.langs = {
       ['Jammer'] = 'глушилка',
       ['Jamming'] = 'Глушение',
       ['Jaws'] = 'Челюсти',
+      ['Jetpack'] = 'Реактивный ранец',
       ['Jog speed (m/s)'] = 'Скорость бега трусцой (м/с)',
       ['Jogging empties it in (s)'] = 'Бег трусцой расходует её за (с)',
       ['Jump'] = 'прыжок',
@@ -9758,6 +10357,7 @@ MOD.langs = {
       ['LIFT-182 Warp Pack'] = 'LIFT-182 Варп-ранец',
       ['LIFT-850 Jump Pack'] = 'LIFT-850 «Реактивный ранец»',
       ['LIFT-860 Hover Pack'] = 'LIFT-860 Ранец для парения',
+      ['LIGHT'] = 'ЛЕГКАЯ',
       ['Landed ship door shield'] = 'Щит двери севшего корабля',
       ['Language'] = 'Язык',
       ['Large'] = 'большой',
@@ -9780,10 +10380,13 @@ MOD.langs = {
       ['Lb wing'] = 'Левое заднее крыло',
       ['Left'] = 'Слева',
       ['Left arm'] = 'Левая рука',
+      ['Left arm armor'] = 'Броня левой руки',
       ['Left arm health'] = 'Здоровье левой руки',
+      ['Left arm weakspot'] = 'Слабая точка левой руки',
       ['Left armor'] = 'Левая броня',
       ['Left arms'] = 'Левые руки',
       ['Left back leg'] = 'Левая задняя нога',
+      ['Left back leg armor'] = 'Броня левой задней ноги',
       ['Left back panel'] = 'Левая задняя панель',
       ['Left back thruster'] = 'Левый задний двигатель',
       ['Left back track bar'] = 'Левая задняя штанга гусеницы',
@@ -9795,6 +10398,7 @@ MOD.langs = {
       ['Left box 2'] = 'Левый ящик 2',
       ['Left chest'] = 'Левая грудь',
       ['Left claw'] = 'Левая клешня',
+      ['Left collar'] = 'Левый воротник',
       ['Left elbow'] = 'Левый локоть',
       ['Left extra elbow'] = 'Левый дополнительный локоть',
       ['Left foot'] = 'Левая ступня',
@@ -9803,12 +10407,14 @@ MOD.langs = {
       ['Left front door'] = 'Левая передняя дверь',
       ['Left front face'] = 'Левая передняя грань',
       ['Left front leg'] = 'Левая передняя нога',
+      ['Left front leg armor'] = 'Броня левой передней ноги',
       ['Left front light'] = 'Левая передняя фара',
       ['Left front thruster'] = 'Левый передний двигатель',
       ['Left front track bar'] = 'Левая передняя штанга гусеницы',
       ['Left front track knee'] = 'Левое переднее колено гусеницы',
       ['Left front wing flap'] = 'Левый передний закрылок',
       ['Left gun'] = 'Левое орудие',
+      ['Left gun weakspot'] = 'Слабая точка левого орудия',
       ['Left hand'] = 'Левая кисть',
       ['Left head'] = 'левая голова',
       ['Left head flap'] = 'Левый щиток головы',
@@ -9818,6 +10424,8 @@ MOD.langs = {
       ['Left leg health'] = 'Здоровье левой ноги',
       ['Left leg shield'] = 'Щит левой ноги',
       ['Left legs'] = 'Левые ноги',
+      ['Left lower arm'] = 'Левое предплечье',
+      ['Left lower leg'] = 'Левая голень',
       ['Left middle leg'] = 'Левая средняя нога',
       ['Left middle wing'] = 'Левое среднее крыло',
       ['Left mirror'] = 'Левое зеркало',
@@ -9843,10 +10451,13 @@ MOD.langs = {
       ['Left torso'] = 'Левый торс',
       ['Left track'] = 'Левая гусеница',
       ['Left tracks'] = 'Левые гусеницы',
+      ['Left upper leg'] = 'Левое бедро',
+      ['Left upper leg top'] = 'Верх левого бедра',
       ['Left weapon bay'] = 'Левый оружейный отсек',
       ['Left wing'] = 'Левое крыло',
       ['Left wrist blade'] = 'Клинок на левом запястье',
       ['Leg injury immunity (1 on)'] = 'Иммунитет к ранению ног (1 — вкл.)',
+      ['Less: bumps go straight into the body and it wobbles.'] = 'Меньше: кочки бьют прямо в корпус, и он раскачивается.',
       ['Leveller'] = 'Уравнитель',
       ['Leviathan'] = 'Левиафан',
       ['Leviathan bomb'] = 'Бомба левиафана',
@@ -9860,6 +10471,7 @@ MOD.langs = {
       ['Lifetime (s)'] = 'Время жизни (с)',
       ['Light armor'] = 'Лёгкая броня',
       ['Light, medium or heavy, per armor (every armor set with that name).'] = 'Лёгкая, средняя или тяжёлая, для каждой брони (все комплекты с этим названием).',
+      ['Lighter: quicker off the line, but bounces over bumps and gets thrown around by explosions.'] = 'Легче: резвее с места, но подпрыгивает на кочках, и его отбрасывает взрывами.',
       ['Limb health'] = 'Здоровье конечностей',
       ['Limb injury avoidance'] = 'Защита конечностей от ранений',
       ['Load'] = 'Загрузить',
@@ -9874,6 +10486,9 @@ MOD.langs = {
       ['Lower back'] = 'Нижняя спина',
       ['Lower it if a high zoom spins the view.'] = 'Уменьшите, если на большом увеличении вид крутится.',
       ['Lower spine'] = 'Нижний хребет',
+      ['Lower: a softer ride, the body leans in turns and sags.'] = 'Меньше: мягче ход, корпус кренится в поворотах и проседает.',
+      ['Lower: faster in this gear, weaker on hills and from a stop.'] = 'Меньше: быстрее на этой передаче, слабее в гору и с места.',
+      ['Lower: keeps bouncing after every bump.'] = 'Меньше: раскачивается после каждой кочки.',
       ['Lowest patrol frequency (x)'] = 'Минимальная частота патрулей (x)',
       ['Lowest rates'] = 'Нижние пределы частоты',
       ['Lowest reinforcement frequency (x)'] = 'Минимальная частота подкреплений (x)',
@@ -9894,7 +10509,13 @@ MOD.langs = {
       ['M90A Shotgun'] = 'M90A Дробовик',
       ['MA5C Assault Rifle'] = 'MA5C Штурмовая винтовка',
       ['Max ricochets'] = 'Макс. рикошетов',
+      ['MACHINE GUN'] = 'ПУЛЕМЕТ',
+      ['MARKSMAN RIFLE'] = 'МАРКСМАНСКАЯ ВИНТОВКА',
+      ['MECHAS'] = 'МЕХИ',
+      ['MEDIUM'] = 'СРЕДНЯЯ',
+      ['MELEE'] = 'БЛИЖНИЙ БОЙ',
       ['MG Emplacement'] = 'Пулеметная позиция',
+      ['MG Raider'] = 'Налетчик-пулеметчик',
       ['MG-206 Heavy Machine Gun'] = 'MG-206 «Тяжелый пулемет»',
       ['MG-206 Heavy Machine Gun (mounted B)'] = 'MG-206 «Тяжелый пулемет» (станковый B)',
       ['MG-43 Machine Gun'] = 'MG-43 «Пулемет»',
@@ -9902,15 +10523,18 @@ MOD.langs = {
       ['MGX-42 Bullet Storm'] = 'MGX-42 «Шквал пуль»',
       ['MINEFIELD'] = 'МИННОЕ ПОЛЕ',
       ['MISSILE FLIGHT'] = 'ПОЛЕТ РАКЕТЫ',
+      ['MISSION'] = 'ЗАДАНИЕ',
       ['MLS-4X Commando'] = 'MLS-4X «Коммандос»',
       ['MP-98 Knight'] = 'MP-98 Рыцарь',
       ['MS-11 Solo Silo'] = 'MS-11 Одиночная пусковая шахта',
+      ['MUZZLE'] = 'ДУЛО',
       ['Machete'] = 'Мачете',
       ['Machine Gun'] = '«Пулемет»',
       ['Machine Gun Sentry'] = '«Пулеметная турель»',
       ['Made by SHODAN'] = 'Автор: SHODAN',
       ['Maelstrom'] = 'Водоворот',
       ['Magazine size'] = 'Размер магазина',
+      ['Magazine size (x)'] = 'Размер магазина (x)',
       ['Magazines from supply'] = 'Магазины из снабжения',
       ['Main'] = 'Основа',
       ['Main body'] = 'Основное тело',
@@ -9918,6 +10542,7 @@ MOD.langs = {
       ['Marauder'] = 'Хищник',
       ['Marker radar scan every (s)'] = 'Радарное сканирование меток каждые (с)',
       ['Mass (kg)'] = 'Масса (кг)',
+      ['Max bounces'] = 'Макс. отскоков',
       ['Max carried'] = 'Макс. при себе',
       ['Max flight time (s)'] = 'Макс. время полета (с)',
       ['Max spare heatsinks'] = 'Макс. запасных радиаторов',
@@ -9930,6 +10555,7 @@ MOD.langs = {
       ['Medium Plasma Bolt'] = 'Средний заряд плазмы',
       ['Medium armor'] = 'Средняя броня',
       ['Melee'] = 'Ближний бой',
+      ['Melee armor penetration (+)'] = 'Бронепробитие в ближнем бою (+)',
       ['Melee damage'] = 'Урон в ближнем бою',
       ['Melta Mine'] = 'Плавкомина',
       ['Meltagun'] = 'Плавкопушка',
@@ -9948,6 +10574,7 @@ MOD.langs = {
       ['Mist'] = '«Дымка»',
       ['Modifier patrol frequency (x)'] = 'Частота патрулей модификатора (x)',
       ['Modifier patrol size (x)'] = 'Размер патрулей модификатора (x)',
+      ['More: soaks up big bumps and keeps the wheels on the ground on rough terrain.'] = 'Больше: глотает крупные кочки, колёса не отрываются от земли на бездорожье.',
       ['Mortar Sentry'] = '«Турель с минометом»',
       ['Most suppression'] = 'Максимальное подавление',
       ['Mouth'] = 'Пасть',
@@ -9967,13 +10594,21 @@ MOD.langs = {
       ['Neck armor'] = 'Броня шеи',
       ['Neck body'] = 'Шея (тело)',
       ['Never'] = 'Никогда',
+      ['No bolt pull'] = 'Без передёргивания затвора',
       ['No changes: loading it puts every value back to the game\'s.'] = 'Изменений нет: загрузка вернет все значения игры.',
+      ['No description'] = 'Без описания',
+      ['No free preset place: delete one first.'] = 'Нет свободного места: сначала удалите пресет.',
+      ['No other vehicle has this section.'] = 'Ни у какой другой техники нет этого раздела.',
+      ['No page in this editor uses this id.'] = 'Ни одна страница редактора не использует этот id.',
+      ['No passive.'] = 'Нет пассивки.',
+      ['No passives'] = 'Без пассивок',
       ['No presets yet.'] = 'Пресетов пока нет.',
       ['Noise'] = 'Шум',
       ['Noise template'] = 'Шаблон шума',
       ['None'] = 'Нет',
       ['Normal projectile'] = 'Обычный снаряд',
       ['Not offered by the game: a laser built on the Scythe.'] = 'Игра его не предлагает: лазер на основе «Косы».',
+      ['Not offered on backpack weapons: their backpack does not attach when the weapon is in your primary slot.'] = 'Нет у оружия с рюкзаком: рюкзак не подключается, если оружие в основном слоте.',
       ['Not used by any weapon or stratagem in this list.'] = 'Ни одно оружие или стратагема в этом списке его не использует.',
       ['Nothing matches.'] = 'Ничего не найдено.',
       ['Nothing to install: your values are the game\'s own.'] = 'Устанавливать нечего: ваши значения совпадают с игровыми.',
@@ -9982,7 +10617,10 @@ MOD.langs = {
       ['Nursing Spewer'] = 'Кормящий блевун',
       ['OFFLINE  -  edits the game\'s files; they apply when the game starts'] = 'ОФЛАЙН  -  меняет файлы игры; изменения действуют при запуске игры',
       ['OK'] = 'ОК',
+      ['OPTICS'] = 'ПРИЦЕЛЫ',
       ['ORBITAL BEAM'] = 'ОРБИТАЛЬНЫЙ ЛУЧ',
+      ['ORBITAL STRIKES'] = 'ОРБИТАЛЬНОЕ',
+      ['OTHER'] = 'ДРУГОЕ',
       ['Objective'] = 'цель задания',
       ['Off'] = 'Выкл',
       ['Off: its stats above are left out; only the passives below apply.'] = 'Выкл.: его характеристики выше не действуют; действуют только эффекты ниже.',
@@ -9992,6 +10630,7 @@ MOD.langs = {
       ['On'] = 'Вкл',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = 'Вкл: в снаряжение можно взять больше одного экзокостюма, МТР или танка.',
       ['On: in your armory / stratagem list.'] = 'Вкл: в вашем арсенале / списке стратагем.',
+      ['On: shows the Up, Down, < and > buttons by the lists. The mouse wheel, scroll bars and keys work either way.'] = 'Вкл.: показывает кнопки вверх, вниз, < и > у списков. Колесо мыши, полосы прокрутки и клавиши работают в любом случае.',
       ['On: sniper rifles show a crosshair when you aim in third person.'] = 'Вкл.: снайперские винтовки показывают прицел при прицеливании от третьего лица.',
       ['On: stratagem balls stick on more surfaces instead of bouncing off.'] = 'Вкл.: маяки стратагем прилипают к большему числу поверхностей, а не отскакивают.',
       ['On: your '] = 'Вкл: ваши ',
@@ -10000,9 +10639,12 @@ MOD.langs = {
       ['One True Flag'] = 'Один истинный флаг',
       ['One-Two'] = 'Двоечка',
       ['One-handed'] = 'Одной рукой',
+      ['Only this armor gets it.'] = 'Получит только эта броня.',
+      ['Only this armor. Each passive\'s values are on its own page, below the armors.'] = 'Только эта броня. Значения каждой пассивки на её странице, под бронёй.',
       ['Only works with the blast angle at 360, and the distance has to be larger than one step of the round:'] = 'Работает только при угле взрыва 360, и дистанция должна быть больше шага снаряда за кадр:',
       ['Open'] = 'Открыть',
       ['Open / close key'] = 'Клавиша открытия / закрытия',
+      ['Open all'] = 'Открыть все',
       ['Opened the GitHub page in your browser.'] = 'Страница GitHub открыта в браузере.',
       ['Opened the folder.'] = 'Папка открыта.',
       ['Opened the log folder.'] = 'Папка журналов открыта.',
@@ -10024,7 +10666,6 @@ MOD.langs = {
       ['Orbital beam'] = 'Орбитальный луч',
       ['Orbital strike.'] = 'Орбитальный удар.',
       ['Other players are in your game: arc chain length / split use the game\'s values.'] = 'В вашей игре другие игроки: длина и разветвление цепи дуги берутся из игры.',
-      ['Otherwise the shot still works but may fly without its trail.'] = 'Иначе выстрел работает, но может лететь без следа.',
       ['Outcast'] = 'изгой',
       ['Outer radius (m)'] = 'Внешний радиус (м)',
       ['Outpost garrison size (x)'] = 'Размер гарнизона аванпоста (x)',
@@ -10051,12 +10692,15 @@ MOD.langs = {
       ['P-92 Warrant'] = 'P-92 Ордер',
       ['P/40-K Bolt Pistol'] = 'P/40-K Болтострел',
       ['PASSIVE'] = 'ПАССИВНЫЙ ЭФФЕКТ',
+      ['PASSIVES'] = 'ПАССИВКИ',
+      ['PISTOL'] = 'ПИСТОЛЕТ',
       ['PLAS-1 Scorcher'] = 'PLAS-1 «Поджигатель»',
       ['PLAS-101 Purifier'] = 'PLAS-101 «Очиститель»',
       ['PLAS-15 Loyalist'] = 'PLAS-15 Верный',
       ['PLAS-39 Accelerator Rifle'] = 'PLAS-39 Акселераторная винтовка',
       ['PLAS-45 Epoch'] = 'PLAS-45 Эпоха',
       ['PRESETS'] = 'ПРЕСЕТЫ',
+      ['PRIMARY'] = 'ОСНОВНОЕ ОРУЖИЕ',
       ['PROJECTILE'] = 'СНАРЯД',
       ['Projectile flags (bits)'] = 'Флаги снаряда (биты)',
       ['PROJECTILE SWAP'] = 'ЗАМЕНА СНАРЯДА',
@@ -10070,6 +10714,11 @@ MOD.langs = {
       ['Partial charge explosion'] = 'Взрыв с частичным зарядом',
       ['Partial charge shot'] = 'Выстрел с частичным зарядом',
       ['Passive'] = 'Пассивный эффект',
+      ['Passive text'] = 'Текст пассивки',
+      ['Past that, the trail needs someone in the mission to bring that weapon.'] = 'Сверх этого след появится, только если кто-то в миссии возьмёт это оружие.',
+      ['Paste a code here'] = 'Вставьте код сюда',
+      ['Paste code'] = 'Вставить код',
+      ['Path start (0 to 1)'] = 'Начало пути (от 0 до 1)',
       ['Patriot Exosuit'] = 'Экзокостюм «Патриот»',
       ['Patrol frequency (x)'] = 'Частота патрулей (x)',
       ['Patrolling speed (m/s)'] = 'Скорость патрулирования (м/с)',
@@ -10087,6 +10736,7 @@ MOD.langs = {
       ['Picked up into: Support slot'] = 'Подбирается в: слот поддержки',
       ['Picking it up puts it in your primary slot instead (1), in place of your primary. 3 = the support slot.'] = 'При подборе оружие встаёт в основной слот (1) вместо вашего основного. 3 = слот поддержки.',
       ['Pickup'] = 'Подбор',
+      ['Pilot'] = 'Пилот',
       ['Pilot light goes out after (s)'] = 'Запальник гаснет через (с)',
       ['Pilot seat'] = 'Кресло пилота',
       ['Pineapple'] = 'Лимонка',
@@ -10098,6 +10748,9 @@ MOD.langs = {
       ['Position scatter (m)'] = 'Разброс позиции (м)',
       ['Pouncer'] = 'Прыгун',
       ['Predator Hunter'] = 'Хищный охотник',
+      ['Predator Stalker'] = 'Хищный следопыт',
+      ['Preset:'] = 'Пресет:',
+      ['Preset: none'] = 'Пресет: нет',
       ['Presets'] = 'Пресеты',
       ['Press a key (Esc cancels)'] = 'Нажмите клавишу (Esc — отмена)',
       ['Press the key that should open and close the panel: F1-F12, Insert, Home, End, Pause or Scroll Lock. Esc cancels.'] = 'Нажмите клавишу для открытия и закрытия панели: F1-F12, Insert, Home, End, Pause или Scroll Lock. Esc — отмена.',
@@ -10107,7 +10760,9 @@ MOD.langs = {
       ['Projectile explosion id'] = 'Взрыв снаряда: ID',
       ['Projectile fired (id)'] = 'Выпускаемый снаряд (id)',
       ['Projectile swap'] = 'Замена снаряда',
+      ['Projectile swap shares those 4, so weapons it loads leave fewer here.'] = 'Замена снаряда делит эти 4 места, поэтому загруженное ею оружие оставляет меньше мест здесь.',
       ['Projectiles per shot'] = 'Снарядов за выстрел',
+      ['Projectiles with no trail:'] = 'Снаряды без следа:',
       ['Prone speed (m/s)'] = 'Скорость ползком (м/с)',
       ['Punisher'] = '«Каратель»',
       ['Punisher Plasma'] = '«Плазменный каратель»',
@@ -10137,6 +10792,7 @@ MOD.langs = {
       ['Ricochet spread vertical (deg)'] = 'Разброс рикошета по вертикали (град)',
       ['Ricochet threshold angle (deg)'] = 'Порог рикошета, угол (град)',
       ['Ricochet threshold speed (m/s)'] = 'Порог рикошета, скорость (м/с)',
+      ['RECORDS'] = 'ЗАПИСИ',
       ['RL-77 Airburst Rocket Launcher'] = 'RL-77 «Ракетница с подрывом в воздухе»',
       ['ROUND 1 BLAST'] = 'ВЗРЫВ ВЫСТРЕЛА 1',
       ['ROUND 1 BLAST RADIUS'] = 'РАДИУС ВЗРЫВА ВЫСТРЕЛА 1',
@@ -10169,6 +10825,7 @@ MOD.langs = {
       ['Rear brake strength'] = 'Тормоза задних колёс',
       ['Rear cockpit'] = 'Задняя кабина',
       ['Rear damping'] = 'Демпфирование сзади',
+      ['Rear sight range (m)'] = 'Дальность заднего зрения (м)',
       ['Rear spring stiffness'] = 'Жёсткость задней подвески',
       ['Rear suspension travel'] = 'Ход задней подвески',
       ['Rear wheel grip'] = 'Сцепление задних колёс',
@@ -10194,6 +10851,7 @@ MOD.langs = {
       ['Regeneration (health/s)'] = 'Регенерация (здоровье/с)',
       ['Regeneration delay after damage (s)'] = 'Задержка регенерации после урона (с)',
       ['Reinforced Epaulettes'] = 'Армированные эполеты',
+      ['Reinforced Scout Strider'] = 'Укрепленный шатун-разведчик',
       ['Reinforcement frequency (x)'] = 'Частота подкреплений (x)',
       ['Reinforcement size (x)'] = 'Размер подкреплений (x)',
       ['Reinforcements'] = 'Подкрепления',
@@ -10207,8 +10865,10 @@ MOD.langs = {
       ['Rename'] = 'Переимен.',
       ['Reprimand'] = 'Взыскание',
       ['Reset all values'] = 'Сбросить все значения',
+      ['Reset armor'] = 'Сбросить броню',
       ['Reset booster'] = 'Сбросить усиление',
       ['Reset enemy'] = 'Сбросить врага',
+      ['Reset every value in this current preset to default.'] = 'Сбросить все значения текущего пресета.',
       ['Reset helldiver'] = 'Сбросить десантника',
       ['Reset passive'] = 'Сброс эффекта',
       ['Reset record'] = 'Сбросить запись',
@@ -10224,10 +10884,13 @@ MOD.langs = {
       ['Rifle Justice. Short '] = 'Винтовка «Правосудие». Короткий магазин',
       ['Right'] = 'Справа',
       ['Right arm'] = 'Правая рука',
+      ['Right arm armor'] = 'Броня правой руки',
       ['Right arm health'] = 'Здоровье правой руки',
+      ['Right arm weakspot'] = 'Слабая точка правой руки',
       ['Right armor'] = 'Правая броня',
       ['Right arms'] = 'Правые руки',
       ['Right back leg'] = 'Правая задняя нога',
+      ['Right back leg armor'] = 'Броня правой задней ноги',
       ['Right back panel'] = 'Правая задняя панель',
       ['Right back thruster'] = 'Правый задний двигатель',
       ['Right back track bar'] = 'Правая задняя штанга гусеницы',
@@ -10238,6 +10901,7 @@ MOD.langs = {
       ['Right box 1'] = 'Правый ящик 1',
       ['Right box 2'] = 'Правый ящик 2',
       ['Right claw'] = 'Правая клешня',
+      ['Right collar'] = 'Правый воротник',
       ['Right elbow'] = 'Правый локоть',
       ['Right extra elbow'] = 'Правый дополнительный локоть',
       ['Right foot'] = 'Правая ступня',
@@ -10246,11 +10910,13 @@ MOD.langs = {
       ['Right front door'] = 'Правая передняя дверь',
       ['Right front face'] = 'Правая передняя грань',
       ['Right front leg'] = 'Правая передняя нога',
+      ['Right front leg armor'] = 'Броня правой передней ноги',
       ['Right front light'] = 'Правая передняя фара',
       ['Right front track bar'] = 'Правая передняя штанга гусеницы',
       ['Right front track knee'] = 'Правое переднее колено гусеницы',
       ['Right front wing flap'] = 'Правый передний закрылок',
       ['Right gun'] = 'Правое орудие',
+      ['Right gun weakspot'] = 'Слабая точка правого орудия',
       ['Right hand'] = 'Правая кисть',
       ['Right head'] = 'правая голова',
       ['Right head flap'] = 'Правый щиток головы',
@@ -10261,6 +10927,8 @@ MOD.langs = {
       ['Right leg health'] = 'Здоровье правой ноги',
       ['Right leg shield'] = 'Щит правой ноги',
       ['Right legs'] = 'Правые ноги',
+      ['Right lower arm'] = 'Правое предплечье',
+      ['Right lower leg'] = 'Правая голень',
       ['Right middle leg'] = 'Правая средняя нога',
       ['Right middle wing'] = 'Правое среднее крыло',
       ['Right mirror'] = 'Правое зеркало',
@@ -10286,12 +10954,16 @@ MOD.langs = {
       ['Right torso'] = 'Правый торс',
       ['Right track'] = 'Правая гусеница',
       ['Right tracks'] = 'Правые гусеницы',
+      ['Right upper leg'] = 'Правое бедро',
+      ['Right upper leg top'] = 'Верх правого бедра',
       ['Right weapon bay'] = 'Правый оружейный отсек',
       ['Right wing'] = 'Правое крыло',
       ['Right wrist blade'] = 'Клинок на правом запястье',
       ['Rock Solid'] = 'Кремень',
       ['Rocket Devastator'] = 'Разрушитель-ракетчик',
+      ['Rocket Raider'] = 'Налетчик-ракетчик',
       ['Rocket Sentry'] = '«Ракетная турель»',
+      ['Rocket fired (id)'] = 'Ракета (id)',
       ['Rocket pods'] = 'Ракетные блоки',
       ['Rooted (experimental)'] = 'Обездвиживание (эксперимент.)',
       ['Rotator'] = 'Ротор',
@@ -10320,6 +10992,8 @@ MOD.langs = {
       ['SEAF soldier: an ally.'] = 'Солдат SEAF: союзник.',
       ['SEAF wave cooldown (x)'] = 'Перезарядка волн СЕАФ (x)',
       ['SECOND MODE'] = 'ВТОРОЙ РЕЖИМ',
+      ['SECONDARY'] = 'ДОПОЛНИТЕЛЬНОЕ ОРУЖИЕ',
+      ['SENTRIES'] = 'ТУРЕЛИ',
       ['SG-20 Halt'] = 'SG-20 Стоп',
       ['SG-22 Bushwhacker'] = 'SG-22 «Партизан»',
       ['SG-225 Breaker'] = 'SG-225 «Крушитель»',
@@ -10336,9 +11010,11 @@ MOD.langs = {
       ['SH-51 Directional Shield'] = 'SH-51 Щит направленного действия',
       ['SHARED WITH'] = 'ОБЩЕЕ С',
       ['SHIELD'] = 'ЩИТ',
+      ['SHIELD BASH'] = 'УДАР ЩИТОМ',
       ['SHODAN ENEMY EDITOR'] = 'SHODAN: РЕДАКТОР ВРАГОВ',
       ['SHODAN STAT EDITOR'] = 'РЕДАКТОР ХАРАКТЕРИСТИК SHODAN',
       ['SHODAN weapon mods are running too: they put their own values back every 5 s'] = 'Также работают оружейные моды SHODAN: они возвращают свои значения каждые 5 с',
+      ['SHOTGUN'] = 'ДРОБОВИК',
       ['SHRAPNEL'] = 'ОСКОЛКИ',
       ['SHRAPNEL BLAST RADIUS'] = 'РАДИУС ВЗРЫВА ОСКОЛКОВ',
       ['SHRAPNEL DIRECT HIT'] = 'ПРЯМОЕ ПОПАДАНИЕ ОСКОЛКОВ',
@@ -10355,13 +11031,22 @@ MOD.langs = {
       ['SMG/FLAM-34 Stoker (underbarrel flamer)'] = 'SMG/FLAM-34 Топка (подствольный огнемет)',
       ['Status effect template'] = 'Шаблон статус-эффекта',
       ['Status effect volume'] = 'Объём статус-эффекта',
+      ['SNIPER RIFLE'] = 'СНАЙПЕРСКАЯ ВИНТОВКА',
       ['SPARKS'] = 'ИСКРЫ',
+      ['SPECIAL'] = 'ОСОБОЕ',
+      ['STANDARD'] = 'СТАНДАРТНЫЙ',
       ['STATUS EFFECTS'] = 'СОСТОЯНИЯ',
+      ['STOMP'] = 'ТОПОТ',
       ['STRATAGEM'] = 'СТРАТАГЕМА',
+      ['STRATAGEMS'] = 'СТРАТАГЕМЫ',
+      ['SUBMACHINE GUN'] = 'ПИСТОЛЕТ-ПУЛЕМЕТ',
+      ['SUPPORT'] = 'ПОДДЕРЖКА',
+      ['SUPPORT WEAPONS'] = 'ОРУЖИЕ ПОДДЕРЖКИ',
       ['Safe below heat (%)'] = 'Безопасно ниже нагрева (%)',
       ['Sai'] = 'Сай',
       ['Salvos'] = 'Залпы',
       ['Save'] = 'Сохранить',
+      ['Save current changes'] = 'Сохранить текущие изменения',
       ['Save current changes here'] = 'Сохранить изменения сюда',
       ['Scavenger'] = 'Мусорщик',
       ['Scavenger acid burst'] = 'Кислотный выплеск падальщика',
@@ -10372,11 +11057,29 @@ MOD.langs = {
       ['Scout Strider'] = 'Шатун-разведчик',
       ['Scout walker rider'] = 'пилот шатуна-разведчика',
       ['Scythe'] = '«Коса»',
+      ['Search Automatons'] = 'Поиск автоматонов',
+      ['Search Illuminate'] = 'Поиск светородов',
+      ['Search SEAF'] = 'Поиск СЕАФ',
+      ['Search Terminids'] = 'Поиск терминидов',
+      ['Search armors'] = 'Поиск брони',
+      ['Search attachments'] = 'Поиск модулей',
+      ['Search boosters'] = 'Поиск бустеров',
       ['Search enemies'] = 'Поиск врагов',
+      ['Search items'] = 'Поиск предметов',
+      ['Search mechas'] = 'Поиск техники',
+      ['Search primary weapons'] = 'Поиск основного оружия',
       ['Search radius (m)'] = 'Радиус поиска (м)',
+      ['Search records'] = 'Поиск записей',
+      ['Search secondary weapons'] = 'Поиск дополнительного оружия',
+      ['Search spawning'] = 'Поиск появления врагов',
+      ['Search stratagems'] = 'Поиск стратагем',
+      ['Search support weapons'] = 'Поиск оружия поддержки',
+      ['Search throwables'] = 'Поиск метательного',
       ['Search weapons and stratagems'] = 'Поиск оружия и стратагем',
       ['Searching speed (m/s)'] = 'Скорость поиска (м/с)',
       ['Second ammo'] = 'Второй тип боеприпасов',
+      ['Second ammo (id)'] = 'Вторые боеприпасы (id)',
+      ['Second ammo replaces (1 or 2)'] = 'Вторые боеприпасы заменяют (1 или 2)',
       ['Second mode'] = 'Второй режим',
       ['Second mode explosion'] = 'Взрыв второго режима',
       ['Second mode fires (id)'] = 'Второй режим выпускает (id)',
@@ -10398,11 +11101,15 @@ MOD.langs = {
       ['Several vehicles of a kind'] = 'Несколько машин одного вида',
       ['Shape'] = 'Форма',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = 'Общее для всей брони с этим эффектом. Множители: 1 = без изменений.',
+      ['Shares its name and description with the armor of this name: a change here changes both.'] = 'Название и описание общие с бронёй с этим названием: изменение здесь меняет оба.',
       ['Shear'] = 'Ножницы',
+      ['Shell fired (id)'] = 'Снаряд (id)',
+      ['Shells after it (id)'] = 'Следующие снаряды (id)',
       ['Shells per salvo'] = 'Снарядов в залпе',
       ['Shield'] = 'Щит',
       ['Shield Generator Pack'] = '«Генератор щита»',
       ['Shield arm zone armor'] = 'Броня зоны руки со щитом',
+      ['Shield bash'] = 'Удар щитом',
       ['Shield capacity'] = 'Емкость щита',
       ['Shield emitter'] = 'Излучатель щита',
       ['Shield forcefield'] = 'Защитное поле',
@@ -10428,6 +11135,7 @@ MOD.langs = {
       ['Shrieker Nest'] = 'Гнездо крикунов',
       ['Sickle'] = '«Серп»',
       ['Side'] = 'сбоку',
+      ['Side sight range (m)'] = 'Дальность бокового зрения (м)',
       ['Siege-Ready'] = 'К осаде готов',
       ['Sight cone height (degrees)'] = 'Высота конуса зрения (градусы)',
       ['Sight cone width (degrees)'] = 'Ширина конуса зрения (градусы)',
@@ -10437,6 +11145,7 @@ MOD.langs = {
       ['Silo'] = 'Шахта',
       ['Size'] = 'Размер',
       ['Size (x)'] = 'Размер (x)',
+      ['Skips the bolt pull after each shot. Fire rate, ammo and damage stay as they are.'] = 'Пропускает передёргивание затвора после каждого выстрела. Скорострельность, боезапас и урон не меняются.',
       ['Slide speed / duration'] = 'Скорость / длительность скольжения',
       ['Slope slide ends at (degrees)'] = 'Скольжение по склону до (градусов)',
       ['Slope slide starts at (degrees)'] = 'Скольжение по склону с (градусов)',
@@ -10447,6 +11156,7 @@ MOD.langs = {
       ['Slowed (experimental)'] = 'Замедление (эксперимент.)',
       ['Slugger'] = '«Крушила»',
       ['Small Plasma Bolt'] = 'Малый заряд плазмы',
+      ['Smaller: quicker to speed up, slower at the top, and it scrapes over rocks.'] = 'Меньше: быстрее разгон, ниже максимальная скорость, задевает камни днищем.',
       ['Smoke'] = '«Дымовая»',
       ['Smoke radius, edge (m)'] = 'Радиус дыма, край (м)',
       ['Smoke radius, full (m)'] = 'Радиус дыма, плотный (м)',
@@ -10507,6 +11217,8 @@ MOD.langs = {
       ['Standard Drum'] = 'Стандартный барабанный магазин',
       ['Standard Heatsink'] = 'Стандартный радиатор',
       ['Standard Plasma Container'] = 'Стандартный контейнер для плазмы',
+      ['Start game'] = 'Запустить игру',
+      ['Starting Helldivers 2 through Steam...'] = 'Запуск Helldivers 2 через Steam...',
       ['Starting charges'] = 'Заряды в начале',
       ['Starting count'] = 'Количество в начале',
       ['Starting heatsinks'] = 'Радиаторы в начале',
@@ -10522,6 +11234,7 @@ MOD.langs = {
       ['Stingray'] = 'Хвостокол',
       ['Stoker'] = 'Топка',
       ['Stomach zone'] = 'Брюхо',
+      ['Stomp'] = 'Топот',
       ['Stomp speed (x)'] = 'Скорость топота (x)',
       ['Stops you while firing'] = 'Останавливает при стрельбе',
       ['Strafing speed (m/s)'] = 'Скорость стрейфа (м/с)',
@@ -10531,6 +11244,7 @@ MOD.langs = {
       ['Stratagem jamming radius (m)'] = 'Радиус глушения стратагем (м)',
       ['Stratagem scrambling radius (m)'] = 'Радиус шифрования стратагем (м)',
       ['Stratagems'] = 'Стратагемы',
+      ['Stratagems left out of missions:'] = 'Стратагемы вне миссий:',
       ['Structure.'] = 'Сооружение.',
       ['Stun'] = '«Оглушающая»',
       ['Stun (Illuminate) (experimental)'] = 'Оглушение (Иллюминаты) (эксперимент.)',
@@ -10564,6 +11278,7 @@ MOD.langs = {
       ['Sway multiplier'] = 'Множитель колебания',
       ['Sweeper'] = 'Чистильщик',
       ['Swim speed (m/s)'] = 'Скорость плавания (м/с)',
+      ['TANKS'] = 'ТАНКИ',
       ['TCS support'] = 'Опора TCS',
       ['TD-110 Maelstrom'] = 'TD-110 Водоворот',
       ['TD-220 Bastion MK XVI'] = 'TD-220 Mk-XVI «БАСТИОН»',
@@ -10571,6 +11286,7 @@ MOD.langs = {
       ['Terrain deformation'] = 'Деформация грунта',
       ['THROWABLE'] = 'МЕТАТЕЛЬНОЕ',
       ['Thruster effect length (s)'] = 'Длина эффекта двигателя (с)',
+      ['THROWABLES'] = 'МЕТАТЕЛЬНОЕ ОРУЖИЕ',
       ['TM-1 Lure Mine'] = 'TM-1 Мина-приманка',
       ['Trail audio start (id)'] = 'Звук следа, начало (ID)',
       ['Trail audio stop (id)'] = 'Звук следа, конец (ID)',
@@ -10589,6 +11305,7 @@ MOD.langs = {
       ['Tesla Tower'] = '«Тесла-башня»',
       ['Tested releases only.'] = 'Только проверенные релизы.',
       ['That did not work; see the log.'] = 'Не получилось; см. журнал.',
+      ['That is not a valid preset code.'] = 'Это неверный код пресета.',
       ['That would make a loop of extra stratagems.'] = 'Так получится цикл из доп. стратагем.',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = 'Подствольный дробовик «Третейского судьи», а не сама винтовка.',
       ['The Defender SEAF soldiers carry. Not yours.'] = '«Защитник» солдат ВССЗ. Не ваш.',
@@ -10598,15 +11315,18 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = 'Пистолет-пулемет, который вы носите. Его подствольный огнемет указан отдельно.',
       ['The Scythe you carry.'] = '«Коса», которую вы носите.',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = 'Подствольный огнемет «Топки», а не сам пистолет-пулемет.',
+      ['The Trident shows 4 beams at its default of 2.'] = 'Трезубец показывает 4 луча при значении 2 по умолчанию.',
       ['The armor passives could not be stacked'] = 'Не удалось объединить пассивные эффекты брони',
+      ['The armory shows the first passive\'s name and at most 3 effects. All of them apply.'] = 'Арсенал показывает название первой пассивки и не больше 3 эффектов. Действуют все.',
       ['The arrows you enter to call it in: click Record (or press Enter on this row), then enter'] = 'Стрелки, которые вы вводите для вызова: нажмите «Запись» (или Enter на этой строке), затем введите',
       ['The beacon\'s countdown before the delivery is sent.'] = 'Отсчёт маяка до отправки доставки.',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = 'Рюкзак с зарядом, сам заряд и его взрыв. Перезарядка: вкладка «Стратагемы».',
+      ['The clipboard has no valid preset code.'] = 'В буфере нет верного кода пресета.',
       ['The explosion the round sets off when it hits something. 0: no explosion.'] = 'Взрыв, который снаряд вызывает при попадании во что-либо. 0: без взрыва.',
+      ['The explosion the round sets off when its life time runs out before it hits anything. 0: no explosion.'] = 'Взрыв, который снаряд вызывает, когда его время жизни истекает раньше попадания. 0: без взрыва.',
       ['The flamethrower you carry.'] = 'Огнемет, который вы носите.',
       ['The game holds at most 1023 rounds in a backpack.'] = 'Игра вмещает в рюкзак не более 1023 патронов.',
       ['The game holds at most 2048 rounds in a magazine.'] = 'Игра вмещает в магазин не более 2048 патронов.',
-      ['The game only loads them when someone in the mission brings that weapon.'] = 'Игра загружает их, только если кто-то на задании взял это оружие.',
       ['The game treats the weapon as one-handed. On two-handed weapons it breaks the hip-fire animations.'] = 'Игра считает оружие одноручным. У двуручного оружия ломает анимации стрельбы от бедра.',
       ['The game\'s own files are already in place.'] = 'Исходные файлы игры уже на месте.',
       ['The game\'s own files are back. Your values stay saved here (Install puts them in again).'] = 'Исходные файлы игры возвращены. Ваши значения сохранены здесь («Установить в игру» вернёт их в игру).',
@@ -10622,12 +11342,15 @@ MOD.langs = {
       ['The rifle you carry. The grenade launcher is listed separately.'] = 'Винтовка, которую вы носите. Гранатомет указан отдельно.',
       ['The rifle you carry. The underbarrel shotgun is listed separately.'] = 'Винтовка, которую вы носите. Подствольный дробовик указан отдельно.',
       ['The round goes off when it passes this close to an enemy, without hitting it. 0: off (the RL-77 uses 2 m).'] = 'Снаряд взрывается, когда пролетает так близко от врага, не попав в него. 0: выкл. (у RL-77 2 м).',
+      ['The round only bounces when it hits faster than this. Grenade launcher rounds use 20 m/s, most rounds 60 m/s.'] = 'Снаряд отскакивает, только если попадает быстрее этого. Снаряды гранатомётов: 20 м/с, большинство снарядов 60 м/с.',
+      ['The round only bounces when it hits further than this from head on (0 = head on, 90 = grazing).'] = 'Снаряд отскакивает, только если попадает дальше этого угла от прямого (0 = прямо, 90 = вскользь).',
       ['The shot\'s trail and other effects belong to the chosen weapon.'] = 'След выстрела и другие эффекты принадлежат выбранному оружию.',
       ['The support hammer delivered by hellpod. The game data files it next to the Machete.'] = 'Молот поддержки, доставляемый Адской капсулой. В данных игры он лежит рядом с Мачете.',
       ['The support weapon. The CQC-73 is listed under Secondary.'] = 'Оружие поддержки. CQC-73 — во вкладке «Дополнительное».',
       ['Thermite'] = '«Термитная»',
       ['Thermite (experimental)'] = 'Термит (эксперимент.)',
       ['These values are shared by ALL bayonets: they change the Constitution, Sweeper and Amendment at once.'] = 'Эти значения общие для ВСЕХ штыков: они меняют Constitution, Sweeper и Amendment сразу.',
+      ['This code is shared, so changing it also changes:'] = 'Этот код общий, поэтому его изменение затронет также:',
       ['Throw range'] = 'Дальность броска',
       ['Throw spread (degrees)'] = 'Разброс броска (град.)',
       ['Throw velocity, max (m/s)'] = 'Скорость броска, макс. (м/с)',
@@ -10678,9 +11401,10 @@ MOD.langs = {
       ['Turret'] = 'Башня',
       ['Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.'] = 'Введите имя: Enter — сохранить, Esc — отмена. Игра тоже видит эти клавиши, поэтому называйте пресеты из меню.',
       ['Type the percent (%d-%d): Enter sets it, Esc cancels.'] = 'Введите процент (%d-%d): Enter — задать, Esc — отмена.',
-      ['Type the text: Enter keeps it, Esc cancels. Install puts it in the game, in every language.'] = 'Введите текст: Enter сохраняет, Esc отменяет. Установка внесёт его в игру на всех языках.',
+      ['Type the text: Enter keeps it, Shift+Enter starts a new line (twice leaves a gap), Esc cancels.'] = 'Введите текст: Enter сохраняет, Shift+Enter начинает новую строку (дважды оставляет пустую строку), Esc отменяет.',
       ['Type the value: Enter sets it, Esc cancels. Values out of range are set to the nearest allowed one.'] = 'Введите значение: Enter — задать, Esc — отмена. Значения вне диапазона заменяются ближайшим допустимым.',
       ['Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.'] = 'Введите запрос: Enter — оставить результаты, Esc — очистить поиск. Игра тоже видит эти клавиши.',
+      ['UNDERBARREL'] = 'ПОДСТВОЛЬНИК',
       ['Ultimatum'] = 'Ультиматум',
       ['Uncharged'] = 'Без заряда',
       ['Uncharged explosion'] = 'Взрыв без заряда',
@@ -10691,11 +11415,13 @@ MOD.langs = {
       ['Unsafe warp: damage to you'] = 'Небезопасный варп: урон вам',
       ['Unsafe warp: explosion'] = 'Небезопасный варп: взрыв',
       ['Up'] = 'Вверх',
+      ['Up/Down and arrow buttons'] = 'Кнопки вверх/вниз и стрелки',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = 'Вверх/Вниз — выбор параметра, Влево/Вправо — изменение (Shift: крупный шаг), щелкните значение или нажмите Enter для ввода,',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = 'Вверх/Вниз — выбор, Enter — загрузить, Insert — новый, Shift+Insert — сохранить в него, F2 — переименовать, Del — удалить.',
       ['Update channel'] = 'Канал обновлений',
       ['Updates'] = 'Обновления',
       ['Urchin'] = 'Озорник',
+      ['Used by:'] = 'Используют:',
       ['Uses per mission'] = 'Применений за миссию',
       ['Uses per rearm'] = 'Применений за перевооружение',
       ['V2'] = 'v2',
@@ -10732,6 +11458,7 @@ MOD.langs = {
       ['Walk speed (m/s)'] = 'Скорость шага (м/с)',
       ['Walk speed (x)'] = 'Скорость шага (x)',
       ['Walking backwards (multiplier)'] = 'Ходьба назад (множитель)',
+      ['Walking direction (deg)'] = 'Направление движения (град.)',
       ['Walking speed (m/s)'] = 'Скорость ходьбы (м/с)',
       ['War Strider'] = 'Боевой шатун',
       ['Warm-up before it sprays (s)'] = 'Разогрев перед распылением (с)',
@@ -10746,6 +11473,8 @@ MOD.langs = {
       ['Warrior acid burst'] = 'Кислотный выплеск воина',
       ['Watcher'] = 'Смотритель',
       ['Water'] = 'Вода',
+      ['Weakspot'] = 'Слабая точка',
+      ['Weakspot engine'] = 'Слабая точка двигателя',
       ['Weapon spread (x)'] = 'Разброс оружия (x)',
       ['Weapon stats'] = 'Характеристики оружия',
       ['Weapon sway (x)'] = 'Колебание оружия (x)',
@@ -10769,12 +11498,15 @@ MOD.langs = {
       ['Your values are not in the game yet: close the game, then Install.'] = 'Ваши значения ещё не в игре: закройте игру и нажмите «Установить в игру».',
       ['a slot is 1 (primary) or 3 (secondary)'] = 'слот: 1 (основное) или 3 (дополнительное)',
       ['added to every armor value, up to 10; lowered: down to 0'] = 'прибавляется ко всей броне, до 10; при снижении — до 0',
+      ['added to every melee attack, up to 10; lowered: down to 0'] = 'прибавляется к каждой атаке ближнего боя, до 10; при снижении: до 0',
       ['airborne'] = 'десант',
       ['all four exosuits share it'] = 'общее для всех четырёх экзокостюмов',
       ['also in your loadout when you bring this one'] = 'тоже в вашем снаряжении, когда вы берёте эту',
       ['also the second firing mode\'s shot (the same projectile)'] = 'также выстрел второго режима (тот же снаряд)',
+      ['as long as the engine torque is enough to get there.'] = 'если крутящего момента хватает, чтобы её набрать.',
       ['assassinate'] = 'убийца',
       ['assault'] = 'штурм',
+      ['at least 1 round, at most 2048'] = 'минимум 1 патрон, максимум 2048',
       ['body parts without their own armor use this'] = 'используется частями тела без своей брони',
       ['bull'] = 'бык',
       ['clip'] = 'обойма',
@@ -10783,6 +11515,7 @@ MOD.langs = {
       ['elite'] = 'элита',
       ['enemies at 0 stay immune'] = 'враги с 0 остаются невосприимчивыми',
       ['every enemy with this attack shares it'] = 'общее для всех врагов с этой атакой',
+      ['extra health for this part, it does not run out by itself'] = 'дополнительное здоровье этой части, само по себе не убывает',
       ['fake'] = 'ложный',
       ['gloom'] = 'Мгла',
       ['gunships, Dragonroaches, Leviathans and the like, where a planet has them'] = 'штурмовики, дракораканы, левиафаны и т. п., где они есть на планете',
@@ -10799,10 +11532,12 @@ MOD.langs = {
       ['how fast a body part\'s bleed-out health runs out'] = 'как быстро заканчивается здоровье части тела при кровотечении',
       ['how fast its aim settles again; higher: sooner'] = 'как быстро его прицел восстанавливается; больше: быстрее',
       ['how fast the bleed-out health runs out'] = 'как быстро заканчивается здоровье при кровотечении',
+      ['how fast their guns shoot; flamers, beams and melee stay as they are'] = 'как быстро стреляет их оружие; огнемёты, лучи и ближний бой не меняются',
       ['how fast they attack, turn and react'] = 'как быстро они атакуют, поворачиваются и реагируют',
       ['how hard your fire throws off its aim; 0: never; higher: a little fire throws it off fully'] = 'насколько сильно ваш огонь сбивает его прицел; 0: никогда; больше: даже немного огня сбивает его полностью',
       ['how long it keeps after you once you break line of sight'] = 'как долго он преследует вас после потери из виду',
       ['how long it keeps hunting you once you break line of sight; x1: as in the game, x2: twice as long'] = 'как долго он продолжает охоту на вас после потери из виду; x1: как в игре, x2: вдвое дольше',
+      ['how long it lasts once its health is gone; this sets its bleed-out health, so it also takes more shots to finish'] = 'как долго она держится после потери здоровья; это меняет её здоровье при кровотечении, поэтому добить её тоже будет сложнее',
       ['how long its aim stays thrown off after your fire stops'] = 'как долго его прицел остаётся сбитым после того, как вы прекратили огонь',
       ['how long its aim stays thrown off after your fire stops; Never: it never steadies'] = 'как долго его прицел остаётся сбитым после того, как вы прекратили огонь; Никогда: он никогда не восстанавливается',
       ['how many of the items on its rack come down in one pod'] = 'сколько предметов с её стойки прилетает в одной капсуле',
@@ -10831,6 +11566,7 @@ MOD.langs = {
       ['none'] = 'нет',
       ['none (no explosion)'] = 'нет (без взрыва)',
       ['none (no projectile)'] = 'нет (без снаряда)',
+      ['none. - / + : add one, hold Reload in game to switch'] = 'нет. - / + : добавить, в игре удерживайте перезарядку для смены',
       ['normal projectile'] = 'обычный снаряд',
       ['not a faction'] = 'не фракция',
       ['on the crosshair; closer or farther it lands a bit high or low. Does not change the zoom.'] = 'выстрел попадает в перекрестие; ближе или дальше чуть выше или ниже. Не меняет увеличение.',
@@ -10854,6 +11590,7 @@ MOD.langs = {
       ['the armory list it is in: 1 primary, 3 secondary'] = 'в каком списке арсенала: 1 основное, 3 дополнительное',
       ['the body and every body part, bleed-out health too'] = 'тело и все части тела, а также здоровье при кровотечении',
       ['the faction multipliers cannot slow patrols below this: lower it with them'] = 'множители фракций не замедлят патрули ниже этого: снижайте вместе с ними',
+      ['the fire mode switch'] = 'переключатель режима огня',
       ['the force a hit needs to stagger it (hit sizes it never staggers from stay that way)'] = 'сила удара, нужная, чтобы его ошеломить (удары, от которых он не ошеломляется, так и остаются)',
       ['the force a hit needs to stagger them'] = 'сила удара, нужная, чтобы их ошеломить',
       ['the game holds back reinforcements past about 100 enemies at x1; it has crashed past 200-240 enemies alive'] = 'при x1 игра сдерживает подкрепления после ~100 врагов; при 200-240 живых врагах бывали вылеты',
@@ -10862,12 +11599,16 @@ MOD.langs = {
       ['the holster is on the back or the hip'] = 'кобура на спине или на бедре',
       ['the model and its body parts; on some enemies the hitboxes may not match the model, and on others it may not work at all'] = 'модель и части тела; у некоторых врагов хитбоксы могут не совпадать с моделью, а у других это может вообще не работать',
       ['the new code with the arrow keys or WASD, 1 to 9 arrows. Enter keeps it, Backspace takes one back,'] = 'новый код стрелками или WASD, от 1 до 9 стрелок. Enter сохраняет, Backspace убирает одну,',
+      ['the rate of fire switch'] = 'переключатель темпа стрельбы',
+      ['the same distance for every enemy; 0: the game\'s own (most are 1 m, so no multiplier)'] = 'одно расстояние для всех врагов; 0: как в игре (у большинства 1 м, поэтому без множителя)',
+      ['the same time for every gun; 0: the game\'s own (enemy reloads are 0 in the data, so no multiplier)'] = 'одно время для всего оружия; 0: как в игре (в данных перезарядка врагов равна 0, поэтому без множителя)',
       ['the shot fired from this heat on, and what it does to you'] = 'выстрел начиная с этого нагрева и его действие на вас',
       ['the spare ammo in its backpack; read when the backpack is called in'] = 'запас боеприпасов в его рюкзаке; читается при вызове рюкзака',
       ['Explosions inherit velocity'] = 'Взрывы наследуют скорость',
       ['Inherit velocity'] = 'Наследование скорости',
       ['1: the round keeps the velocity of whoever fired it; 0: it starts from rest.'] = '1: снаряд сохраняет скорость того, кто стрелял; 0: начинает с нуля.',
       ['1: the blast this round sets off travels with it; 0: it stays where the round hit.'] = '1: взрыв летит вместе со снарядом; 0: остаётся там, где снаряд попал.',
+      ['the underbarrel switch'] = 'переключатель подствольного оружия',
       ['their wind-ups and attacks'] = 'замахи и атаки',
       ['tier 1 captive'] = 'уровень 1, пленный',
       ['tier 2 guard'] = 'уровень 2, охрана',
@@ -11250,6 +11991,7 @@ MOD.langs = {
       ['gatekeeper'] = 'Сторож',
       ['gatling sentry'] = '«Турель Гатлинга»',
       ['gazer'] = 'Наблюдатель',
+      ['gazer spire'] = 'Шпиль «Наблюдатель»',
       ['giga grenade'] = 'Гигаграната',
       ['gl-15 evictor'] = 'GL-15 Вытеснитель',
       ['gl-21 grenade launcher'] = 'GL-21 «Гранатомет»',
@@ -11359,6 +12101,7 @@ MOD.langs = {
       ['medium plasma bolt'] = 'Средний заряд плазмы',
       ['melta mine'] = 'Плавкомина',
       ['meltagun'] = 'Плавкопушка',
+      ['mg raider'] = 'Налетчик-пулеметчик',
       ['mg-206 heavy machine gun'] = 'MG-206 «Тяжелый пулемет»',
       ['mg-43 machine gun'] = 'MG-43 «Пулемет»',
       ['mgx-42 bullet storm'] = 'MGX-42 «Шквал пуль»',
@@ -11419,6 +12162,7 @@ MOD.langs = {
       ['portable hellbomb'] = 'Переносная Адская бомба',
       ['pouncer'] = 'Прыгун',
       ['predator hunter'] = 'Хищный охотник',
+      ['predator stalker'] = 'Хищный следопыт',
       ['punisher'] = '«Каратель»',
       ['punisher plasma'] = '«Плазменный каратель»',
       ['purifier'] = '«Очиститель»',
@@ -11447,10 +12191,12 @@ MOD.langs = {
       ['redeemer'] = '«Избавитель»',
       ['reduced signature'] = 'Уменьшенный след',
       ['reinforced epaulettes'] = 'Армированные эполеты',
+      ['reinforced scout strider'] = 'Укрепленный шатун-разведчик',
       ['reprimand'] = 'Взыскание',
       ['rl-77 airburst rocket launcher'] = 'RL-77 «Ракетница с подрывом в воздухе»',
       ['rock solid'] = 'Кремень',
       ['rocket devastator'] = 'Разрушитель-ракетчик',
+      ['rocket raider'] = 'Налетчик-ракетчик',
       ['rocket sentry'] = '«Ракетная турель»',
       ['rs-422 railgun'] = 'RS-422 «Рельсотрон»',
       ['rupture charger'] = 'Прорывной громила',
@@ -11665,6 +12411,16 @@ MOD.langs = {
       { '^(.+): Heavy$', '%1: тяжёлая' },
       { '^Bomb pattern (%d): (%d) bombs$', 'Схема бомбометания %1: бомб — %2' },
       { '^Gear (%d+) ratio$', 'Передаточное число %1-й передачи' },
+      { '^fires (.+)$', 'стреляет: %1' },
+      { '^drops (.+)$', 'сбрасывает: %1' },
+      { '^Copy (.+) to$', 'Копировать %1 в' },
+      { '^Copied (%d+) value%(s%) to (%d+) vehicle%(s%)%.$', 'Скопировано значений: %1, техника: %2.' },
+      { '^Copied (%d+) value%(s%) into (%d+) preset%(s%)$', 'Скопировано значений: %1, пресетов: %2' },
+      { '^Code copied %((%d+) characters%)$', 'Код скопирован (символов: %1)' },
+      { '^Added "(.+)"$', 'Добавлено: "%1"' },
+      { '^Added "(.+)" to the Enemy Editor presets$', 'Добавлено в пресеты редактора врагов: "%1"' },
+      { '^Added "(.+)" to the Stat Editor presets$', 'Добавлено в пресеты редактора характеристик: "%1"' },
+      { '^Saved as StatEditor\\(%S+)%. Copy code shares it%. A code you were sent goes in the box on the left%.$', 'Сохранено как StatEditor\\%1. «Копировать код» — поделиться. Присланный код вставляется в поле слева.' },
       { '^Heat level (%d+)$', 'Уровень нагрева %1' },
       { '^(.+); ammo type shared with (.+)$', '%1; тип боеприпасов общий с: %L2' },
       { '^fires: (.+)%. The rows above stay its own$', 'стреляет: %1. Строки выше остаются его собственными' },
@@ -11713,7 +12469,7 @@ MOD.langs = {
       { '^(%d+) listed$', 'всего: %1' },
       { '^(%d+)%-(%d+) of (%d+) %(max (%d+)%)$', '%1-%2 из %3 (макс. %4)' },
       { '^(%d+) %(max (%d+)%)$', '%1 (макс. %2)' },
-      { '^(%d+) value%(s%) for (%d+) weapon%(s%) / stratagem%(s%):$', 'Значений: %1, оружия и стратагем: %2:' },
+      { '^(%d+) value%(s%) for (%d+) item%(s%):$', 'Значений: %1, предметов: %2:' },
       { '^(%d+) value%(s%)$', 'значений: %1' },
       { '^On: your (%d+) change%(s%) are applied%.$', 'Вкл: ваши изменения применены (%1).' },
       { '^Off: the game\'s values everywhere; your (%d+) change%(s%) are kept for when you turn them on%.$', 'Выкл: везде значения игры; ваши изменения (%1) сохранены до включения.' },
@@ -11813,6 +12569,7 @@ MOD.langs = {
       [' page(s):'] = ' página(s):',
       [' to enemies and spawning with it.'] = ' a los enemigos y a su aparición.',
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '"+ Nuevo perfil" (o Insert) guarda tus cambios actuales como uno; luego le pones nombre.',
+      ['(changed)'] = '(cambiado)',
       ['+ Add passive'] = '+ Añadir pasiva',
       ['+ Armor rating'] = '+ Valor de blindaje',
       ['+ Ergonomics'] = '+ Ergonomía',
@@ -11823,11 +12580,14 @@ MOD.langs = {
       ['+ Throwables (start, max)'] = '+ Arrojadizos (inicio, máx.)',
       ['- / + steps through the stratagems by name (-- / ++: 10 at a time).'] = '- / + recorre las estratagemas por nombre (-- / ++: de 10 en 10).',
       ['-180 with right at 180: all the way round'] = '-180 con derecha en 180: toda la vuelta',
+      ['-1: as far as straight ahead'] = '-1: igual que hacia delante',
       ['0 = normal projectile; - / + selects a throwable grenade by name above.'] = '0 = proyectil normal; - / + elige una granada arrojadiza por nombre arriba.',
       ['0 light, 1 medium, 2 heavy'] = '0 ligero, 1 intermedio, 2 pesado',
       ['0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s.'] = '0: al instante. El RL-77 espera 0.2 s, el P-34 Breacher (primero se pega y arde) 1 s.',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0: los golpes hacen su daño normal, 1: su daño duradero (el menor del arma)',
       ['0: no patrols'] = '0: sin patrullas',
+      ['0: these wheels do not brake at all.'] = '0: estas ruedas no frenan nada.',
+      ['0: walks away from the beacon, 0.5: centred on it, 1: ends on it'] = '0: se aleja de la baliza, 0.5: centrado en ella, 1: termina en ella',
       ['100kg Bomb'] = 'Bomba de 100 kg',
       ['100kg Bomb Mk2'] = 'Bomba de 100 kg Mk2',
       ['100kg Bomb Mk3'] = 'Bomba de 100 kg Mk3',
@@ -11987,6 +12747,8 @@ MOD.langs = {
       ['A pathetic creature of meat and bone.'] = 'Una patética criatura de carne y hueso.',
       ['A preset keeps every change you have made as one set, under a name you choose.'] = 'Un perfil guarda todos tus cambios como un conjunto, con el nombre que elijas.',
       ['A preset keeps every enemy and spawning change as one custom difficulty, under a name you choose. Your weapon changes are kept apart.'] = 'Un perfil guarda todos los cambios de enemigos y aparición como una dificultad personalizada, con el nombre que elijas. Tus cambios de armas se guardan aparte.',
+      ['A resupply box gives this many. An ammo box on the map gives half, rounded down (at least 1).'] = 'Una caja de reabastecimiento da esta cantidad. Una caja de munición en el mapa da la mitad, redondeada hacia abajo (mínimo 1).',
+      ['A resupply box gives this much. An ammo box on the map gives half, rounded down.'] = 'Una caja de reabastecimiento da esta cantidad. Una caja de munición en el mapa da la mitad, redondeada hacia abajo.',
       ['A value changed on an enemy\'s own page stays red: this page leaves it as it is.'] = 'Un valor cambiado en la página propia de un enemigo queda en rojo: esta página lo deja como está.',
       ['A weapon whose own Sway multiplier you changed keeps it. Sway this row changes shows in blue.'] = 'Un arma cuyo propio Multiplicador de balanceo cambiaste lo conserva. El balanceo que cambia esta fila se muestra en azul.',
       ['A/AC-8 Autocannon Sentry'] = 'A/AC-8 Vigía de cañón automático',
@@ -12002,7 +12764,9 @@ MOD.langs = {
       ['AA Emplacement'] = 'Emplazamiento AA',
       ['AC-8 Autocannon'] = 'AC-8 Cañón automático',
       ['AMMO'] = 'MUNICIÓN',
+      ['AMMUNITION'] = 'MUNICIÓN',
       ['AMW-20 Apex'] = 'AMW-20 Alfa',
+      ['ANTI-TANK'] = 'ANTITANQUE',
       ['APW-1 Anti-Materiel Rifle'] = 'APW-1 Rifle antiequipamiento',
       ['AR-11 Arbitrator'] = 'AR-11 Árbitro',
       ['AR-11 Arbitrator (underbarrel shotgun)'] = 'AR-11 Arbitrator (escopeta en cañón secundario)',
@@ -12020,6 +12784,9 @@ MOD.langs = {
       ['ARC'] = 'ARCO',
       ['ARC-12 Blitzer'] = 'ARC-12 Voltífera eléctrica',
       ['ARC-3 Arc Thrower'] = 'ARC-3 Lanzaarcos',
+      ['ARMORS'] = 'ARMADURAS',
+      ['ASSAULT RIFLE'] = 'RIFLE DE ASALTO',
+      ['ATTACHMENTS'] = 'ACCESORIOS',
       ['AX/AR-23 "Guard Dog"'] = 'AX/AR-23 "Guard Dog"',
       ['AX/ARC-3 "Guard Dog" K-9'] = 'AX/ARC-3 "Guard Dog" K-9',
       ['AX/FLAM-75 "Guard Dog" Hot Dog'] = 'AX/FLAM-75 "Guard Dog" Hot Dog',
@@ -12055,6 +12822,7 @@ MOD.langs = {
       ['Alpha Commander'] = 'Comandante alfa',
       ['Also includes'] = 'También incluye',
       ['Alternate ammunition'] = 'Munición alternativa',
+      ['Always bring it'] = 'Llevar siempre',
       ['Amendment'] = 'Enmienda',
       ['Ammo'] = 'Munición',
       ['Ammo at the start'] = 'Munición al inicio',
@@ -12105,6 +12873,7 @@ MOD.langs = {
       ['Assault'] = 'Asalto',
       ['Assault Raider'] = 'Asaltante ofensivo',
       ['Assault Rifle'] = 'Rifle de asalto',
+      ['At most 4 across all stratagems: more can crash the game at deployment.'] = 'Máximo 4 entre todas las estratagemas: más puede cerrar el juego al desplegar.',
       ['Attachment'] = 'Accesorio',
       ['Attachments'] = 'Accesorios',
       ['Attack animation speed (x)'] = 'Velocidad de animación de ataque (x)',
@@ -12120,10 +12889,12 @@ MOD.langs = {
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 Cremador',
       ['B/MD C4 Pack'] = 'B/MD C4 Pack',
       ['BACKPACK'] = 'MOCHILA',
+      ['BACKPACKS'] = 'MOCHILAS',
       ['BARRAGE'] = 'BOMBARDEO',
       ['BLAST'] = 'EXPLOSIÓN',
       ['BLAST RADIUS'] = 'RADIO DE EXPLOSIÓN',
       ['BODY PARTS'] = 'PARTES DEL CUERPO',
+      ['BOOSTERS'] = 'POTENCIADORES',
       ['BR-14 Adjudicator'] = 'BR-14 Adjudicador',
       ['BURST'] = 'RÁFAGA',
       ['BURST RADIUS'] = 'RADIO DE RÁFAGA',
@@ -12152,11 +12923,15 @@ MOD.langs = {
       ['Bastion MK XVI'] = 'Bastión Mk XVI',
       ['Battery'] = 'Batería',
       ['Bayonet melee'] = 'Cuerpo a cuerpo con bayoneta',
+      ['Beam range (m)'] = 'Alcance del rayo (m)',
+      ['Beam stays after the shot (s)'] = 'El rayo dura tras el disparo (s)',
       ['Beamer'] = 'Lanzarrayos',
+      ['Beams per barrel'] = 'Rayos por cañón',
       ['Belt-Fed Grenade Launcher'] = 'Lanzagranadas de cinta',
       ['Berserker'] = 'Frenético',
       ['Better stratagem bounce'] = 'Mejor rebote de estratagemas',
       ['Big walker cannon'] = 'Cañón de caminante grande',
+      ['Bigger wheels: a higher top speed and more room under the body, but a weaker pull.'] = 'Ruedas más grandes: más velocidad máxima y más altura bajo la carrocería, pero menos fuerza.',
       ['Bile Spewer'] = 'Vomitador de bilis',
       ['Bile Spewer acid burst'] = 'Estallido de ácido del Vomitador de bilis',
       ['Bile Spitter'] = 'Escupidor de bilis',
@@ -12187,6 +12962,7 @@ MOD.langs = {
       ['Body parts'] = 'Partes del cuerpo',
       ['Body rear'] = 'Cuerpo trasero',
       ['Bolt Pistol'] = 'Pistola de cerrojo',
+      ['Bomb dropped (id)'] = 'Bomba lanzada (id)',
       ['Bomb pattern'] = 'Patrón de bombas',
       ['Bonnet'] = 'Capó',
       ['Boost after the launch (s)'] = 'Impulso después del lanzamiento (s)',
@@ -12195,6 +12971,9 @@ MOD.langs = {
       ['Boss'] = 'Jefe',
       ['Boss back'] = 'Espalda del jefe',
       ['Bottom wing'] = 'Ala inferior',
+      ['Bounce'] = 'Rebote',
+      ['Bounce angle (deg)'] = 'Ángulo de rebote (grados)',
+      ['Bounce speed (m/s)'] = 'Velocidad de rebote (m/s)',
       ['Brake strength'] = 'Fuerza de frenado',
       ['Braking height (m)'] = 'Altura de frenado (m)',
       ['Braking speed (m/s)'] = 'Velocidad de frenado (m/s)',
@@ -12237,6 +13016,7 @@ MOD.langs = {
       ['C hex 17'] = 'Hexágono C 17',
       ['C hex 18'] = 'Hexágono C 18',
       ['C hex 19'] = 'Hexágono C 19',
+      ['CAPES'] = 'CAPAS',
       ['CB-9 Exploding Crossbow'] = 'CB-9 Ballesta explosiva',
       ['CHARGE'] = 'CARGA',
       ['CLUSTER BOMB'] = 'BOMBA DE RACIMO',
@@ -12279,16 +13059,21 @@ MOD.langs = {
       ['Chest damage taken'] = 'Daño recibido en el pecho',
       ['Choked (experimental)'] = 'Asfixia (experimental)',
       ['Choose a weapon on the left.'] = 'Elige un arma a la izquierda.',
+      ['Choose the presets, then Copy. Values they share take this preset\'s, the rest of theirs stays.'] = 'Elige los perfiles y pulsa Copiar. Los valores en común toman los de este perfil, el resto de los suyos se queda.',
+      ['Choose the vehicles, then Copy. They get every value shown in this section.'] = 'Elige los vehículos y pulsa Copiar. Reciben todos los valores de esta sección.',
       ['Clear'] = 'Borrar',
       ['Click * to show only what you changed, from every tab.'] = 'Haz clic en * para mostrar solo lo que cambiaste, de todas las pestañas.',
-      ['Click a box to type. Install puts it in the game, in every language.'] = 'Haz clic en un cuadro para escribir. Instalar lo pone en el juego, en todos los idiomas.',
+      ['Click again'] = 'Haz clic otra vez',
       ['Click again to overwrite'] = 'Haz clic otra vez para sobrescribir',
+      ['Click again within 4 seconds to end the game. Unsaved progress is lost.'] = 'Haz clic otra vez en 4 segundos para cerrar el juego. Se pierde el progreso sin guardar.',
       ['Climb acceleration'] = 'Aceleración de ascenso',
       ['Climb multiplier (horizontal)'] = 'Multiplicador de escalada (horizontal)',
       ['Climb multiplier (vertical)'] = 'Multiplicador de escalada (vertical)',
       ['Climb speed (m/s)'] = 'Velocidad de ascenso (m/s)',
       ['Climb time limit (s)'] = 'Límite de tiempo de ascenso (s)',
       ['Climbing and sliding'] = 'Escalada y deslizamiento',
+      ['Close all'] = 'Cerrar todo',
+      ['Close game'] = 'Cerrar juego',
       ['Cluster Bomb'] = 'Bomba de racimo',
       ['Cognitive Disruptor'] = 'Disruptor Cognitivo',
       ['Collision'] = 'Colisión',
@@ -12315,6 +13100,12 @@ MOD.langs = {
       ['Cooldown (s)'] = 'Tiempo de recarga (s)',
       ['Cooling (% per s)'] = 'Enfriamiento (% por s)',
       ['Copy'] = 'Copiar',
+      ['Copy code'] = 'Copiar código',
+      ['Copy to...'] = 'Copiar a...',
+      ['Copy values to'] = 'Copiar valores a',
+      ['Copy values to...'] = 'Copiar valores a...',
+      ['Could not ask Steam to start the game.'] = 'No se pudo pedir a Steam que inicie el juego.',
+      ['Could not close Helldivers 2.'] = 'No se pudo cerrar Helldivers 2.',
       ['Countdown before delivery (s)'] = 'Cuenta regresiva de entrega (s)',
       ['Coyote'] = 'Coyote',
       ['Cremator'] = 'Cremador',
@@ -12327,6 +13118,7 @@ MOD.langs = {
       ['Crown'] = 'Corona',
       ['Cruise speed (m/s)'] = 'Velocidad de crucero (m/s)',
       ['Crusher'] = 'Triturador',
+      ['Ctrl+V pastes a code, or type it: Enter adds the preset, Esc cancels.'] = 'Ctrl+V pega un código, o escríbelo: Enter agrega el preset, Esc cancela.',
       ['Custom difficulties'] = 'Dificultades personalizadas',
       ['Cyborg fire (experimental)'] = 'Fuego cíborg (experimental)',
       ['DAMAGE'] = 'DAÑO',
@@ -12360,6 +13152,7 @@ MOD.langs = {
       ['Deployer'] = 'Desplegador',
       ['Description'] = 'Descripción',
       ['Desert Stormer'] = 'Aterradesiertos',
+      ['Designation'] = 'Designación',
       ['Destroyed'] = 'Destruido',
       ['Devastator'] = 'Devastador',
       ['Devastator jump pack'] = 'Mochila propulsora del Devastador',
@@ -12397,15 +13190,20 @@ MOD.langs = {
       ['E/GL-21 Grenadier Battlement'] = 'E/GL-21 Almena de granadero',
       ['E/MG-101 HMG Emplacement'] = 'E/MG-101 Emplazamiento de HMG',
       ['EAGLE'] = 'ÁGUILA',
+      ['EAGLE STRIKES'] = 'ÁGUILA',
       ['EAT-17 Expendable Anti-Tank'] = 'EAT-17 Antitanque desechable',
       ['EAT-17 Expendable Anti-Tank (SEAF)'] = 'EAT-17 Expendable Anti-Tank (SEAF)',
       ['EAT-411 Leveller'] = 'EAT-411 Nivelador',
       ['EAT-700 Expendable Napalm'] = 'EAT-700 Napalm desechable',
+      ['EMPLACEMENTS'] = 'EMPLAZAMIENTOS',
       ['EMS Mortar Sentry'] = 'Vigía mortero OEM',
+      ['ENERGY-BASED'] = 'DE ENERGÍA',
       ['EXO-45 Patriot Exosuit'] = 'EXO-45 Exotraje Patriota',
       ['EXO-49 Emancipator Exosuit'] = 'EXO-49 Exotraje Emancipador',
       ['EXO-51 Lumberer Exosuit'] = 'EXO-51 Exotraje Leñador',
       ['EXO-55 Breakthrough Exosuit'] = 'EXO-55 Exotraje Rompedor',
+      ['EXOSUITS'] = 'EXOTRAJES',
+      ['EXPLOSIVE'] = 'EXPLOSIVA',
       ['EXTRA STRATAGEM'] = 'ESTRATAGEMA EXTRA',
       ['Each arm'] = 'Cada brazo',
       ['Each leg'] = 'Cada pierna',
@@ -12422,6 +13220,7 @@ MOD.langs = {
       ['Eagle strike. The rearm time is shared by every Eagle.'] = 'Ataque de Águila. El tiempo de rearme lo comparten todos los Águilas.',
       ['Eagles cannot be called within this distance while it stands'] = 'No se pueden pedir Águilas a esta distancia mientras esté en pie',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = 'Edita la granada en Arrojadizos para ajustarla. Los recursos se cargan antes de aplicar la selección.',
+      ['Editor'] = 'Editor',
       ['Effect'] = 'Efecto',
       ['Egg'] = 'Huevo',
       ['Egg cluster'] = 'Grupo de huevos',
@@ -12450,11 +13249,16 @@ MOD.langs = {
       ['Eruptor'] = 'Eruptor',
       ['Esc cancels. The HUD shows the new code too.'] = 'Esc cancela. El HUD también muestra el nuevo código.',
       ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = 'Todos los soldados SEAF a la vez. Los soldados que editaste en su propia página conservan sus valores.',
+      ['Every armor set with this name.'] = 'Todo blindaje con este nombre.',
+      ['Every armor set with this name. Its passive text is shared by every armor with that passive.'] = 'Todos los conjuntos de blindaje con este nombre. Su texto de pasiva lo comparten todos los blindajes con esa pasiva.',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = 'Todos los blindajes con esta pasiva reciben sus efectos también (ajustados en sus propias páginas).',
+      ['Every cape with this name.'] = 'Todas las capas con este nombre.',
       ['Every change as soon as it is pushed, before testing: it may break.'] = 'Cada cambio en cuanto se sube, antes de probarlo: puede fallar.',
       ['Every commit'] = 'Cada commit',
       ['Every enemy of this faction at once. Enemies you have edited on their own page keep their values.'] = 'Todos los enemigos de esta facción a la vez. Los enemigos que editaste en su propia página conservan sus valores.',
+      ['Every exosuit shares this stomp.'] = 'Todos los exotrajes comparten este pisotón.',
       ['Every helldiver in your game. Restore the game\'s files before joining other players\' lobbies.'] = 'Todos los helldivers de tu partida. Restaura los archivos del juego antes de unirte a partidas de otros jugadores.',
+      ['Every helmet with this name.'] = 'Todos los cascos con este nombre.',
       ['Every passive is in already.'] = 'Ya están todas las pasivas.',
       ['Every weapon you aim yourself, emplacements and vehicle guns too: the game\'s sway times this. 0 = no sway.'] = 'Toda arma que apuntas tú mismo, también emplazamientos y armas de vehículos: el balanceo del juego por este valor. 0 = sin balanceo.',
       ['Evictor'] = 'Desalojador',
@@ -12480,6 +13284,7 @@ MOD.langs = {
       ['FIRE'] = 'FUEGO',
       ['FLAM-40 Flamethrower'] = 'FLAM-40 Lanzallamas',
       ['FLAM-66 Torcher'] = 'FLAM-66 Antorcha',
+      ['FLAME AND GAS'] = 'FUEGO Y GAS',
       ['Fabricator'] = 'Fabricador',
       ['Fabricator / bug hole batch size (x)'] = 'Tanda de fabricadores / agujeros (x)',
       ['Fabricator / bug hole queue (x)'] = 'Cola de fabricadores / agujeros (x)',
@@ -12507,8 +13312,10 @@ MOD.langs = {
       ['Fire damage taken (x)'] = 'Daño de fuego recibido (x)',
       ['Fire duration (s)'] = 'Duración del fuego (s)',
       ['Fire rate (RPM)'] = 'Cadencia de disparo (DPM)',
+      ['Fire rate (x)'] = 'Cadencia de disparo (x)',
       ['Fire/gas/acid/arc damage taken'] = 'Daño de fuego/gas/ácido/arco recibido',
       ['Firebomb Hellpods'] = 'Cápsulas Hell de bombas incendiarias',
+      ['First shell (id)'] = 'Primer proyectil (id)',
       ['Flame Sentry'] = 'Vigía de llamas',
       ['Flames'] = 'Llamas',
       ['Flames Mk2'] = 'Llamas Mk2',
@@ -12534,6 +13341,7 @@ MOD.langs = {
       ['Front brake strength'] = 'Fuerza de los frenos delanteros',
       ['Front damping'] = 'Amortiguación delantera',
       ['Front face'] = 'Cara frontal',
+      ['Front grip lower than the rear: it turns wide. Rear lower than the front: the back slides out.'] = 'Delanteras con menos agarre que las traseras: abre en las curvas. Traseras con menos: la cola se sale.',
       ['Front hull'] = 'Casco frontal',
       ['Front left cockpit'] = 'Cabina delantera izquierda',
       ['Front left wheel hub'] = 'Cubo de rueda delantera izquierda',
@@ -12580,6 +13388,7 @@ MOD.langs = {
       ['GR-8 Recoilless Rifle'] = 'GR-8 Rifle sin retroceso',
       ['GRENADE SWAP'] = 'CAMBIO DE GRANADA',
       ['Gallant'] = 'Galante',
+      ['Gameplay'] = 'Jugabilidad',
       ['Gas'] = 'Gas',
       ['Gas Mortar Sentry'] = 'Vigía mortero de gas',
       ['Gas damage taken'] = 'Daño de gas recibido',
@@ -12588,6 +13397,8 @@ MOD.langs = {
       ['Gatekeeper'] = 'Guardés',
       ['Gatling Sentry'] = 'Vigía gatling',
       ['Gazer'] = 'Oteador',
+      ['Gazer Spire'] = 'Espira vigía',
+      ['General'] = 'General',
       ['Generator'] = 'Generador',
       ['Get in and out speed (x)'] = 'Velocidad al subir y bajar (x)',
       ['Giga Grenade'] = 'Gigagranada',
@@ -12600,6 +13411,7 @@ MOD.langs = {
       ['Grenade Launcher'] = 'Lanzagranadas',
       ['Grenade Pistol'] = 'Pistola de granadas',
       ['Grenade fired (choice)'] = 'Granada disparada (elección)',
+      ['Grenade launcher rounds use 80, most rounds 83.'] = 'Las rondas de lanzagranadas usan 80, la mayoría de las rondas 83.',
       ['Grenade selection takes priority over Projectile swap. Fire rate, ammo and handling stay.'] = 'La selección de granada tiene prioridad sobre el cambio de proyectil. Cadencia, munición y manejo se mantienen.',
       ['Grenade swap'] = 'Cambio de granada',
       ['Grenade swap stopped (see the log); launchers fire their own projectiles again.'] = 'Cambio de granada detenido (ver el registro); los lanzadores vuelven a disparar sus propios proyectiles.',
@@ -12614,6 +13426,8 @@ MOD.langs = {
       ['Gunship'] = 'Nave de guerra',
       ['Gunslinger'] = 'Pistolero',
       ['HANDLING'] = 'MANEJO',
+      ['HEAVY'] = 'PESADA',
+      ['HELMETS'] = 'CASCOS',
       ['HMG Emplacement'] = 'Emplazamiento de HMG',
       ['Halt'] = 'Inmovilizadora',
       ['Handbrake strength'] = 'Fuerza del freno de mano',
@@ -12636,6 +13450,7 @@ MOD.langs = {
       ['Heat per shot'] = 'Calor por disparo',
       ['Heat per warp (%)'] = 'Calor por distorsión (%)',
       ['Heatsinks from supply'] = 'Disipadores del suministro',
+      ['Heavier: speeds up and stops more slowly, shoves enemies and wrecks aside, and is harder to flip.'] = 'Más pesado: acelera y frena más lento, aparta enemigos y restos, y cuesta más volcarlo.',
       ['Heavy Devastator'] = 'Devastador pesado',
       ['Heavy Devastator shield'] = 'Escudo del Devastador pesado',
       ['Heavy Fusion Cannon'] = 'Cañón de fusión pesado',
@@ -12646,9 +13461,12 @@ MOD.langs = {
       ['Height the shells fall from (m)'] = 'Altura desde la que caen los proyectiles (m)',
       ['Held this long, it blows up. 600 = it never does.'] = 'Si se mantiene este tiempo, explota. 600 = nunca explota.',
       ['Helldiver'] = 'Helldiver',
+      ['Helldivers 2 is already running.'] = 'Helldivers 2 ya está en marcha.',
+      ['Helldivers 2 is not running.'] = 'Helldivers 2 no está en marcha.',
       ['Helldivers 2 is running: close it, then Install.'] = 'Helldivers 2 está abierto: ciérralo y luego Instala.',
       ['Helldivers 2 is running: close it, then restore.'] = 'Helldivers 2 está abierto: ciérralo y luego restaura.',
       ['Helldivers 2 is running: you can edit, but close it before you Install.'] = 'Helldivers 2 está abierto: puedes editar, pero ciérralo antes de Instalar.',
+      ['Helldivers 2 was closed.'] = 'Helldivers 2 se cerró.',
       ['Hellpod'] = 'Cápsula Hell',
       ['Hellpod: initial drop'] = 'Cápsula Hell: despliegue inicial',
       ['Hellpod: reinforcement'] = 'Cápsula Hell: refuerzo',
@@ -12658,6 +13476,9 @@ MOD.langs = {
       ['High Dissipation Heatsink'] = 'Disipador térmico superior',
       ['High Explosive'] = 'Alta explosividad',
       ['High-Velocity Shrapnel'] = 'Metralla de alta velocidad',
+      ['Higher: a stiffer ride, less lean in turns, bumps kick harder.'] = 'Más alto: andar más duro, se inclina menos en curvas, los baches golpean más.',
+      ['Higher: leans more and tips over in sharp turns.'] = 'Más alto: se inclina más y vuelca en curvas cerradas.',
+      ['Higher: stops in a shorter distance. Too high locks the wheels, and it skids instead of stopping.'] = 'Más alto: frena en menos distancia. Demasiado alto bloquea las ruedas y derrapa en vez de frenar.',
       ['Highest ledge it climbs (m)'] = 'Saliente más alto que escala (m)',
       ['Hijack Tech Hub Nexus Machine'] = 'Máquina del nexo del centro tecnológico',
       ['Hips'] = 'Caderas',
@@ -12683,10 +13504,17 @@ MOD.langs = {
       ['Hover time, holding height (s)'] = 'Tiempo de vuelo, manteniendo altura (s)',
       ['How close the view gets when you aim: 1 is the normal view, 2 twice as close, 4 four times.'] = 'Cuánto se acerca la vista al apuntar: 1 es la vista normal, 2 el doble de cerca, 4 cuatro veces.',
       ['How close this zoom step looks: 1 is the normal view, 2 twice as close, 4 four times.'] = 'Qué tan cerca se ve este nivel de zoom: 1 es la vista normal, 2 el doble de cerca, 4 cuatro veces.',
+      ['How fast the engine may spin before it stops pulling. Higher: a higher top speed in every gear,'] = 'Qué tan rápido gira el motor antes de dejar de empujar. Más alto: más velocidad máxima en cada marcha,',
+      ['How fast the springs settle after a bump. Higher: settles at once, a firmer ride.'] = 'Qué tan rápido se calman los resortes tras un bache. Más alto: al instante, andar más firme.',
       ['How fast their animations play. Most attacks follow the animation, so they come sooner or later too.'] = 'Qué tan rápido se reproducen sus animaciones. La mayoría de los ataques siguen la animación, así que también llegan antes o después.',
+      ['How hard the engine pushes. Higher: faster acceleration and steeper hills, but more wheelspin.'] = 'Cuánto empuja el motor. Más alto: acelera más rápido y sube más pendiente, pero patina más.',
+      ['How high the balance point sits. Lower (even below 0): stays flat in hard turns and over rocks.'] = 'Altura del punto de equilibrio. Más bajo (incluso menos de 0): se mantiene plano en curvas y rocas.',
       ['How long the round waits after the hit (or after the blast proximity trips) before it goes off.'] = 'Cuánto espera la ronda después del impacto (o después de que se active la proximidad) antes de explotar.',
       ['How many bombs one run drops and how they land. The bombs stay this Eagle\'s own.'] = 'Cuántas bombas suelta cada pasada y cómo caen. Las bombas siguen siendo de este Águila.',
+      ['How many times the round can bounce off a surface. 0: it never bounces back at you.'] = 'Cuántas veces puede rebotar la ronda en una superficie. 0: nunca rebota de vuelta hacia ti.',
+      ['How much this gear multiplies the engine. Higher: stronger pull, but it tops out sooner.'] = 'Cuánto multiplica esta marcha al motor. Más alto: más fuerza, pero llega antes a su tope.',
       ['How quickly the scoped view catches up when you move your aim at this zoom (0.6 on most optics).'] = 'Qué tan rápido la vista con mira sigue tu puntería con este zoom (0.6 en la mayoría de las miras).',
+      ['How well the tyres hold the ground. Higher: sharper turns, less sliding and wheelspin.'] = 'Cuánto se agarran las llantas al suelo. Más alto: curvas más cerradas, menos derrape y patinazo.',
       ['Hulk'] = 'Gigantón',
       ['Hulk Bruiser'] = 'Aporreador gigantón',
       ['Hulk Firebomber'] = 'Gigantón bombardero',
@@ -12707,6 +13535,8 @@ MOD.langs = {
       ['Impact damage taken'] = 'Daño de impacto recibido',
       ['Impact explosion (id)'] = 'Explosión al impactar (id)',
       ['Impaler'] = 'Empalador',
+      ['In every mission, whatever your loadout. It takes no loadout slot. Applies on Install.'] = 'En cada misión, sea cual sea tu equipamiento. No ocupa espacio. Se aplica al instalar.',
+      ['In the primary slot it is not thrown away when empty: it stays in your hands until you pick up another weapon.'] = 'En el espacio principal no se tira al vaciarse: se queda en tus manos hasta que recojas otra arma.',
       ['In-game text'] = 'Texto en el juego',
       ['Incendiary'] = 'Incendiaria',
       ['Incendiary Impact'] = 'Impacto incendiario',
@@ -12722,6 +13552,8 @@ MOD.langs = {
       ['Inner torso'] = 'Torso interior',
       ['Insides'] = 'Interior',
       ['Install into the game'] = 'Instalar en el juego',
+      ['Install loads up to 6 such weapons into every mission, so nobody has to bring them. A support weapon brings its own.'] = 'Instalar carga hasta 6 armas de este tipo en todas las misiones, así que nadie necesita llevarlas. Un arma de apoyo trae las suyas.',
+      ['Installed, but not everything fits. Some projectiles may show no trail, and some Always bring it stratagems stay out of missions.'] = 'Instalado, pero no cabe todo. Algunos proyectiles pueden no mostrar estela y algunas estratagemas de "Llevar siempre" quedan fuera de las misiones.',
       ['Installing: finding what changed...'] = 'Instalando: buscando qué cambió...',
       ['Installing: writing the files...'] = 'Instalando: escribiendo los archivos...',
       ['Integrated Explosives'] = 'Explosivos Integrados',
@@ -12729,6 +13561,7 @@ MOD.langs = {
       ['Inverted aim assist (experimental)'] = 'Asistencia de puntería invertida (experimental)',
       ['Iron Sights'] = 'Mira de acero',
       ['Iron fleet'] = 'Flota de hierro',
+      ['It does not raise the top speed by itself: that comes from the engine speed and the gears.'] = 'No sube la velocidad máxima por sí solo: eso lo dan la velocidad del motor y las marchas.',
       ['It doesn\'t take a loadout slot, but the HUD\'s stratagem list can fill up.'] = 'No ocupa un espacio del arsenal, pero la lista de estratagemas del HUD puede llenarse.',
       ['Items per drop'] = 'Objetos por envío',
       ['Its effects are added to every armor with this passive.'] = 'Sus efectos se añaden a todos los blindajes con esta pasiva.',
@@ -12769,6 +13602,7 @@ MOD.langs = {
       ['LIFT-182 Warp Pack'] = 'LIFT-182 Mochila traslocadora',
       ['LIFT-850 Jump Pack'] = 'LIFT-850 Mochila de salto',
       ['LIFT-860 Hover Pack'] = 'LIFT-860 Mochila de vuelo',
+      ['LIGHT'] = 'LIGERA',
       ['Landed ship door shield'] = 'Escudo de puerta de nave aterrizada',
       ['Language'] = 'Idioma',
       ['Large'] = 'Grande',
@@ -12858,6 +13692,7 @@ MOD.langs = {
       ['Left wing'] = 'Ala izquierda',
       ['Left wrist blade'] = 'Cuchilla de muñeca izquierda',
       ['Leg injury immunity (1 on)'] = 'Inmunidad a lesiones de pierna (1 activada)',
+      ['Less: bumps go straight into the body and it wobbles.'] = 'Menos: los baches pasan directo a la carrocería y se bambolea.',
       ['Leveller'] = 'Nivelador',
       ['Leviathan'] = 'Leviatán',
       ['Leviathan bomb'] = 'Bomba del Leviatán',
@@ -12871,6 +13706,7 @@ MOD.langs = {
       ['Lifetime (s)'] = 'Duración (s)',
       ['Light armor'] = 'Blindaje ligero',
       ['Light, medium or heavy, per armor (every armor set with that name).'] = 'Ligero, intermedio o pesado, por blindaje (todo blindaje con ese nombre).',
+      ['Lighter: quicker off the line, but bounces over bumps and gets thrown around by explosions.'] = 'Más ligero: arranca más rápido, pero rebota en los baches y las explosiones lo lanzan.',
       ['Limb health'] = 'Salud de las extremidades',
       ['Limb injury avoidance'] = 'Evitar lesiones de extremidades',
       ['Load'] = 'Cargar',
@@ -12885,6 +13721,9 @@ MOD.langs = {
       ['Lower back'] = 'Espalda baja',
       ['Lower it if a high zoom spins the view.'] = 'Baja ese valor si un zoom alto hace girar la vista.',
       ['Lower spine'] = 'Columna baja',
+      ['Lower: a softer ride, the body leans in turns and sags.'] = 'Más bajo: andar más blando, la carrocería se inclina en curvas y se hunde.',
+      ['Lower: faster in this gear, weaker on hills and from a stop.'] = 'Más bajo: más rápido en esta marcha, más débil en subidas y al arrancar.',
+      ['Lower: keeps bouncing after every bump.'] = 'Más bajo: sigue rebotando después de cada bache.',
       ['Lowest patrol frequency (x)'] = 'Frecuencia mínima de patrullas (x)',
       ['Lowest rates'] = 'Valores mínimos',
       ['Lowest reinforcement frequency (x)'] = 'Frecuencia mínima de refuerzos (x)',
@@ -12904,7 +13743,13 @@ MOD.langs = {
       ['M7S SMG'] = 'M7S SMG',
       ['M90A Shotgun'] = 'M90A Shotgun',
       ['MA5C Assault Rifle'] = 'MA5C Assault Rifle',
+      ['MACHINE GUN'] = 'AMETRALLADORA',
+      ['MARKSMAN RIFLE'] = 'RIFLE DE TIRADOR',
+      ['MECHAS'] = 'MECHAS',
+      ['MEDIUM'] = 'INTERMEDIA',
+      ['MELEE'] = 'CUERPO A CUERPO',
       ['MG Emplacement'] = 'Emplazamiento de ametralladora',
+      ['MG Raider'] = 'Asaltante de ametralladora',
       ['MG-206 Heavy Machine Gun'] = 'MG-206 Ametralladora pesada',
       ['MG-206 Heavy Machine Gun (mounted B)'] = 'MG-206 Heavy Machine Gun (montada B)',
       ['MG-43 Machine Gun'] = 'MG-43 Ametralladora',
@@ -12912,15 +13757,18 @@ MOD.langs = {
       ['MGX-42 Bullet Storm'] = 'MGX-42 Tormenta de balas',
       ['MINEFIELD'] = 'CAMPO MINADO',
       ['MISSILE FLIGHT'] = 'VUELO DEL MISIL',
+      ['MISSION'] = 'MISIÓN',
       ['MLS-4X Commando'] = 'MLS-4X Comando',
       ['MP-98 Knight'] = 'MP-98 Caballero',
       ['MS-11 Solo Silo'] = 'MS-11 Silo solitario',
+      ['MUZZLE'] = 'BOCA',
       ['Machete'] = 'Machete',
       ['Machine Gun'] = 'Ametralladora',
       ['Machine Gun Sentry'] = 'Vigía ametralladora',
       ['Made by SHODAN'] = 'Hecho por SHODAN',
       ['Maelstrom'] = 'Vorágine',
       ['Magazine size'] = 'Tamaño del cargador',
+      ['Magazine size (x)'] = 'Tamaño del cargador (x)',
       ['Magazines from supply'] = 'Cargadores del suministro',
       ['Main'] = 'Principal',
       ['Main body'] = 'Cuerpo principal',
@@ -12928,6 +13776,7 @@ MOD.langs = {
       ['Marauder'] = 'Errante',
       ['Marker radar scan every (s)'] = 'Escaneo de radar de marcadores cada (s)',
       ['Mass (kg)'] = 'Masa (kg)',
+      ['Max bounces'] = 'Rebotes máximos',
       ['Max carried'] = 'Máximo que llevas',
       ['Max flight time (s)'] = 'Tiempo máximo de vuelo (s)',
       ['Max spare heatsinks'] = 'Máximo de disipadores de reserva',
@@ -12940,6 +13789,7 @@ MOD.langs = {
       ['Medium Plasma Bolt'] = 'Proyectil de plasma mediano',
       ['Medium armor'] = 'Blindaje intermedio',
       ['Melee'] = 'Cuerpo a cuerpo',
+      ['Melee armor penetration (+)'] = 'Penetración de armadura cuerpo a cuerpo (+)',
       ['Melee damage'] = 'Daño cuerpo a cuerpo',
       ['Melta Mine'] = 'Mina de fusión',
       ['Meltagun'] = 'Derritoarma',
@@ -12958,6 +13808,7 @@ MOD.langs = {
       ['Mist'] = 'Bruma',
       ['Modifier patrol frequency (x)'] = 'Frec. patrullas del modificador (x)',
       ['Modifier patrol size (x)'] = 'Tamaño patrullas del modificador (x)',
+      ['More: soaks up big bumps and keeps the wheels on the ground on rough terrain.'] = 'Más: absorbe baches grandes y mantiene las ruedas en el suelo en terreno difícil.',
       ['Mortar Sentry'] = 'Vigía mortero',
       ['Mouth'] = 'Boca',
       ['Move while reloading'] = 'Moverse al recargar',
@@ -12974,12 +13825,20 @@ MOD.langs = {
       ['Neck'] = 'Cuello',
       ['Neck armor'] = 'Blindaje del cuello',
       ['Neck body'] = 'Cuerpo del cuello',
+      ['No bolt pull'] = 'Sin accionar el cerrojo',
       ['No changes: loading it puts every value back to the game\'s.'] = 'Sin cambios: cargarlo devuelve todos los valores a los del juego.',
+      ['No description'] = 'Sin descripción',
+      ['No free preset place: delete one first.'] = 'No hay lugar libre: elimina un preset primero.',
+      ['No other vehicle has this section.'] = 'Ningún otro vehículo tiene esta sección.',
+      ['No page in this editor uses this id.'] = 'Ninguna página de este editor usa este id.',
+      ['No passive.'] = 'Sin pasivo.',
+      ['No passives'] = 'Sin pasivas',
       ['No presets yet.'] = 'Aún no hay perfiles.',
       ['Noise'] = 'Ruido',
       ['None'] = 'Ninguno',
       ['Normal projectile'] = 'Proyectil normal',
       ['Not offered by the game: a laser built on the Scythe.'] = 'El juego no lo ofrece: un láser hecho a partir del Scythe.',
+      ['Not offered on backpack weapons: their backpack does not attach when the weapon is in your primary slot.'] = 'No aparece en las armas con mochila: la mochila no se conecta si el arma está en tu espacio principal.',
       ['Not used by any weapon or stratagem in this list.'] = 'No lo usa ninguna arma ni estratagema de esta lista.',
       ['Nothing matches.'] = 'Nada coincide.',
       ['Nothing to install: your values are the game\'s own.'] = 'Nada que instalar: tus valores son los del juego.',
@@ -12988,7 +13847,10 @@ MOD.langs = {
       ['Nursing Spewer'] = 'Espetador maternal',
       ['OFFLINE  -  edits the game\'s files; they apply when the game starts'] = 'SIN CONEXIÓN  -  edita los archivos del juego; se aplican cuando el juego inicia',
       ['OK'] = 'OK',
+      ['OPTICS'] = 'MIRAS',
       ['ORBITAL BEAM'] = 'RAYO ORBITAL',
+      ['ORBITAL STRIKES'] = 'ORBITAL',
+      ['OTHER'] = 'OTRO',
       ['Objective'] = 'Objetivo',
       ['Off: its stats above are left out; only the passives below apply.'] = 'Desactivado: sus estadísticas de arriba no se usan; solo se aplican las pasivas de abajo.',
       ['Off: the game\'s values everywhere; your '] = 'Desactivado: los valores del juego en todas partes; tus ',
@@ -12996,6 +13858,7 @@ MOD.langs = {
       ['Ombudsman'] = 'Defensor del pueblo',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = 'Activado: un arsenal puede llevar más de un exotraje, FRV o tanque.',
       ['On: in your armory / stratagem list.'] = 'Activado: en tu armería / lista de estratagemas.',
+      ['On: shows the Up, Down, < and > buttons by the lists. The mouse wheel, scroll bars and keys work either way.'] = 'Activado: muestra los botones arriba, abajo, < y > junto a las listas. La rueda del mouse, las barras y las teclas funcionan igual.',
       ['On: sniper rifles show a crosshair when you aim in third person.'] = 'Activado: los rifles de francotirador muestran una mira al apuntar en tercera persona.',
       ['On: stratagem balls stick on more surfaces instead of bouncing off.'] = 'Activado: las bolas de estratagema se pegan a más superficies en vez de rebotar.',
       ['On: your '] = 'Activado: tus ',
@@ -13004,9 +13867,12 @@ MOD.langs = {
       ['One True Flag'] = 'La única bandera',
       ['One-Two'] = 'Uno-Dos',
       ['One-handed'] = 'Una mano',
+      ['Only this armor gets it.'] = 'Solo este blindaje lo recibe.',
+      ['Only this armor. Each passive\'s values are on its own page, below the armors.'] = 'Solo este blindaje. Los valores de cada pasivo están en su propia página, debajo de los blindajes.',
       ['Only works with the blast angle at 360, and the distance has to be larger than one step of the round:'] = 'Solo funciona con el ángulo de explosión en 360, y la distancia tiene que ser mayor que un paso de la ronda:',
       ['Open'] = 'Abrir',
       ['Open / close key'] = 'Tecla de abrir / cerrar',
+      ['Open all'] = 'Abrir todo',
       ['Opened the GitHub page in your browser.'] = 'Se abrió la página de GitHub en tu navegador.',
       ['Opened the folder.'] = 'Se abrió la carpeta.',
       ['Opened the log folder.'] = 'Se abrió la carpeta de registros.',
@@ -13028,7 +13894,6 @@ MOD.langs = {
       ['Orbital beam'] = 'Rayo orbital',
       ['Orbital strike.'] = 'Ataque orbital.',
       ['Other players are in your game: arc chain length / split use the game\'s values.'] = 'Hay otros jugadores en tu partida: la longitud / división de las cadenas de arco usan los valores del juego.',
-      ['Otherwise the shot still works but may fly without its trail.'] = 'Si no, el disparo funciona igual pero puede volar sin su estela.',
       ['Outcast'] = 'Paria',
       ['Outer radius (m)'] = 'Radio exterior (m)',
       ['Outpost garrison size (x)'] = 'Guarnición de avanzadas (x)',
@@ -13055,12 +13920,15 @@ MOD.langs = {
       ['P-92 Warrant'] = 'P-92 Suboficial',
       ['P/40-K Bolt Pistol'] = 'P/40-K Pistola de cerrojo',
       ['PASSIVE'] = 'PASIVA',
+      ['PASSIVES'] = 'PASIVOS',
+      ['PISTOL'] = 'PISTOLA',
       ['PLAS-1 Scorcher'] = 'PLAS-1 Calcinador',
       ['PLAS-101 Purifier'] = 'PLAS-101 Purificador',
       ['PLAS-15 Loyalist'] = 'PLAS-15 Intransigente',
       ['PLAS-39 Accelerator Rifle'] = 'PLAS-39 Rifle acelerador',
       ['PLAS-45 Epoch'] = 'PLAS-45 Época',
       ['PRESETS'] = 'PERFILES',
+      ['PRIMARY'] = 'PRINCIPAL',
       ['PROJECTILE'] = 'PROYECTIL',
       ['PROJECTILE SWAP'] = 'CAMBIO DE PROYECTIL',
       ['Pacifier'] = 'Pacificador',
@@ -13071,7 +13939,11 @@ MOD.langs = {
       ['Partial charge'] = 'Carga parcial',
       ['Partial charge explosion'] = 'Explosión con carga parcial',
       ['Partial charge shot'] = 'Disparo con carga parcial',
-      ['Passive'] = 'Pasiva',
+      ['Passive text'] = 'Texto de pasiva',
+      ['Past that, the trail needs someone in the mission to bring that weapon.'] = 'Por encima de eso, la estela necesita que alguien en la misión lleve esa arma.',
+      ['Paste a code here'] = 'Pega un código aquí',
+      ['Paste code'] = 'Pegar código',
+      ['Path start (0 to 1)'] = 'Inicio del recorrido (0 a 1)',
       ['Patriot Exosuit'] = 'Exotraje Patriota',
       ['Patrol frequency (x)'] = 'Frecuencia de patrullas (x)',
       ['Patrolling speed (m/s)'] = 'Velocidad patrullando (m/s)',
@@ -13100,6 +13972,9 @@ MOD.langs = {
       ['Position scatter (m)'] = 'Dispersión de posición (m)',
       ['Pouncer'] = 'Saltador',
       ['Predator Hunter'] = 'Cazador depredador',
+      ['Predator Stalker'] = 'Acechador depredador',
+      ['Preset:'] = 'Perfil:',
+      ['Preset: none'] = 'Perfil: ninguno',
       ['Presets'] = 'Perfiles',
       ['Press a key (Esc cancels)'] = 'Presiona una tecla (Esc cancela)',
       ['Press the key that should open and close the panel: F1-F12, Insert, Home, End, Pause or Scroll Lock. Esc cancels.'] = 'Presiona la tecla que abrirá y cerrará el panel: F1-F12, Insert, Inicio, Fin, Pausa o Bloq Despl. Esc cancela.',
@@ -13109,7 +13984,9 @@ MOD.langs = {
       ['Projectile explosion id'] = 'Id de explosión del proyectil',
       ['Projectile fired (id)'] = 'Proyectil disparado (id)',
       ['Projectile swap'] = 'Cambio de proyectil',
+      ['Projectile swap shares those 4, so weapons it loads leave fewer here.'] = 'El cambio de proyectil comparte esos 4, así que las armas que carga dejan menos aquí.',
       ['Projectiles per shot'] = 'Proyectiles por disparo',
+      ['Projectiles with no trail:'] = 'Proyectiles sin estela:',
       ['Prone speed (m/s)'] = 'Velocidad cuerpo a tierra (m/s)',
       ['Punisher'] = 'Castigadora',
       ['Punisher Plasma'] = 'Castigadora de plasma',
@@ -13129,6 +14006,7 @@ MOD.langs = {
       ['R-63CS Diligence Counter Sniper'] = 'R-63CS Diligencia contrafrancotirador',
       ['R-72 Censor'] = 'R-72 Censor',
       ['R/40-K Hot-Shot Marksman Rifle'] = 'R/40-K Rifle de Tirador Magnífico',
+      ['RECORDS'] = 'REGISTROS',
       ['RL-77 Airburst Rocket Launcher'] = 'RL-77 Lanzacohetes de estallido aéreo',
       ['ROUND 1 BLAST'] = 'EXPLOSIÓN RONDA 1',
       ['ROUND 1 BLAST RADIUS'] = 'RADIO DE EXPLOSIÓN RONDA 1',
@@ -13161,6 +14039,7 @@ MOD.langs = {
       ['Rear brake strength'] = 'Fuerza de los frenos traseros',
       ['Rear cockpit'] = 'Cabina trasera',
       ['Rear damping'] = 'Amortiguación trasera',
+      ['Rear sight range (m)'] = 'Alcance de visión trasera (m)',
       ['Rear spring stiffness'] = 'Rigidez de la suspensión trasera',
       ['Rear suspension travel'] = 'Recorrido de la suspensión trasera',
       ['Rear wheel grip'] = 'Agarre de las ruedas traseras',
@@ -13186,6 +14065,7 @@ MOD.langs = {
       ['Regeneration (health/s)'] = 'Regeneración (salud/s)',
       ['Regeneration delay after damage (s)'] = 'Retraso de regeneración tras recibir daño (s)',
       ['Reinforced Epaulettes'] = 'Charreteras Reforzadas',
+      ['Reinforced Scout Strider'] = 'Andante explorador reforzado',
       ['Reinforcement frequency (x)'] = 'Frecuencia de refuerzos (x)',
       ['Reinforcement size (x)'] = 'Tamaño de refuerzos (x)',
       ['Reinforcements'] = 'Refuerzos',
@@ -13199,8 +14079,10 @@ MOD.langs = {
       ['Rename'] = 'Renombrar',
       ['Reprimand'] = 'Reprimenda',
       ['Reset all values'] = 'Restablecer todos los valores',
+      ['Reset armor'] = 'Restablecer blindaje',
       ['Reset booster'] = 'Restablecer potenciador',
       ['Reset enemy'] = 'Restablecer enemigo',
+      ['Reset every value in this current preset to default.'] = 'Restablece todos los valores de este perfil actual.',
       ['Reset helldiver'] = 'Restablecer helldiver',
       ['Reset passive'] = 'Restablecer pasiva',
       ['Reset record'] = 'Restablecer registro',
@@ -13282,7 +14164,9 @@ MOD.langs = {
       ['Right wrist blade'] = 'Cuchilla de muñeca derecha',
       ['Rock Solid'] = 'Roca Sólida',
       ['Rocket Devastator'] = 'Devastador con misiles',
+      ['Rocket Raider'] = 'Asaltante de cohetes',
       ['Rocket Sentry'] = 'Vigía de cohetes',
+      ['Rocket fired (id)'] = 'Cohete disparado (id)',
       ['Rocket pods'] = 'Lanzacohetes',
       ['Rooted (experimental)'] = 'Enraizado (experimental)',
       ['Rotator'] = 'Rotor',
@@ -13311,6 +14195,8 @@ MOD.langs = {
       ['SEAF soldier: an ally.'] = 'Soldado SEAF: un aliado.',
       ['SEAF wave cooldown (x)'] = 'Tiempo de espera de oleadas SEAF (x)',
       ['SECOND MODE'] = 'SEGUNDO MODO',
+      ['SECONDARY'] = 'SECUNDARIA',
+      ['SENTRIES'] = 'VIGÍAS',
       ['SG-20 Halt'] = 'SG-20 Inmovilizadora',
       ['SG-22 Bushwhacker'] = 'SG-22 Forajida',
       ['SG-225 Breaker'] = 'SG-225 Rompedora',
@@ -13327,9 +14213,11 @@ MOD.langs = {
       ['SH-51 Directional Shield'] = 'SH-51 Escudo direccional',
       ['SHARED WITH'] = 'COMPARTIDO CON',
       ['SHIELD'] = 'ESCUDO',
+      ['SHIELD BASH'] = 'GOLPE DE ESCUDO',
       ['SHODAN ENEMY EDITOR'] = 'EDITOR DE ENEMIGOS SHODAN',
       ['SHODAN STAT EDITOR'] = 'SHODAN STAT EDITOR',
       ['SHODAN weapon mods are running too: they put their own values back every 5 s'] = 'Los mods de armas de SHODAN también están activos: vuelven a poner sus propios valores cada 5 s',
+      ['SHOTGUN'] = 'ESCOPETA',
       ['SHRAPNEL'] = 'METRALLA',
       ['SHRAPNEL BLAST RADIUS'] = 'RADIO DE EXPLOSIÓN DE METRALLA',
       ['SHRAPNEL DIRECT HIT'] = 'IMPACTO DIRECTO DE METRALLA',
@@ -13343,13 +14231,22 @@ MOD.langs = {
       ['SMG-72 Pummeler'] = 'SMG-72 Aporreador',
       ['SMG/FLAM-34 Stoker'] = 'SMG/FLAM-34 Fogonero',
       ['SMG/FLAM-34 Stoker (underbarrel flamer)'] = 'SMG/FLAM-34 Stoker (lanzallamas en cañón secundario)',
+      ['SNIPER RIFLE'] = 'RIFLE DE FRANCOTIRADOR',
       ['SPARKS'] = 'CHISPAS',
+      ['SPECIAL'] = 'ESPECIAL',
+      ['STANDARD'] = 'ESTÁNDAR',
       ['STATUS EFFECTS'] = 'EFECTOS DE ESTADO',
+      ['STOMP'] = 'PISOTÓN',
       ['STRATAGEM'] = 'ESTRATAGEMA',
+      ['STRATAGEMS'] = 'ESTRATAGEMAS',
+      ['SUBMACHINE GUN'] = 'SUBFUSIL',
+      ['SUPPORT'] = 'APOYO',
+      ['SUPPORT WEAPONS'] = 'ARMAS DE APOYO',
       ['Safe below heat (%)'] = 'Seguro por debajo de calor (%)',
       ['Sai'] = 'Sai',
       ['Salvos'] = 'Salvas',
       ['Save'] = 'Guardar',
+      ['Save current changes'] = 'Guardar cambios actuales',
       ['Save current changes here'] = 'Guardar los cambios actuales aquí',
       ['Scavenger'] = 'Carroñero',
       ['Scavenger acid burst'] = 'Estallido de ácido del Carroñero',
@@ -13360,11 +14257,29 @@ MOD.langs = {
       ['Scout Strider'] = 'Andante explorador',
       ['Scout walker rider'] = 'Jinete de caminante explorador',
       ['Scythe'] = 'Guadaña',
+      ['Search Automatons'] = 'Buscar autómatas',
+      ['Search Illuminate'] = 'Buscar iluminados',
+      ['Search SEAF'] = 'Buscar SEAF',
+      ['Search Terminids'] = 'Buscar termínidos',
+      ['Search armors'] = 'Buscar blindajes',
+      ['Search attachments'] = 'Buscar accesorios',
+      ['Search boosters'] = 'Buscar potenciadores',
       ['Search enemies'] = 'Buscar enemigos',
+      ['Search items'] = 'Buscar objetos',
+      ['Search mechas'] = 'Buscar mechas',
+      ['Search primary weapons'] = 'Buscar armas principales',
       ['Search radius (m)'] = 'Radio de búsqueda (m)',
+      ['Search records'] = 'Buscar registros',
+      ['Search secondary weapons'] = 'Buscar armas secundarias',
+      ['Search spawning'] = 'Buscar apariciones',
+      ['Search stratagems'] = 'Buscar estratagemas',
+      ['Search support weapons'] = 'Buscar armas de apoyo',
+      ['Search throwables'] = 'Buscar arrojadizos',
       ['Search weapons and stratagems'] = 'Buscar armas y estratagemas',
       ['Searching speed (m/s)'] = 'Velocidad buscando (m/s)',
       ['Second ammo'] = 'Segunda munición',
+      ['Second ammo (id)'] = 'Segunda munición (id)',
+      ['Second ammo replaces (1 or 2)'] = 'Segunda munición reemplaza (1 o 2)',
       ['Second mode'] = 'Segundo modo',
       ['Second mode explosion'] = 'Explosión del segundo modo',
       ['Second mode fires (id)'] = 'El segundo modo dispara (id)',
@@ -13386,11 +14301,15 @@ MOD.langs = {
       ['Several vehicles of a kind'] = 'Varios vehículos del mismo tipo',
       ['Shape'] = 'Forma',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = 'Lo comparten todos los blindajes con esta pasiva. Multiplicadores: 1 = sin cambio.',
+      ['Shares its name and description with the armor of this name: a change here changes both.'] = 'Comparte nombre y descripción con el blindaje del mismo nombre: un cambio aquí cambia ambos.',
       ['Shear'] = 'Segador',
+      ['Shell fired (id)'] = 'Proyectil disparado (id)',
+      ['Shells after it (id)'] = 'Proyectiles siguientes (id)',
       ['Shells per salvo'] = 'Proyectiles por salva',
       ['Shield'] = 'Escudo',
       ['Shield Generator Pack'] = 'Mochila generadora de escudo',
       ['Shield arm zone armor'] = 'Blindaje de la zona del brazo del escudo',
+      ['Shield bash'] = 'Golpe de escudo',
       ['Shield capacity'] = 'Capacidad del escudo',
       ['Shield emitter'] = 'Emisor del escudo',
       ['Shield forcefield'] = 'Campo de fuerza del escudo',
@@ -13414,6 +14333,7 @@ MOD.langs = {
       ['Shrieker Nest'] = 'Nido de aulladores',
       ['Sickle'] = 'Hoz',
       ['Side'] = 'Lado',
+      ['Side sight range (m)'] = 'Alcance de visión lateral (m)',
       ['Siege-Ready'] = 'Asedio a la Orden',
       ['Sight cone height (degrees)'] = 'Alto del cono de visión (grados)',
       ['Sight cone width (degrees)'] = 'Ancho del cono de visión (grados)',
@@ -13423,6 +14343,7 @@ MOD.langs = {
       ['Silo'] = 'Silo',
       ['Size'] = 'Tamaño',
       ['Size (x)'] = 'Tamaño (x)',
+      ['Skips the bolt pull after each shot. Fire rate, ammo and damage stay as they are.'] = 'Omite accionar el cerrojo tras cada disparo. La cadencia, la munición y el daño no cambian.',
       ['Slide speed / duration'] = 'Velocidad / duración del deslizamiento',
       ['Slope slide ends at (degrees)'] = 'El deslizamiento en pendiente termina a (grados)',
       ['Slope slide starts at (degrees)'] = 'El deslizamiento en pendiente empieza a (grados)',
@@ -13433,6 +14354,7 @@ MOD.langs = {
       ['Slowed (experimental)'] = 'Ralentizado (experimental)',
       ['Slugger'] = 'Cañonera',
       ['Small Plasma Bolt'] = 'Proyectil de plasma pequeño',
+      ['Smaller: quicker to speed up, slower at the top, and it scrapes over rocks.'] = 'Más chicas: acelera más rápido, menos velocidad máxima, y roza las rocas.',
       ['Smoke'] = 'Humo',
       ['Smoke radius, edge (m)'] = 'Radio de humo, borde (m)',
       ['Smoke radius, full (m)'] = 'Radio de humo, total (m)',
@@ -13493,6 +14415,8 @@ MOD.langs = {
       ['Standard Drum'] = 'Tambor estándar',
       ['Standard Heatsink'] = 'Disipador térmico estándar',
       ['Standard Plasma Container'] = 'Contenedor de plasma estándar',
+      ['Start game'] = 'Iniciar juego',
+      ['Starting Helldivers 2 through Steam...'] = 'Iniciando Helldivers 2 con Steam...',
       ['Starting charges'] = 'Cargas al inicio',
       ['Starting count'] = 'Cantidad al inicio',
       ['Starting heatsinks'] = 'Disipadores al inicio',
@@ -13508,6 +14432,7 @@ MOD.langs = {
       ['Stingray'] = 'Mantarraya',
       ['Stoker'] = 'Fogonero',
       ['Stomach zone'] = 'Zona del estómago',
+      ['Stomp'] = 'Pisotón',
       ['Stomp speed (x)'] = 'Velocidad del pisotón (x)',
       ['Stops you while firing'] = 'Te detiene mientras disparas',
       ['Strafing speed (m/s)'] = 'Velocidad lateral (m/s)',
@@ -13517,6 +14442,7 @@ MOD.langs = {
       ['Stratagem jamming radius (m)'] = 'Radio de interferencia de estratagemas (m)',
       ['Stratagem scrambling radius (m)'] = 'Radio de codificación de estratagemas (m)',
       ['Stratagems'] = 'Estratagemas',
+      ['Stratagems left out of missions:'] = 'Estratagemas fuera de las misiones:',
       ['Structure.'] = 'Estructura.',
       ['Stun'] = 'Aturdidora',
       ['Stun (Illuminate) (experimental)'] = 'Aturdimiento (Iluminados) (experimental)',
@@ -13547,11 +14473,13 @@ MOD.langs = {
       ['Sway multiplier'] = 'Multiplicador de balanceo',
       ['Sweeper'] = 'Barredora',
       ['Swim speed (m/s)'] = 'Velocidad nadando (m/s)',
+      ['TANKS'] = 'TANQUES',
       ['TCS support'] = 'Soporte TCS',
       ['TD-110 Maelstrom'] = 'TD-110 Vorágine',
       ['TD-220 Bastion MK XVI'] = 'TD-220 Bastión MK XVI',
       ['TED-63 Dynamite'] = 'TED-63 Dinamita',
       ['THROWABLE'] = 'ARROJADIZO',
+      ['THROWABLES'] = 'ARROJADIZO',
       ['TM-1 Lure Mine'] = 'TM-1 Mina de cebo',
       ['TX-41 Sterilizer'] = 'TX-41 Esterilizador',
       ['Tabs shown'] = 'Pestañas visibles',
@@ -13568,6 +14496,7 @@ MOD.langs = {
       ['Tesla Tower'] = 'Torre tesla',
       ['Tested releases only.'] = 'Solo versiones probadas.',
       ['That did not work; see the log.'] = 'Eso no funcionó; ver el registro.',
+      ['That is not a valid preset code.'] = 'Ese código de preset no es válido.',
       ['That would make a loop of extra stratagems.'] = 'Eso formaría un ciclo de estratagemas extra.',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = 'La escopeta en cañón secundario del Arbitrator, no el rifle en sí.',
       ['The Defender SEAF soldiers carry. Not yours.'] = 'El Defender que llevan los soldados SEAF. No el tuyo.',
@@ -13577,15 +14506,18 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = 'El subfusil que llevas. Su lanzallamas en cañón secundario aparece aparte.',
       ['The Scythe you carry.'] = 'El Scythe que llevas.',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = 'El lanzallamas en cañón secundario del Stoker, no el subfusil en sí.',
+      ['The Trident shows 4 beams at its default of 2.'] = 'El Trident muestra 4 rayos con su valor por defecto de 2.',
       ['The armor passives could not be stacked'] = 'No se pudieron combinar las pasivas de blindaje',
+      ['The armory shows the first passive\'s name and at most 3 effects. All of them apply.'] = 'La armería muestra el nombre del primer pasivo y 3 efectos como máximo. Todos se aplican.',
       ['The arrows you enter to call it in: click Record (or press Enter on this row), then enter'] = 'Las flechas que ingresas para llamarla: haz clic en Grabar (o presiona Enter en esta fila), luego ingresa',
       ['The beacon\'s countdown before the delivery is sent.'] = 'La cuenta regresiva de la baliza antes de enviar la entrega.',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = 'La mochila de cargas, la carga y su explosión. Tiempo de recarga: pestaña Estratagemas.',
+      ['The clipboard has no valid preset code.'] = 'El portapapeles no tiene un código de preset válido.',
       ['The explosion the round sets off when it hits something. 0: no explosion.'] = 'La explosión que causa la ronda al golpear algo. 0: sin explosión.',
+      ['The explosion the round sets off when its life time runs out before it hits anything. 0: no explosion.'] = 'La explosión que provoca el proyectil cuando se acaba su tiempo de vida antes de impactar con algo. 0: sin explosión.',
       ['The flamethrower you carry.'] = 'El lanzallamas que llevas.',
       ['The game holds at most 1023 rounds in a backpack.'] = 'El juego permite como máximo 1023 rondas en una mochila.',
       ['The game holds at most 2048 rounds in a magazine.'] = 'El juego permite como máximo 2048 rondas en un cargador.',
-      ['The game only loads them when someone in the mission brings that weapon.'] = 'El juego solo los carga cuando alguien en la misión lleva esa arma.',
       ['The game treats the weapon as one-handed. On two-handed weapons it breaks the hip-fire animations.'] = 'El juego trata el arma como de una mano. En armas de dos manos rompe las animaciones de disparo desde la cadera.',
       ['The game\'s own files are already in place.'] = 'Los archivos originales del juego ya están en su lugar.',
       ['The game\'s own files are back. Your values stay saved here (Install puts them in again).'] = 'Los archivos originales del juego están de vuelta. Tus valores siguen guardados aquí (Instalar los vuelve a poner).',
@@ -13601,12 +14533,15 @@ MOD.langs = {
       ['The rifle you carry. The grenade launcher is listed separately.'] = 'El rifle que llevas. El lanzagranadas aparece aparte.',
       ['The rifle you carry. The underbarrel shotgun is listed separately.'] = 'El rifle que llevas. La escopeta en cañón secundario aparece aparte.',
       ['The round goes off when it passes this close to an enemy, without hitting it. 0: off (the RL-77 uses 2 m).'] = 'La ronda explota cuando pasa así de cerca de un enemigo, sin golpearlo. 0: desactivado (el RL-77 usa 2 m).',
+      ['The round only bounces when it hits faster than this. Grenade launcher rounds use 20 m/s, most rounds 60 m/s.'] = 'La ronda solo rebota si impacta más rápido que esto. Las rondas de lanzagranadas usan 20 m/s, la mayoría 60 m/s.',
+      ['The round only bounces when it hits further than this from head on (0 = head on, 90 = grazing).'] = 'La ronda solo rebota si impacta más lejos que este ángulo de frente (0 = de frente, 90 = rozando).',
       ['The shot\'s trail and other effects belong to the chosen weapon.'] = 'La estela del disparo y otros efectos pertenecen al arma elegida.',
       ['The support hammer delivered by hellpod. The game data files it next to the Machete.'] = 'El martillo de apoyo enviado en cápsula. Los datos del juego lo guardan junto al Machete.',
       ['The support weapon. The CQC-73 is listed under Secondary.'] = 'El arma de apoyo. El CQC-73 aparece en Secundaria.',
       ['Thermite'] = 'Termita',
       ['Thermite (experimental)'] = 'Termita (experimental)',
       ['These values are shared by ALL bayonets: they change the Constitution, Sweeper and Amendment at once.'] = 'Estos valores los comparten TODAS las bayonetas: cambian la Constitution, la Sweeper y la Amendment a la vez.',
+      ['This code is shared, so changing it also changes:'] = 'Este código es compartido, así que cambiarlo también cambia:',
       ['Throw range'] = 'Alcance de lanzamiento',
       ['Throw spread (degrees)'] = 'Dispersión del lanzamiento (grados)',
       ['Throw velocity, max (m/s)'] = 'Velocidad de lanzamiento, máx. (m/s)',
@@ -13657,9 +14592,10 @@ MOD.langs = {
       ['Turret'] = 'Torreta',
       ['Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.'] = 'Escribe el nombre: Enter lo guarda, Esc cancela. El juego también recibe estas teclas, así que nombra los perfiles desde un menú.',
       ['Type the percent (%d-%d): Enter sets it, Esc cancels.'] = 'Escribe el porcentaje (%d-%d): Enter lo aplica, Esc cancela.',
-      ['Type the text: Enter keeps it, Esc cancels. Install puts it in the game, in every language.'] = 'Escribe el texto: Enter lo guarda, Esc cancela. Instalar lo pone en el juego, en todos los idiomas.',
+      ['Type the text: Enter keeps it, Shift+Enter starts a new line (twice leaves a gap), Esc cancels.'] = 'Escribe el texto: Enter lo guarda, Shift+Enter empieza una línea nueva (dos veces deja un espacio), Esc cancela.',
       ['Type the value: Enter sets it, Esc cancels. Values out of range are set to the nearest allowed one.'] = 'Escribe el valor: Enter lo aplica, Esc cancela. Los valores fuera de rango se ajustan al permitido más cercano.',
       ['Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.'] = 'Escribe para buscar: Enter mantiene los resultados, Esc borra la búsqueda. El juego también recibe estas teclas.',
+      ['UNDERBARREL'] = 'CAÑÓN SECUNDARIO',
       ['Ultimatum'] = 'Ultimátum',
       ['Uncharged'] = 'Sin carga',
       ['Uncharged explosion'] = 'Explosión sin carga',
@@ -13670,11 +14606,13 @@ MOD.langs = {
       ['Unsafe warp: damage to you'] = 'Distorsión insegura: daño que recibes',
       ['Unsafe warp: explosion'] = 'Distorsión insegura: explosión',
       ['Up'] = 'Arriba',
+      ['Up/Down and arrow buttons'] = 'Botones arriba/abajo y flechas',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = 'Arriba/Abajo eligen una estadística, Izquierda/Derecha la cambian (Shift: pasos más grandes), haz clic en un valor o presiona Enter para escribirlo,',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = 'Arriba/Abajo eligen, Enter carga, Insert crea uno nuevo, Shift+Insert guarda en él, F2 renombra, Supr elimina.',
       ['Update channel'] = 'Canal de actualizaciones',
       ['Updates'] = 'Actualizaciones',
       ['Urchin'] = 'Ladronzuelo',
+      ['Used by:'] = 'Usado por:',
       ['Uses per mission'] = 'Usos por misión',
       ['Uses per rearm'] = 'Usos por rearme',
       ['V2'] = 'V2',
@@ -13710,6 +14648,7 @@ MOD.langs = {
       ['Walk speed (m/s)'] = 'Velocidad caminando (m/s)',
       ['Walk speed (x)'] = 'Velocidad al caminar (x)',
       ['Walking backwards (multiplier)'] = 'Caminar hacia atrás (multiplicador)',
+      ['Walking direction (deg)'] = 'Dirección de avance (grados)',
       ['Walking speed (m/s)'] = 'Velocidad caminando (m/s)',
       ['War Strider'] = 'Andante de guerra',
       ['Warm-up before it sprays (s)'] = 'Calentamiento antes de rociar (s)',
@@ -13747,12 +14686,15 @@ MOD.langs = {
       ['Your values are not in the game yet: close the game, then Install.'] = 'Tus valores aún no están en el juego: cierra el juego y luego Instala.',
       ['a slot is 1 (primary) or 3 (secondary)'] = 'un espacio es 1 (principal) o 3 (secundaria)',
       ['added to every armor value, up to 10; lowered: down to 0'] = 'se suma a cada valor de blindaje, hasta 10; al bajar: hasta 0',
+      ['added to every melee attack, up to 10; lowered: down to 0'] = 'se suma a cada ataque cuerpo a cuerpo, hasta 10; al bajar: hasta 0',
       ['airborne'] = 'aerotransportado',
       ['all four exosuits share it'] = 'los cuatro exotrajes la comparten',
       ['also in your loadout when you bring this one'] = 'también en tu arsenal cuando llevas esta',
       ['also the second firing mode\'s shot (the same projectile)'] = 'también el disparo del segundo modo de fuego (el mismo proyectil)',
+      ['as long as the engine torque is enough to get there.'] = 'siempre que la fuerza del motor alcance para llegar.',
       ['assassinate'] = 'asesinato',
       ['assault'] = 'asalto',
+      ['at least 1 round, at most 2048'] = 'mínimo 1 bala, máximo 2048',
       ['body parts without their own armor use this'] = 'las partes del cuerpo sin blindaje propio usan este',
       ['bull'] = 'toro',
       ['clip'] = 'cargador',
@@ -13772,6 +14714,7 @@ MOD.langs = {
       ['how far the wheels can move up and down; lower: the body wobbles a lot'] = 'cuánto pueden subir y bajar las ruedas; menor: la carrocería se bambolea mucho',
       ['how fast a body part\'s bleed-out health runs out'] = 'qué tan rápido se agota la salud al desangrarse de una parte del cuerpo',
       ['how fast the bleed-out health runs out'] = 'qué tan rápido se agota la salud al desangrarse',
+      ['how fast their guns shoot; flamers, beams and melee stay as they are'] = 'qué tan rápido disparan sus armas; lanzallamas, rayos y cuerpo a cuerpo no cambian',
       ['how fast they attack, turn and react'] = 'qué tan rápido atacan, giran y reaccionan',
       ['how long it keeps after you once you break line of sight'] = 'cuánto tiempo te sigue después de que rompes la línea de visión',
       ['how many of the items on its rack come down in one pod'] = 'cuántos de los objetos de su estante bajan en una cápsula',
@@ -13799,6 +14742,7 @@ MOD.langs = {
       ['none'] = 'ninguno',
       ['none (no explosion)'] = 'ninguna (sin explosión)',
       ['none (no projectile)'] = 'ninguno (sin proyectil)',
+      ['none. - / + : add one, hold Reload in game to switch'] = 'ninguna. - / + : agregar, mantén Recargar en el juego para cambiar',
       ['normal projectile'] = 'proyectil normal',
       ['not a faction'] = 'no es una facción',
       ['on the crosshair; closer or farther it lands a bit high or low. Does not change the zoom.'] = 'en la mira; más cerca o más lejos cae un poco alto o bajo. No cambia el zoom.',
@@ -13822,6 +14766,7 @@ MOD.langs = {
       ['the armory list it is in: 1 primary, 3 secondary'] = 'la lista de la armería en la que está: 1 principal, 3 secundaria',
       ['the body and every body part, bleed-out health too'] = 'el cuerpo y cada parte del cuerpo, también la salud al desangrarse',
       ['the faction multipliers cannot slow patrols below this: lower it with them'] = 'los multiplicadores de facción no pueden bajar las patrullas de esto: bájalo junto con ellos',
+      ['the fire mode switch'] = 'la opción de modo de disparo',
       ['the force a hit needs to stagger it (hit sizes it never staggers from stay that way)'] = 'la fuerza que necesita un golpe para hacerlo tambalear (los tamaños de golpe que nunca lo hacen tambalear siguen igual)',
       ['the force a hit needs to stagger them'] = 'la fuerza que necesita un golpe para hacerlos tambalear',
       ['the game holds back reinforcements past about 100 enemies at x1; it has crashed past 200-240 enemies alive'] = 'el juego frena los refuerzos pasados unos 100 enemigos en x1; se ha bloqueado pasados 200-240 enemigos vivos',
@@ -13830,8 +14775,12 @@ MOD.langs = {
       ['the holster is on the back or the hip'] = 'la funda está en la espalda o en la cadera',
       ['the model and its body parts; on some enemies the hitboxes may not match the model, and on others it may not work at all'] = 'el modelo y sus partes del cuerpo; en algunos enemigos los hitboxes pueden no coincidir con el modelo, y en otros puede que no funcione en absoluto',
       ['the new code with the arrow keys or WASD, 1 to 9 arrows. Enter keeps it, Backspace takes one back,'] = 'el nuevo código con las flechas o WASD, de 1 a 9 flechas. Enter lo guarda, Backspace quita una,',
+      ['the rate of fire switch'] = 'la opción de cadencia de disparo',
+      ['the same distance for every enemy; 0: the game\'s own (most are 1 m, so no multiplier)'] = 'la misma distancia para todos los enemigos; 0: la del juego (la mayoría tiene 1 m, por eso no hay multiplicador)',
+      ['the same time for every gun; 0: the game\'s own (enemy reloads are 0 in the data, so no multiplier)'] = 'el mismo tiempo para todas las armas; 0: el del juego (las recargas enemigas valen 0 en los datos, por eso no hay multiplicador)',
       ['the shot fired from this heat on, and what it does to you'] = 'el disparo a partir de este calor, y lo que te hace',
       ['the spare ammo in its backpack; read when the backpack is called in'] = 'la munición de reserva en su mochila; se lee cuando se pide la mochila',
+      ['the underbarrel switch'] = 'la opción del arma acoplada',
       ['their wind-ups and attacks'] = 'preparaciones y ataques',
       ['tier 1 captive'] = 'cautivo nivel 1',
       ['tier 2 guard'] = 'guardia nivel 2',
@@ -14205,6 +15154,7 @@ MOD.langs = {
       ['gatekeeper'] = 'Guardés',
       ['gatling sentry'] = 'Vigía gatling',
       ['gazer'] = 'Oteador',
+      ['gazer spire'] = 'Espira vigía',
       ['giga grenade'] = 'Gigagranada',
       ['gl-15 evictor'] = 'GL-15 Desalojador',
       ['gl-21 grenade launcher'] = 'GL-21 Lanzagranadas',
@@ -14307,6 +15257,7 @@ MOD.langs = {
       ['medium plasma bolt'] = 'Proyectil de plasma mediano',
       ['melta mine'] = 'Mina de fusión',
       ['meltagun'] = 'Derritoarma',
+      ['mg raider'] = 'Asaltante de ametralladora',
       ['mg-206 heavy machine gun'] = 'MG-206 Ametralladora pesada',
       ['mg-43 machine gun'] = 'MG-43 Ametralladora',
       ['mgx-42 bullet storm'] = 'MGX-42 Tormenta de balas',
@@ -14367,6 +15318,7 @@ MOD.langs = {
       ['portable hellbomb'] = 'Bomba hell portátil',
       ['pouncer'] = 'Saltador',
       ['predator hunter'] = 'Cazador depredador',
+      ['predator stalker'] = 'Acechador depredador',
       ['punisher'] = 'Castigadora',
       ['punisher plasma'] = 'Castigadora de plasma',
       ['purifier'] = 'Purificador',
@@ -14395,10 +15347,12 @@ MOD.langs = {
       ['redeemer'] = 'Redimidor',
       ['reduced signature'] = 'Señal Reducida',
       ['reinforced epaulettes'] = 'Charreteras Reforzadas',
+      ['reinforced scout strider'] = 'Andante explorador reforzado',
       ['reprimand'] = 'Reprimenda',
       ['rl-77 airburst rocket launcher'] = 'RL-77 Lanzacohetes de estallido aéreo',
       ['rock solid'] = 'Roca Sólida',
       ['rocket devastator'] = 'Devastador con misiles',
+      ['rocket raider'] = 'Asaltante de cohetes',
       ['rocket sentry'] = 'Vigía de cohetes',
       ['rs-422 railgun'] = 'RS-422 Arma de riel',
       ['rupture charger'] = 'Embestidor subterráneo',
@@ -14544,6 +15498,14 @@ MOD.langs = {
       { '^(.+) can\'t be called while this one is ready: their codes start with it%.$', 'No se puede llamar a %L1 mientras esta esté lista: sus códigos empiezan con este.' },
       { '^This one can\'t be called while (.+) is ready: its code starts with theirs%.$', 'No se puede llamar a esta mientras %L1 esté lista: su código empieza con el de ellas.' },
       { '^Gear (%d+) ratio$', 'Relación de la marcha %1' },
+      { '^fires (.+)$', 'dispara %1' },
+      { '^drops (.+)$', 'lanza %1' },
+      { '^Copied (%d+) value%(s%) into (%d+) preset%(s%)$', '%1 valor(es) copiados a %2 perfil(es)' },
+      { '^Code copied %((%d+) characters%)$', 'Código copiado (%1 caracteres)' },
+      { '^Added "(.+)"$', 'Agregado "%1"' },
+      { '^Added "(.+)" to the Enemy Editor presets$', 'Agregado "%1" a los presets del editor de enemigos' },
+      { '^Added "(.+)" to the Stat Editor presets$', 'Agregado "%1" a los presets del editor de estadísticas' },
+      { '^Saved as StatEditor\\(%S+)%. Copy code shares it%. A code you were sent goes in the box on the left%.$', 'Guardado como StatEditor\\%1. Copiar código lo comparte. Un código que te enviaron va en el cuadro de la izquierda.' },
       { '^Zoom level (%d) %(x%)$', 'Nivel de zoom %1 (x)' },
       { '^Zeroing distance (%d) %(m%)$', 'Distancia de ajuste %1 (m)' },
       { '^PgUp/PgDn change weapon, Del resets, Ctrl%+1%-5 loads a weapon preset, Ctrl%+Shift%+1%-5 saves one; (%d+) value%(s%) changed%.$', 'RePág/AvPág: arma, Supr: restablecer, Ctrl(+Shift)+1-5: perfiles; %1 valor(es) cambiado(s).' },
@@ -14655,7 +15617,7 @@ MOD.langs = {
       { '^(%d+) listed$', '%1 en la lista' },
       { '^(%d+)%-(%d+) of (%d+) %(max (%d+)%)$', '%1-%2 de %3 (máx. %4)' },
       { '^(%d+) %(max (%d+)%)$', '%1 (máx. %2)' },
-      { '^(%d+) value%(s%) for (%d+) weapon%(s%) / stratagem%(s%):$', '%1 valor(es) para %2 arma(s) / estratagema(s):' },
+      { '^(%d+) value%(s%) for (%d+) item%(s%):$', '%1 valor(es) para %2 elemento(s):' },
       { '^(%d+) value%(s%)$', '%1 valor(es)' },
       { '^On: your (%d+) change%(s%) are applied%.$', 'Activado: tus %1 cambio(s) están aplicados.' },
       { '^Off: the game\'s values everywhere; your (%d+) change%(s%) are kept for when you turn them on%.$', 'Desactivado: los valores del juego en todas partes; tus %1 cambio(s) se guardan para cuando los actives.' },
@@ -14714,6 +15676,8 @@ MOD.langs = {
       { '^Part (%d+)$', 'Parte %1' },
       { '^Weapon (%d+)$', 'Arma %1' },
       { '^(.+) %(([A-Z][^()]*)%)$', '%1 (%2)' },
+      { '^Copy (.+) to$', 'Copiar %1 a' },
+      { '^Copied (%d+) value%(s%) to (%d+) vehicle%(s%)%.$', 'Se copiaron %1 valor(es) a %2 vehículo(s).' },
     },
     prefix = {
       { 'PgUp/PgDn change weapon, Del resets, Ctrl+1-5 loads a weapon preset, Ctrl+Shift+1-5 saves one; ', 'RePág/AvPág: arma, Supr: restablecer, Ctrl(+Shift)+1-5: perfiles; ' },
@@ -14755,6 +15719,7 @@ MOD.langs = {
       [' page(s):'] = ' página(s):',
       [' to enemies and spawning with it.'] = ' aos inimigos e ao surgimento.',
       ['"+ New preset" (or Insert) saves your current changes as one; you name it next.'] = '"+ Novo perfil" (ou Insert) salva suas mudanças atuais como uma; depois você dá o nome.',
+      ['(changed)'] = '(alterado)',
       ['+ Add passive'] = '+ Adicionar passiva',
       ['+ Armor rating'] = '+ Valor de blindagem',
       ['+ Ergonomics'] = '+ Ergonomia',
@@ -14765,11 +15730,14 @@ MOD.langs = {
       ['+ Throwables (start, max)'] = '+ Arremessáveis (início, máx.)',
       ['- / + steps through the stratagems by name (-- / ++: 10 at a time).'] = '- / + percorre as estratégias por nome (-- / ++: de 10 em 10).',
       ['-180 with right at 180: all the way round'] = '-180 com direita em 180: a volta toda',
+      ['-1: as far as straight ahead'] = '-1: igual à visão para a frente',
       ['0 = normal projectile; - / + selects a throwable grenade by name above.'] = '0 = projétil normal; - / + escolhe uma granada arremessável pelo nome acima.',
       ['0 light, 1 medium, 2 heavy'] = '0 leve, 1 médio, 2 pesado',
       ['0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s.'] = '0: na hora. O RL-77 espera 0.2 s, o P-34 Breacher (primeiro gruda e queima) 1 s.',
       ['0: hits deal their normal damage, 1: their durable damage (the weapon\'s lower one)'] = '0: os acertos causam o dano normal, 1: o dano durável (o menor da arma)',
       ['0: no patrols'] = '0: sem patrulhas',
+      ['0: these wheels do not brake at all.'] = '0: estas rodas não freiam nada.',
+      ['0: walks away from the beacon, 0.5: centred on it, 1: ends on it'] = '0: se afasta do sinalizador, 0.5: centrado nele, 1: termina nele',
       ['100kg Bomb'] = 'Bomba de 100 kg',
       ['100kg Bomb Mk2'] = 'Bomba de 100 kg Mk2',
       ['100kg Bomb Mk3'] = 'Bomba de 100 kg Mk3',
@@ -14929,6 +15897,8 @@ MOD.langs = {
       ['A pathetic creature of meat and bone.'] = 'Uma criatura patética de carne e osso.',
       ['A preset keeps every change you have made as one set, under a name you choose.'] = 'Um perfil guarda todas as suas mudanças como um conjunto, com o nome que você escolher.',
       ['A preset keeps every enemy and spawning change as one custom difficulty, under a name you choose. Your weapon changes are kept apart.'] = 'Um perfil guarda todas as mudanças de inimigos e surgimento como uma dificuldade personalizada, com o nome que você escolher. Suas mudanças de armas ficam separadas.',
+      ['A resupply box gives this many. An ammo box on the map gives half, rounded down (at least 1).'] = 'Uma caixa de reabastecimento dá esta quantidade. Uma caixa de munição no mapa dá a metade, arredondada para baixo (mínimo 1).',
+      ['A resupply box gives this much. An ammo box on the map gives half, rounded down.'] = 'Uma caixa de reabastecimento dá esta quantidade. Uma caixa de munição no mapa dá a metade, arredondada para baixo.',
       ['A value changed on an enemy\'s own page stays red: this page leaves it as it is.'] = 'Um valor mudado na página própria de um inimigo fica vermelho: esta página o deixa como está.',
       ['A weapon whose own Sway multiplier you changed keeps it. Sway this row changes shows in blue.'] = 'Uma arma cujo próprio Multiplicador de balanço você mudou o mantém. O balanço que esta linha muda aparece em azul.',
       ['A/AC-8 Autocannon Sentry'] = 'A/AC-8 Canhão Automático Sentinela',
@@ -14944,7 +15914,9 @@ MOD.langs = {
       ['AA Emplacement'] = 'Plataforma antiaérea',
       ['AC-8 Autocannon'] = 'AC-8 Canhão Automático',
       ['AMMO'] = 'MUNIÇÃO',
+      ['AMMUNITION'] = 'MUNIÇÃO',
       ['AMW-20 Apex'] = 'AMW-20 Apoteose',
+      ['ANTI-TANK'] = 'ANTITANQUE',
       ['APW-1 Anti-Materiel Rifle'] = 'APW-1 Rifle Antimaterial',
       ['AR-11 Arbitrator'] = 'AR-11 Árbitro',
       ['AR-11 Arbitrator (underbarrel shotgun)'] = 'AR-11 Arbitrator (escopeta acoplada)',
@@ -14962,6 +15934,9 @@ MOD.langs = {
       ['ARC'] = 'ARCO',
       ['ARC-12 Blitzer'] = 'ARC-12 Dispersora',
       ['ARC-3 Arc Thrower'] = 'ARC-3 Lançador de Arco',
+      ['ARMORS'] = 'ARMADURAS',
+      ['ASSAULT RIFLE'] = 'RIFLE DE ASSALTO',
+      ['ATTACHMENTS'] = 'ACESSÓRIOS',
       ['AX/AR-23 "Guard Dog"'] = 'AX/AR-23 "Guard Dog"',
       ['AX/ARC-3 "Guard Dog" K-9'] = 'AX/ARC-3 "Guard Dog" K-9',
       ['AX/FLAM-75 "Guard Dog" Hot Dog'] = 'AX/FLAM-75 "Guard Dog" Hot Dog',
@@ -14997,6 +15972,7 @@ MOD.langs = {
       ['Alpha Commander'] = 'Comandante Alfa',
       ['Also includes'] = 'Também inclui',
       ['Alternate ammunition'] = 'Munição alternativa',
+      ['Always bring it'] = 'Levar sempre',
       ['Amendment'] = 'Emenda',
       ['Ammo'] = 'Munição',
       ['Ammo at the start'] = 'Munição no início',
@@ -15047,6 +16023,7 @@ MOD.langs = {
       ['Assault'] = 'Assalto',
       ['Assault Raider'] = 'Invasor avançado',
       ['Assault Rifle'] = 'Rifle de Assalto',
+      ['At most 4 across all stratagems: more can crash the game at deployment.'] = 'No máximo 4 entre todos os estratagemas: mais pode travar o jogo ao descer.',
       ['Attachment'] = 'Acessório',
       ['Attachments'] = 'Acessórios',
       ['Attack animation speed (x)'] = 'Velocidade da animação de ataque (x)',
@@ -15062,10 +16039,12 @@ MOD.langs = {
       ['B/FLAM-80 Cremator'] = 'B/FLAM-80 Cremador',
       ['B/MD C4 Pack'] = 'B/MD C4 Pack',
       ['BACKPACK'] = 'MOCHILA',
+      ['BACKPACKS'] = 'MOCHILAS',
       ['BARRAGE'] = 'BOMBARDEIO',
       ['BLAST'] = 'EXPLOSÃO',
       ['BLAST RADIUS'] = 'RAIO DA EXPLOSÃO',
       ['BODY PARTS'] = 'PARTES DO CORPO',
+      ['BOOSTERS'] = 'REFORÇADORES',
       ['BR-14 Adjudicator'] = 'BR-14 Árbitro',
       ['BURST'] = 'RAJADA',
       ['BURST RADIUS'] = 'RAIO DA RAJADA',
@@ -15094,11 +16073,15 @@ MOD.langs = {
       ['Bastion MK XVI'] = 'Bastião Mk XVI',
       ['Battery'] = 'Bateria',
       ['Bayonet melee'] = 'Corpo a corpo com baioneta',
+      ['Beam range (m)'] = 'Alcance do feixe (m)',
+      ['Beam stays after the shot (s)'] = 'O feixe dura após o tiro (s)',
       ['Beamer'] = 'Lança-raios',
+      ['Beams per barrel'] = 'Feixes por cano',
       ['Belt-Fed Grenade Launcher'] = 'Lança-granadas com Fita',
       ['Berserker'] = 'Berserker',
       ['Better stratagem bounce'] = 'Ricochete de estratégias melhor',
       ['Big walker cannon'] = 'Canhão de andador grande',
+      ['Bigger wheels: a higher top speed and more room under the body, but a weaker pull.'] = 'Rodas maiores: velocidade máxima maior e mais vão livre, mas menos força.',
       ['Bile Spewer'] = 'Vomitador de bile',
       ['Bile Spewer acid burst'] = 'Explosão de ácido do Vomitador de bile',
       ['Bile Spitter'] = 'Cuspidor de bile',
@@ -15129,6 +16112,7 @@ MOD.langs = {
       ['Body parts'] = 'Partes do corpo',
       ['Body rear'] = 'Corpo traseiro',
       ['Bolt Pistol'] = 'Pistola Bolt',
+      ['Bomb dropped (id)'] = 'Bomba lançada (id)',
       ['Bomb pattern'] = 'Padrão de bombas',
       ['Bonnet'] = 'Capô',
       ['Boost after the launch (s)'] = 'Impulso após o lançamento (s)',
@@ -15137,6 +16121,9 @@ MOD.langs = {
       ['Boss'] = 'Chefe',
       ['Boss back'] = 'Costas do chefe',
       ['Bottom wing'] = 'Asa inferior',
+      ['Bounce'] = 'Ricochete',
+      ['Bounce angle (deg)'] = 'Ângulo de ricochete (graus)',
+      ['Bounce speed (m/s)'] = 'Velocidade de ricochete (m/s)',
       ['Brake strength'] = 'Força do freio',
       ['Braking height (m)'] = 'Altura de frenagem (m)',
       ['Braking speed (m/s)'] = 'Velocidade de frenagem (m/s)',
@@ -15179,6 +16166,7 @@ MOD.langs = {
       ['C hex 17'] = 'Hexágono C 17',
       ['C hex 18'] = 'Hexágono C 18',
       ['C hex 19'] = 'Hexágono C 19',
+      ['CAPES'] = 'CAPAS',
       ['CB-9 Exploding Crossbow'] = 'CB-9 Besta explosiva',
       ['CHARGE'] = 'CARGA',
       ['CLUSTER BOMB'] = 'BOMBA DE FRAGMENTAÇÃO',
@@ -15221,16 +16209,21 @@ MOD.langs = {
       ['Chest damage taken'] = 'Dano recebido no peito',
       ['Choked (experimental)'] = 'Sufocamento (experimental)',
       ['Choose a weapon on the left.'] = 'Escolha uma arma à esquerda.',
+      ['Choose the presets, then Copy. Values they share take this preset\'s, the rest of theirs stays.'] = 'Escolha os perfis e clique em Copiar. Os valores em comum ficam com os deste perfil, o resto dos deles continua.',
+      ['Choose the vehicles, then Copy. They get every value shown in this section.'] = 'Escolha os veículos e clique em Copiar. Eles recebem todos os valores desta seção.',
       ['Clear'] = 'Limpar',
       ['Click * to show only what you changed, from every tab.'] = 'Clique em * para mostrar só o que você mudou, de todas as abas.',
-      ['Click a box to type. Install puts it in the game, in every language.'] = 'Clique em uma caixa para digitar. Instalar coloca no jogo, em todos os idiomas.',
+      ['Click again'] = 'Clique de novo',
       ['Click again to overwrite'] = 'Clique de novo para sobrescrever',
+      ['Click again within 4 seconds to end the game. Unsaved progress is lost.'] = 'Clique de novo em 4 segundos para fechar o jogo. O progresso não salvo será perdido.',
       ['Climb acceleration'] = 'Aceleração de subida',
       ['Climb multiplier (horizontal)'] = 'Multiplicador de escalada (horizontal)',
       ['Climb multiplier (vertical)'] = 'Multiplicador de escalada (vertical)',
       ['Climb speed (m/s)'] = 'Velocidade de subida (m/s)',
       ['Climb time limit (s)'] = 'Limite de tempo de subida (s)',
       ['Climbing and sliding'] = 'Escalada e deslizamento',
+      ['Close all'] = 'Fechar tudo',
+      ['Close game'] = 'Fechar jogo',
       ['Cluster Bomb'] = 'Bomba de fragmentação',
       ['Cognitive Disruptor'] = 'Disruptor Cognitivo',
       ['Collision'] = 'Colisão',
@@ -15257,6 +16250,12 @@ MOD.langs = {
       ['Cooldown (s)'] = 'Tempo de recarga (s)',
       ['Cooling (% per s)'] = 'Resfriamento (% por s)',
       ['Copy'] = 'Copiar',
+      ['Copy code'] = 'Copiar código',
+      ['Copy to...'] = 'Copiar para...',
+      ['Copy values to'] = 'Copiar valores para',
+      ['Copy values to...'] = 'Copiar valores para...',
+      ['Could not ask Steam to start the game.'] = 'Não foi possível pedir à Steam para iniciar o jogo.',
+      ['Could not close Helldivers 2.'] = 'Não foi possível fechar Helldivers 2.',
       ['Countdown before delivery (s)'] = 'Contagem antes da entrega (s)',
       ['Coyote'] = 'Coiote',
       ['Cremator'] = 'Cremador',
@@ -15269,6 +16268,7 @@ MOD.langs = {
       ['Crown'] = 'Coroa',
       ['Cruise speed (m/s)'] = 'Velocidade de cruzeiro (m/s)',
       ['Crusher'] = 'Esmagador',
+      ['Ctrl+V pastes a code, or type it: Enter adds the preset, Esc cancels.'] = 'Ctrl+V cola um código, ou digite: Enter adiciona o preset, Esc cancela.',
       ['Custom difficulties'] = 'Dificuldades personalizadas',
       ['Cyborg fire (experimental)'] = 'Fogo ciborgue (experimental)',
       ['DAMAGE'] = 'DANO',
@@ -15302,6 +16302,7 @@ MOD.langs = {
       ['Deployer'] = 'Implantador',
       ['Description'] = 'Descrição',
       ['Desert Stormer'] = 'Desbrava-Deserto',
+      ['Designation'] = 'Designação',
       ['Destroyed'] = 'Destruído',
       ['Devastator'] = 'Devastador',
       ['Devastator jump pack'] = 'Mochila a jato do Devastador',
@@ -15339,15 +16340,20 @@ MOD.langs = {
       ['E/GL-21 Grenadier Battlement'] = 'E/GL-21 Muralha do granadeiro',
       ['E/MG-101 HMG Emplacement'] = 'E/MG-101 Plataforma de MP',
       ['EAGLE'] = 'ÁGUIA',
+      ['EAGLE STRIKES'] = 'ÁGUIA',
       ['EAT-17 Expendable Anti-Tank'] = 'EAT-17 Antitanque Descartável',
       ['EAT-17 Expendable Anti-Tank (SEAF)'] = 'EAT-17 Expendable Anti-Tank (SEAF)',
       ['EAT-411 Leveller'] = 'EAT-411 Desobstrutora',
       ['EAT-700 Expendable Napalm'] = 'EAT-700 Napalm Descartável',
+      ['EMPLACEMENTS'] = 'POSIÇÕES FIXAS',
       ['EMS Mortar Sentry'] = 'Morteiro Sentinela OEM',
+      ['ENERGY-BASED'] = 'ENERGÉTICA',
       ['EXO-45 Patriot Exosuit'] = 'EXO-45 Exouniforme Patriota',
       ['EXO-49 Emancipator Exosuit'] = 'EXO-49 Exouniforme Emancipador',
       ['EXO-51 Lumberer Exosuit'] = 'EXO-51 Exouniforme Madeireiro',
       ['EXO-55 Breakthrough Exosuit'] = 'EXO-55 Exouniforme Revolução',
+      ['EXOSUITS'] = 'EXOUNIFORMES',
+      ['EXPLOSIVE'] = 'EXPLOSIVA',
       ['EXTRA STRATAGEM'] = 'ESTRATÉGIA EXTRA',
       ['Each arm'] = 'Cada braço',
       ['Each leg'] = 'Cada perna',
@@ -15364,6 +16370,7 @@ MOD.langs = {
       ['Eagle strike. The rearm time is shared by every Eagle.'] = 'Ataque da Águia. O tempo de rearmamento é compartilhado por todas as Águias.',
       ['Eagles cannot be called within this distance while it stands'] = 'Águias não podem ser chamadas a esta distância enquanto ele estiver de pé',
       ['Edit the grenade on Throwables to tune it. Assets load before selection applies.'] = 'Edite a granada em Arremessáveis para ajustá-la. Os recursos carregam antes de a seleção valer.',
+      ['Editor'] = 'Editor',
       ['Effect'] = 'Efeito',
       ['Egg'] = 'Ovo',
       ['Egg cluster'] = 'Grupo de ovos',
@@ -15392,11 +16399,16 @@ MOD.langs = {
       ['Eruptor'] = 'Rompante',
       ['Esc cancels. The HUD shows the new code too.'] = 'Esc cancela. O HUD também mostra o novo código.',
       ['Every SEAF soldier at once. Soldiers you have edited on their own page keep their values.'] = 'Todos os soldados SEAF de uma vez. Soldados que você editou na própria página mantêm seus valores.',
+      ['Every armor set with this name.'] = 'Toda blindagem com este nome.',
+      ['Every armor set with this name. Its passive text is shared by every armor with that passive.'] = 'Todos os conjuntos de armadura com este nome. O texto do passivo é compartilhado por todas as armaduras com esse passivo.',
       ['Every armor with this passive gets their effects too (set on their own pages).'] = 'Todas as blindagens com esta passiva recebem os efeitos também (ajustados nas próprias páginas).',
+      ['Every cape with this name.'] = 'Todas as capas com este nome.',
       ['Every change as soon as it is pushed, before testing: it may break.'] = 'Toda mudança assim que é enviada, antes de testar: pode quebrar.',
       ['Every commit'] = 'Todo commit',
       ['Every enemy of this faction at once. Enemies you have edited on their own page keep their values.'] = 'Todos os inimigos desta facção de uma vez. Inimigos que você editou na própria página mantêm seus valores.',
+      ['Every exosuit shares this stomp.'] = 'Todos os exotrajes compartilham este pisão.',
       ['Every helldiver in your game. Restore the game\'s files before joining other players\' lobbies.'] = 'Todos os helldivers da sua partida. Restaure os arquivos do jogo antes de entrar em partidas de outros jogadores.',
+      ['Every helmet with this name.'] = 'Todos os capacetes com este nome.',
       ['Every passive is in already.'] = 'Todas as passivas já estão incluídas.',
       ['Every weapon you aim yourself, emplacements and vehicle guns too: the game\'s sway times this. 0 = no sway.'] = 'Toda arma que você mesmo mira, também posições fixas e armas de veículos: o balanço do jogo vezes este valor. 0 = sem balanço.',
       ['Evictor'] = 'Ordem de Despejo',
@@ -15422,6 +16434,7 @@ MOD.langs = {
       ['FIRE'] = 'FOGO',
       ['FLAM-40 Flamethrower'] = 'FLAM-40 Lança-chamas',
       ['FLAM-66 Torcher'] = 'FLAM-66 Carbonizante',
+      ['FLAME AND GAS'] = 'FOGO E GÁS',
       ['Fabricator'] = 'Fabricante',
       ['Fabricator / bug hole batch size (x)'] = 'Lote de fabricantes / tocas (x)',
       ['Fabricator / bug hole queue (x)'] = 'Fila de fabricantes / tocas (x)',
@@ -15449,8 +16462,10 @@ MOD.langs = {
       ['Fire damage taken (x)'] = 'Dano de fogo recebido (x)',
       ['Fire duration (s)'] = 'Duração do fogo (s)',
       ['Fire rate (RPM)'] = 'Cadência (DPM)',
+      ['Fire rate (x)'] = 'Cadência (x)',
       ['Fire/gas/acid/arc damage taken'] = 'Dano de fogo/gás/ácido/arco recebido',
       ['Firebomb Hellpods'] = 'Hellpods Bombásticos',
+      ['First shell (id)'] = 'Primeiro projétil (id)',
       ['Flame Sentry'] = 'Sentinela ígnea',
       ['Flames'] = 'Chamas',
       ['Flames Mk2'] = 'Chamas Mk2',
@@ -15476,6 +16491,7 @@ MOD.langs = {
       ['Front brake strength'] = 'Força dos freios dianteiros',
       ['Front damping'] = 'Amortecimento dianteiro',
       ['Front face'] = 'Face frontal',
+      ['Front grip lower than the rear: it turns wide. Rear lower than the front: the back slides out.'] = 'Dianteira com menos aderência que a traseira: abre nas curvas. Traseira com menos: a traseira escapa.',
       ['Front hull'] = 'Casco frontal',
       ['Front left cockpit'] = 'Cabine dianteira esquerda',
       ['Front left wheel hub'] = 'Cubo da roda dianteira esquerda',
@@ -15522,6 +16538,7 @@ MOD.langs = {
       ['GR-8 Recoilless Rifle'] = 'GR-8 Rifle Sem Recuo',
       ['GRENADE SWAP'] = 'TROCA DE GRANADA',
       ['Gallant'] = 'Galante',
+      ['Gameplay'] = 'Jogabilidade',
       ['Gas'] = 'Gás',
       ['Gas Mortar Sentry'] = 'Morteiro Sentinela Gasoso',
       ['Gas damage taken'] = 'Dano de gás recebido',
@@ -15530,6 +16547,8 @@ MOD.langs = {
       ['Gatekeeper'] = 'Porteiro',
       ['Gatling Sentry'] = 'Sentinela Gatling',
       ['Gazer'] = 'Miradora',
+      ['Gazer Spire'] = 'Pináculo Bisbilhoteiro',
+      ['General'] = 'Geral',
       ['Generator'] = 'Gerador',
       ['Get in and out speed (x)'] = 'Velocidade de entrar e sair (x)',
       ['Giga Grenade'] = 'Gigagranada',
@@ -15542,6 +16561,7 @@ MOD.langs = {
       ['Grenade Launcher'] = 'Lança-granadas',
       ['Grenade Pistol'] = 'Pistola lança-granadas',
       ['Grenade fired (choice)'] = 'Granada disparada (escolha)',
+      ['Grenade launcher rounds use 80, most rounds 83.'] = 'As munições de lança-granadas usam 80, a maioria das munições 83.',
       ['Grenade selection takes priority over Projectile swap. Fire rate, ammo and handling stay.'] = 'A seleção de granada tem prioridade sobre a troca de projétil. Cadência, munição e manuseio continuam.',
       ['Grenade swap'] = 'Troca de granada',
       ['Grenade swap stopped (see the log); launchers fire their own projectiles again.'] = 'Troca de granada parada (veja o log); os lançadores voltam a disparar os próprios projéteis.',
@@ -15556,6 +16576,8 @@ MOD.langs = {
       ['Gunship'] = 'Artilhaéreo',
       ['Gunslinger'] = 'Pistoleiro',
       ['HANDLING'] = 'MANUSEIO',
+      ['HEAVY'] = 'PESADO',
+      ['HELMETS'] = 'CAPACETES',
       ['HMG Emplacement'] = 'Plataforma de MP',
       ['Halt'] = 'Contenção',
       ['Handbrake strength'] = 'Força do freio de mão',
@@ -15578,6 +16600,7 @@ MOD.langs = {
       ['Heat per shot'] = 'Calor por disparo',
       ['Heat per warp (%)'] = 'Calor por dobra (%)',
       ['Heatsinks from supply'] = 'Dissipadores do suprimento',
+      ['Heavier: speeds up and stops more slowly, shoves enemies and wrecks aside, and is harder to flip.'] = 'Mais pesado: acelera e freia mais devagar, empurra inimigos e destroços, e é mais difícil de capotar.',
       ['Heavy Devastator'] = 'Devastador pesado',
       ['Heavy Devastator shield'] = 'Escudo do Devastador pesado',
       ['Heavy Fusion Cannon'] = 'Canhão de fusão pesado',
@@ -15588,9 +16611,12 @@ MOD.langs = {
       ['Height the shells fall from (m)'] = 'Altura de onde os projéteis caem (m)',
       ['Held this long, it blows up. 600 = it never does.'] = 'Segurado por este tempo, explode. 600 = nunca explode.',
       ['Helldiver'] = 'Helldiver',
+      ['Helldivers 2 is already running.'] = 'Helldivers 2 já está em execução.',
+      ['Helldivers 2 is not running.'] = 'Helldivers 2 não está em execução.',
       ['Helldivers 2 is running: close it, then Install.'] = 'Helldivers 2 está aberto: feche-o e depois Instale.',
       ['Helldivers 2 is running: close it, then restore.'] = 'Helldivers 2 está aberto: feche-o e depois restaure.',
       ['Helldivers 2 is running: you can edit, but close it before you Install.'] = 'Helldivers 2 está aberto: você pode editar, mas feche-o antes de Instalar.',
+      ['Helldivers 2 was closed.'] = 'Helldivers 2 foi fechado.',
       ['Hellpod'] = 'Hellpod',
       ['Hellpod: initial drop'] = 'Hellpod: descida inicial',
       ['Hellpod: reinforcement'] = 'Hellpod: reforço',
@@ -15600,6 +16626,9 @@ MOD.langs = {
       ['High Dissipation Heatsink'] = 'Dissipador de calor superior',
       ['High Explosive'] = 'Detonante',
       ['High-Velocity Shrapnel'] = 'Estilhaço de alta velocidade',
+      ['Higher: a stiffer ride, less lean in turns, bumps kick harder.'] = 'Mais alto: rodagem mais dura, inclina menos nas curvas, os buracos batem mais forte.',
+      ['Higher: leans more and tips over in sharp turns.'] = 'Mais alto: inclina mais e capota em curvas fechadas.',
+      ['Higher: stops in a shorter distance. Too high locks the wheels, and it skids instead of stopping.'] = 'Mais alto: para em menos distância. Alto demais trava as rodas e ele derrapa em vez de parar.',
       ['Highest ledge it climbs (m)'] = 'Borda mais alta que escala (m)',
       ['Hijack Tech Hub Nexus Machine'] = 'Máquina do nexo do centro tecnológico',
       ['Hips'] = 'Quadris',
@@ -15625,10 +16654,17 @@ MOD.langs = {
       ['Hover time, holding height (s)'] = 'Tempo de voo, mantendo a altura (s)',
       ['How close the view gets when you aim: 1 is the normal view, 2 twice as close, 4 four times.'] = 'Quanto a visão se aproxima ao mirar: 1 é a visão normal, 2 duas vezes mais perto, 4 quatro vezes.',
       ['How close this zoom step looks: 1 is the normal view, 2 twice as close, 4 four times.'] = 'Quão perto este nível de zoom parece: 1 é a visão normal, 2 duas vezes mais perto, 4 quatro vezes.',
+      ['How fast the engine may spin before it stops pulling. Higher: a higher top speed in every gear,'] = 'Até que rotação o motor continua empurrando. Mais alto: velocidade máxima maior em todas as marchas,',
+      ['How fast the springs settle after a bump. Higher: settles at once, a firmer ride.'] = 'Quão rápido as molas se acalmam depois de um buraco. Mais alto: na hora, rodagem mais firme.',
       ['How fast their animations play. Most attacks follow the animation, so they come sooner or later too.'] = 'Quão rápido as animações deles tocam. A maioria dos ataques segue a animação, então também acontecem antes ou depois.',
+      ['How hard the engine pushes. Higher: faster acceleration and steeper hills, but more wheelspin.'] = 'A força do motor. Mais alto: acelera mais rápido e sobe mais ladeira, mas patina mais.',
+      ['How high the balance point sits. Lower (even below 0): stays flat in hard turns and over rocks.'] = 'Altura do ponto de equilíbrio. Mais baixo (até abaixo de 0): fica estável em curvas fechadas e pedras.',
       ['How long the round waits after the hit (or after the blast proximity trips) before it goes off.'] = 'Quanto a munição espera após o acerto (ou após a proximidade ativar) antes de explodir.',
       ['How many bombs one run drops and how they land. The bombs stay this Eagle\'s own.'] = 'Quantas bombas cada passagem solta e como caem. As bombas continuam sendo desta Águia.',
+      ['How many times the round can bounce off a surface. 0: it never bounces back at you.'] = 'Quantas vezes a munição pode ricochetear numa superfície. 0: ela nunca volta na sua direção.',
+      ['How much this gear multiplies the engine. Higher: stronger pull, but it tops out sooner.'] = 'Quanto esta marcha multiplica o motor. Mais alto: mais força, mas chega ao limite antes.',
       ['How quickly the scoped view catches up when you move your aim at this zoom (0.6 on most optics).'] = 'Quão rápido a visão da luneta acompanha sua mira com este zoom (0.6 na maioria das miras).',
+      ['How well the tyres hold the ground. Higher: sharper turns, less sliding and wheelspin.'] = 'O quanto os pneus seguram o chão. Mais alto: curvas mais fechadas, menos derrapagem e patinagem.',
       ['Hulk'] = 'Hulk',
       ['Hulk Bruiser'] = 'Hulk brutamonte',
       ['Hulk Firebomber'] = 'Hulk Pirobombardeiro',
@@ -15649,6 +16685,8 @@ MOD.langs = {
       ['Impact damage taken'] = 'Dano de impacto recebido',
       ['Impact explosion (id)'] = 'Explosão de impacto (id)',
       ['Impaler'] = 'Empalador',
+      ['In every mission, whatever your loadout. It takes no loadout slot. Applies on Install.'] = 'Em toda missão, seja qual for seu equipamento. Não ocupa espaço. Vale ao instalar.',
+      ['In the primary slot it is not thrown away when empty: it stays in your hands until you pick up another weapon.'] = 'No espaço principal não é descartada ao esvaziar: fica nas suas mãos até você pegar outra arma.',
       ['In-game text'] = 'Texto no jogo',
       ['Incendiary'] = 'Incendiária',
       ['Incendiary Impact'] = 'Impacto Incendiário',
@@ -15664,6 +16702,8 @@ MOD.langs = {
       ['Inner torso'] = 'Torso interno',
       ['Insides'] = 'Interior',
       ['Install into the game'] = 'Instalar no jogo',
+      ['Install loads up to 6 such weapons into every mission, so nobody has to bring them. A support weapon brings its own.'] = 'A instalação carrega até 6 armas desse tipo em todas as missões, então ninguém precisa levá-las. Uma arma de apoio traz as suas.',
+      ['Installed, but not everything fits. Some projectiles may show no trail, and some Always bring it stratagems stay out of missions.'] = 'Instalado, mas nem tudo coube. Alguns projéteis podem não mostrar rastro e alguns estratagemas de "Levar sempre" ficam fora das missões.',
       ['Installing: finding what changed...'] = 'Instalando: procurando o que mudou...',
       ['Installing: writing the files...'] = 'Instalando: gravando os arquivos...',
       ['Integrated Explosives'] = 'Explosivos Integrados',
@@ -15671,6 +16711,7 @@ MOD.langs = {
       ['Inverted aim assist (experimental)'] = 'Assistência de mira invertida (experimental)',
       ['Iron Sights'] = 'Mira de ferro',
       ['Iron fleet'] = 'Frota de ferro',
+      ['It does not raise the top speed by itself: that comes from the engine speed and the gears.'] = 'Sozinho não aumenta a velocidade máxima: ela vem da rotação do motor e das marchas.',
       ['It doesn\'t take a loadout slot, but the HUD\'s stratagem list can fill up.'] = 'Não ocupa espaço no aparato, mas a lista de estratégias do HUD pode encher.',
       ['Items per drop'] = 'Itens por envio',
       ['Its effects are added to every armor with this passive.'] = 'Os efeitos são adicionados a todas as blindagens com esta passiva.',
@@ -15711,6 +16752,7 @@ MOD.langs = {
       ['LIFT-182 Warp Pack'] = 'LIFT-182 Hipermochila',
       ['LIFT-850 Jump Pack'] = 'LIFT-850 Propulsor',
       ['LIFT-860 Hover Pack'] = 'LIFT-860 Flutuador',
+      ['LIGHT'] = 'LEVE',
       ['Landed ship door shield'] = 'Escudo da porta de nave pousada',
       ['Language'] = 'Idioma',
       ['Large'] = 'Grande',
@@ -15800,6 +16842,7 @@ MOD.langs = {
       ['Left wing'] = 'Asa esquerda',
       ['Left wrist blade'] = 'Lâmina de pulso esquerda',
       ['Leg injury immunity (1 on)'] = 'Imunidade a lesão na perna (1 ligado)',
+      ['Less: bumps go straight into the body and it wobbles.'] = 'Menos: os buracos vão direto para a carroceria e ela balança.',
       ['Leveller'] = 'Desobstrutora',
       ['Leviathan'] = 'Leviatã',
       ['Leviathan bomb'] = 'Bomba do Leviatã',
@@ -15813,6 +16856,7 @@ MOD.langs = {
       ['Lifetime (s)'] = 'Duração (s)',
       ['Light armor'] = 'Blindagem leve',
       ['Light, medium or heavy, per armor (every armor set with that name).'] = 'Leve, média ou pesada, por blindagem (toda blindagem com esse nome).',
+      ['Lighter: quicker off the line, but bounces over bumps and gets thrown around by explosions.'] = 'Mais leve: arranca mais rápido, mas quica nos buracos e é jogado longe por explosões.',
       ['Limb health'] = 'Vida dos membros',
       ['Limb injury avoidance'] = 'Evitar lesões nos membros',
       ['Load'] = 'Carregar',
@@ -15827,6 +16871,9 @@ MOD.langs = {
       ['Lower back'] = 'Lombar',
       ['Lower it if a high zoom spins the view.'] = 'Diminua se um zoom alto faz a visão girar.',
       ['Lower spine'] = 'Coluna inferior',
+      ['Lower: a softer ride, the body leans in turns and sags.'] = 'Mais baixo: rodagem mais macia, a carroceria inclina nas curvas e afunda.',
+      ['Lower: faster in this gear, weaker on hills and from a stop.'] = 'Mais baixo: mais rápido nesta marcha, mais fraco em subidas e na arrancada.',
+      ['Lower: keeps bouncing after every bump.'] = 'Mais baixo: continua quicando depois de cada buraco.',
       ['Lowest patrol frequency (x)'] = 'Frequência mínima de patrulhas (x)',
       ['Lowest rates'] = 'Valores mínimos',
       ['Lowest reinforcement frequency (x)'] = 'Frequência mínima de reforços (x)',
@@ -15846,7 +16893,13 @@ MOD.langs = {
       ['M7S SMG'] = 'M7S SMG',
       ['M90A Shotgun'] = 'M90A Shotgun',
       ['MA5C Assault Rifle'] = 'MA5C Assault Rifle',
+      ['MACHINE GUN'] = 'METRALHADORA',
+      ['MARKSMAN RIFLE'] = 'RIFLE DE ATIRADOR',
+      ['MECHAS'] = 'MECHAS',
+      ['MEDIUM'] = 'MÉDIO',
+      ['MELEE'] = 'CORPO A CORPO',
       ['MG Emplacement'] = 'Posicionamento de metralhadora',
+      ['MG Raider'] = 'Invasor exterminador',
       ['MG-206 Heavy Machine Gun'] = 'MG-206 Metralhadora Pesada',
       ['MG-206 Heavy Machine Gun (mounted B)'] = 'MG-206 Heavy Machine Gun (montada B)',
       ['MG-43 Machine Gun'] = 'MG-43 Metralhadora',
@@ -15854,15 +16907,18 @@ MOD.langs = {
       ['MGX-42 Bullet Storm'] = 'MGX-42 Tempestade de Balas',
       ['MINEFIELD'] = 'CAMPO MINADO',
       ['MISSILE FLIGHT'] = 'VOO DO MÍSSIL',
+      ['MISSION'] = 'MISSÃO',
       ['MLS-4X Commando'] = 'MLS-4X Comando',
       ['MP-98 Knight'] = 'MP-98 Cavaleiro',
       ['MS-11 Solo Silo'] = 'MS-11 Silo Solo',
+      ['MUZZLE'] = 'BOCA',
       ['Machete'] = 'Machete',
       ['Machine Gun'] = 'Metralhadora',
       ['Machine Gun Sentry'] = 'Metralhadora Sentinela',
       ['Made by SHODAN'] = 'Feito por SHODAN',
       ['Maelstrom'] = 'Turbilhão',
       ['Magazine size'] = 'Tamanho do carregador',
+      ['Magazine size (x)'] = 'Tamanho do carregador (x)',
       ['Magazines from supply'] = 'Carregadores do suprimento',
       ['Main'] = 'Principal',
       ['Main body'] = 'Corpo principal',
@@ -15870,6 +16926,7 @@ MOD.langs = {
       ['Marauder'] = 'Saqueador',
       ['Marker radar scan every (s)'] = 'Varredura de radar de marcadores a cada (s)',
       ['Mass (kg)'] = 'Massa (kg)',
+      ['Max bounces'] = 'Ricochetes máximos',
       ['Max carried'] = 'Máximo carregado',
       ['Max flight time (s)'] = 'Tempo máximo de voo (s)',
       ['Max spare heatsinks'] = 'Máximo de dissipadores reserva',
@@ -15882,6 +16939,7 @@ MOD.langs = {
       ['Medium Plasma Bolt'] = 'Disparo de plasma médio',
       ['Medium armor'] = 'Blindagem média',
       ['Melee'] = 'Corpo a corpo',
+      ['Melee armor penetration (+)'] = 'Penetração de armadura corpo a corpo (+)',
       ['Melee damage'] = 'Dano corpo a corpo',
       ['Melta Mine'] = 'Mina Melta',
       ['Meltagun'] = 'Arma Melta',
@@ -15900,6 +16958,7 @@ MOD.langs = {
       ['Mist'] = 'Bruma',
       ['Modifier patrol frequency (x)'] = 'Freq. patrulhas do modificador (x)',
       ['Modifier patrol size (x)'] = 'Tamanho patrulhas do modificador (x)',
+      ['More: soaks up big bumps and keeps the wheels on the ground on rough terrain.'] = 'Mais: absorve buracos grandes e mantém as rodas no chão em terreno acidentado.',
       ['Mortar Sentry'] = 'Morteiro sentinela',
       ['Mouth'] = 'Boca',
       ['Move while reloading'] = 'Mover-se ao recarregar',
@@ -15916,12 +16975,20 @@ MOD.langs = {
       ['Neck'] = 'Pescoço',
       ['Neck armor'] = 'Blindagem do pescoço',
       ['Neck body'] = 'Corpo do pescoço',
+      ['No bolt pull'] = 'Sem puxar o ferrolho',
       ['No changes: loading it puts every value back to the game\'s.'] = 'Sem mudanças: carregar devolve todos os valores aos do jogo.',
+      ['No description'] = 'Sem descrição',
+      ['No free preset place: delete one first.'] = 'Sem espaço livre: exclua um preset primeiro.',
+      ['No other vehicle has this section.'] = 'Nenhum outro veículo tem esta seção.',
+      ['No page in this editor uses this id.'] = 'Nenhuma página deste editor usa este id.',
+      ['No passive.'] = 'Sem passiva.',
+      ['No passives'] = 'Sem passivas',
       ['No presets yet.'] = 'Ainda não há perfis.',
       ['Noise'] = 'Ruído',
       ['None'] = 'Nenhum',
       ['Normal projectile'] = 'Projétil normal',
       ['Not offered by the game: a laser built on the Scythe.'] = 'Não oferecido pelo jogo: um laser feito a partir do Scythe.',
+      ['Not offered on backpack weapons: their backpack does not attach when the weapon is in your primary slot.'] = 'Não aparece nas armas com mochila: a mochila não se conecta se a arma estiver no seu espaço principal.',
       ['Not used by any weapon or stratagem in this list.'] = 'Não é usado por nenhuma arma ou estratégia desta lista.',
       ['Nothing matches.'] = 'Nada encontrado.',
       ['Nothing to install: your values are the game\'s own.'] = 'Nada para instalar: seus valores são os do jogo.',
@@ -15930,7 +16997,10 @@ MOD.langs = {
       ['Nursing Spewer'] = 'Desovador repugnante',
       ['OFFLINE  -  edits the game\'s files; they apply when the game starts'] = 'OFFLINE  -  edita os arquivos do jogo; valem quando o jogo inicia',
       ['OK'] = 'OK',
+      ['OPTICS'] = 'MIRAS',
       ['ORBITAL BEAM'] = 'RAIO ORBITAL',
+      ['ORBITAL STRIKES'] = 'ORBITAL',
+      ['OTHER'] = 'OUTROS',
       ['Objective'] = 'Objetivo',
       ['Off: its stats above are left out; only the passives below apply.'] = 'Desligado: os atributos acima ficam de fora; só as passivas abaixo valem.',
       ['Off: the game\'s values everywhere; your '] = 'Desligado: os valores do jogo em todo lugar; suas ',
@@ -15938,6 +17008,7 @@ MOD.langs = {
       ['Ombudsman'] = 'Provedora',
       ['On: a loadout can take more than one exosuit, FRV or tank.'] = 'Ligado: um aparato pode levar mais de um exouniforme, FRV ou tanque.',
       ['On: in your armory / stratagem list.'] = 'Ligado: no seu arsenal / lista de estratégias.',
+      ['On: shows the Up, Down, < and > buttons by the lists. The mouse wheel, scroll bars and keys work either way.'] = 'Ligado: mostra os botões para cima, para baixo, < e > junto às listas. A roda do mouse, as barras e as teclas funcionam de qualquer forma.',
       ['On: sniper rifles show a crosshair when you aim in third person.'] = 'Ligado: rifles de precisão mostram uma mira ao mirar em terceira pessoa.',
       ['On: stratagem balls stick on more surfaces instead of bouncing off.'] = 'Ligado: as bolas de estratégia grudam em mais superfícies em vez de quicar.',
       ['On: your '] = 'Ligado: suas ',
@@ -15946,9 +17017,12 @@ MOD.langs = {
       ['One True Flag'] = 'A Bandeira Una',
       ['One-Two'] = 'Dois em Um',
       ['One-handed'] = 'Uma mão',
+      ['Only this armor gets it.'] = 'Só esta blindagem recebe.',
+      ['Only this armor. Each passive\'s values are on its own page, below the armors.'] = 'Só esta blindagem. Os valores de cada passiva estão na própria página, abaixo das blindagens.',
       ['Only works with the blast angle at 360, and the distance has to be larger than one step of the round:'] = 'Só funciona com o ângulo de explosão em 360, e a distância precisa ser maior que um passo da munição:',
       ['Open'] = 'Abrir',
       ['Open / close key'] = 'Tecla de abrir / fechar',
+      ['Open all'] = 'Abrir tudo',
       ['Opened the GitHub page in your browser.'] = 'A página do GitHub foi aberta no seu navegador.',
       ['Opened the folder.'] = 'A pasta foi aberta.',
       ['Opened the log folder.'] = 'A pasta de logs foi aberta.',
@@ -15970,7 +17044,6 @@ MOD.langs = {
       ['Orbital beam'] = 'Raio orbital',
       ['Orbital strike.'] = 'Ataque orbital.',
       ['Other players are in your game: arc chain length / split use the game\'s values.'] = 'Há outros jogadores na sua partida: o comprimento / divisão das correntes de arco usam os valores do jogo.',
-      ['Otherwise the shot still works but may fly without its trail.'] = 'Senão o disparo funciona, mas pode voar sem o rastro.',
       ['Outcast'] = 'Pária',
       ['Outer radius (m)'] = 'Raio externo (m)',
       ['Outpost garrison size (x)'] = 'Guarnição dos postos (x)',
@@ -15997,12 +17070,15 @@ MOD.langs = {
       ['P-92 Warrant'] = 'P-92 Advertência',
       ['P/40-K Bolt Pistol'] = 'P/40-K Pistola Bolt',
       ['PASSIVE'] = 'PASSIVA',
+      ['PASSIVES'] = 'PASSIVAS',
+      ['PISTOL'] = 'PISTOLA',
       ['PLAS-1 Scorcher'] = 'PLAS-1 Escaldante',
       ['PLAS-101 Purifier'] = 'PLAS-101 Purificadora',
       ['PLAS-15 Loyalist'] = 'PLAS-15 Legalista',
       ['PLAS-39 Accelerator Rifle'] = 'PLAS-39 Rifle Acelerador',
       ['PLAS-45 Epoch'] = 'PLAS-45 Época',
       ['PRESETS'] = 'PERFIS',
+      ['PRIMARY'] = 'PRINCIPAL',
       ['PROJECTILE'] = 'PROJÉTIL',
       ['PROJECTILE SWAP'] = 'TROCA DE PROJÉTIL',
       ['Pacifier'] = 'Pacificador',
@@ -16013,7 +17089,11 @@ MOD.langs = {
       ['Partial charge'] = 'Carga parcial',
       ['Partial charge explosion'] = 'Explosão com carga parcial',
       ['Partial charge shot'] = 'Disparo com carga parcial',
-      ['Passive'] = 'Passiva',
+      ['Passive text'] = 'Texto do passivo',
+      ['Past that, the trail needs someone in the mission to bring that weapon.'] = 'Acima disso, o rastro precisa que alguém na missão leve essa arma.',
+      ['Paste a code here'] = 'Cole um código aqui',
+      ['Paste code'] = 'Colar código',
+      ['Path start (0 to 1)'] = 'Início do percurso (0 a 1)',
       ['Patriot Exosuit'] = 'Exouniforme Patriota',
       ['Patrol frequency (x)'] = 'Frequência de patrulhas (x)',
       ['Patrolling speed (m/s)'] = 'Velocidade patrulhando (m/s)',
@@ -16042,6 +17122,9 @@ MOD.langs = {
       ['Position scatter (m)'] = 'Dispersão de posição (m)',
       ['Pouncer'] = 'Saltador',
       ['Predator Hunter'] = 'Caçador predador',
+      ['Predator Stalker'] = 'Perseguidor predador',
+      ['Preset:'] = 'Perfil:',
+      ['Preset: none'] = 'Perfil: nenhum',
       ['Presets'] = 'Perfis',
       ['Press a key (Esc cancels)'] = 'Pressione uma tecla (Esc cancela)',
       ['Press the key that should open and close the panel: F1-F12, Insert, Home, End, Pause or Scroll Lock. Esc cancels.'] = 'Pressione a tecla que vai abrir e fechar o painel: F1-F12, Insert, Home, End, Pause ou Scroll Lock. Esc cancela.',
@@ -16051,7 +17134,9 @@ MOD.langs = {
       ['Projectile explosion id'] = 'Id da explosão do projétil',
       ['Projectile fired (id)'] = 'Projétil disparado (id)',
       ['Projectile swap'] = 'Troca de projétil',
+      ['Projectile swap shares those 4, so weapons it loads leave fewer here.'] = 'A troca de projétil divide esses 4, então as armas que ela carrega deixam menos aqui.',
       ['Projectiles per shot'] = 'Projéteis por disparo',
+      ['Projectiles with no trail:'] = 'Projéteis sem rastro:',
       ['Prone speed (m/s)'] = 'Velocidade deitado (m/s)',
       ['Punisher'] = 'Justiceiro',
       ['Punisher Plasma'] = 'Justiceiro de Plasma',
@@ -16071,6 +17156,7 @@ MOD.langs = {
       ['R-63CS Diligence Counter Sniper'] = 'R-63CS Diligência Certeira Superior',
       ['R-72 Censor'] = 'R-72 Censor',
       ['R/40-K Hot-Shot Marksman Rifle'] = 'R/40-K Rifle de Atirador Brasa',
+      ['RECORDS'] = 'REGISTROS',
       ['RL-77 Airburst Rocket Launcher'] = 'RL-77 Lança-foguetes de Explosão Atmosférica',
       ['ROUND 1 BLAST'] = 'EXPLOSÃO MUNIÇÃO 1',
       ['ROUND 1 BLAST RADIUS'] = 'RAIO DA EXPLOSÃO MUNIÇÃO 1',
@@ -16103,6 +17189,7 @@ MOD.langs = {
       ['Rear brake strength'] = 'Força dos freios traseiros',
       ['Rear cockpit'] = 'Cabine traseira',
       ['Rear damping'] = 'Amortecimento traseiro',
+      ['Rear sight range (m)'] = 'Alcance de visão traseira (m)',
       ['Rear spring stiffness'] = 'Rigidez da suspensão traseira',
       ['Rear suspension travel'] = 'Curso da suspensão traseira',
       ['Rear wheel grip'] = 'Aderência das rodas traseiras',
@@ -16128,6 +17215,7 @@ MOD.langs = {
       ['Regeneration (health/s)'] = 'Regeneração (vida/s)',
       ['Regeneration delay after damage (s)'] = 'Atraso da regeneração após dano (s)',
       ['Reinforced Epaulettes'] = 'Dragonas Reforçadas',
+      ['Reinforced Scout Strider'] = 'Caminhante explorador reforçado',
       ['Reinforcement frequency (x)'] = 'Frequência de reforços (x)',
       ['Reinforcement size (x)'] = 'Tamanho dos reforços (x)',
       ['Reinforcements'] = 'Reforços',
@@ -16141,8 +17229,10 @@ MOD.langs = {
       ['Rename'] = 'Renomear',
       ['Reprimand'] = 'Repressora',
       ['Reset all values'] = 'Redefinir todos os valores',
+      ['Reset armor'] = 'Redefinir blindagem',
       ['Reset booster'] = 'Redefinir reforçador',
       ['Reset enemy'] = 'Redefinir inimigo',
+      ['Reset every value in this current preset to default.'] = 'Redefine todos os valores deste perfil atual.',
       ['Reset helldiver'] = 'Redefinir helldiver',
       ['Reset passive'] = 'Redefinir passiva',
       ['Reset record'] = 'Redefinir registro',
@@ -16224,7 +17314,9 @@ MOD.langs = {
       ['Right wrist blade'] = 'Lâmina de pulso direita',
       ['Rock Solid'] = 'Inabalável',
       ['Rocket Devastator'] = 'Devastador fogueteiro',
+      ['Rocket Raider'] = 'Invasor balístico',
       ['Rocket Sentry'] = 'Foguete Sentinela',
+      ['Rocket fired (id)'] = 'Foguete disparado (id)',
       ['Rocket pods'] = 'Lança-foguetes',
       ['Rooted (experimental)'] = 'Enraizado (experimental)',
       ['Rotator'] = 'Rotor',
@@ -16253,6 +17345,8 @@ MOD.langs = {
       ['SEAF soldier: an ally.'] = 'Soldado SEAF: um aliado.',
       ['SEAF wave cooldown (x)'] = 'Tempo de espera de ondas SEAF (x)',
       ['SECOND MODE'] = 'SEGUNDO MODO',
+      ['SECONDARY'] = 'SECUNDÁRIO',
+      ['SENTRIES'] = 'SENTINELAS',
       ['SG-20 Halt'] = 'SG-20 Contenção',
       ['SG-22 Bushwhacker'] = 'SG-22 Batedora',
       ['SG-225 Breaker'] = 'SG-225 Destruidor',
@@ -16269,9 +17363,11 @@ MOD.langs = {
       ['SH-51 Directional Shield'] = 'SH-51 Escudo direcional',
       ['SHARED WITH'] = 'COMPARTILHADO COM',
       ['SHIELD'] = 'ESCUDO',
+      ['SHIELD BASH'] = 'GOLPE DE ESCUDO',
       ['SHODAN ENEMY EDITOR'] = 'EDITOR DE INIMIGOS SHODAN',
       ['SHODAN STAT EDITOR'] = 'SHODAN STAT EDITOR',
       ['SHODAN weapon mods are running too: they put their own values back every 5 s'] = 'Os mods de armas SHODAN também estão rodando: eles recolocam os próprios valores a cada 5 s',
+      ['SHOTGUN'] = 'ESPINGARDA',
       ['SHRAPNEL'] = 'ESTILHAÇOS',
       ['SHRAPNEL BLAST RADIUS'] = 'RAIO DA EXPLOSÃO DOS ESTILHAÇOS',
       ['SHRAPNEL DIRECT HIT'] = 'ACERTO DIRETO DOS ESTILHAÇOS',
@@ -16285,13 +17381,22 @@ MOD.langs = {
       ['SMG-72 Pummeler'] = 'SMG-72 Esmurradora',
       ['SMG/FLAM-34 Stoker'] = 'SMG/FLAM-34 Foguista',
       ['SMG/FLAM-34 Stoker (underbarrel flamer)'] = 'SMG/FLAM-34 Stoker (lança-chamas acoplado)',
+      ['SNIPER RIFLE'] = 'RIFLE DE PRECISÃO',
       ['SPARKS'] = 'FAÍSCAS',
+      ['SPECIAL'] = 'ESPECIAL',
+      ['STANDARD'] = 'PADRÃO',
       ['STATUS EFFECTS'] = 'EFEITOS DE STATUS',
+      ['STOMP'] = 'PISÃO',
       ['STRATAGEM'] = 'ESTRATÉGIA',
+      ['STRATAGEMS'] = 'ESTRATÉGIAS',
+      ['SUBMACHINE GUN'] = 'SUBMETRALHADORA',
+      ['SUPPORT'] = 'SUPORTE',
+      ['SUPPORT WEAPONS'] = 'ARMAS DE APOIO',
       ['Safe below heat (%)'] = 'Seguro abaixo do calor (%)',
       ['Sai'] = 'Sai',
       ['Salvos'] = 'Salvas',
       ['Save'] = 'Salvar',
+      ['Save current changes'] = 'Salvar alterações atuais',
       ['Save current changes here'] = 'Salvar as mudanças atuais aqui',
       ['Scavenger'] = 'Carniçal',
       ['Scavenger acid burst'] = 'Explosão de ácido do Carniceiro',
@@ -16302,11 +17407,29 @@ MOD.langs = {
       ['Scout Strider'] = 'Caminhante explorador',
       ['Scout walker rider'] = 'Piloto de andador batedor',
       ['Scythe'] = 'Gadanha',
+      ['Search Automatons'] = 'Buscar autômatos',
+      ['Search Illuminate'] = 'Buscar iluminados',
+      ['Search SEAF'] = 'Buscar SEAF',
+      ['Search Terminids'] = 'Buscar terminídios',
+      ['Search armors'] = 'Buscar blindagens',
+      ['Search attachments'] = 'Buscar acessórios',
+      ['Search boosters'] = 'Buscar potencializadores',
       ['Search enemies'] = 'Buscar inimigos',
+      ['Search items'] = 'Buscar itens',
+      ['Search mechas'] = 'Buscar mechas',
+      ['Search primary weapons'] = 'Buscar armas principais',
       ['Search radius (m)'] = 'Raio de busca (m)',
+      ['Search records'] = 'Buscar registros',
+      ['Search secondary weapons'] = 'Buscar armas secundárias',
+      ['Search spawning'] = 'Buscar surgimentos',
+      ['Search stratagems'] = 'Buscar estratégias',
+      ['Search support weapons'] = 'Buscar armas de suporte',
+      ['Search throwables'] = 'Buscar arremessáveis',
       ['Search weapons and stratagems'] = 'Buscar armas e estratégias',
       ['Searching speed (m/s)'] = 'Velocidade procurando (m/s)',
       ['Second ammo'] = 'Segunda munição',
+      ['Second ammo (id)'] = 'Segunda munição (id)',
+      ['Second ammo replaces (1 or 2)'] = 'Segunda munição substitui (1 ou 2)',
       ['Second mode'] = 'Segundo modo',
       ['Second mode explosion'] = 'Explosão do segundo modo',
       ['Second mode fires (id)'] = 'O segundo modo dispara (id)',
@@ -16328,11 +17451,15 @@ MOD.langs = {
       ['Several vehicles of a kind'] = 'Vários veículos do mesmo tipo',
       ['Shape'] = 'Forma',
       ['Shared by every armor with this passive. Multipliers: 1 = no change.'] = 'Compartilhado por todas as blindagens com esta passiva. Multiplicadores: 1 = sem mudança.',
+      ['Shares its name and description with the armor of this name: a change here changes both.'] = 'Compartilha nome e descrição com a armadura de mesmo nome: mudar aqui muda os dois.',
       ['Shear'] = 'Podadeira',
+      ['Shell fired (id)'] = 'Projétil disparado (id)',
+      ['Shells after it (id)'] = 'Projéteis seguintes (id)',
       ['Shells per salvo'] = 'Projéteis por salva',
       ['Shield'] = 'Escudo',
       ['Shield Generator Pack'] = 'Pacote Gerador de Escudo',
       ['Shield arm zone armor'] = 'Blindagem da zona do braço do escudo',
+      ['Shield bash'] = 'Golpe de escudo',
       ['Shield capacity'] = 'Capacidade do escudo',
       ['Shield emitter'] = 'Emissor do escudo',
       ['Shield forcefield'] = 'Campo de força do escudo',
@@ -16356,6 +17483,7 @@ MOD.langs = {
       ['Shrieker Nest'] = 'Antro de Estridentes',
       ['Sickle'] = 'Foice',
       ['Side'] = 'Lado',
+      ['Side sight range (m)'] = 'Alcance de visão lateral (m)',
       ['Siege-Ready'] = 'Pronta para Cercos',
       ['Sight cone height (degrees)'] = 'Altura do cone de visão (graus)',
       ['Sight cone width (degrees)'] = 'Largura do cone de visão (graus)',
@@ -16365,6 +17493,7 @@ MOD.langs = {
       ['Silo'] = 'Silo',
       ['Size'] = 'Tamanho',
       ['Size (x)'] = 'Tamanho (x)',
+      ['Skips the bolt pull after each shot. Fire rate, ammo and damage stay as they are.'] = 'Pula o movimento do ferrolho após cada tiro. A cadência, a munição e o dano não mudam.',
       ['Slide speed / duration'] = 'Velocidade / duração do deslize',
       ['Slope slide ends at (degrees)'] = 'O deslize na ladeira termina em (graus)',
       ['Slope slide starts at (degrees)'] = 'O deslize na ladeira começa em (graus)',
@@ -16375,6 +17504,7 @@ MOD.langs = {
       ['Slowed (experimental)'] = 'Lentidão (experimental)',
       ['Slugger'] = 'Sinistro',
       ['Small Plasma Bolt'] = 'Disparo de plasma pequeno',
+      ['Smaller: quicker to speed up, slower at the top, and it scrapes over rocks.'] = 'Menores: acelera mais rápido, velocidade máxima menor, e raspa nas pedras.',
       ['Smoke'] = 'Fumaça',
       ['Smoke radius, edge (m)'] = 'Raio da fumaça, borda (m)',
       ['Smoke radius, full (m)'] = 'Raio da fumaça, total (m)',
@@ -16435,6 +17565,8 @@ MOD.langs = {
       ['Standard Drum'] = 'Tambor padrão',
       ['Standard Heatsink'] = 'Dissipador de calor padrão',
       ['Standard Plasma Container'] = 'Recipiente de plasma padrão',
+      ['Start game'] = 'Iniciar jogo',
+      ['Starting Helldivers 2 through Steam...'] = 'Iniciando Helldivers 2 pela Steam...',
       ['Starting charges'] = 'Cargas no início',
       ['Starting count'] = 'Quantidade no início',
       ['Starting heatsinks'] = 'Dissipadores no início',
@@ -16450,6 +17582,7 @@ MOD.langs = {
       ['Stingray'] = 'Arraia',
       ['Stoker'] = 'Foguista',
       ['Stomach zone'] = 'Zona do estômago',
+      ['Stomp'] = 'Pisão',
       ['Stomp speed (x)'] = 'Velocidade da pisada (x)',
       ['Stops you while firing'] = 'Para você enquanto dispara',
       ['Strafing speed (m/s)'] = 'Velocidade lateral (m/s)',
@@ -16459,6 +17592,7 @@ MOD.langs = {
       ['Stratagem jamming radius (m)'] = 'Raio de interferência de estratégias (m)',
       ['Stratagem scrambling radius (m)'] = 'Raio de embaralhamento de estratégias (m)',
       ['Stratagems'] = 'Estratégias',
+      ['Stratagems left out of missions:'] = 'Estratagemas fora das missões:',
       ['Structure.'] = 'Estrutura.',
       ['Stun'] = 'Atordoante',
       ['Stun (Illuminate) (experimental)'] = 'Atordoamento (Iluminados) (experimental)',
@@ -16489,11 +17623,13 @@ MOD.langs = {
       ['Sway multiplier'] = 'Multiplicador de balanço',
       ['Sweeper'] = 'Faxineira',
       ['Swim speed (m/s)'] = 'Velocidade nadando (m/s)',
+      ['TANKS'] = 'TANQUES',
       ['TCS support'] = 'Suporte TCS',
       ['TD-110 Maelstrom'] = 'TD-110 Turbilhão',
       ['TD-220 Bastion MK XVI'] = 'TD-220 Bastião MK XVI',
       ['TED-63 Dynamite'] = 'TED-63 Dinamite',
       ['THROWABLE'] = 'ARREMESSÁVEL',
+      ['THROWABLES'] = 'ARREMESSÁVEIS',
       ['TM-1 Lure Mine'] = 'TM-1 Mina-isca',
       ['TX-41 Sterilizer'] = 'TX-41 Esterilizador',
       ['Tabs shown'] = 'Abas visíveis',
@@ -16510,6 +17646,7 @@ MOD.langs = {
       ['Tesla Tower'] = 'Torre Tesla',
       ['Tested releases only.'] = 'Só versões testadas.',
       ['That did not work; see the log.'] = 'Isso não funcionou; veja o log.',
+      ['That is not a valid preset code.'] = 'Esse código de preset não é válido.',
       ['That would make a loop of extra stratagems.'] = 'Isso faria um ciclo de estratégias extras.',
       ['The Arbitrator\'s underbarrel shotgun, not the rifle itself.'] = 'A escopeta acoplada do Arbitrator, não o rifle em si.',
       ['The Defender SEAF soldiers carry. Not yours.'] = 'O Defender que os soldados SEAF carregam. Não é o seu.',
@@ -16519,15 +17656,18 @@ MOD.langs = {
       ['The SMG you carry. Its underbarrel flamer is listed separately.'] = 'A submetralhadora que você carrega. O lança-chamas acoplado aparece separado.',
       ['The Scythe you carry.'] = 'A Scythe que você carrega.',
       ['The Stoker\'s underbarrel flamer, not the SMG itself.'] = 'O lança-chamas acoplado do Stoker, não a submetralhadora em si.',
+      ['The Trident shows 4 beams at its default of 2.'] = 'O Trident mostra 4 feixes com o padrão de 2.',
       ['The armor passives could not be stacked'] = 'Não foi possível combinar as passivas de blindagem',
+      ['The armory shows the first passive\'s name and at most 3 effects. All of them apply.'] = 'O arsenal mostra o nome da primeira passiva e no máximo 3 efeitos. Todos se aplicam.',
       ['The arrows you enter to call it in: click Record (or press Enter on this row), then enter'] = 'As setas que você digita para chamá-la: clique em Gravar (ou aperte Enter nesta linha), depois digite',
       ['The beacon\'s countdown before the delivery is sent.'] = 'A contagem regressiva do sinalizador antes de a entrega ser enviada.',
       ['The charge backpack, the charge and its blast. Cooldown: Stratagems tab.'] = 'A mochila de cargas, a carga e a explosão dela. Tempo de recarga: aba Estratégias.',
+      ['The clipboard has no valid preset code.'] = 'A área de transferência não tem um código de preset válido.',
       ['The explosion the round sets off when it hits something. 0: no explosion.'] = 'A explosão que a munição causa ao acertar algo. 0: sem explosão.',
+      ['The explosion the round sets off when its life time runs out before it hits anything. 0: no explosion.'] = 'A explosão que o projétil causa quando seu tempo de vida acaba antes de atingir algo. 0: sem explosão.',
       ['The flamethrower you carry.'] = 'O lança-chamas que você carrega.',
       ['The game holds at most 1023 rounds in a backpack.'] = 'O jogo permite no máximo 1023 munições numa mochila.',
       ['The game holds at most 2048 rounds in a magazine.'] = 'O jogo permite no máximo 2048 munições num carregador.',
-      ['The game only loads them when someone in the mission brings that weapon.'] = 'O jogo só os carrega quando alguém na missão leva essa arma.',
       ['The game treats the weapon as one-handed. On two-handed weapons it breaks the hip-fire animations.'] = 'O jogo trata a arma como de uma mão. Em armas de duas mãos isso quebra as animações de disparo do quadril.',
       ['The game\'s own files are already in place.'] = 'Os arquivos originais do jogo já estão no lugar.',
       ['The game\'s own files are back. Your values stay saved here (Install puts them in again).'] = 'Os arquivos originais do jogo voltaram. Seus valores continuam salvos aqui (Instalar coloca de novo).',
@@ -16543,12 +17683,15 @@ MOD.langs = {
       ['The rifle you carry. The grenade launcher is listed separately.'] = 'O rifle que você carrega. O lança-granadas aparece separado.',
       ['The rifle you carry. The underbarrel shotgun is listed separately.'] = 'O rifle que você carrega. A escopeta acoplada aparece separada.',
       ['The round goes off when it passes this close to an enemy, without hitting it. 0: off (the RL-77 uses 2 m).'] = 'A munição explode quando passa assim tão perto de um inimigo, sem acertá-lo. 0: desligado (o RL-77 usa 2 m).',
+      ['The round only bounces when it hits faster than this. Grenade launcher rounds use 20 m/s, most rounds 60 m/s.'] = 'A munição só ricocheteia se acertar mais rápido que isso. Munições de lança-granadas usam 20 m/s, a maioria 60 m/s.',
+      ['The round only bounces when it hits further than this from head on (0 = head on, 90 = grazing).'] = 'A munição só ricocheteia se acertar mais longe que este ângulo de frente (0 = de frente, 90 = de raspão).',
       ['The shot\'s trail and other effects belong to the chosen weapon.'] = 'O rastro do disparo e outros efeitos pertencem à arma escolhida.',
       ['The support hammer delivered by hellpod. The game data files it next to the Machete.'] = 'O martelo de suporte enviado por cápsula. Os dados do jogo o guardam junto ao Machete.',
       ['The support weapon. The CQC-73 is listed under Secondary.'] = 'A arma de suporte. O CQC-73 aparece em Secundária.',
       ['Thermite'] = 'Termita',
       ['Thermite (experimental)'] = 'Termita (experimental)',
       ['These values are shared by ALL bayonets: they change the Constitution, Sweeper and Amendment at once.'] = 'Estes valores são compartilhados por TODAS as baionetas: mudam a Constitution, a Sweeper e a Amendment de uma vez.',
+      ['This code is shared, so changing it also changes:'] = 'Este código é compartilhado, então mudá-lo também muda:',
       ['Throw range'] = 'Alcance do arremesso',
       ['Throw spread (degrees)'] = 'Dispersão do arremesso (graus)',
       ['Throw velocity, max (m/s)'] = 'Velocidade do arremesso, máx. (m/s)',
@@ -16599,9 +17742,10 @@ MOD.langs = {
       ['Turret'] = 'Torre',
       ['Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.'] = 'Digite o nome: Enter salva, Esc cancela. O jogo também recebe essas teclas, então nomeie os perfis a partir de um menu.',
       ['Type the percent (%d-%d): Enter sets it, Esc cancels.'] = 'Digite a porcentagem (%d-%d): Enter aplica, Esc cancela.',
-      ['Type the text: Enter keeps it, Esc cancels. Install puts it in the game, in every language.'] = 'Digite o texto: Enter mantém, Esc cancela. Instalar coloca no jogo, em todos os idiomas.',
+      ['Type the text: Enter keeps it, Shift+Enter starts a new line (twice leaves a gap), Esc cancels.'] = 'Digite o texto: Enter mantém, Shift+Enter começa uma linha nova (duas vezes deixa um espaço), Esc cancela.',
       ['Type the value: Enter sets it, Esc cancels. Values out of range are set to the nearest allowed one.'] = 'Digite o valor: Enter aplica, Esc cancela. Valores fora do intervalo vão para o permitido mais próximo.',
       ['Type to search: Enter keeps the results, Esc clears the search. The game sees these keys too.'] = 'Digite para buscar: Enter mantém os resultados, Esc limpo a busca. O jogo também recebe essas teclas.',
+      ['UNDERBARREL'] = 'ACOPLAMENTO',
       ['Ultimatum'] = 'Ultimato',
       ['Uncharged'] = 'Sem carga',
       ['Uncharged explosion'] = 'Explosão sem carga',
@@ -16612,11 +17756,13 @@ MOD.langs = {
       ['Unsafe warp: damage to you'] = 'Dobra insegura: dano em você',
       ['Unsafe warp: explosion'] = 'Dobra insegura: explosão',
       ['Up'] = 'Cima',
+      ['Up/Down and arrow buttons'] = 'Botões para cima/baixo e setas',
       ['Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,'] = 'Cima/Baixo escolhem um atributo, Esquerda/Direita mudam (Shift: passos maiores), clique num valor ou pressione Enter para digitar,',
       ['Up/Down choose, Enter loads, Insert makes a new one, Shift+Insert saves into it, F2 renames, Del deletes.'] = 'Cima/Baixo escolhem, Enter carrega, Insert cria um novo, Shift+Insert salva nele, F2 renomeia, Del exclui.',
       ['Update channel'] = 'Canal de atualizações',
       ['Updates'] = 'Atualizações',
       ['Urchin'] = 'Ouriço',
+      ['Used by:'] = 'Usado por:',
       ['Uses per mission'] = 'Usos por missão',
       ['Uses per rearm'] = 'Usos por rearmamento',
       ['V2'] = 'V2',
@@ -16652,6 +17798,7 @@ MOD.langs = {
       ['Walk speed (m/s)'] = 'Velocidade andando (m/s)',
       ['Walk speed (x)'] = 'Velocidade de caminhada (x)',
       ['Walking backwards (multiplier)'] = 'Andar para trás (multiplicador)',
+      ['Walking direction (deg)'] = 'Direção do avanço (graus)',
       ['Walking speed (m/s)'] = 'Velocidade andando (m/s)',
       ['War Strider'] = 'Caminhante bélico',
       ['Warm-up before it sprays (s)'] = 'Aquecimento antes do jato (s)',
@@ -16689,12 +17836,15 @@ MOD.langs = {
       ['Your values are not in the game yet: close the game, then Install.'] = 'Seus valores ainda não estão no jogo: feche o jogo e depois Instale.',
       ['a slot is 1 (primary) or 3 (secondary)'] = 'um espaço é 1 (principal) ou 3 (secundária)',
       ['added to every armor value, up to 10; lowered: down to 0'] = 'somado a cada valor de blindagem, até 10; ao diminuir: até 0',
+      ['added to every melee attack, up to 10; lowered: down to 0'] = 'somado a cada ataque corpo a corpo, até 10; ao reduzir: até 0',
       ['airborne'] = 'aerotransportado',
       ['all four exosuits share it'] = 'os quatro exotrajes compartilham este valor',
       ['also in your loadout when you bring this one'] = 'também no seu aparato quando você leva esta',
       ['also the second firing mode\'s shot (the same projectile)'] = 'também o disparo do segundo modo de tiro (o mesmo projétil)',
+      ['as long as the engine torque is enough to get there.'] = 'desde que a força do motor seja suficiente para chegar lá.',
       ['assassinate'] = 'assassinato',
       ['assault'] = 'assalto',
+      ['at least 1 round, at most 2048'] = 'mínimo 1 bala, máximo 2048',
       ['body parts without their own armor use this'] = 'partes do corpo sem blindagem própria usam esta',
       ['bull'] = 'touro',
       ['clip'] = 'pente',
@@ -16714,6 +17864,7 @@ MOD.langs = {
       ['how far the wheels can move up and down; lower: the body wobbles a lot'] = 'quanto as rodas podem subir e descer; menor: a carroceria balança muito',
       ['how fast a body part\'s bleed-out health runs out'] = 'quão rápido a vida ao sangrar de uma parte do corpo acaba',
       ['how fast the bleed-out health runs out'] = 'quão rápido a vida ao sangrar acaba',
+      ['how fast their guns shoot; flamers, beams and melee stay as they are'] = 'a velocidade de disparo das armas; lança-chamas, feixes e corpo a corpo não mudam',
       ['how fast they attack, turn and react'] = 'quão rápido atacam, viram e reagem',
       ['how long it keeps after you once you break line of sight'] = 'quanto tempo continua atrás de você depois que você sai da linha de visão',
       ['how many of the items on its rack come down in one pod'] = 'quantos itens do rack descem numa cápsula',
@@ -16741,6 +17892,7 @@ MOD.langs = {
       ['none'] = 'nenhum',
       ['none (no explosion)'] = 'nenhuma (sem explosão)',
       ['none (no projectile)'] = 'nenhum (sem projétil)',
+      ['none. - / + : add one, hold Reload in game to switch'] = 'nenhuma. - / + : adicionar, segure Recarregar no jogo para trocar',
       ['normal projectile'] = 'projétil normal',
       ['not a faction'] = 'não é uma facção',
       ['on the crosshair; closer or farther it lands a bit high or low. Does not change the zoom.'] = 'na mira; mais perto ou mais longe cai um pouco alto ou baixo. Não muda o zoom.',
@@ -16764,6 +17916,7 @@ MOD.langs = {
       ['the armory list it is in: 1 primary, 3 secondary'] = 'a lista do arsenal em que está: 1 principal, 3 secundária',
       ['the body and every body part, bleed-out health too'] = 'o corpo e cada parte do corpo, a vida ao sangrar também',
       ['the faction multipliers cannot slow patrols below this: lower it with them'] = 'os multiplicadores de facção não podem baixar as patrulhas além disto: diminua junto com eles',
+      ['the fire mode switch'] = 'a opção de modo de disparo',
       ['the force a hit needs to stagger it (hit sizes it never staggers from stay that way)'] = 'a força que um acerto precisa para fazê-lo cambalear (tamanhos de acerto que nunca o fazem cambalear continuam assim)',
       ['the force a hit needs to stagger them'] = 'a força que um acerto precisa para fazê-los cambalear',
       ['the game holds back reinforcements past about 100 enemies at x1; it has crashed past 200-240 enemies alive'] = 'o jogo segura os reforços passando de uns 100 inimigos em x1; já travou passando de 200-240 inimigos vivos',
@@ -16772,8 +17925,12 @@ MOD.langs = {
       ['the holster is on the back or the hip'] = 'o coldre fica nas costas ou no quadril',
       ['the model and its body parts; on some enemies the hitboxes may not match the model, and on others it may not work at all'] = 'o modelo e suas partes do corpo; em alguns inimigos as hitboxes podem não bater com o modelo, e em outros pode não funcionar',
       ['the new code with the arrow keys or WASD, 1 to 9 arrows. Enter keeps it, Backspace takes one back,'] = 'o novo código com as setas ou WASD, de 1 a 9 setas. Enter mantém, Backspace apaga uma,',
+      ['the rate of fire switch'] = 'a opção de cadência de tiro',
+      ['the same distance for every enemy; 0: the game\'s own (most are 1 m, so no multiplier)'] = 'a mesma distância para todos os inimigos; 0: a do jogo (a maioria tem 1 m, por isso não há multiplicador)',
+      ['the same time for every gun; 0: the game\'s own (enemy reloads are 0 in the data, so no multiplier)'] = 'o mesmo tempo para todas as armas; 0: o do jogo (as recargas inimigas valem 0 nos dados, por isso não há multiplicador)',
       ['the shot fired from this heat on, and what it does to you'] = 'o disparo a partir deste calor, e o que ele faz com você',
       ['the spare ammo in its backpack; read when the backpack is called in'] = 'a munição reserva na mochila; lida quando a mochila é chamada',
+      ['the underbarrel switch'] = 'a opção da arma acoplada',
       ['their wind-ups and attacks'] = 'preparações e ataques',
       ['tier 1 captive'] = 'cativo nível 1',
       ['tier 2 guard'] = 'guarda nível 2',
@@ -17147,6 +18304,7 @@ MOD.langs = {
       ['gatekeeper'] = 'Porteiro',
       ['gatling sentry'] = 'Sentinela Gatling',
       ['gazer'] = 'Miradora',
+      ['gazer spire'] = 'Pináculo Bisbilhoteiro',
       ['giga grenade'] = 'Gigagranada',
       ['gl-15 evictor'] = 'GL-15 Ordem de Despejo',
       ['gl-21 grenade launcher'] = 'GL-21 Lança-granadas',
@@ -17249,6 +18407,7 @@ MOD.langs = {
       ['medium plasma bolt'] = 'Disparo de plasma médio',
       ['melta mine'] = 'Mina Melta',
       ['meltagun'] = 'Arma Melta',
+      ['mg raider'] = 'Invasor exterminador',
       ['mg-206 heavy machine gun'] = 'MG-206 Metralhadora Pesada',
       ['mg-43 machine gun'] = 'MG-43 Metralhadora',
       ['mgx-42 bullet storm'] = 'MGX-42 Tempestade de Balas',
@@ -17309,6 +18468,7 @@ MOD.langs = {
       ['portable hellbomb'] = 'Hellbomba portátil',
       ['pouncer'] = 'Saltador',
       ['predator hunter'] = 'Caçador predador',
+      ['predator stalker'] = 'Perseguidor predador',
       ['punisher'] = 'Justiceiro',
       ['punisher plasma'] = 'Justiceiro de Plasma',
       ['purifier'] = 'Purificadora',
@@ -17337,10 +18497,12 @@ MOD.langs = {
       ['redeemer'] = 'Redentora',
       ['reduced signature'] = 'Assinatura Reduzida',
       ['reinforced epaulettes'] = 'Dragonas Reforçadas',
+      ['reinforced scout strider'] = 'Caminhante explorador reforçado',
       ['reprimand'] = 'Repressora',
       ['rl-77 airburst rocket launcher'] = 'RL-77 Lança-foguetes de Explosão Atmosférica',
       ['rock solid'] = 'Inabalável',
       ['rocket devastator'] = 'Devastador fogueteiro',
+      ['rocket raider'] = 'Invasor balístico',
       ['rocket sentry'] = 'Foguete Sentinela',
       ['rs-422 railgun'] = 'RS-422 Railgun',
       ['rupture charger'] = 'Atropelador Rompedor',
@@ -17486,6 +18648,14 @@ MOD.langs = {
       { '^(.+) can\'t be called while this one is ready: their codes start with it%.$', 'Não dá para chamar %L1 enquanto esta estiver pronta: os códigos delas começam com este.' },
       { '^This one can\'t be called while (.+) is ready: its code starts with theirs%.$', 'Não dá para chamar esta enquanto %L1 estiver pronta: o código dela começa com o delas.' },
       { '^Gear (%d+) ratio$', 'Relação da marcha %1' },
+      { '^fires (.+)$', 'dispara %1' },
+      { '^drops (.+)$', 'lança %1' },
+      { '^Copied (%d+) value%(s%) into (%d+) preset%(s%)$', '%1 valor(es) copiados para %2 perfil(is)' },
+      { '^Code copied %((%d+) characters%)$', 'Código copiado (%1 caracteres)' },
+      { '^Added "(.+)"$', 'Adicionado "%1"' },
+      { '^Added "(.+)" to the Enemy Editor presets$', 'Adicionado "%1" aos presets do editor de inimigos' },
+      { '^Added "(.+)" to the Stat Editor presets$', 'Adicionado "%1" aos presets do editor de atributos' },
+      { '^Saved as StatEditor\\(%S+)%. Copy code shares it%. A code you were sent goes in the box on the left%.$', 'Salvo como StatEditor\\%1. Copiar código compartilha. Um código que você recebeu vai na caixa à esquerda.' },
       { '^Zoom level (%d) %(x%)$', 'Nível de zoom %1 (x)' },
       { '^Zeroing distance (%d) %(m%)$', 'Distância de zeragem %1 (m)' },
       { '^PgUp/PgDn change weapon, Del resets, Ctrl%+1%-5 loads a weapon preset, Ctrl%+Shift%+1%-5 saves one; (%d+) value%(s%) changed%.$', 'PgUp/PgDn: arma, Del: redefinir, Ctrl(+Shift)+1-5: perfis; %1 valor(es) mudado(s).' },
@@ -17597,7 +18767,7 @@ MOD.langs = {
       { '^(%d+) listed$', '%1 na lista' },
       { '^(%d+)%-(%d+) of (%d+) %(max (%d+)%)$', '%1-%2 de %3 (máx. %4)' },
       { '^(%d+) %(max (%d+)%)$', '%1 (máx. %2)' },
-      { '^(%d+) value%(s%) for (%d+) weapon%(s%) / stratagem%(s%):$', '%1 valor(es) para %2 arma(s) / estratégia(s):' },
+      { '^(%d+) value%(s%) for (%d+) item%(s%):$', '%1 valor(es) para %2 item(ns):' },
       { '^(%d+) value%(s%)$', '%1 valor(es)' },
       { '^On: your (%d+) change%(s%) are applied%.$', 'Ligado: suas %1 mudança(s) estão aplicadas.' },
       { '^Off: the game\'s values everywhere; your (%d+) change%(s%) are kept for when you turn them on%.$', 'Desligado: os valores do jogo em todo lugar; suas %1 mudança(s) ficam guardadas para quando você ligar.' },
@@ -17656,6 +18826,8 @@ MOD.langs = {
       { '^Part (%d+)$', 'Parte %1' },
       { '^Weapon (%d+)$', 'Arma %1' },
       { '^(.+) %(([A-Z][^()]*)%)$', '%1 (%2)' },
+      { '^Copy (.+) to$', 'Copiar %1 para' },
+      { '^Copied (%d+) value%(s%) to (%d+) vehicle%(s%)%.$', '%1 valor(es) copiado(s) para %2 veículo(s).' },
     },
     prefix = {
       { 'PgUp/PgDn change weapon, Del resets, Ctrl+1-5 loads a weapon preset, Ctrl+Shift+1-5 saves one; ', 'PgUp/PgDn: arma, Del: redefinir, Ctrl(+Shift)+1-5: perfis; ' },
@@ -17960,11 +19132,20 @@ local state = {
     title = MOD.title, version = MOD.version, phase = 'starting', status = 'starting',
     frame = 0, tables = 0, weapons = 0, applied = 0, refused = 0, ui_errors = 0,
     writes = 0,   -- goes up on every value this mod writes: other mods editing the same tables can watch it
+    touched = {},   -- the host: what differs from the last install (key -> its value then), so an undone change is none
 }
+function state.note(key, was, now)
+    was, now = was or false, now or false
+    if state.touched[key] == nil then
+        if was ~= now then state.touched[key] = was end
+    elseif state.touched[key] == now then
+        state.touched[key] = nil
+    end
+end
 rawset(_G, MOD.global, state)
 
 -- ---------------------------------------------------------------- byte helpers
-local function u32_bytes(value)
+function MOD._migration_u32_bytes(value)
     value = value % 4294967296
     return string.char(value % 256,
                        math.floor(value / 256) % 256,
@@ -17979,7 +19160,7 @@ local function u32(blob, offset)
 end
 
 -- Independent decoder: bits -> number, so read-back checks never share code with the encoder.
-local function bits_to_f32(bits)
+function MOD._migration_bits_to_f32(bits)
     local sign = 1
     if bits >= 2147483648 then sign = -1; bits = bits - 2147483648 end
     local exp = math.floor(bits / 8388608)
@@ -17989,7 +19170,7 @@ local function bits_to_f32(bits)
     return sign * (1 + mant / 8388608) * 2 ^ (exp - 127)
 end
 
-local NEEDLE = 'LDLD' .. u32_bytes(1)
+local NEEDLE = 'LDLD' .. MOD._migration_u32_bytes(1)
 
 -- ---------------------------------------------------------------- windows api
 local ffi_ok, ffi = pcall(require, 'ffi')
@@ -17997,7 +19178,7 @@ local api = nil
 local f32_bytes = nil
 local REGION_TYPE = MOD.global .. 'Region'
 
-local function build_api()
+function MOD._migration_build_api()
     for _, declaration in ipairs({
         'void *GetCurrentProcess(void);',
         'int ReadProcessMemory(void *process, const void *address, void *buffer, size_t size, size_t *read);',
@@ -18170,7 +19351,7 @@ local SWEEP_CHUNK = 65536
 local ADDRESS_LIMIT = 0x7FFFFFFF0000
 local LUA_HEAP_LIMIT = 0x80000000   -- below this, only Lua-heap copies (LuaJIT without GC64)
 
-local function new_hub(api, skip_low)
+function MOD._migration_new_hub(api, skip_low)
     local hub = { version = HUB_VERSION, clients = {}, frame = 0, phase = 'starting', passes = 0,
                   chains = {}, chain_list = {}, worst = 0, total = 0, busy_frames = 0 }
     local lines = {}
@@ -18524,7 +19705,7 @@ function MOD.skipped(file, at, line)
     log(file .. ': line ' .. at .. ' not understood: ' .. line:gsub('^%s+', ''):sub(1, 60))
 end
 
-local function flush_log()
+function MOD._migration_flush_log()
     log_dirty = false
     pcall(function()
         local dir = data_dir('Logs')
@@ -18549,7 +19730,7 @@ local function step(name)
     if trace_left <= 0 or traced[name] then return end
     traced[name] = true
     log('draw ' .. (draws + 1) .. ': ' .. name)
-    flush_log()
+    MOD._migration_flush_log()
 end
 
 local function set_status(phase, status)
@@ -18730,7 +19911,8 @@ KINDS[TYPES.hellpod] = { name = 'hellpod', stride = 104, keyed = true }
 KINDS[TYPES.payload] = { name = 'hellpod payload', stride = 12, keyed = true }
 -- EquipmentComponentData (232 bytes): +196 one-handed (bool byte). HelldiverCustomizationKit (one block per
 -- armor, helmet or cape): +16 name (text id), +40 kit type (0 armor), +48 body types (pointer, count; 24 bytes:
--- +8 pieces, pointer, count; 112 bytes: +8 slot (2 torso), +12 piece type, +16 weight 0 light / 1 medium / 2 heavy)
+-- +8 pieces, pointer, count; 112 bytes: +8 slot (2 torso), +12 piece type, +16 weight 0 light / 1 medium / 2 heavy),
+-- +28 passive id
 TYPES.equipment, TYPES.kit = 0x5357A825, 0xD9A55AA0
 KINDS[TYPES.equipment] = { name = 'equipment', stride = 232, keyed = true }
 KINDS[TYPES.kit] = { name = 'armor kit', stride = 1, groups = true, list = {} }
@@ -18748,7 +19930,7 @@ KINDS[TYPES.kit].parse = function(blob, stride, spec, address)
         if v and v >= #blob then v = v - address - HEADER_BYTES end
         return v and v >= 0 and v < #blob and v or nil
     end
-    local index = { name = u32(blob, 16), type = u32(blob, 40), pieces = {} }
+    local index = { name = u32(blob, 16), caps = u32(blob, 12), desc = u32(blob, 20), type = u32(blob, 40), passive = u32(blob, 28), pieces = {} }
     local bodies, count = at(48), u32(blob, 56)
     if not (index.name and index.type and count) or count > 8 then return nil, 'armor kit layout does not match this build' end
     if index.type ~= 0 or count == 0 then return index, 0 end
@@ -18808,9 +19990,11 @@ KINDS[TYPES.passive].parse = function(blob, stride, spec, address)
     end
     local mo, so = at(16, mcount, 16), at(32, scount, 12)
     if not mo or not so then return nil, 'passive layout does not match this build' end
-    local index = { id = id, mods = {}, stats = {} }
+    local index = { id = id, mods = {}, stats = {}, text = u32(blob, 4), lines = {} }
     for k = 0, mcount - 1 do
         index.mods[k + 1] = { id = u32(blob, mo + k * 16), type = u32(blob, mo + k * 16 + 4), offset = mo + k * 16 + 8 }
+        local line = u32(blob, mo + k * 16 + 12)
+        if line ~= 0 then index.lines[#index.lines + 1] = line end
     end
     for k = 0, scount - 1 do index.stats[k + 1] = { stat = u32(blob, so + k * 12), offset = so + k * 12 + 8 } end
     return index, mcount + scount
@@ -18870,7 +20054,7 @@ local tables, parsed_blocks, stratagem_groups = {}, {}, {}
 -- wrong count fit it), so the count that fits is the one where every key sits where the game
 -- looks it up (hash % buckets, then the next buckets up to the first empty one); the twice rule
 -- alone is the fallback.
-local function parse_keyed(blob, stride, spec)
+function MOD._migration_parse_keyed(blob, stride, spec)
     local MAX_UNINDEXED_RECORDS, ZERO8 = 2, string.rep('\0', 8)
     local slack = spec and spec.slack or 0   -- padding after the records
     local total, count, live, top, offset = #blob, 0, 0, -1, 0
@@ -18925,11 +20109,11 @@ end
 -- Extra hash-correction tails do not belong to the hashmap or record array.
 -- Accept them offline only when all candidate paddings identify the same rows.
 function MOD.parse_keyed_tail(blob,stride,spec)
-    local index,info=parse_keyed(blob,stride,spec)
+    local index,info=MOD._migration_parse_keyed(blob,stride,spec)
     if index or not MOD.offline then return index,info end
     local found,count
     for padding=4,16,4 do
-        local candidate,n=parse_keyed(blob,stride,{slack=(spec and spec.slack or 0)+padding})
+        local candidate,n=MOD._migration_parse_keyed(blob,stride,{slack=(spec and spec.slack or 0)+padding})
         if candidate then
             if found then
                 for key,at in pairs(candidate)do if found[key]~=at then return nil,'ambiguous foreign table tail' end end
@@ -18942,7 +20126,7 @@ end
 
 -- Row table: u64 descriptor, u32 row count, u32 0, then rows that carry a u32 id (at +0
 -- unless `id_at`), then (`tail`) the strings and arrays the rows point to.
-local function parse_rows(blob, stride, spec)
+function MOD._migration_parse_rows(blob, stride, spec)
     local rows = u32(blob, 8)
     local size = rows and 16 + rows * stride
     if not rows or u32(blob, 12) ~= 0 or not (size == #blob or ((MOD.offline or spec and spec.tail) and size <= #blob)) then
@@ -19056,10 +20240,10 @@ KINDS[TYPES.destruction].bytes = function(f, value, now)
     end
     if not pick then return nil end
     local rec = tiers.copies[1] + HEADER_BYTES + tiers.index[pick]
-    return u32_bytes(rec % 4294967296) .. u32_bytes(math.floor(rec / 4294967296)) .. u32_bytes(pick)
+    return MOD._migration_u32_bytes(rec % 4294967296) .. MOD._migration_u32_bytes(math.floor(rec / 4294967296)) .. MOD._migration_u32_bytes(pick)
 end
 
-local function have_all_tables()
+function MOD._migration_have_all_tables()
     for _, kind in ipairs(KIND_ORDER) do
         if not tables[kind] then return false end
     end
@@ -19227,6 +20411,10 @@ local function read_field(f, original)
     if f.storage == 'gun' then   -- an enemy's weapon: the chosen entity's number (MOD.enemy.gun_choices)
         return MOD.enemy.gun_id(bytes(8))
     end
+    if f.storage == 'bolt' then   -- a pair of values shown as a switch (the No bolt pull row)
+        local v = peek4(entry.copies[1] + HEADER_BYTES + f.offset)
+        return v == f.bolt_on and 1 or v == f.bolt_off and 0 or nil
+    end
     if f.storage == 'flag' then   -- a bool byte
         local b = bytes(1)
         b = b and b:byte()
@@ -19247,7 +20435,7 @@ local function read_field(f, original)
     local bits = original_read and raw and u32(raw,0) or not original_read and peek4(address)
     if not bits then return nil end
     local value = bits
-    if f.storage == 'f32' then value = bits_to_f32(bits) end
+    if f.storage == 'f32' then value = MOD._migration_bits_to_f32(bits) end
     if f.unset and bits == 0x7F7FFFFF then return f.unset end   -- FLT_MAX: not set, read as f.unset
     local low,high=MOD.numeric_bounds(f)
     if not MOD.offline then low,high=f.signed and -f.limit or 0,f.limit end
@@ -19256,16 +20444,17 @@ local function read_field(f, original)
 end
 
 local function encode(f, value)
-    if f.storage=='boltcycle' then return (value==0 or value==1) and u32_bytes(value==1 and f.bolt_on or f.bolt_off) or nil end
+    if f.storage=='boltcycle' then return (value==0 or value==1) and MOD._migration_u32_bytes(value==1 and f.bolt_on or f.bolt_off) or nil end
     if f.storage == 'dogweapon' then local e=MOD.dogs.by_id[value];return e and e.bytes end
     if f.storage == 'dogmag' then local e=MOD.dogs.magazines.by_id[value];return e and e.bytes end
     if f.storage == 'grenade' then return KINDS[TYPES.throwable].entity_bytes(value) end
     if f.storage == 'rackitem' then local e = MOD.refs.items().by_id[value]; return e and e.bytes end
     if f.storage == 'mountitem' then local e = MOD.refs.mounts().by_id[value]; return e and e.bytes end
     if f.storage == 'package' then local e = MOD.refs.packages().by_id[value]; return e and e.bytes end
-    if f.storage == 'entry' then return u32_bytes(math.floor(value + 0.5) % 4294967296) end
+    if f.storage == 'entry' then return MOD._migration_u32_bytes(math.floor(value + 0.5) % 4294967296) end
     if f.storage == 'gun' then local g = MOD.enemy.gun_choices().by_id[value]; return g and g.key end
     if f.storage == 'f32' then return f32_bytes(value) end
+    if f.storage == 'bolt' then return MOD._migration_u32_bytes(value >= 0.5 and f.bolt_on or f.bolt_off) end
     if f.storage == 'flag' and f.mask then   -- the byte with only that bit changed
         local b = api.read(tables[f.kind].copies[1] + HEADER_BYTES + f.offset, 1)
         b = b and b:byte()
@@ -19280,7 +20469,7 @@ local function encode(f, value)
         local v = math.floor(value + 0.5) % 65536
         return string.char(v % 256, math.floor(v / 256))
     end
-    return u32_bytes(math.floor(value + 0.5))
+    return MOD._migration_u32_bytes(math.floor(value + 0.5))
 end
 
 local function default_of(f)
@@ -19289,15 +20478,21 @@ local function default_of(f)
 end
 
 -- Writes every copy of the table; read back, or rolled back.
-local function write_field(f, value)
-    if MOD.offline then
-        local low,high=MOD.numeric_bounds(f)
-        if type(value)~='number' or value~=value or value<low or value>high then return false,'数值超出字段存储范围' end
-    end
+local write_field
+-- A gun with both weapon functions taken: the chosen one (t.pick: 1 left, 2 right) becomes the ammo switch while
+-- it has a second ammo. Run by either value, so config lines work in any order.
+function MOD.second_toggle(t, id)
+    write_field(t.left, id ~= 0 and read_field(t.pick) == 1 and 8 or default_of(t.left))
+    write_field(t.right, id ~= 0 and read_field(t.pick) == 2 and 8 or default_of(t.right))
+end
+write_field = function(f, value)
+    if MOD.offline then local lo,hi=MOD.numeric_bounds(f);if type(value)~='number' or value~=value or value<lo or value>hi then return false,'数值超出字段存储范围' end end
     if f.storage == 'virtual' then
         default_of(f)
         if read_field(f) ~= value then state.writes = state.writes + 1 end   -- (the host: changed since the last install)
+        state.note(f, read_field(f), value)
         f.value = value
+        if f.toggle then MOD.second_toggle(f.toggle, read_field(f.toggle.second)) end
         return true
     end
     local entry = tables[f.kind]
@@ -19348,8 +20543,10 @@ local function write_field(f, value)
     end
     -- (the host: changed since the last install; the same bytes again, as a value box closed unchanged, are no change)
     for _, undo in ipairs(done) do if undo[2] ~= bytes then state.writes = state.writes + 1; break end end
+    if done[1] then state.note(done[1][1], was or done[1][2], was and string.format('%.4f', value) or bytes) end
     if f.storage == 'grenade' then KINDS[TYPES.throwable].rearm() end
     if f.storage == 'tier' and f.death then write_field(f.death, u32(bytes, 8)) end   -- the health's type follows
+    if f.auto_drop then write_field(f.auto_drop, value == 1 and 0 or default_of(f.auto_drop)) end   -- (MOD.slot.pickup_row)
     return true
 end
 
@@ -19358,13 +20555,13 @@ end
 -- together). `small`/`big` are the step sizes; `max` bounds what the panel lets you set.
 local weapons, by_hash = {}, {}
 
-local function hash_key(hex16)
+function MOD._migration_hash_key(hex16)
     local hi, lo = tonumber(hex16:sub(1, 8), 16), tonumber(hex16:sub(9, 16), 16)
-    return u32_bytes(lo) .. u32_bytes(hi)
+    return MOD._migration_u32_bytes(lo) .. MOD._migration_u32_bytes(hi)
 end
 
 for _, w in ipairs(WEAPONS) do
-    local weapon = { name = w[1], slot = w[2], hash = w[3], note = w[4] or '', key = hash_key(w[3]),
+    local weapon = { name = w[1], slot = w[2], hash = w[3], note = w[4] or '', key = MOD._migration_hash_key(w[3]),
                      rows = {}, by_id = {} }
     weapons[#weapons + 1] = weapon
     by_hash[w[3]] = weapon
@@ -19464,7 +20661,7 @@ function MOD.explosion_extras(entry, section, prefix, xrow)
     end
 end
 
-local function read_text(address)
+function MOD._migration_read_text(address)
     local bytes = address and address > 65536 and api.read(address, 96)
     local text = bytes and bytes:match('^([^%z]*)%z')
     if not text or #text < 3 or text:find('[^\32-\126]') then return nil end
@@ -19485,7 +20682,7 @@ KINDS[TYPES.items].prepare = function(t)
     for k = 0, (peek4(top + 8) or 0) - 1 do
         local r = 16 + k * 88
         local lo, hi = peek4(top + r), peek4(top + r + 4)
-        local label = read_text(lo and hi and lo + hi * 4294967296) or ''
+        local label = MOD._migration_read_text(lo and hi and lo + hi * 4294967296) or ''
         local name = label:lower()
         local family = name:match('^([^%.]+)%.') or name:match('^(%S+ %S+)') or name
         if family ~= last or name:find('standard') then line = line + 1 end
@@ -19650,7 +20847,7 @@ end
 -- (type -> its stat modifiers) } }. The weapon's line: the items listed with its default one.
 -- Weapons whose other magazines are a line of their own: weapon -> that line's name. The AR-59
 -- Suppressor comes with the Liberator's Extended; its Short and Drum are 'whisper' ones.
-KINDS[TYPES.custom].LINES = { [hash_key('708EA298C82093D0')] = 'whisper rifle 5,5x50mm.' }
+KINDS[TYPES.custom].LINES = { [MOD._migration_hash_key('708EA298C82093D0')] = 'whisper rifle 5,5x50mm.' }
 
 local function attachments(key)
     local cache = KINDS[TYPES.custom].cache
@@ -19734,7 +20931,8 @@ KINDS[TYPES.items].build = function()
                                     note = own and ('Muzzle. Only the ' .. own .. ' comes with it.')
                                            or slot >= 6 and (kinds[slot] .. '. Its modifiers apply to every weapon loaded with it.')
                                            or (kinds[slot] .. '. Its modifiers apply to every weapon fitted with it.'),
-                                    attachment = { mods = mods, scope = scope or nil, order = slot == 2 and 1 or slot == 1 and 2 or slot == 4 and 3 or 4 } }
+                                    attachment = { mods = mods, scope = scope or nil, order = slot == 2 and 1 or slot == 1 and 2 or slot == 4 and 3 or 4,
+                                                   texts = { peek4(top + r + 16), peek4(top + r + 12), peek4(top + r + 20) } } }
                 by_hash[hash] = list[#list]
             end
         end
@@ -19753,7 +20951,7 @@ KINDS[TYPES.passive].build = function()
     end
     -- the helldiver (offline), first on the Armors tab
     local A = KINDS[TYPES.avatar]
-    local key = hash_key(A.ENTITY)
+    local key = MOD._migration_hash_key(A.ENTITY)
     if MOD.offline and not by_hash[A.ENTITY] and ((tables[TYPES.health] and tables[TYPES.health].index[key])
                                                   or (tables[TYPES.avatar] and tables[TYPES.avatar].index[key])) then
         by_hash[A.ENTITY] = { name = 'Helldiver', slot = 'Armors', hash = A.ENTITY, key = key, rows = {}, by_id = {}, player = true,
@@ -19766,7 +20964,7 @@ KINDS[TYPES.passive].build = function()
         local hash = string.format('FFFFFFFE%08X', index.id)
         if index.id ~= 0 and not by_hash[hash] then
             list[#list + 1] = { name = spec.NAMES[index.id] or ('Passive ' .. index.id), slot = 'Armors', hash = hash,
-                                key = hash_key(hash), rows = {}, by_id = {}, passive = group,
+                                key = MOD._migration_hash_key(hash), rows = {}, by_id = {}, passive = group,
                                 note = 'Shared by every armor with this passive. Multipliers: 1 = no change.' }
             by_hash[hash] = list[#list]
         end
@@ -19778,23 +20976,84 @@ end
 
 -- Armor weight: one page on the Armors tab, a row per armor (every armor set of that name), its weight on every
 -- piece of it (the torso's shown); speed and stamina follow it (tested in game, issue #89).
-MOD.kits = { HASH = 'FFFFFFF900000001', NAMES = { [0] = 'Light', [1] = 'Medium', [2] = 'Heavy' } }
+MOD.kits = { HASH = 'FFFFFFF900000001', PAGE = 'FFFFFFF8%08X', LOOK = 'FFFFFFF7%08X', MAX_PASSIVES = 14,
+             NAMES = { [0] = 'Light', [1] = 'Medium', [2] = 'Heavy' } }
 function MOD.kits.build()
-    local old = by_hash[MOD.kits.HASH]
-    for k = #weapons, 1, -1 do if weapons[k] == old then table.remove(weapons, k) end end
-    by_hash[MOD.kits.HASH] = nil
+    for k = #weapons, 1, -1 do
+        if weapons[k].kits then by_hash[weapons[k].hash] = nil; table.remove(weapons, k) end
+    end
     local any = false
     for _, group in ipairs(KINDS[TYPES.kit].list) do any = any or #tables[group].index.pieces > 0 end
     if not any then return end
-    by_hash[MOD.kits.HASH] = { name = 'Armor weight', slot = 'Armors', hash = MOD.kits.HASH, key = hash_key(MOD.kits.HASH),
+    by_hash[MOD.kits.HASH] = { name = 'Armor weight', slot = 'Armors', hash = MOD.kits.HASH, key = MOD._migration_hash_key(MOD.kits.HASH),
                                rows = {}, by_id = {}, kits = true,
                                note = 'Light, medium or heavy, per armor (every armor set with that name).' }
     -- at the top of the Armors tab, below the Helldiver
     local at = #weapons + 1
     for k, w in ipairs(weapons) do if w.slot == 'Armors' then at = k + (w.player and 1 or 0); break end end
     table.insert(weapons, at, by_hash[MOD.kits.HASH])
+    -- each armor its own page, between Armor weight and the passives
+    local by_name, order, last = MOD.kits.named()
+    for _, id in ipairs(order) do
+        if MOD.kit_names[id] ~= '' then
+            local hash = string.format(MOD.kits.PAGE, id)
+            -- a few armors' variants differ: the page starts from the passive most of them have (not none, if it can)
+            local seen, lead = {}, nil
+            for _, kit in ipairs(by_name[id]) do
+                local v = kit.index.passive
+                seen[v] = (seen[v] or 0) + 1
+                if not lead or (v ~= 0 and (lead == 0 or seen[v] > seen[lead])) then lead = v end
+            end
+            last = { name = MOD.kit_names[id], slot = 'Armors', hash = hash, key = MOD._migration_hash_key(hash), rows = {}, by_id = {},
+                     kits = 'passive', armor = id, default = lead ~= 0 and { lead } or {},
+                     note = 'Every armor set with this name. Its passive text is shared by every armor with that passive.' }
+            by_hash[hash] = last
+            at = at + 1
+            table.insert(weapons, at, last)
+        end
+    end
+    MOD.kits.looks()
+    MOD.kits.migrate()
 end
-function MOD.kits.resolve(entry)
+-- Helmets, then capes: a page each (offline), only for its Name and Description boxes, after the passives. A helmet
+-- named like an armor shares its texts, so its boxes are the armor's (same). MOD.kits.texts: every kit's name text
+-- id -> its capitals and description ids.
+function MOD.kits.looks()
+    local host = rawget(_G, 'SHODAN_PHYSICS')
+    local texts, list, seen, kinds = host and host.texts, {}, {}, { 'Helmet', 'Cape' }
+    MOD.kits.texts = {}
+    for _, group in ipairs(KINDS[TYPES.kit].list) do
+        local k = tables[group].index
+        local t = MOD.kits.texts[k.name] or { caps = {}, desc = {} }
+        MOD.kits.texts[k.name] = t
+        t.caps[k.caps] = true
+        t.desc[k.desc] = true
+        if MOD.offline and texts and texts[k.name] and texts[k.name] ~= '' and k.type ~= 0 and not seen[k.name] then
+            seen[k.name] = true
+            local hash = string.format(MOD.kits.LOOK, k.name)
+            local kind = kinds[k.type] or 'Look'
+            local same = by_hash[string.format(MOD.kits.PAGE, k.name)]
+            list[#list + 1] = { name = kind .. ': ' .. texts[k.name], slot = 'Armors', hash = hash, key = MOD._migration_hash_key(hash), rows = {},
+                                by_id = {}, kits = 'look', look = k.name, look_kind = k.type, same = same,
+                                note = same and 'Shares its name and description with the armor of this name: a change here changes both.'
+                                       or 'Every ' .. kind:lower() .. ' with this name.' }
+            by_hash[hash] = list[#list]
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.look_kind ~= b.look_kind then return a.look_kind < b.look_kind end
+        return a.name:lower() < b.name:lower()
+    end)
+    local at = #weapons + 1
+    for k = #weapons, 1, -1 do if weapons[k].slot == 'Armors' then at = k + 1; break end end
+    for k, entry in ipairs(list) do table.insert(weapons, at + k - 1, entry) end
+end
+-- which part of the Armors tab a page is in, nil on other tabs
+function MOD.kits.part(w)
+    return w.player and 1 or w.kits == true and 2 or w.armor and 3 or w.passive and 4 or w.look_kind and 4 + w.look_kind or nil
+end
+-- the armors in the game, by text id, and their ids by name
+function MOD.kits.named()
     local by_name, order = {}, {}
     for _, group in ipairs(KINDS[TYPES.kit].list) do
         local index = tables[group].index
@@ -19805,6 +21064,12 @@ function MOD.kits.resolve(entry)
     end
     local function name_of(id) return MOD.kit_names[id] end
     table.sort(order, function(a, b) return name_of(a):lower() < name_of(b):lower() end)
+    return by_name, order
+end
+function MOD.kits.resolve(entry)
+    if entry.kits ~= true then return end
+    local by_name, order = MOD.kits.named()
+    local function name_of(id) return MOD.kit_names[id] end
     local rows = { {}, {}, {} }
     for _, id in ipairs(order) do
         local row_id, parts, first = string.format('weight_%08X', id), {}, nil
@@ -19818,7 +21083,8 @@ function MOD.kits.resolve(entry)
         end
         if first then table.insert(parts, 1, table.remove(parts, first)) end
         parts[1].id = row_id
-        local w = default_of(parts[1].field)
+        local w, page = default_of(parts[1].field), by_hash[string.format(MOD.kits.PAGE, id)]
+        if page then page.weight_field = parts[1].field end
         if w and rows[w + 1] then rows[w + 1][#rows[w + 1] + 1] = { row_id, name_of(id), parts } end
     end
     for w, list in ipairs(rows) do
@@ -19921,7 +21187,7 @@ KINDS[TYPES.avatar].resolve = function(entry)
     -- the hellpods' descent (Hellpod Control's fields: higher and slower gives more time to steer)
     local hp = tables[TYPES.hellpod]
     for _, pod in ipairs(hp and A.PODS or {}) do
-        local at = hp.index[hash_key(pod[1])]
+        local at = hp.index[MOD._migration_hash_key(pod[1])]
         if at then
             local section = 'Hellpod: ' .. pod[2]:lower()
             local prefix = 'pod' .. (pod[2] == 'Initial drop' and 1 or 2) .. '_'
@@ -20137,7 +21403,7 @@ KINDS[TYPES.charge].shots = function(at, fired)
     return list
 end
 
-local function resolve_gun(weapon, key)
+function MOD._migration_resolve_gun(weapon, key)
     local function record(kind)
         local entry = tables[kind]
         return entry and entry.index[key]
@@ -20273,12 +21539,25 @@ local function resolve_gun(weapon, key)
     if drow then status_rows(weapon, 'Damage', '', drow, 'hit') end
     -- a beam's damage ticks per minute (BeamWeaponComponentData +104; SHODAN Offline Integration: 60 on the Laser
     -- Cannon and Laser Sentry)
+    -- a beam's reach (BeamSettings +8; from starstring's fork), where the beam is the damage source
+    local reach = beam and drow and tables[T_BEAM] and tables[T_BEAM].index[read_field(field_at(T_BEAM_WEAPON, beam, 'u32', 100000)) or -1]
+    if reach then
+        add_row(weapon, 'Damage', 'beam_range', 'Beam range (m)', 'f32', { part('beam_range', T_BEAM, reach + 8, 'f32', 100000) }, 0, 10000, 1, 10)
+    end
     local tick = beam and field_at(T_BEAM_WEAPON, beam + 104, 'u32', 6000)
     local ticks = tick and default_of(tick)
     if ticks and ticks > 0 and ticks <= 6000 then
         add_row(weapon, 'Damage', 'beam_ticks', 'Damage ticks per minute', 'u32',
                 { part('beam_ticks', T_BEAM_WEAPON, beam + 104, 'u32', 6000) }, 1, 6000, 10, 60).note =
             'how often the beam deals its damage while it touches'
+    end
+    -- +108 / +112: 2 and 0.15 s on the Trident, 1 and 1.4 s on the Meltagun; the steady lasers (1 and 0) ignore both, tested
+    local beams = beam and default_of(field_at(T_BEAM_WEAPON, beam + 108, 'u32', 1000))
+    local stay = beam and default_of(field_at(T_BEAM_WEAPON, beam + 112, 'f32', 100000))
+    if beams and beams >= 1 and beams <= 16 and (beams > 1 or (stay or 0) > 0) then
+        add_row(weapon, 'Damage', 'beam_count', 'Beams per barrel', 'u32', { part('beam_count', T_BEAM_WEAPON, beam + 108, 'u32', 1000) }, 1, 12, 1, 1).tip =
+            { 'The Trident shows 4 beams at its default of 2.' }
+        add_row(weapon, 'Damage', 'beam_stay', 'Beam stays after the shot (s)', 'f32', { part('beam_stay', T_BEAM_WEAPON, beam + 112, 'f32', 100000) }, 0, 10, 0.05, 0.25)
     end
     local damage_to = #weapon.rows
     if arow then
@@ -20371,7 +21650,7 @@ local function resolve_gun(weapon, key)
             end
             arow.note = MOD.records.NOTES.weapon_angle
         end
-        if expiry then blast_id('expiry_explosion', 'Expiry explosion (id)', 156) end
+        if expiry then blast_id('expiry_explosion', 'Expiry explosion (id)', 156).tip = MOD.records.TIPS.expiry end
         local first = #blasts
         if impact and impact > 0 then blasts[#blasts + 1] = { id = impact, prefix = idp .. 'blast', section = xsection, damage = true, p = p } end
         if expiry and expiry > 0 and expiry ~= impact then
@@ -20717,6 +21996,7 @@ local function resolve_gun(weapon, key)
                                               not weapon.sealed and spares and { 'mags_max', 'Max spare magazines', 148, 0, 100000, 50 } or nil } or {}) do
                 local r = row('Ammo', m[1], m[2], 'u32', get(m[1], '5:' .. m[3], T_MAGAZINE, magazine + m[3], 'u32', 100000), m[4], m[5], 1, m[6])
                 if r and m[1] == 'capacity' then r.limit = 'The game holds at most 2048 rounds in a magazine.' end
+                if r and m[1] == 'mags_supply' then r.tip = { 'A resupply box gives this many. An ammo box on the map gives half, rounded down (at least 1).' } end
             end
             return
         end
@@ -20802,10 +22082,10 @@ local function resolve_gun(weapon, key)
             capacity.tip={'分别编辑两侧容量；显示的原值是各侧容量，合计会随两侧输入实时更新。'}
         end
         local function rnd(id, label, offset)
-            add_row(weapon, 'Ammo', id, label, 'u32', { part(id, T_ROUNDS, rounds + offset, 'u32', 100000) }, 0, 9999, 1, 10)
+            return add_row(weapon, 'Ammo', id, label, 'u32', { part(id, T_ROUNDS, rounds + offset, 'u32', 100000) }, 0, 9999, 1, 10)
         end
         rnd('rounds_start', 'Starting rounds', 88)
-        rnd('rounds_supply', 'Rounds from supply', 84)
+        rnd('rounds_supply', 'Rounds from supply', 84).tip = { 'A resupply box gives this much. An ammo box on the map gives half, rounded down.' }
         rnd('rounds_max', 'Max spare rounds', 80)
         -- +92 rounds added per reload (a clip: Autocannon 5, Veto 6; else 1, a shell at a time); +96 a reload
         -- is allowed below this many rounds left (f32; 0: below the capacity)
@@ -20914,7 +22194,7 @@ local function resolve_gun(weapon, key)
             end
         end
         if KINDS[T_WEAPON].stride==1240 and (weapon.hash=='B6AFF2195568767F' or weapon.hash=='41F2DEF484634B59')then
-            local wt=tables[T_WEAPON];local donor=wt and wt.index[hash_key('03E67A19B07C6523')]
+            local wt=tables[T_WEAPON];local donor=wt and wt.index[MOD._migration_hash_key('03E67A19B07C6523')]
             local anim=donor and default_of(field_at(T_WEAPON,donor+936,'u32',4294967295))
             local ability=donor and default_of(field_at(T_WEAPON,donor+948,'u32',100000))
             local eruptor=weapon.hash=='B6AFF2195568767F'
@@ -20943,6 +22223,12 @@ local function resolve_gun(weapon, key)
         if inf and default_of(inf[1].field) == 0 and (not inf[2] or default_of(inf[2].field) == 0) then
             add_row(weapon, 'Ammo', 'infinite_ammo', 'Infinite ammo', 'flag', inf, 0, 1, 1, 1).tip =
                 { 'The magazine never runs out. Flamethrowers: also set Ammo per puff to 0.' }
+            -- with the other Ammo rows, not under a second Ammo heading below Handling (issue #118)
+            local at = #weapon.rows
+            for k = #weapon.rows - 1, 1, -1 do
+                if weapon.rows[k].section == 'Ammo' then at = k + 1; break end
+            end
+            table.insert(weapon.rows, at, table.remove(weapon.rows))
         end
         -- the bayonet guns: the bayonet strike's damage row, which every bayonet shares
         local bayonet = MOD.BAYONET[weapon.name] and not weapon.mounted and MOD.melee_rows(weapon, 568, 'Bayonet melee', 'bayonet_')
@@ -20985,7 +22271,8 @@ local function resolve_gun(weapon, key)
     if weapon.key == key and weapon.slot == 'Support' then
         local pack = KINDS[TYPES.rack].pack(key)
         if pack then KINDS[TYPES.jumppack].backpack(weapon, pack, true) end
-        MOD.slot.pickup_row(weapon, key)
+        -- not on backpack-fed weapons: the backpack does not attach to a primary-slot weapon (issue #115)
+        if not pack then MOD.slot.pickup_row(weapon, key) end
     end
     if weapon.key == key then
         KINDS[T_PROJECTILE].swap_row(weapon, sources, shots, fire, extra)
@@ -21061,7 +22348,7 @@ KINDS[TYPES.health].body = function(gun)
 end
 
 -- 'BACKPACK. GUARD DOG (Drone)' -> 'backpack', 'Guard Dog (Drone)'
-local function pretty(debug_name)
+function MOD._migration_pretty(debug_name)
     local family, rest = debug_name:match('^%s*([^%.]+)%.%s*(.+)$')
     rest = (rest or debug_name):gsub('%a+', function(word)
         if #word <= 2 or word ~= word:upper() or not word:find('[AEIOUY]') then return word end
@@ -21094,7 +22381,7 @@ function MOD.vehicles.apply()
         local t = tables[d.kind]
         for _, copy in ipairs(t and t.copies or {}) do
             local at = copy + HEADER_BYTES + d.off + 260
-            if peek4(at) ~= want then api.write(at, u32_bytes(want)) end
+            if peek4(at) ~= want then api.write(at, MOD._migration_u32_bytes(want)) end
         end
     end
 end
@@ -21176,7 +22463,7 @@ function MOD.tweaks.apply()
         local T = MOD.tweaks[name]
         for _, r in ipairs(T.rows) do
             local value = T.on and r.want or r.game
-            local bytes = r.size == 1 and string.char(value) or u32_bytes(value)
+            local bytes = r.size == 1 and string.char(value) or MOD._migration_u32_bytes(value)
             local t = tables[r.kind]
             for _, copy in ipairs(t and t.copies or {}) do
                 local at = copy + HEADER_BYTES + r.off
@@ -21248,7 +22535,7 @@ local function build_stratagems()
             local blob = count and count > 0 and count <= 32 and api.read(at, 8 * count)
             for k = 1, blob and count or 0 do keys[#keys + 1] = blob:sub(8 * k - 7, 8 * k) end
         end
-        for _, h in ipairs(payloads) do keys[#keys + 1] = hash_key(h) end
+        for _, h in ipairs(payloads) do keys[#keys + 1] = MOD._migration_hash_key(h) end
         -- a sentry's or emplacement's stratagem: its cooldown goes on the sentry's own entry
         local sentry = def and by_hash[KINDS[TYPES.health].sentry_ids[id] or '']
         for _, key in ipairs(keys) do sentry = sentry or sentries[key] end
@@ -21257,7 +22544,7 @@ local function build_stratagems()
             sentry.sentry_payloads = sentry.sentry_payloads or {}
             for _, key in ipairs(keys) do sentry.sentry_payloads[#sentry.sentry_payloads + 1] = key end
             local bits = peek4(def.at + 104)
-            log(string.format('stratagem %s: cooldown on %s (%.1f s)', id_hex(id), sentry.name, bits and bits_to_f32(bits) or -1))
+            log(string.format('stratagem %s: cooldown on %s (%.1f s)', id_hex(id), sentry.name, bits and MOD._migration_bits_to_f32(bits) or -1))
             return nil
         end
         local drone = family == 'backpack' and drone_of(keys) or nil
@@ -21287,9 +22574,9 @@ local function build_stratagems()
     for id, def in pairs(defs) do
         total = total + 1
         local lo, hi = peek4(def.at + 16), peek4(def.at + 20)
-        local text = not known[id] and id ~= EAGLE_REARM and lo and hi and read_text(lo + hi * 4294967296)
+        local text = not known[id] and id ~= EAGLE_REARM and lo and hi and MOD._migration_read_text(lo + hi * 4294967296)
         if text then
-            local family, name = pretty(text)
+            local family, name = MOD._migration_pretty(text)
             name = family == 'backpack' and KINDS[TYPES.jumppack].TITLES[name] or name
             named = named + 1
             local entry = add(id, name, family, {}, {}, def)
@@ -21311,7 +22598,7 @@ local function build_stratagems()
     for _, v in ipairs(KINDS[TYPES.vehicle].NATIVE) do
         local vt, keys = tables[TYPES.vehicle], {}
         for k = 3, #v do
-            if vt and vt.index[hash_key(v[k])] then keys[#keys + 1] = hash_key(v[k]) end
+            if vt and vt.index[MOD._migration_hash_key(v[k])] then keys[#keys + 1] = MOD._migration_hash_key(v[k]) end
         end
         if keys[1] then
             list[#list + 1] = { name = v[1], short = v[2], slot = 'Mechas', hash = v[3], rows = {}, by_id = {},
@@ -21344,7 +22631,7 @@ local function build_stratagems()
                 w.parents=w.parents or {};w.parents[#w.parents+1]=entry.hash
             elseif hash and not by_hash[hash] then
                 w = { name = (entry.short or entry.name) .. ': ' .. (MOUNTS[label or 0] or ('Weapon ' .. (m + 1))), slot = 'Mechas', hash = hash,
-                      key = hash_key(hash), rows = {}, by_id = {}, mounted = true, parents={entry.hash}, note = 'Mounted on the ' .. entry.name .. '.' }
+                      key = MOD._migration_hash_key(hash), rows = {}, by_id = {}, mounted = true, parents={entry.hash}, note = 'Mounted on the ' .. entry.name .. '.' }
                 mounted[hash] = w
                 weapons[#weapons + 1] = w
                 by_hash[hash] = w
@@ -21428,7 +22715,7 @@ end
 
 -- A unit's own rows (a Guard Dog's drone, a sentry or emplacement): health +0, spotting range +0,
 -- target search interval +0 / +4, turret turn speed +12 horizontal / +8 vertical, where it has them.
-local function unit_rows(entry, key, section, prefix)
+function MOD._migration_unit_rows(entry, key, section, prefix)
     local function unit(kind, id, label, offset, storage, max, small, big)
         local at = tables[kind] and tables[kind].index[key]
         if at then
@@ -21545,7 +22832,7 @@ KINDS[TYPES.vehicle].rows = function(entry, key, twins)
             local label = peek4(mbase + 16)
             if label == 0x7BDEC47B or label == 0x47775624 then
                 local lo, hi = peek4(mbase), peek4(mbase + 4)
-                local mountkey = lo and hi and hash_key(string.format('%08X%08X', hi, lo))
+                local mountkey = lo and hi and MOD._migration_hash_key(string.format('%08X%08X', hi, lo))
                 local arm = mountkey and t.index[mountkey]
                 if arm and arm ~= at and not seen[arm] then
                     local hp = default_of(field_at(TYPES.health, arm, 'u32', 10000000))
@@ -21563,6 +22850,8 @@ KINDS[TYPES.vehicle].rows = function(entry, key, twins)
     regen.note = 'damaged parts heal; destroyed parts stay destroyed'
     add_row(entry, 'Vehicle', 'regen_delay', 'Regeneration delay after damage (s)', 'f32',
             parts('regen_delay', 12, 'f32', 3600), 0, 600, 0.1, 1)
+    -- the melee button's stomp is an ability, no record names its damage: row 253 (unnamed), the wiki's 9 values (609, the same, is the Cyborg Lieutenant's)
+    if MOD.exo_mounted[entry.name] then MOD.melee_rows(entry, 253, 'Stomp', 'stomp_').tip = { 'Every exosuit shares this stomp.' } end
     MOD.physics.rows(entry, key)
     local n = 0
     for z = 0, 37 do
@@ -21594,6 +22883,30 @@ end
 -- [5] brakes ('VRB ': +16, +32 two brake torques, by wheel; tested in game 2026-10-28). Names after the FRV Anti-Flip mod's README.
 TYPES.physics = 0x5F7203C8
 MOD.physics = { MASS = string.rep('\255', 28) .. '\68\0\0\0' }
+MOD.physics.TIPS = {   -- row id (without front_/rear_, gears as 'gear') -> hover tip
+    mass = { 'Heavier: speeds up and stops more slowly, shoves enemies and wrecks aside, and is harder to flip.',
+             'Lighter: quicker off the line, but bounces over bumps and gets thrown around by explosions.' },
+    com = { 'How high the balance point sits. Lower (even below 0): stays flat in hard turns and over rocks.',
+            'Higher: leans more and tips over in sharp turns.' },
+    torque = { 'How hard the engine pushes. Higher: faster acceleration and steeper hills, but more wheelspin.',
+               'It does not raise the top speed by itself: that comes from the engine speed and the gears.' },
+    rpm = { 'How fast the engine may spin before it stops pulling. Higher: a higher top speed in every gear,',
+            'as long as the engine torque is enough to get there.' },
+    gear = { 'How much this gear multiplies the engine. Higher: stronger pull, but it tops out sooner.',
+             'Lower: faster in this gear, weaker on hills and from a stop.' },
+    brake = { 'Higher: stops in a shorter distance. Too high locks the wheels, and it skids instead of stopping.',
+              '0: these wheels do not brake at all.' },
+    grip = { 'How well the tyres hold the ground. Higher: sharper turns, less sliding and wheelspin.',
+             'Front grip lower than the rear: it turns wide. Rear lower than the front: the back slides out.' },
+    radius = { 'Bigger wheels: a higher top speed and more room under the body, but a weaker pull.',
+               'Smaller: quicker to speed up, slower at the top, and it scrapes over rocks.' },
+    spring = { 'Higher: a stiffer ride, less lean in turns, bumps kick harder.',
+               'Lower: a softer ride, the body leans in turns and sags.' },
+    damping = { 'How fast the springs settle after a bump. Higher: settles at once, a firmer ride.',
+                'Lower: keeps bouncing after every bump.' },
+    travel = { 'More: soaks up big bumps and keeps the wheels on the ground on rough terrain.',
+               'Less: bumps go straight into the body and it wobbles.' },
+}
 function MOD.physics.host()
     local host = rawget(_G, 'SHODAN_PHYSICS')
     if host then
@@ -21609,7 +22922,7 @@ function MOD.physics.rows(entry, key)
     local file = host.files[string.format('%08X%08X', u32(key, 4), u32(key, 0)) .. '.5F7203C8F280DAB8']
     local d = file and api.read(host.base + file.at, file.size)
     if not d then return end
-    local function f32(o) return bits_to_f32(u32(d, o)) end
+    local function f32(o) return MOD._migration_bits_to_f32(u32(d, o)) end
     local function row(section, id, label, offsets, min, max, small, big, note)
         local list = {}
         for n, o in ipairs(offsets) do
@@ -21618,6 +22931,7 @@ function MOD.physics.rows(entry, key)
         end
         local r = add_row(entry, section, 'phys_' .. id, label, 'f32', list, min, max, small, big)
         r.note = note
+        r.tip = MOD.physics.TIPS[(id:gsub('^front_', ''):gsub('^rear_', ''):gsub('^gear%d+$', 'gear'))]
         return r
     end
     local mass = d:find(MOD.physics.MASS, 1, true)
@@ -21661,7 +22975,7 @@ function MOD.physics.rows(entry, key)
                           or rear[k] and 'Rear brake strength'
             if label then
                 row('Handling', id, label, { brakes + 16 * k }, 0, 1000000, 100, 1000,
-                    hand[k] and 'the handbrake uses these brakes too' or nil)
+                    hand[k] and 'the handbrake uses these brakes too' or nil).tip = MOD.physics.TIPS.brake
             end
         end
     end
@@ -21791,7 +23105,7 @@ end
 MOD.physics.ANIM_TIP = { 'How fast their animations play. Most attacks follow the animation, so they come sooner or later too.',
                          'Some actions keep their own timing and can fall out of step with the animation.' }
 
--- names: by the stratagem's debug name (as `pretty` gives it), or by the vehicle's entity (exosuits whose
+-- names: by the stratagem's debug name (as `MOD._migration_pretty` gives it), or by the vehicle's entity (exosuits whose
 -- debug names do not say which they are); MOUNTS: a mount's label by its name
 KINDS[TYPES.vehicle].TITLES = {
     ['Bastion(tank)'] = 'TD-220 Bastion MK XVI', ['Storm(tank)'] = 'TD-110 Maelstrom',
@@ -21821,7 +23135,7 @@ KINDS[TYPES.shield].rows = function(entry, hex)
     local of = KINDS[TYPES.shield].OF[hex]
     if not of then return false end
     local st, ht = tables[TYPES.shield], tables[TYPES.health]
-    local at = of.shield and st and st.index[hash_key(of.shield)]
+    local at = of.shield and st and st.index[MOD._migration_hash_key(of.shield)]
     if at then
         local function r(id, label, offset, max, small, big)
             add_row(entry, 'Shield', id, label, 'f32', { part(id, TYPES.shield, at + offset, 'f32', 1000000) }, 0, max, small, big)
@@ -21836,7 +23150,7 @@ KINDS[TYPES.shield].rows = function(entry, hex)
     -- Ground relay only: its payload lifetime is independent of shield recharge.
     if hex == 'ED13DDC480EC6910' then
         local payload = tables[TYPES.hellpod_payload]
-        local life = payload and payload.index[hash_key(hex)]
+        local life = payload and payload.index[MOD._migration_hash_key(hex)]
         if life then
             local row = add_row(entry, 'Shield', 'shield_lifetime', 'Shield lifetime (s)', 'f32',
                 { part('shield_lifetime', TYPES.hellpod_payload, life + 4, 'f32', 1000000) }, 0, 86400, 1, 10)
@@ -21844,7 +23158,7 @@ KINDS[TYPES.shield].rows = function(entry, hex)
         end
     end
     for k, b in ipairs(of.bodies or {}) do
-        local hat = ht and ht.index[hash_key(b[1])]
+        local hat = ht and ht.index[MOD._migration_hash_key(b[1])]
         if hat then
             local p = 'body' .. k .. '_'
             add_row(entry, b[2], p .. 'health', 'Health', 'u32', { part(p .. 'health', TYPES.health, hat, 'u32', 10000000) }, 0, 1000000, 50, 250)
@@ -21876,7 +23190,7 @@ end
 --     heat: safe below +140, unsafe above +144, per warp +148, cooling per second +152; injuries of an
 --     unsafe warp: 12 of 24 bytes from +160 (+0 body part, +4 damage): head, 2 arms, 2 legs
 --   charges: +0 capacity, +4 at the start (-1: full), +8 from resupply
--- backpack stratagems' names, by their debug names (as `pretty` gives them)
+-- backpack stratagems' names, by their debug names (as `MOD._migration_pretty` gives them)
 KINDS[TYPES.jumppack].TITLES = {
     ['Jumppack Backpack'] = 'LIFT-850 Jump Pack', ['Hoverpack Backpack'] = 'LIFT-860 Hover Pack',
     ['Displacement Backpack'] = 'LIFT-182 Warp Pack', ['Supply Backpack'] = 'B-1 Supply Pack',
@@ -22000,7 +23314,8 @@ KINDS[TYPES.jumppack].backpack = function(entry, key, ammo)
         first.note, first.limit = 'the spare ammo in its backpack; read when the backpack is called in', cap
         local start = read_field(field_at(TYPES.deposit, deposit + 4, 'u32', 0xFFFFFFFF))
         if start and start ~= 0xFFFFFFFF then r('Backpack', 'bp_ammo_start', 'Ammo at the start', TYPES.deposit, deposit + 4, 'u32', 1023, 1, 10).limit = cap end
-        r('Backpack', 'bp_ammo_supply', 'Ammo from resupply', TYPES.deposit, deposit + 8, 'u32', 1023, 1, 10).limit = cap
+        local refill = r('Backpack', 'bp_ammo_supply', 'Ammo from resupply', TYPES.deposit, deposit + 8, 'u32', 1023, 1, 10)
+        refill.limit, refill.tip = cap, { 'A resupply box gives this much. An ammo box on the map gives half, rounded down.' }
     elseif deposit then
         r('Backpack', 'bp_charges', 'Charges', TYPES.deposit, deposit, 'u32', 999, 1, 5)
         local start = read_field(field_at(TYPES.deposit, deposit + 4, 'u32', 0xFFFFFFFF))
@@ -22241,6 +23556,51 @@ function MOD.code.current(def)
 end
 -- In every mission: a code that clashes with theirs is refused. Clashes with what a loadout can hold are
 -- pointed out; the mission, tutorial and unused ones are not checked.
+-- Always bring it: hung on the end of the chains of Reinforcement, SOS and Resupply (MOD.donors), which are in every
+-- mission. Eagles are left out: their +200 is Eagle Rearm, which holds no page to walk past.
+function MOD.extra.always_row(entry, def)
+    local lead = { id = 'always', field = field_at(def.kind, 'always' .. def.off, 'virtual', 1) }
+    lead.field.default, lead.field.always = 0, def
+    def.page = entry.name
+    add_row(entry, 'Extra stratagem', 'always', 'Always bring it', 'flag', { lead }, 0, 1, 1, 1).tip = {
+        'In every mission, whatever your loadout. It takes no loadout slot. Applies on Install.',
+        'At most 4 across all stratagems: more can crash the game at deployment.',
+        'Projectile swap shares those 4, so weapons it loads leave fewer here.' }
+end
+function MOD.extra.always_undo(set)
+    for _, l in ipairs(MOD.extra.links or {}) do set(l[1], l[2], 200, l[3]) end
+    MOD.extra.links = {}
+end
+-- tails: the ends of the always-loaded chains; taken: how many of the 4 Projectile swap already holds
+function MOD.extra.always_apply(tails, set, taken)
+    local tail, list, seen, left = tails[#tails], {}, {}, {}
+    if not tail then return left end
+    for _, f in pairs(fields) do if f.always and read_field(f) == 1 then list[#list + 1] = f.always end end
+    table.sort(list, function(a, b) return a.at < b.at end)
+    local _, by_type = MOD.extra.choices()
+    for k, def in ipairs(list) do
+        local kind = peek4(def.at)
+        if k > 4 - taken then
+            log('always bring: no room for stratagem ' .. tostring(kind))
+            left[#left + 1] = def.page
+        elseif not seen[kind] then   -- (already reached through another one's Extra stratagem: a second link would loop)
+            if k > 1 then
+                MOD.extra.links[#MOD.extra.links + 1] = { tail[1], tail[2], read_field(field_at(tail[1], tail[2] + 200, 'u32', 4294967295)) }
+            end
+            set(tail[1], tail[2], 200, kind)
+            local last = def
+            while true do
+                seen[peek4(last.at)] = true
+                local after = by_type[peek4(last.at + 200)]
+                if not after or seen[peek4(after.def.at)] then break end
+                last = after.def
+            end
+            tail = { last.kind, last.off }
+        end
+    end
+    return left
+end
+
 MOD.code.ALWAYS = { ['Reinforcement Beacon'] = true, ['Resupply'] = true, ['Sos Beacon'] = true }
 MOD.code.LOADOUT = { orbital = true, eagle = true, support = true, backpack = true, sentry = true, emplacements = true,
                      vehicles = true }
@@ -22299,6 +23659,7 @@ function MOD.callin_rows(entry, defs)
     local parts = {}
     for k, def in ipairs(defs) do parts[k] = part(k == 1 and 'callin' or 'callin' .. k, def.kind, def.off + 84, 'f32', 100000) end
     local row = add_row(entry, 'Stratagem', 'callin', 'Countdown before delivery (s)', 'f32', parts, 0, 60, 0.5, 5)
+    row.show_first = true
     row.tip = { "The beacon's countdown before the delivery is sent.",
                 "A hellpod lands this many seconds plus its 4.75 s fall after the beacon, so 0 is the fastest it gets.",
                 'Ship upgrades that make support weapons and sentries launch at once skip it (tested).' }
@@ -22317,8 +23678,10 @@ local function resolve_stratagem(entry)
         end
         MOD.code.row(entry, def)
         if s.family ~= 'eagle' then MOD.callin_rows(entry, { def }) end
-        if s.family ~= 'eagle' and MOD.extra.FAMILIES[s.family] then MOD.extra.row(entry, def) end
-        MOD.refs.stratagem_rows(entry, def, s and s.payloads)   -- the packages it loads, and its hellpod rack
+        if s.family ~= 'eagle' and MOD.extra.FAMILIES[s.family] then
+            MOD.extra.row(entry, def)
+            MOD.extra.always_row(entry, def)
+        end
     end
     if s.family == 'eagle' and s.rearm then
         add_row(entry, 'Stratagem', 'rearm', 'Eagle rearm time (s)', 'f32',
@@ -22344,6 +23707,35 @@ local function resolve_stratagem(entry)
             b('barrage_drift_min', 'Drift from the last shell, least (m)', 16, 'f32', 0, 500, 1, 5)
             b('barrage_drift_max', 'Drift from the last shell, most (m)', 20, 'f32', 0, 500, 1, 5)
             b('barrage_height', 'Height the shells fall from (m)', 44, 'f32', 0, 10000, 50, 250)
+            if (read_field(field_at(TYPES.bombard, bomb + 96, 'f32', 100000)) or 0) > 0 then
+                b('barrage_walk_angle', 'Walking direction (deg)', 132, 'f32', -360, 360, 5, 45)
+                b('barrage_walk_start', 'Path start (0 to 1)', 136, 'f32', 0, 1, 0.05, 0.25)
+                entry.by_id.barrage_walk_start.row.note = '0: walks away from the beacon, 0.5: centred on it, 1: ends on it'
+            end
+            -- (from Thodmcniujiao's fork) +64 eight shell slots, fired in turn (0: none); a row per projectile the
+            -- game puts there (the 120mm: its first shell, then the rest)
+            local groups = {}
+            for n = 0, 7 do
+                local f = field_at(TYPES.bombard, bomb + 64 + 4 * n, 'u32', 100000)
+                local id = default_of(f) or 0
+                if id > 0 then
+                    local g = groups[#groups]
+                    if not (g and g.id == id) then g = { id = id, slots = {} }; groups[#groups + 1] = g end
+                    g.slots[#g.slots + 1] = n
+                end
+            end
+            for k, g in ipairs(groups) do
+                local id = 'barrage_shell' .. (k > 1 and k or '')
+                local parts = {}
+                for m, n in ipairs(g.slots) do parts[m] = part(id .. (m > 1 and ('_' .. m) or ''), TYPES.bombard, bomb + 64 + 4 * n, 'u32', 100000) end
+                local label = #groups == 1 and 'Shell fired (id)' or k == 1 and 'First shell (id)' or 'Shells after it (id)'
+                local r = add_row(entry, 'Barrage', id, label, 'u32', parts, 0, 100000, 1, 10)
+                r.choice = 'shrapnel'
+                r.note = function()
+                    local now = read_field(parts[1].field)
+                    return (now or 0) > 0 and ('fires ' .. MOD.records.label(T_PROJECTILE, now)) or 'none'
+                end
+            end
             break
         end
         local eagle = tables[TYPES.eagle] and tables[TYPES.eagle].index[key]
@@ -22374,6 +23766,17 @@ local function resolve_stratagem(entry)
             else e('eagle_fire_time', 'Fire duration (s)', 40, 0, 30, 0.1, 0.5) end
             if (read_field(field_at(TYPES.eagle, eagle + (moved[108] or 108), 'f32', 100000)) or 0) > 0 then
                 e('eagle_run_length', 'Run length (m)', 108, 0, 500, 1, 5)
+            end
+            -- (from Thodmcniujiao's fork) +24 the projectile its bombs or rockets are (the guns' none)
+            local shot = part('eagle_projectile', TYPES.eagle, eagle + 24, 'u32', 100000)
+            if (default_of(shot.field) or 0) > 0 then
+                local r = add_row(entry, 'Eagle', 'eagle_projectile', payload == 4 and 'Rocket fired (id)' or 'Bomb dropped (id)', 'u32',
+                                  { shot }, 0, 100000, 1, 10)
+                r.choice = 'shrapnel'
+                r.note = function()
+                    local now = read_field(shot.field)
+                    return (now or 0) > 0 and ((payload == 4 and 'fires ' or 'drops ') .. MOD.records.label(T_PROJECTILE, now)) or 'none'
+                end
             end
             break
         end
@@ -22475,7 +23878,7 @@ local function resolve_stratagem(entry)
     -- the gun it carries
     if s.drone then
         MOD.dogs.ensure()
-        unit_rows(entry, s.drone.drone, 'Drone', 'drone_')
+        MOD._migration_unit_rows(entry, s.drone.drone, 'Drone', 'drone_')
         local mt=tables[TYPES.mount]
         local at=mt and mt.index[s.drone.drone]
         local gun=at and api.read(mt.copies[1]+HEADER_BYTES+at,8)
@@ -22494,7 +23897,7 @@ local function resolve_stratagem(entry)
                 '换装后请在供体武器页面修改其参数；相关修改会共享给使用同一武器实体的装备。'}
         end
         -- Do not leave stat controls bound to the old gun after replacing its mount.
-        if gun and gun==s.drone.gun then resolve_gun(entry,gun) end
+        if gun and gun==s.drone.gun then MOD._migration_resolve_gun(entry,gun) end
         return
     end
     -- the first payload that is a gun of its own (not a weapon listed elsewhere; strikes have
@@ -22502,7 +23905,7 @@ local function resolve_stratagem(entry)
     for _, key in ipairs(s.payloads) do
         if not s.guns[key] and #s.nodes == 0 then
             local before = #entry.rows
-            resolve_gun(entry, key)
+            MOD._migration_resolve_gun(entry, key)
             if #entry.rows > before then break end
         end
     end
@@ -22514,7 +23917,7 @@ end
 -- statuses and radii, its arc (+120: G-31), its shrapnel (+80 count, +84 projectile) and the
 -- shrapnel's own explosion (projectile +144: the Pineapple's bomblets). `placed`: a support weapon's
 -- charge (the C4 Pack's), whose counts are its backpack's: only the throw distance, under 'Charge'.
-local function resolve_throwable(entry, placed)
+function MOD._migration_resolve_throwable(entry, placed)
     local function record(kind)
         local t = tables[kind]
         return t and t.index[entry.key]
@@ -22734,7 +24137,7 @@ KINDS[TYPES.seeking].silo_rows = function(weapon)
         add_row(weapon, 'Silo', 'silo_regen', 'Regeneration (health/s)', 'f32',
                 { part('silo_regen', TYPES.health, body + 4, 'f32', 1000000) }, 0, 10000, 1, 10)
     end
-    unit_rows(weapon, weapon.key, 'Missile', 'charge_')
+    MOD._migration_unit_rows(weapon, weapon.key, 'Missile', 'charge_')
     if seek then KINDS[TYPES.seeking].flight(weapon, seek) end
     return true
 end
@@ -22754,6 +24157,11 @@ MOD.boosters = { LIST = {
     { 18, 'Concealed Insertion', 'Every hellpod leaves this smoke where it lands.', 'smoke', { 401, 400 } },
     { 20, 'Surplus EAT Allocation', 'The free one-shot EAT it adds to your stratagems.', 'eat', 0xDFB589B2 } } }
 
+-- booster id -> name, in capitals, description (text ids)
+MOD.boosters.TEXTS = { [11] = { 0x89F6921F, 0x00B22672 }, [12] = { 0x9097BB88, 0xA88337E6, 0x7A343F36 },
+    [14] = { 0x174DF35E, 0x8D0053F8, 0x5B24729F }, [15] = { 0x4014FD10, 0xE9B5BACA, 0x0BB15A34 },
+    [17] = { 0xC6B5F30A, 0xB3AFCC76 }, [18] = { 0x6E417BA8, 0x8F22DA6C, 0x672FC2C4 }, [20] = { 0x1CF90DEA, 0x4F268774 } }
+
 MOD.boosters.WHY = "Booster selection is limited due to the other boosters keeping their values in the game's program " ..
                    '(game.dll), not in the data files SSEO edits. Those could only be changed while the game runs, which ' ..
                    'is currently impossible.'
@@ -22771,7 +24179,7 @@ function MOD.boosters.status(name)
     if not t then return nil end
     for id, off in pairs(t.index) do
         local top = t.copies[1] + HEADER_BYTES
-        if type(id) == 'number' and read_text(MOD.boosters.at(t, peek4(top + off + 8), peek4(top + off + 12))) == name then return off end
+        if type(id) == 'number' and MOD._migration_read_text(MOD.boosters.at(t, peek4(top + off + 8), peek4(top + off + 12))) == name then return off end
     end
 end
 
@@ -22843,7 +24251,7 @@ function MOD.boosters.resolve(entry)
         end
         MOD.explosion_extras(entry, kind == 'smoke' and 'Smoke' or 'Explosion', 'x_', xrow)
     elseif kind == 'turret' then
-        resolve_gun(entry, hash_key(b[5]))
+        MOD._migration_resolve_gun(entry, MOD._migration_hash_key(b[5]))
     elseif kind == 'eat' then
         for _, group in ipairs(stratagem_groups) do
             local off = tables[group] and tables[group].index[b[5]]
@@ -22866,6 +24274,25 @@ MOD.enemy = { on = false, TABS = { 'Terminids', 'Automatons', 'Illuminate', 'SEA
               ZONE = 552, ZONES = 520 }
 
 -- 'leg_right' -> 'Right leg', 'l_wrist' -> 'Left wrist'
+-- Body parts no catalogue names, by the name hash at zone +96 (murmur64a's upper half, found by trying names;
+-- the Heatsink also by the wiki's numbers)
+MOD.enemy.PART_NAMES = {
+    [0x2B047266] = 'heatsink', [0xB709FE1C] = 'back_leg', [0x83BAB375] = 'back_lower_leg',
+    [0x70828B7A] = 'back_upper_leg', [0x3B75843B] = 'back_upper_leg_top', [0x7778AF66] = 'backpack',
+    [0x73757F26] = 'boss_head', [0x21014345] = 'engine_rear_weakspot', [0xB455B1EE] = 'eye_top',
+    [0x2D0AC038] = 'headplate', [0x47344B93] = 'jetpack', [0xF73F6AF7] = 'left_arm_armor',
+    [0x718CE684] = 'left_arm_weakspot', [0xC10B192C] = 'left_back_leg_armor', [0x19C4C9A6] = 'left_collar',
+    [0xA6323908] = 'left_front_leg_armor', [0x0D324590] = 'left_gun_weakspot',
+    [0x15B7E16D] = 'left_lower_arm', [0x5E8233FA] = 'left_lower_leg', [0x39241507] = 'left_middle_leg',
+    [0x93C0058D] = 'left_upper_leg', [0x83A150AB] = 'left_upper_leg_top', [0x23128279] = 'pilot',
+    [0x49807680] = 'right_arm_armor', [0x61DCC7A6] = 'right_arm_weakspot',
+    [0xCA9ED401] = 'right_back_leg_armor', [0x6E41F493] = 'right_collar',
+    [0x53DF0BFD] = 'right_front_leg_armor', [0xD19627FC] = 'right_gun_weakspot',
+    [0x20C2028D] = 'right_lower_arm', [0x50C392D7] = 'right_lower_leg', [0xFF9A5522] = 'right_middle_leg',
+    [0x56EB4767] = 'right_upper_leg', [0x04B52E77] = 'right_upper_leg_top', [0xA2BF8B44] = 'weakspot',
+    [0x46C655CA] = 'weakspot_engine',
+}
+
 function MOD.enemy.zone_name(name)
     if not name or name == '' then return nil end
     local words = {}
@@ -22889,7 +24316,7 @@ function MOD.enemy.build()
     local top = ht.copies[1] + HEADER_BYTES
     local groups, order = {}, {}
     for _, e in ipairs(MOD.ENEMY_LIST or {}) do
-        local key = hash_key(e[5])
+        local key = MOD._migration_hash_key(e[5])
         local at = ht.index[key]
         -- or none: a structure that only jams (the Stratagem Jammer's health is on another entity)
         if at or (tables[TYPES.jammer] and tables[TYPES.jammer].index[key])
@@ -22949,7 +24376,7 @@ end
 -- Enemy guns: each enemy's own gun (its entity has a weapon record: the Hulk's arms), the ones it mounts
 -- (MountComponent: 5 x 24 bytes, +0 the mounted entity; two levels, tank -> turret -> gun) and carries
 -- (InventoryComponent +0 / +8 / +16: primary, sidearm, support). A page per gun, after the first enemy that
--- has it; its rows are a weapon's (resolve_gun). A gun that is the enemy itself gets a page hash of its own
+-- has it; its rows are a weapon's (MOD._migration_resolve_gun). A gun that is the enemy itself gets a page hash of its own
 -- (the entity's halves swapped), so the enemy page keeps its own.
 MOD.enemy.GUN_KINDS = { T_WEAPON, T_BEAM_WEAPON, T_SPRAY }
 -- An enemy's weapon page without the rows an AI has no use for (a player gun's handling and resupply; spread
@@ -23093,33 +24520,55 @@ function MOD.enemy.resolve(entry)
         "0: hits deal their normal damage, 1: their durable damage (the weapon's lower one)")
     for _, p in ipairs(parts('explosive', 388, 'f32', 100)) do p.field.unset = 1 end   -- (most: not set, normal damage)
     row('Health', 'explosive', 'Explosive damage taken (x)', 388, 'f32', 100, 100, 0.05, 0.25)
-    row('Health', 'bleed', 'Bleed-out health', 24, 'u32', 10000000, 1000000, 10, 100,
-        'what it has left once its health is gone, lost over time')
-    -- +28 the bleed-out health's change per second (negative: shown as the health lost)
-    for _, p in ipairs(parts('bleed_drain', 28, 'f32', 10000000)) do p.field.signed = true end
-    local drain = row('Health', 'bleed_drain', 'Bleed-out drain (health/s)', 28, 'f32', 10000000, 1000000, 1, 10,
-                      'how fast the bleed-out health runs out')
-    if drain then drain.scale = -1 end
+    local ht = tables[TYPES.health]
+    local top = ht.copies[1] + HEADER_BYTES
+    -- only where the game sets it (a million on a Hulk, which has none, did nothing in game)
+    if (peek4(top + members[1].at + 24) or 0) > 0 then
+        row('Health', 'bleed', 'Bleed-out health', 24, 'u32', 10000000, 1000000, 10, 100,
+            'what it has left once its health is gone, lost over time')
+        -- +28 the bleed-out health's change per second (negative: shown as the health lost)
+        for _, p in ipairs(parts('bleed_drain', 28, 'f32', 10000000)) do p.field.signed = true end
+        local drain = row('Health', 'bleed_drain', 'Bleed-out drain (health/s)', 28, 'f32', 10000000, 1000000, 1, 10,
+                          'how fast the bleed-out health runs out')
+        if drain then drain.scale = -1 end
+    end
+    -- +322 the part bleeds out at all (turning it on did nothing in game, Hulk arms; no rows without it)
+    local function bleeds(base)
+        return (peek4(top + members[1].at + base + 96) or 0) ~= 0
+               and math.floor((peek4(top + members[1].at + base + 320) or 0) / 65536) % 256 ~= 0
+    end
+    local any_bleeds = false
+    for z = 0, 37 do any_bleeds = any_bleeds or bleeds(MOD.enemy.ZONES + z * MOD.enemy.ZONE) end
     -- +36 the health lost per second by its body parts' bleed-out health (issue #91; positive, unlike +28)
-    row('Health', 'zone_drain', 'Body part bleed-out drain (health/s)', 36, 'f32', 10000000, 1000000, 1, 10,
+    local zone_drain = any_bleeds and row('Health', 'zone_drain', 'Body part bleed-out drain (health/s)', 36, 'f32', 10000000, 1000000, 1, 10,
         "how fast a body part's bleed-out health runs out")
     row('Health', 'regen', 'Regeneration (health/s)', 4, 'f32', 1000000, 100000, 1, 10)
     row('Health', 'regen_delay', 'Regeneration delay after damage (s)', 12, 'f32', 3600, 600, 0.1, 1)
     demolition()
     local names = {}
     for z, n in (entry.enemy.zones or ''):gmatch('(%d+)=([^;]*)') do names[tonumber(z)] = n end
-    local ht = tables[TYPES.health]
-    local top = ht.copies[1] + HEADER_BYTES
     local count = 0
     for z = 0, 37 do
         local base = MOD.enemy.ZONES + z * MOD.enemy.ZONE
         if (peek4(top + members[1].at + base + 96) or 0) ~= 0 then
             count = count + 1
-            local section = MOD.enemy.zone_name(names[z]) or ('Body part ' .. count)
+            local section = MOD.enemy.zone_name(names[z] or MOD.enemy.PART_NAMES[peek4(top + members[1].at + base + 96)])
+                            or ('Body part ' .. count)
             local id = 'zone' .. z
             row(section, id .. '_health', 'Health', base + 232, 'u32', 10000000, 1000000, 10, 100)
-            row(section, id .. '_bleed', 'Bleed-out health', base + 236, 'u32', 10000000, 1000000, 10, 100,
-                'what it has left once its health is gone, lost over time')
+            -- (where it does not bleed out, what the game sets is extra health: Hulk legs, 500 that never drains)
+            local drains = bleeds(base)
+            local bleed = (drains or (peek4(top + members[1].at + base + 236) or 0) > 0)
+                          and row(section, id .. '_bleed', 'Bleed-out health', base + 236, 'u32', 10000000, 1000000, 10, 100,
+                                  drains and 'what it has left once its health is gone, lost over time'
+                                         or 'extra health for this part, it does not run out by itself')
+            -- the game has one drain per enemy (+36), so a part's time (issue #119) is its bleed-out health over that:
+            -- this row shows the bleed-out health's parts in seconds
+            if drains and bleed and zone_drain and read_field(zone_drain.parts[1].field) > 0 then
+                local time = add_row(entry, section, id .. '_bleed_time', 'Bleed-out time (s)', 'f32', bleed.parts, 0, 3600, 0.1, 1)
+                time.lead, time.drain = bleed.lead, zone_drain
+                time.note = 'how long it lasts once its health is gone; this sets its bleed-out health, so it also takes more shots to finish'
+            end
             row(section, id .. '_armor', 'Armor', base + 216, 'u32', 100, 10, 1, 1)
             row(section, id .. '_durable', 'Durable ratio (0-1)', base + 204, 'f32', 1, 1, 0.05, 0.1)
             row(section, id .. '_explosive', 'Explosive damage taken (x)', base + 324, 'f32', 100, 100, 0.05, 0.25)
@@ -23271,6 +24720,11 @@ function MOD.enemy.more_rows(entry)
     if #keep > 0 then
         MOD.enemy.mult_row(entry, 'Senses', 'retention', 'Tracking after losing sight (x)', keep, 20, true,
                            'how long it keeps hunting you once you break line of sight; x1: as in the game, x2: twice as long')
+    end
+    -- SensorEye +4 / +8: -1 in the game's data means as far as straight ahead
+    for _, s in ipairs({ { 'sight_side', 'Side sight range (m)', 4 }, { 'sight_rear', 'Rear sight range (m)', 8 } }) do
+        local r = row(TYPES.sensor, 'Senses', s[1], s[2], { s[3] }, 'f32', 10000, -1, 1000, 1, 10, '-1: as far as straight ahead')
+        for _, p in ipairs(r and r.parts or {}) do p.field.signed = true end
     end
     row(TYPES.sensor, 'Senses', 'sight_h', 'Sight cone width (degrees)', { 12 }, 'f32', 360, 0, 360, 1, 10)
     row(TYPES.sensor, 'Senses', 'sight_v', 'Sight cone height (degrees)', { 16 }, 'f32', 360, 0, 360, 1, 10)
@@ -23462,16 +24916,35 @@ MOD.enemy.FACTION_STATS = {
       function(page, r, p) return (r.id == 'stun_resist' or r.id == 'gas_resist') and p ~= r.parts[1] end },
     { 'Toughness', 'all_fire', 'Fire damage taken (x)', 'mult', 20, nil,
       function(page, r, p) return r.id == 'fire_taken' and p ~= r.parts[1] end },
+    { 'Toughness', 'all_explosive', 'Explosive damage taken (x)', 'mult', 20, nil,
+      function(page, r) return not page.enemy.gun and (r.id == 'explosive' or r.id:match('^zone%d+_explosive$')) end },
     { 'Attacks', 'all_damage', 'Damage (x)', 'mult', 20, 'melee, guns and death explosions, shared ones included',
       function(page, r, p) return MOD.enemy.damage_part(p) end },
+    { 'Attacks', 'all_melee_ap', 'Melee armor penetration (+)', 'add', 10, 'added to every melee attack, up to 10; lowered: down to 0',
+      function(page, r) return r.id:match('^atk%d+_ap$') end },
     { 'Attacks', 'all_spread', 'Weapon spread (x)', 'mult', 10, 'lower: their shots land closer to where they aim (0: dead on)',
       function(page, r) return r.id == 'spread_h' or r.id == 'spread_v' end },
+    -- (fire and magazine records are each gun's own, and enemy reload times are all 0 (the animation's length), so that row is
+    -- seconds; a gun's projectile and explosion records are shared with player
+    -- weapons, so no speed, pellet, blast or penetration rows here. s[9]: least and most a value may be written as)
+    { 'Attacks', 'all_rpm', 'Fire rate (x)', 'mult', 10, 'how fast their guns shoot; flamers, beams and melee stay as they are',
+      function(page, r) return page.enemy.gun and r.id:match('^rpm') end, nil, { 1, 6000 } },
+    { 'Attacks', 'all_reload', 'Reload time (s)', 'set', 60, "the same time for every gun; 0: the game's own (enemy reloads are 0 in the data, so no multiplier)",
+      function(page, r) return page.enemy.gun and r.id == 'reload_time' end },
+    { 'Attacks', 'all_capacity', 'Magazine size (x)', 'mult', 10, 'at least 1 round, at most 2048',
+      function(page, r) return page.enemy.gun and r.id == 'capacity' end, nil, { 1, 2048 } },
     { 'Movement', 'all_speed', 'Movement speed (x)', 'mult', 10, nil,
       function(page, r, p) return r.id == 'speed' and p ~= r.parts[1] end },
     { 'Movement', 'all_anim', 'Animation speed (x)', 'mult', 10, 'how fast they attack, turn and react',
       function(page, r, p) return (r.id == 'anim_speed' or r.id == 'anim_attack' or r.id == 'anim_hit') and p ~= r.parts[1] end, 'anim' },
     { 'Senses', 'all_sight', 'Sight range (x)', 'mult', 10, nil,
       function(page, r) return not page.enemy.gun and r.id == 'sight' end },
+    { 'Senses', 'all_sight_side', 'Side sight range (m)', 'set', 1000, "the same distance for every enemy; 0: the game's own (most are 1 m, so no multiplier)",
+      function(page, r) return not page.enemy.gun and r.id == 'sight_side' end },
+    { 'Senses', 'all_sight_rear', 'Rear sight range (m)', 'set', 1000, "the same distance for every enemy; 0: the game's own (most are 1 m, so no multiplier)",
+      function(page, r) return not page.enemy.gun and r.id == 'sight_rear' end },
+    { 'Senses', 'all_hearing', 'Hearing (x)', 'mult', 10, nil,
+      function(page, r) return not page.enemy.gun and r.id == 'hearing' end },
     { 'Suppression', 'all_flinch', 'Flinch from your fire (x)', 'mult', 20, 'enemies at 0 stay immune',
       function(page, r) return not page.enemy.gun and r.id == 'flinch' end },
     { 'Suppression', 'all_danger_radius', 'Shots count within (x)', 'mult', 10, nil,
@@ -23509,10 +24982,10 @@ function MOD.enemy.faction_resolve(entry)
     for _, s in ipairs(MOD.enemy.FACTION_STATS) do
         local lead = { id = s[2], field = field_at(0, 'enemy:' .. entry.hash .. ':' .. s[2], 'virtual', 1000) }
         local add = s[4] == 'add'
-        lead.field.default = add and 0 or 1
-        local r = add_row(entry, s[1], s[2], s[3], add and 'u32' or 'f32', { lead }, add and -10 or 0, s[5],
+        lead.field.default = (add or s[4] == 'set') and 0 or 1
+        local r = add_row(entry, s[1], s[2], s[3], add and 'u32' or 'f32', { lead }, add and -10 or s[9] and 0.05 or 0, s[5],
                           add and 1 or 0.05, add and 1 or 0.25)
-        r.faction, r.add, r.note = s, add or nil, s[6]
+        r.faction, r.add, r.set, r.note = s, add or nil, s[4] == 'set' or nil, s[6]
         if s[8] == 'anim' then r.tip = MOD.physics.ANIM_TIP end
         lead.field.signed = add or nil
         if s == MOD.enemy.FACTION_STATS[#MOD.enemy.FACTION_STATS] then   -- under the last row: the blue marks
@@ -23599,7 +25072,7 @@ local function resolve(weapon)
     weapon.ents_rows = nil
     weapon.grenade_swap = nil
     if weapon.squad_transport then MOD.ents.rows(weapon,weapon.key);return end
-    if weapon.slot == 'Throwables' then resolve_throwable(weapon); MOD.resident.page_rows(weapon); return end
+    if weapon.slot == 'Throwables' then MOD._migration_resolve_throwable(weapon); MOD.resident.page_rows(weapon); return end
     -- a support weapon you place (the C4 Pack): the backpack that shares its loadout package (its
     -- charges), the charge (health, throw distance) and its explosion
     if weapon.slot == 'Support' and KINDS[TYPES.package].placed(weapon.key) then
@@ -23607,8 +25080,8 @@ local function resolve(weapon)
         for _, k in ipairs(KINDS[TYPES.package].kin(weapon.key)) do
             if dt and dt.index[k] then KINDS[TYPES.jumppack].backpack(weapon, k) end
         end
-        if not KINDS[TYPES.seeking].silo_rows(weapon) then unit_rows(weapon, weapon.key, 'Charge', 'charge_') end
-        resolve_throwable(weapon, true)
+        if not KINDS[TYPES.seeking].silo_rows(weapon) then MOD._migration_unit_rows(weapon, weapon.key, 'Charge', 'charge_') end
+        MOD._migration_resolve_throwable(weapon, true)
         MOD.resident.page_rows(weapon)
         return
     end
@@ -23617,7 +25090,7 @@ local function resolve(weapon)
         if weapon.slot == 'Spawning' then MOD.enemy.spawning_resolve(weapon)
         elseif weapon.enemy.faction then MOD.enemy.faction_resolve(weapon)
         elseif weapon.enemy.blasts then MOD.enemy.blasts_resolve(weapon)
-        elseif weapon.enemy.gun then resolve_gun(weapon, weapon.key); MOD.enemy.gun_tidy(weapon)
+        elseif weapon.enemy.gun then MOD._migration_resolve_gun(weapon, weapon.key); MOD.enemy.gun_tidy(weapon)
         else MOD.enemy.resolve(weapon) end
         if not weapon.enemy.gun then MOD.ents.rows(weapon, weapon.key) end
         return
@@ -23662,16 +25135,14 @@ local function resolve(weapon)
         for k, def in ipairs(weapon.sentry_defs or {}) do
             parts[k] = part(k == 1 and 'cooldown' or 'cooldown' .. k, def.kind, def.off + 104, 'f32', 100000)
         end
-        if parts[1] then add_row(weapon, 'Stratagem', 'cooldown', 'Cooldown (s)', 'f32', parts, 0, 10000, 1, 10) end
+        if parts[1] then add_row(weapon, 'Stratagem', 'cooldown', 'Cooldown (s)', 'f32', parts, 0, 10000, 1, 10).show_first = true end
         if weapon.sentry_defs[1] then MOD.code.row(weapon, weapon.sentry_defs[1]) end
         if weapon.sentry_defs[1] then MOD.callin_rows(weapon, weapon.sentry_defs) end
-        if weapon.sentry_defs[1] then MOD.extra.row(weapon, weapon.sentry_defs[1]) end
-        for k, def in ipairs(weapon.sentry_defs or {}) do
-            local suffix = k > 1 and tostring(k) or ''
-            MOD.refs.stratagem_rows(weapon, def, weapon.sentry_payloads, suffix)
-            MOD.sm.page_rows(weapon, def, suffix)
+        if weapon.sentry_defs[1] then
+            MOD.extra.row(weapon, weapon.sentry_defs[1])
+            MOD.extra.always_row(weapon, weapon.sentry_defs[1])
         end
-        unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
+        MOD._migration_unit_rows(weapon, KINDS[TYPES.health].body(weapon.key) or weapon.key, weapon.name:find('^E/') and 'Emplacement' or 'Sentry', 'unit_')
         -- Same payload lifetime field as upstream; preserve existing preset IDs and the zero-time option.
         local pt = tables[TYPES.payload]
         local pat = pt and pt.index[weapon.key]
@@ -23719,11 +25190,13 @@ local function resolve(weapon)
                         add_row(weapon, 'Physical shield', 'shield_plate_armor', 'Shield plate armor', 'u32',
                                 { part('shield_plate_armor', TYPES.health, at + 520 + 552 + 216, 'u32', 100) }, 0, 10, 1, 1)
                     end
+                    -- the bash is an ability, no record of the arm names its damage: row 251 (unnamed), the only one with the wiki's 9 values
+                    MOD.melee_rows(weapon, 251, 'Shield bash', 'bash_')
                 end
             end
         end
     end
-    resolve_gun(weapon, weapon.key)
+    MOD._migration_resolve_gun(weapon, weapon.key)
     MOD.dogs.rows(weapon, weapon.key)
     -- a vehicle's part that is an entity of its own (an exosuit's arm, a tank's turret, an FRV's gun): its
     -- own health component, armor and durable ratio, which the game reads for that part alone
@@ -23779,7 +25252,9 @@ end
 -- weapon's projectile. The stat rows above stay the weapon's own projectile's. Choices:
 -- KINDS[T_PROJECTILE].choices, every listed weapon's own projectiles by name (built after resolving).
 -- Weapons with a second firing mode (the "programmable ammo" weapon function: the Autocannon's flak,
--- the Recoilless Rifle's HE) fire the fire mode's +576 in it: a second swap row for that one. `extra`
+-- the Recoilless Rifle's HE) fire the fire mode's +576 in it: a second swap row for that one. Weapons without one,
+-- with a function free (weapon +184 left, else +188 right): the same row, its choice also sets that function (8,
+-- tested in game on the S-11 and, right, the Railgun; in game, hold Reload to switch). `extra`
 -- (KINDS[T_ROUNDS].extra): a patterned magazine's rounds take the swapped projectile too (every one of
 -- them), a second ammo type has its own row.
 KINDS[T_PROJECTILE].swap_row = function(weapon, sources, shots, fire, extra)
@@ -23802,10 +25277,10 @@ KINDS[T_PROJECTILE].swap_row = function(weapon, sources, shots, fire, extra)
     local function swap(id, label, row_parts)
         local row = add_row(weapon, 'Projectile swap', id, label, 'u32', row_parts, 1, 100000, 1, 10)
         row.choice = true
-        -- offline: no package loading (see `packages`), so the trail needs the source weapon carried
+        -- offline: Install loads the source weapon's package (MOD.donors), for a limited number of weapons
         row.tip = { "The shot's trail and other effects belong to the chosen weapon.",
-                    'The game only loads them when someone in the mission brings that weapon.',
-                    'Otherwise the shot still works but may fly without its trail.',
+                    'Install loads up to 6 such weapons into every mission, so nobody has to bring them. A support weapon brings its own.',
+                    'Past that, the trail needs someone in the mission to bring that weapon.',
                     'Hits and explosions show either way.' }
         weapon.swaps = weapon.swaps or {}
         weapon.swaps[#weapon.swaps + 1] = row
@@ -23826,6 +25301,27 @@ KINDS[T_PROJECTILE].swap_row = function(weapon, sources, shots, fire, extra)
         row = swap('projectile_2', 'Second mode fires (id)', { { id = 'projectile_2', field = alt } })
     else
         second = nil
+        local wrow = alt and tables[T_WEAPON].index[weapon.key]
+        local left = wrow and field_at(T_WEAPON, wrow + 184, 'u32', 100)
+        local right = wrow and field_at(T_WEAPON, wrow + 188, 'u32', 100)
+        local free = left and (default_of(left) == 0 and left or default_of(right) == 0 and right)
+        if left and not weapon.name:find('(', 1, true)   -- (no mounted guns, underbarrels)
+           and (weapon.slot == 'Primary' or weapon.slot == 'Secondary' or weapon.slot == 'Support') then
+            if free then alt.switch = free
+            else   -- both taken: the player picks which goes (the underbarrel's and the fire rate's last, first)
+                local l, r = default_of(left), default_of(right)
+                local pick = field_at(0, 'second_toggle:' .. weapon.hash, 'virtual', 2)
+                pick.default = (l == 11 or r == 2) and 2 or 1
+                pick.toggle = { left = left, right = right, pick = pick, second = alt }
+                alt.toggle = pick.toggle
+                add_row(weapon, 'Projectile swap', 'second_toggle', 'Second ammo replaces (1 or 2)', 'u32',
+                        { { id = 'second_toggle', field = pick } }, 1, 2, 1, 1).note = function()
+                    local gone = read_field(pick) == 1 and l or r
+                    return gone == 2 and 'the rate of fire switch' or gone == 3 and 'the fire mode switch' or 'the underbarrel switch'
+                end
+            end
+            row = swap('projectile_2', 'Second ammo (id)', { { id = 'projectile_2', field = alt } })
+        end
     end
     if ammo then
         local id = 'projectile_' .. ammo.prefix:sub(1, -2)
@@ -23885,11 +25381,16 @@ MOD.records.NOTES = {
 -- the (?) tips of the fuse rows: what they do (RL-77 Flak 2 m and 0.2 s, the P-34 Breacher's sticky round 1 s)
 MOD.records.TIPS = {
     impact = { 'The explosion the round sets off when it hits something. 0: no explosion.' },
+    expiry = { 'The explosion the round sets off when its life time runs out before it hits anything. 0: no explosion.' },
     proximity = { 'The round goes off when it passes this close to an enemy, without hitting it. 0: off (the RL-77 uses 2 m).',
                   'Only works with the blast angle at 360, and the distance has to be larger than one step of the round:',
                   'keep it above about speed / frame rate.' },
     delay = { 'How long the round waits after the hit (or after the blast proximity trips) before it goes off.',
-              '0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s.' } }
+              '0: at once. The RL-77 waits 0.2 s, the P-34 Breacher (it sticks and burns first) 1 s.' },
+    bounces = { 'How many times the round can bounce off a surface. 0: it never bounces back at you.' },
+    bounce_angle = { 'The round only bounces when it hits further than this from head on (0 = head on, 90 = grazing).',
+                     'Grenade launcher rounds use 80, most rounds 83.' },
+    bounce_speed = { 'The round only bounces when it hits faster than this. Grenade launcher rounds use 20 m/s, most rounds 60 m/s.' } }
 function MOD.records.ids(kind)
     local ids = {}
     for id in pairs(tables[kind] and tables[kind].index or {}) do
@@ -23931,6 +25432,7 @@ function MOD.records.users()
         if #w.rows > 0 and not w.name:match('^%(') then   -- not the '(Not Used)' dummies
             for _, shot in ipairs(w.own_shots or {}) do add(shots, shot.id, w.name) end
             for _, row in ipairs(w.rows) do
+                if row.choice == 'shrapnel' then add(shots, default_of(row.parts[1].field), w.name) end   -- (pieces, shells, bombs)
                 for _, q in ipairs(row.parts) do
                     if q.field.kind == T_PROJECTILE then add(shots, shot_at(q.field.offset), w.name)
                     elseif q.field.kind == T_EXPLOSION then add(blasts, blast_at(q.field.offset), w.name)
@@ -23939,14 +25441,17 @@ function MOD.records.users()
             end
         end
     end
+    local fired = {}   -- explosion id -> the weapons whose own shots set it off
     for _, id in ipairs(MOD.records.ids(T_PROJECTILE)) do
         local name, at = MOD.round_names and MOD.round_names[id], tables[T_PROJECTILE].index[id]
-        for _, off in ipairs(name and { 144, 156 } or {}) do
-            local x = read_field(field_at(T_PROJECTILE, at + off, 'u32', 100000))
-            if x and x > 0 and not rounds[x] then rounds[x] = name end
+        for _, off in ipairs({ 144, 156 }) do
+            local f = field_at(T_PROJECTILE, at + off, 'u32', 100000)
+            local x = read_field(f)
+            if name and x and x > 0 and not rounds[x] then rounds[x] = name end
+            for _, n in ipairs(shots[id] or {}) do add(fired, default_of(f), n) end
         end
     end
-    MOD.records.cache = { shots = shots, blasts = blasts, rounds = rounds, arcs = arcs }
+    MOD.records.cache = { shots = shots, blasts = blasts, rounds = rounds, arcs = arcs, fired = fired }
     return MOD.records.cache
 end
 -- A record's name (English), or nil.
@@ -23960,6 +25465,26 @@ function MOD.records.name(kind, id)
     elseif kind == T_BEAM then return reference_name end
     if state.lang and state.lang() == 'zh-Hans' and MOD.status.by[id] then return MOD.status.by[id].name end
     return KINDS[T_STATUS].names[id] or KINDS[T_STATUS].stuns[id]
+end
+-- A hovered id row's lines: the id now in it and every page that uses it (nil on other rows and at 0).
+function MOD.records.source(row)
+    local kind = (row.choice == true or row.choice == 'shrapnel') and T_PROJECTILE or row.choice == 'explosion' and T_EXPLOSION
+    local id = kind and read_field(row.parts[1].field)
+    if not id or id <= 0 then return nil end
+    local u, names, seen = MOD.records.users(), {}, {}
+    for _, list in ipairs(kind == T_PROJECTILE and { u.shots[id] or {} } or { u.blasts[id] or {}, u.fired[id] or {} }) do
+        for _, n in ipairs(list) do
+            if not seen[n] then seen[n] = true; names[#names + 1] = state.tr and state.tr(n) or n end
+        end
+    end
+    local lines = { MOD.records.label(kind, id) }
+    if #names == 0 then lines[2] = kind == T_EXPLOSION and u.rounds[id] and ((state.tr and state.tr(u.rounds[id])) or u.rounds[id])
+                                   or 'No page in this editor uses this id.' end
+    for k = 1, math.min(#names, 12), 3 do   -- three names a line
+        lines[#lines + 1] = (k == 1 and ((state.tr and state.tr('Used by:') or 'Used by:') .. ' ') or '') .. table.concat(names, ', ', k, math.min(k + 2, #names, 12))
+    end
+    if #names > 12 then lines[#lines + 1] = '+' .. (#names - 12) end
+    return lines
 end
 -- A choice's label in a note: '#12 · 10g Sabot' (the name in the panel's language), 'none (no explosion)'.
 function MOD.records.label(kind, id)
@@ -24069,6 +25594,7 @@ function MOD.records.rows(page)
         local expiry = add_row(page, 'Explosion id', 'expiry_explosion', 'Expiry explosion (id)', 'u32',
                                { part('expiry_explosion', kind, at + 156, 'u32', 100000) }, 0, 100000, 1, 10)
         expiry.choice = 'explosion'
+        expiry.tip = MOD.records.TIPS.expiry
         num('Explosion id', 'arming', 'Arming distance (m)', 160, 'f32', 200, 0.1, 1)
         -- what it does to a surface it hits: its decal, its two impact effects, the byte that stops it there,
         -- and how long its thruster effect lasts
@@ -24288,7 +25814,7 @@ local function resolve_some(progress, deadline)
 end
 
 -- Other weapons whose values change along with this row.
-local function shared_with(weapon, row)
+function MOD._migration_shared_with(weapon, row)
     local names, seen = {}, { [weapon] = true }
     for _, p in ipairs(row.parts) do
         for _, other in ipairs(p.field.users) do
@@ -24313,7 +25839,13 @@ local function row_value(row, default)
         return row.parts[1].field.pending_value
     end
     if row.choice == 'holster' then return MOD.holster.value(row, default) end
+    -- the stratagem list's own row, not an average with a hidden same-named one (the Rocket Sentry's: 150 s against 45 s)
+    if row.show_first then return get(row.parts[1].field) end
     if row.choice == 'pod_twin' then return MOD.pod.value(row, default) end
+    if row.drain then   -- shortcut: at a drain of 0 it shows the last time, though the part then never runs out
+        local rate = get(row.drain.parts[1].field)
+        if rate and rate > 0 then row.scale = 1 / rate end
+    end
     if row.choice or row.lead then   -- lead: the others scale with it
         local v = get(row.parts[1].field)
         return (v and row.scale) and v * row.scale + 0 or v
@@ -24347,7 +25879,7 @@ local config_dirty_at = nil
 -- or the id of a translation: fixed by the build (a language's release, MOD.lang), not a choice; offline (every
 -- language built in) a choice, saved as 'lang'.
 local settings = { changes = true, block_input = true, size = 80, side = 'right', opacity = 90,
-                   arc_mp = true, updates = 'ask', update_channel = 'releases', stacks = {}, own_off = {}, hidden = {}, lang = MOD.lang or MOD.offline and rawget(_G, 'SHODAN_OFFLINE_LANG') or 'en',
+                   arc_mp = true, updates = 'ask', update_channel = 'releases', stacks = {}, own_off = {}, armor_passives = {}, hidden = {}, loaded = {}, nav_buttons = false, lang = MOD.lang or MOD.offline and rawget(_G, 'SHODAN_OFFLINE_LANG') or 'en',
                    last = { stat = {}, enemy = {} }, enemy_last = false,
                    GITHUB = 'https://github.com/SHODAN-HORAI/SHODAN-Stat-Editor',
                    RANGE = { size = { 50, 100 }, opacity = { 10, 100 } } }
@@ -24448,8 +25980,19 @@ end
         state.lang = function() return settings.lang end
         state.updates = function() return settings.updates end   -- the host's updater: 'ask' or 'auto'
         state.update_channel = function() return settings.update_channel end   -- 'releases' or 'commits'
-        state.stacks = function() return settings.stacks end   -- passive id -> { passive ids stacked on it }
-        state.own_off = function() return settings.own_off end -- passive id -> true: its own effects left out
+        state.armor_passives = function() return settings.armor_passives end   -- armor text id -> { passive ids }
+        state.one_line = function()   -- passive id -> how many lines its typed description has
+            local out = {}
+            for hash, typed in pairs(MOD.rename.texts) do
+                local w = by_hash[hash]
+                if w and w.passive and typed.desc then
+                    out[tables[w.passive].index.id] = #MOD.rename.parts((typed.desc:gsub('|', '\n')))
+                end
+            end
+            return out
+        end
+        state.load_donors = function() return MOD.donors() end
+        state.notify = function(...) MOD.notify(...) end
         -- stratagem type -> { arrow, ... }: every call-in code set here (hostdata.lua M.codes writes them)
         state.codes = function()
             local out = {}
@@ -24516,10 +26059,12 @@ end
 -- ---------------------------------------------------------------- names and descriptions (offline)
 -- The Name and Description boxes under a page's rows: the game's text ids in its encyclopedia entry (weapons,
 -- throwables: +0 name, +8 in capitals, +20 description) and its stratagem's row (+44 name, +40 in capitals, +48
--- description). The host has the game's English texts (SHODAN_PHYSICS.texts, by id); Install puts the typed ones
+-- description), armors, helmets and capes (kit +16 name, +12 in capitals, +20 description; an armor and its helmet
+-- can share them), passives (+4 name, the first modifier's line; a typed one is the only line, hostdata drops the others), attachments (+16 name, +12 in capitals, +20
+-- description), boosters (their ids below: no table holds them). The host has the game's English texts (SHODAN_PHYSICS.texts, by id); Install puts the typed ones
 -- into every language's strings files through the patch archive (offline/vehicles.lua). In config.txt:
--- rename <page hash> name|desc <text>
-MOD.rename = { texts = {}, LIMIT = { name = 60, desc = 400 } }
+-- rename <page hash> name|desc <text> (| in a text: a new line; {H}: a # sign, which would start a comment)
+MOD.rename = { texts = {}, LIMIT = { name = 60, code = 20, desc = 400 } }
 
 local function save_config()
     config_dirty_at = nil
@@ -24542,7 +26087,18 @@ local function save_config()
     if MOD.offline then
         lines[#lines + 1] = 'updates ' .. settings.updates
         lines[#lines + 1] = 'update_channel ' .. settings.update_channel
-        -- passive_stack <passive id> <passive id>,<passive id>...: the passives stacked on it
+        -- armor_passive <armor text id> <passive id>,<passive id>... or none: the passives of that armor
+        local armors, PASSIVE_NAMES = {}, KINDS[TYPES.passive].NAMES
+        for id in pairs(settings.armor_passives) do armors[#armors + 1] = id end
+        table.sort(armors)
+        for _, id in ipairs(armors) do
+            local list, names = settings.armor_passives[id], {}
+            for k, other in ipairs(list) do names[k] = PASSIVE_NAMES[other] or ('Passive ' .. other) end
+            lines[#lines + 1] = string.format('armor_passive %08X %s   # %s: %s', id, #list > 0 and table.concat(list, ',') or 'none',
+                                              MOD.kit_names and MOD.kit_names[id] or '?', #list > 0 and table.concat(names, ', ') or 'none')
+        end
+        -- (older configs) passive_stack <passive id> <passive id>,<passive id>...: the passives stacked on it;
+        -- MOD.kits.migrate turns these and passive_own into armor_passive lines
         local ids, NAMES = {}, KINDS[TYPES.passive].NAMES
         for id in pairs(settings.stacks) do ids[#ids + 1] = id end
         table.sort(ids)
@@ -24565,6 +26121,7 @@ local function save_config()
     lines[#lines + 1] = 'stratagem_bounce ' .. onoff(MOD.tweaks.bounce.on)
     lines[#lines + 1] = 'foliage_pass_through ' .. onoff(MOD.tweaks.foliage.on)
     lines[#lines + 1] = 'sniper_crosshair ' .. onoff(MOD.tweaks.reticle.on)
+    lines[#lines + 1] = 'nav_buttons ' .. onoff(settings.nav_buttons)
     -- hide_tabs <tab>,<tab>...: the tabs Settings > Tabs shown turned off
     local hidden = {}
     for tab in pairs(settings.hidden) do hidden[#hidden + 1] = tab end
@@ -24577,6 +26134,8 @@ local function save_config()
     if last.enemy.tab then lines[#lines + 1] = 'enemy_tab ' .. last.enemy.tab end
     if last.enemy.weapon then lines[#lines + 1] = 'enemy_page ' .. last.enemy.weapon end
     lines[#lines + 1] = 'editor ' .. (settings.enemy_last and 'enemy' or 'stat')
+    -- loaded_stat / loaded_enemy <preset number>:<signature of the values it left>: shown above the tabs
+    for side, at in pairs(settings.loaded) do lines[#lines + 1] = 'loaded_' .. side .. ' ' .. at.n .. ':' .. at.sig end
     for _, o in ipairs(overrides) do
         local weapon = by_hash[o.hash]
         lines[#lines + 1] = o.hash .. ' ' .. o.id .. ' ' .. number_text(o.value) ..
@@ -24586,11 +26145,15 @@ local function save_config()
     for hash in pairs(MOD.rename.texts) do renamed[#renamed + 1] = hash end
     table.sort(renamed)
     for _, hash in ipairs(renamed) do
-        for _, field in ipairs({ 'name', 'desc' }) do
+        for _, field in ipairs({ 'name', 'code', 'desc' }) do
             local v = MOD.rename.texts[hash][field]
-            if v then lines[#lines + 1] = 'rename ' .. hash .. ' ' .. field .. ' ' .. v end
+            if v then lines[#lines + 1] = 'rename ' .. hash .. ' ' .. field .. ' ' .. v:gsub('#', '{H}') end
         end
     end
+    local old = io.open(path, 'rb')
+    local before = old and old:read('*a')
+    if old then old:close() end
+    if before and #before > 0 then MOD.write_text(path .. '.bak', before) end   -- the save before this one, to go back to by hand
     local ok, why = MOD.write_text(path, table.concat(lines, '\r\n') .. '\r\n')
     if not ok then log('could not write ' .. path .. ': ' .. why) end
 end
@@ -24618,6 +26181,15 @@ local function load_config()
             settings.stacks[tonumber(target)] = #list > 0 and list or nil
             known = true
         end
+        local armor, passives = line:match('^%s*armor_passive%s+(%x+)%s+([%a%d,]+)%s*$')
+        if armor and MOD.offline then
+            local list, seen = {}, {}
+            for id in passives:gmatch('%d+') do
+                id = tonumber(id)
+                if not seen[id] then seen[id], list[#list + 1] = true, id end
+            end
+            settings.armor_passives[tonumber(armor, 16)], known = list, true
+        end
         local own = line:match('^%s*passive_own%s+(%d+)%s+off%s*$')
         if own and MOD.offline then settings.own_off[tonumber(own)], known = true, true end
         if name == 'changes' or name == 'block_input' then
@@ -24629,6 +26201,10 @@ local function load_config()
             known = true
         elseif name == 'update_channel' and (value == 'releases' or value == 'commits') then
             settings.update_channel = value
+            known = true
+        elseif (name == 'loaded_stat' or name == 'loaded_enemy') and value:match('^%d+:%d+$') then
+            local n, sig = value:match('^(%d+):(%d+)$')
+            settings.loaded[name:sub(8)] = { n = tonumber(n), sig = tonumber(sig) }
             known = true
         elseif name == 'updates' and (value == 'ask' or value == 'auto') then
             settings.updates = value
@@ -24664,6 +26240,9 @@ local function load_config()
             known = true
         elseif name=='water_diving' or name=='enhanced_vaulting' then
             known=true -- Discard retired preview switches without applying their values.
+        elseif name == 'nav_buttons' then
+            settings.nav_buttons = value == 'on'
+            known = true
         elseif name == 'stratagem_bounce' or name == 'foliage_pass_through' or name == 'sniper_crosshair' then
             MOD.tweaks[name == 'stratagem_bounce' and 'bounce' or name == 'sniper_crosshair' and 'reticle' or 'foliage'].on = value == 'on'
             MOD.tweaks.apply()
@@ -24689,9 +26268,9 @@ local function load_config()
             known = true
         end
         local rhash, field, typed = line:match('^%s*rename%s+(%x+)%s+(%a+)%s+(.-)%s*$')
-        if rhash and MOD.offline and (field == 'name' or field == 'desc') and typed ~= '' then
+        if rhash and MOD.offline and (field == 'name' or field == 'code' or field == 'desc') and typed ~= '' then
             local t = MOD.rename.texts[rhash:upper()] or {}
-            t[field], MOD.rename.texts[rhash:upper()], known = typed, t, true
+            t[field], MOD.rename.texts[rhash:upper()], known = typed:gsub('{H}', '#'), t, true
         end
         if not known then MOD.skipped('config.txt', at, line) end
     end
@@ -24699,26 +26278,125 @@ local function load_config()
         ' (' .. path .. ')')
 end
 
+function MOD.config_changed() config_dirty_at = api.now() + 0.75 end
 local function mark_config_dirty() config_dirty_at = api.now() + 0.75; MOD.enemy.refresh_due = true end
 
+-- an armor page's passives: its own list, or the game's
+function MOD.kits.list_of(page) return settings.armor_passives[page.armor] or page.default end
+-- list nil or the game's own: the armor goes back to the game's
+function MOD.kits.set(page, list)
+    if list and table.concat(list, ',') == table.concat(page.default, ',') then list = nil end
+    if settings.armor_passives[page.armor] == nil and list == nil then return end
+    state.note('passives ' .. page.armor, table.concat(MOD.kits.list_of(page), ','), table.concat(list or page.default, ','))
+    settings.armor_passives[page.armor] = list
+    state.writes = state.writes + 1   -- (the host: changed since the last install)
+    mark_config_dirty()
+end
+-- older configs stacked passives on a passive: the same effects as a list on each armor that has it
+function MOD.kits.migrate()
+    if not next(settings.stacks) and not next(settings.own_off) then return end
+    for _, page in ipairs(weapons) do
+        local id = page.armor and page.default[1]
+        if id and (settings.stacks[id] or settings.own_off[id]) and not settings.armor_passives[page.armor] then
+            local list = settings.own_off[id] and {} or { id }
+            for _, other in ipairs(settings.stacks[id] or {}) do list[#list + 1] = other end
+            MOD.kits.set(page, list)
+        end
+    end
+    settings.stacks, settings.own_off = {}, {}
+    state.writes = state.writes + 1
+    state.touched.stacks = true
+    mark_config_dirty()
+end
+
 -- a page's text ids ({ id, capitals } lists name and desc) and its game texts (game.name, game.desc), nil without
+-- the id of a designation text, by the first word of a page's name (a stratagem's record holds no designation: its
+-- weapon's does)
+function MOD.rename.code_id(name)
+    if not MOD.rename.codes then
+        local codes, t, texts = {}, tables[TYPES.encyclopedia], rawget(_G, 'SHODAN_PHYSICS').texts
+        for _, e in pairs(t and t.index or {}) do
+            local id = type(e) == 'number' and peek4(t.copies[1] + HEADER_BYTES + e + 36)
+            if id and texts[id] then codes[texts[id]] = id end
+        end
+        MOD.rename.codes = codes
+    end
+    return MOD.rename.codes[name:match('^%S+')]
+end
+
 function MOD.rename.of(w)
     local host = rawget(_G, 'SHODAN_PHYSICS')
     local texts = host and host.texts
     if not texts or not w then return nil end
-    local out = { name = {}, desc = {} }
+    local out = { name = {}, code = {}, desc = {} }
     local function add(list, id, caps) if id and texts[id] then list[#list + 1] = { id, caps } end end
     local t = w.key and tables[TYPES.encyclopedia]
     local e = t and t.index[w.key]
     if e then
         local at = t.copies[1] + HEADER_BYTES + e
-        add(out.name, peek4(at)); add(out.name, peek4(at + 8), true); add(out.desc, peek4(at + 20))
+        add(out.name, peek4(at)); add(out.name, peek4(at + 8), true); add(out.desc, peek4(at + 20)); add(out.code, peek4(at + 36))
     end
     local def = w.stratagem and w.stratagem.def
     if def then add(out.name, peek4(def.at + 44)); add(out.name, peek4(def.at + 40), true); add(out.desc, peek4(def.at + 48)) end
+    if def and not out.code[1] then add(out.code, MOD.rename.code_id(w.name)) end
+    local kit = MOD.kits.texts and MOD.kits.texts[w.armor or w.look]
+    if kit then
+        add(out.name, w.armor or w.look)
+        for id in pairs(kit.caps) do add(out.name, id, true) end
+        for id in pairs(kit.desc) do add(out.desc, id) end
+    end
+    local passive = w.passive and tables[w.passive].index
+    if passive then
+        add(out.name, passive.text)
+        for _, id in ipairs(passive.lines) do add(out.desc, id) end
+    end
+    local a = w.attachment and w.attachment.texts or w.booster and MOD.boosters.TEXTS[w.booster[1]]
+    if a then add(out.name, a[1]); add(out.name, a[2], true); add(out.desc, a[3]) end
     if #out.name == 0 then return nil end
-    out.game = { name = texts[out.name[1][1]], desc = out.desc[1] and texts[out.desc[1][1]] }
+    out.game = { name = texts[out.name[1][1]], code = out.code[1] and texts[out.code[1][1]],
+                 desc = out.desc[1] and texts[out.desc[1][1]]:gsub('\r?\n', '|') }
+    if passive then
+        -- every line, a gap between them: typed, each part goes to its line, so it keeps its own #BONUS value
+        local lines = {}
+        for k, n in ipairs(out.desc) do lines[k] = texts[n[1]]:gsub('\r?\n', '|') end
+        out.game.desc, out.lines = out.desc[1] and table.concat(lines, '||'), true
+    end
     return out
+end
+
+-- the other pages using the designation text `id` (a typed one changes them all)
+function MOD.rename.sharing(w, id)
+    if not MOD.rename.users then
+        local users, t = {}, tables[TYPES.encyclopedia]
+        for _, o in ipairs(weapons) do
+            local e = t and o.key and t.index[o.key]
+            local code = e and peek4(t.copies[1] + HEADER_BYTES + e + 36)
+            if code and code ~= 0 then
+                users[code] = users[code] or {}
+                table.insert(users[code], o)
+            end
+        end
+        MOD.rename.users = users
+    end
+    local names = {}
+    for _, o in ipairs(MOD.rename.users[id] or {}) do
+        if o ~= w and o ~= w.same then names[#names + 1] = o.name end
+    end
+    return names
+end
+
+-- the page and field a box edits: 'line<id>', on an armor's passive row, is that passive's description
+function MOD.rename.page(w, field)
+    local id = field:match('^line(%d+)$')
+    if not id then return w.same or w, field end
+    return by_hash[string.format('FFFFFFFE%08X', tonumber(id))], 'desc'
+end
+
+-- a passive's typed text, by the blank lines in it
+function MOD.rename.parts(text)
+    local parts = {}
+    for part in (text .. '\n\n'):gmatch('(.-)\n\n') do parts[#parts + 1] = part end
+    return parts
 end
 
 -- id -> text of every typed name and description (the host's Install asks)
@@ -24726,8 +26404,17 @@ function MOD.rename.map()
     local out = {}
     for hash, typed in pairs(MOD.rename.texts) do
         local ids = MOD.rename.of(by_hash[hash])
-        for _, field in ipairs(ids and { 'name', 'desc' } or {}) do
-            for _, n in ipairs(typed[field] and ids[field] or {}) do out[n[1]] = n[2] and typed[field]:upper() or typed[field] end
+        for _, field in ipairs(ids and { 'name', 'code', 'desc' } or {}) do
+            local text = typed[field] and typed[field]:gsub('|', '\n')   -- (config.txt keeps a line per text)
+            if text and field == 'desc' and ids.lines then
+                local parts = MOD.rename.parts(text)
+                for k, part in ipairs(parts) do
+                    local n = ids.desc[math.min(k, #ids.desc)][1]
+                    out[n] = k > #ids.desc and out[n] .. '\n\n' .. part or part
+                end
+            else
+                for _, n in ipairs(text and ids[field] or {}) do out[n[1]] = n[2] and text:upper() or text end
+            end
         end
     end
     return out
@@ -24739,6 +26426,7 @@ function MOD.rename.set(w, field, text)
     local ids = MOD.rename.of(w)
     if text == '' or (ids and text == ids.game[field]) then text = nil end
     local t = MOD.rename.texts[w.hash] or {}
+    state.note('text ' .. w.hash .. field, t[field], text)
     t[field] = text
     MOD.rename.texts[w.hash] = next(t) and t or nil
     state.writes = state.writes + 1   -- (the host: changed since the last install)
@@ -24796,7 +26484,7 @@ function MOD.enemy.faction_refresh()
                 page.enemy.targets = targets
             end
             for _, r in ipairs(page.rows) do
-                local v = read_field(r.parts[1].field) or (r.add and 0 or 1)
+                local v = read_field(r.parts[1].field) or ((r.add or r.set) and 0 or 1)
                 for _, f in ipairs(page.enemy.targets[r.id].list) do
                     local d = default_of(f)
                     local new = d and d * v
@@ -25267,7 +26955,16 @@ function MOD.slot.pickup_row(weapon, key)
     local r = add_row(weapon, 'Pickup', 'pickup_slot', 'Picked up into', 'u32', { p }, 1, 3, 2, 2)
     r.only = { [1] = true, [3] = true }
     r.label_of = function() return 'Picked up into: ' .. (read_field(p.field) == 1 and 'Primary slot' or 'Support slot') end
-    r.tip = { 'Picking it up puts it in your primary slot instead (1), in place of your primary. 3 = the support slot.' }
+    r.tip = { 'Picking it up puts it in your primary slot instead (1), in place of your primary. 3 = the support slot.',
+              'Not offered on backpack weapons: their backpack does not attach when the weapon is in your primary slot.' }
+    -- WeaponData +464 auto_drop_ability (1240-byte layout; the EATs and the Commando): played when out of ammo, it
+    -- always drops the support slot, so in the primary slot it looped and threw your support weapon away (issue #115)
+    local at = KINDS[T_WEAPON].stride == 1240 and tables[T_WEAPON] and tables[T_WEAPON].index[key]
+    local drop = at and field_at(T_WEAPON, at + 464, 'u32', 100000)
+    if drop and (default_of(drop) or 0) ~= 0 then
+        p.field.auto_drop = drop
+        r.tip[3] = 'In the primary slot it is not thrown away when empty: it stays in your hands until you pick up another weapon.'
+    end
 end
 
 function MOD.slot.row(weapon)
@@ -25540,7 +27237,7 @@ MOD.refs.mounts = function()
                 for m = 0, 4 do add(api.read(mt.copies[1] + HEADER_BYTES + off + m * 24, 8)) end
             end
         end
-        for _, hex in ipairs(MOD.ARM_ORDER) do add(hash_key(hex)) end
+        for _, hex in ipairs(MOD.ARM_ORDER) do add(MOD._migration_hash_key(hex)) end
         for _, w in ipairs(weapons) do add(w.key) end
     end)
 end
@@ -25820,7 +27517,7 @@ function MOD.squad_transport.build()
     if not t then return end
     local keys={};for hex in pairs(MOD.squad_transport.HOSTS)do keys[#keys+1]=hex end;table.sort(keys)
     for _,hex in ipairs(keys)do
-        local key=hash_key(hex)
+        local key=MOD._migration_hash_key(hex)
         if t.index[key] and by_hash[hex]then
             by_hash[hex].key=key
         elseif t.index[key]then
@@ -26796,7 +28493,7 @@ local function handle_table(address, kind, payload, blob)
         parsed_blocks[address] = true
         return
     end
-    local parse = spec.parse or (spec.keyed and parse_keyed or parse_rows)
+    local parse = spec.parse or (spec.keyed and MOD._migration_parse_keyed or MOD._migration_parse_rows)
     local started = api.now()
     local index, info = parse(blob, spec.stride, spec, address)
     -- game build 25988413 (2026-10-20) changed some records: its layouts are tried after the first one, and the
@@ -26856,9 +28553,13 @@ local function handle_table(address, kind, payload, blob)
     log(string.format('%s table at %s: %d entries (parsed in %.2f ms)', spec.name, hex(address), info, took))
 end
 
+-- Offline every file is loaded before the scan and no game frame waits on it, so it starts at once, in long slices,
+-- and never sweeps memory (from starstring's fork): that finds the editor's own copies and restarts the scan.
+if MOD.offline then START_FRAME, FRAME_BUDGET, PASS_DELAY, FALLBACK_SECONDS = 1, 0.025, 0.02, math.huge end
+
 local function after_pass(pass, final)
     if not searching() then return end
-    if have_all_tables() or final then become_ready(final) end
+    if MOD._migration_have_all_tables() or final or (MOD.offline and pass >= 2) then become_ready(final or not MOD._migration_have_all_tables()) end
 end
 
 -- The tables are still where they were (checked when the panel opens); if not, scan again.
@@ -26921,6 +28622,7 @@ local function build_input()
         'int OpenClipboard(void *owner);',
         'int EmptyClipboard(void);',
         'void *SetClipboardData(uint32_t format, void *data);',
+        'void *GetClipboardData(uint32_t format);',
         'int CloseClipboard(void);',
         'void *GlobalAlloc(uint32_t flags, size_t bytes);',
         'void *GlobalLock(void *data);',
@@ -26973,9 +28675,27 @@ function settings.copy(text)
     return ok
 end
 
+-- The clipboard's text (anything but plain English letters and signs: spaces), or nil.
+function settings.paste()
+    local kernel = ffi.load('kernel32')
+    if user.OpenClipboard(nil) == 0 then return nil end
+    local data, out = user.GetClipboardData(13), {}
+    local at = data ~= nil and kernel.GlobalLock(data) or nil
+    if at ~= nil then
+        local wide = ffi.cast('const uint16_t *', at)
+        for k = 0, 4000000 do
+            if wide[k] == 0 then break end
+            out[k + 1] = wide[k] < 128 and string.char(wide[k]) or ' '
+        end
+        kernel.GlobalUnlock(data)
+    end
+    user.CloseClipboard()
+    return at ~= nil and table.concat(out) or nil
+end
+
 local VK = { Up = 0x26, Down = 0x28, Left = 0x25, Right = 0x27, PageUp = 0x21, PageDown = 0x22,
              Delete = 0x2E, Shift = 0x10, Insert = 0x2D, Home = 0x24, End = 0x23, Pause = 0x13,
-             ScrollLock = 0x91, Ctrl = 0x11, Enter = 0x0D, Backspace = 0x08, Escape = 0x1B }
+             ScrollLock = 0x91, Ctrl = 0x11, Alt = 0x12, Enter = 0x0D, Backspace = 0x08, Escape = 0x1B }
 for n = 1, 12 do VK['F' .. n] = 0x6F + n end
 for n = 0, 9 do VK['Key' .. n] = 0x30 + n end
 
@@ -27022,13 +28742,13 @@ local sr = nil          -- the engine (stingray)
 -- page / fpage: the first row the weapon / full preset list shows (the lists scroll by rows)
 ui = { open = false, measured = {}, measures = 0, tab = 'Primary', page = 1, row = 1, scroll = 1, weapon = nil, hover = nil,
              gui = nil, world = nil, signature = nil, regions = {}, version = 0, errors = 0,
-             wslot = 1, fslot = nil, fpage = 1, message = nil,   -- chosen weapon preset / full preset, status line
+             wslot = 1, fslot = nil, fpage = 1, fopen = {}, closed = {}, fclosed = {}, message = nil,   -- chosen weapon preset / full preset, status line
              editing = nil, confirm = nil,    -- a preset name being typed; an overwrite / delete to confirm
              search = { text = '', active = false },    -- the list's search (active: being typed)
              value = nil }   -- a value being typed: { n = row, weapon, text, fresh (the first key replaces it) }
 
 -- the status line, for code above the panel's
-function MOD.notify(text, seconds) ui.message = { text = text, till = api.now() + (seconds or 4) } end
+function MOD.notify(text, seconds, warning) ui.message = { text = text, till = api.now() + (seconds or 4), warning = warning } end
 local TABS = { 'Primary', 'Secondary', 'Support', 'Throwables', 'Stratagems', 'Mechas', 'Boosters', 'Attachments', 'Armors', 'Records' }
 -- the tabs Settings > Tabs shown leaves on
 function settings.shown_tabs()
@@ -27042,8 +28762,98 @@ local LIST_ROWS = MOD.desktop_layout and MOD.desktop_layout.list_rows or 27
 MOD.LIST_TOP = MOD.desktop_layout and MOD.desktop_layout.list_top or 96
 MOD.LIST_PITCH = MOD.desktop_layout and MOD.desktop_layout.list_pitch or 26
 local W, H = MOD.desktop_layout and MOD.desktop_layout.panel_w or 1000, 980       -- panel size in its own units
+MOD.SEARCH_TEXT = { Primary = 'Search primary weapons', Secondary = 'Search secondary weapons', Support = 'Search support weapons',
+    Throwables = 'Search throwables', Stratagems = 'Search stratagems', Mechas = 'Search mechas', Boosters = 'Search boosters',
+    Attachments = 'Search attachments', Armors = 'Search armors', Records = 'Search records', Terminids = 'Search Terminids',
+    Automatons = 'Search Automatons', Illuminate = 'Search Illuminate', SEAF = 'Search SEAF', Spawning = 'Search spawning' }
+local LIST_ROWS = 27
+-- the rows a list shows: filling the column down to the search box (Presets: its own buttons need the room)
+function MOD.list_rows() return ui.tab == 'Presets' and LIST_ROWS or settings.nav_buttons and LIST_ROWS + 1 or LIST_ROWS + 2 end
+local W, H = 1000, 980       -- panel size in its own units
 
--- The weapons (or stratagems) of a tab; tab '?search': those of every tab whose name holds every
+-- The lists' groups, as the game's armory and the wiki name them (https://helldivers.wiki.gg/wiki/Weapons): a tab's
+-- groups in order, each its title then the name patterns it takes; the first that matches wins.
+-- shortcut: by name, so a new item lands in its tab's last group until it is added here
+MOD.list_groups = {
+    Primary = {
+        { 'Assault Rifle', '^AR%-', '^AR/', '^BR%-', '^StA%-52', '^MA5C' },
+        { 'Marksman Rifle', '^R%-63', '^R%-2124', '^R%-6 ', '^R%-2 ', '^R%-72', '^R%-4 ' },
+        { 'Sniper Rifle', '^R%-40' },
+        { 'Submachine Gun', '^MP%-98', '^SMG', '^StA%-11', '^M7S' },
+        { 'Shotgun', '^SG%-8 ', '^SG%-8S', '^SG%-2', '^SG%-4', '^SG%-9', '^DBS', '^M90A' },
+        { 'Explosive', '^R%-36', '^CB%-9', '^GL%-15' },
+        { 'Energy-Based', '^LAS', '^PLAS', '^SG%-8P', '^ARC', '^R/40' },
+        { 'Special', '' },
+    },
+    Secondary = {
+        { 'Pistol', '^P%-2 ', '^P%-19', '^P%-4 ', '^P%-113', '^P%-92', '^M6C', '^P%-69', '^P%-44' },
+        { 'Melee', '^CQC' },
+        { 'Special', '^LAS', '^GP%-', '^SG%-', '^P%-72', '^P%-11', '^PLAS', '^P%-35', '^P%-33', '^P/40', '^P%-34' },
+        { 'Other', '' },
+    },
+    Support = {
+        { 'Machine Gun', '^MG', '^M%-1' },
+        { 'Anti-Tank', '^AMW', '^EAT%-', '^GR%-', '^FAF', '^MLS', '^MS%-', '^StA%-X3', '^APW', '^AC%-', '^RS%-' },
+        { 'Explosive', '^GL%-', '^B/MD', '^RL%-' },
+        { 'Energy-Based', '^LAS', '^ARC', '^PLAS', '^40%-K' },
+        { 'Flame and Gas', '^FLAM', '^B/FLAM', '^TX%-', '^S%-11' },
+        { 'Melee', '^CQC' },
+        { 'Special', '^SG%-' },
+        { 'Other', '' },
+    },
+    Throwables = { { 'Standard', '^G%-12 ', '^G%-6 ', '^G%-10 ', '^TED', '^G%-7 ' }, { 'Special', '' } },
+    Stratagems = {
+        { 'Orbital Strikes', '^Orbital', '^Walking Barrage' },
+        { 'Eagle Strikes', '^Eagle' },
+        { 'Support Weapons' },   -- (the Support tab's patterns, below)
+        { 'Backpacks', '^AX/', '^B%-1 ', '^B%-100', '^LIFT', '^SH%-' },
+        { 'Sentries', '^A/' },
+        { 'Emplacements', '^E/', 'Mine Deployer', '^Shield Generator Relay' },
+        { 'Mission', '' },
+    },
+    Mechas = { { 'Exosuits', '^EXO' }, { 'FRVs', 'FRV' }, { 'Tanks', '^TD%-' }, { 'Other', '' } },
+    Attachments = {
+        { 'Optics', 'Scope', 'Iron Sights', 'Holo', 'Reflex', 'Reddot' },
+        { 'Underbarrel', 'Grip', 'grip', 'Flashlight', 'Laser Sight' },
+        { 'Muzzle', 'Duckbill', 'Choke', 'Compensator', 'Flash Hider', 'Muzzle', '^Laser%.' },
+        { 'Ammunition', '' },
+    },
+}
+for _, group in ipairs(MOD.list_groups.Support) do
+    for k = 2, #group do
+        if group[k] ~= '' then table.insert(MOD.list_groups.Stratagems[3], group[k]) end
+    end
+end
+-- a page's place among its tab's groups, and the group's title (nil: above them all, no title)
+function MOD.group_of(w)
+    local part = MOD.kits.part(w)
+    if part then   -- the armors by the weight they have now
+        if part == 3 then
+            local weight = w.weight_field and read_field(w.weight_field)
+            return 10 + (weight or 3), MOD.kits.NAMES[weight] or 'Armors'
+        end
+        if part > 3 then return 20 + part, ({ 'Passives', 'Helmets', 'Capes' })[part - 3] end
+        return 0, nil
+    end
+    for rank, group in ipairs(MOD.list_groups[w.slot] or {}) do
+        for k = 2, #group do
+            if w.name:find(group[k]) then return rank, group[1] end
+        end
+    end
+    return 0, nil
+end
+-- the list by group, keeping the order inside each
+function MOD.in_groups(list)
+    local place = {}
+    for k, w in ipairs(list) do place[w] = { MOD.group_of(w) }; place[w][3] = k end
+    table.sort(list, function(a, b)
+        if place[a][1] ~= place[b][1] then return place[a][1] < place[b][1] end
+        return place[a][3] < place[b][3]
+    end)
+    return list
+end
+
+-- The weapons (or stratagems) of a tab; tab '?search': those of the shown editor's tabs whose name holds every
 -- word of the search (any case), and with ui.search.edited only those with a saved change (the idea from
 -- 127MU's fork). The Records tab: its records, and searching there searches them.
 local function weapons_in(tab)
@@ -27068,14 +28878,13 @@ local function weapons_in(tab)
         return list
     end
     for _, weapon in ipairs(weapons) do
-        if #weapon.rows > 0 and not settings.hidden[weapon.slot] then
+        if (#weapon.rows > 0 or weapon.armor or weapon.look) and not settings.hidden[weapon.slot] then
             if words then
                 local name, all = (weapon.name..' '..settings.tr(weapon.name)):lower(), true
                 for _, word in ipairs(words) do
                     if not name:find(word, 1, true) then all = false; break end
                 end
-                local t = edited and not edited[weapon.hash] and weapon.passive and tables[weapon.passive]   -- (stacked passives)
-                if edited and not edited[weapon.hash] and not (t and (settings.stacks[t.index.id] ~= nil or settings.own_off[t.index.id] ~= nil)) then
+                if edited and not edited[weapon.hash] and not settings.armor_passives[weapon.armor or 0] then
                     all = false
                 end
                 if all then list[#list + 1] = weapon end
@@ -27084,7 +28893,24 @@ local function weapons_in(tab)
             end
         end
     end
-    return list
+    return words and list or MOD.in_groups(list)
+end
+
+-- The list as shown: a search as it is, a tab with a title row above each group (list.items: the pages without them;
+-- a click on a title closes its group)
+function MOD.shown_list()
+    if ui.search.text ~= '' or ui.search.edited then return weapons_in('?search') end
+    local list, out, last = weapons_in(ui.tab), {}, nil
+    for _, w in ipairs(list) do
+        local _, title = MOD.group_of(w)
+        local closed = title and ui.closed[ui.tab .. '/' .. title]
+        if title and title ~= last then out[#out + 1] = { head = title, name = '', closed = closed } end
+        last = title
+        if not closed then out[#out + 1] = w end
+    end
+    if #out == #list then return list end
+    out.items = #list
+    return out
 end
 
 -- (a value saved for a stat the weapon has no row for, e.g. one an update removed, stays saved, not shown)
@@ -27092,10 +28918,8 @@ local function modified(weapon)
     for _, o in ipairs(overrides) do
         if o.hash == weapon.hash and MOD.parts_of(weapon, o.id) then return true end
     end
-    if MOD.rename.texts[weapon.hash] then return true end   -- a typed name or description (offline)
-    -- an armor passive with passives stacked on it (offline)
-    local t = weapon.passive and tables[weapon.passive]
-    return t ~= nil and (settings.stacks[t.index.id] ~= nil or settings.own_off[t.index.id] ~= nil)
+    if MOD.rename.texts[MOD.rename.page(weapon, 'name').hash] then return true end   -- a typed name or description (offline)
+    return settings.armor_passives[weapon.armor or 0] ~= nil   -- an armor with its own passives (offline)
 end
 
 -- Font: the game's UI font (the resource ids HD2 HUD Plus and DiverKit read from game.dll
@@ -27223,6 +29047,7 @@ end
 local function select_weapon(weapon)
     ui.weapon = weapon
     ui.row, ui.scroll, ui.settings, ui.binding, ui.stack_pick, ui.code, ui.rename = 1, 1, false, nil, nil, nil, nil
+    ui.copy = nil
     local last = settings.last[MOD.enemy.on and 'enemy' or 'stat']
     if weapon and state.phase == 'ready' and (last.weapon ~= weapon.hash or last.tab ~= weapon.slot) then
         last.tab, last.weapon = weapon.slot, weapon.hash
@@ -27230,7 +29055,8 @@ local function select_weapon(weapon)
     end
     if weapon then
         ui.tab = weapon.slot
-        local list = weapons_in((ui.search.text ~= '' or ui.search.edited) and '?search' or ui.tab)
+        local list = MOD.shown_list()
+        local rows = MOD.list_rows() - (list.items and 1 or 0)   -- (the top row can be its group's title, kept in view)
         for n, w in ipairs(list) do
             if MOD.offline and w==weapon then ui.page=math.floor((n-1)/LIST_ROWS)*LIST_ROWS+1
             elseif w == weapon and n < ui.page then ui.page = n
@@ -27590,6 +29416,36 @@ local function change(row, delta_sign, big, exact)
     ui.version = ui.version + 1
 end
 
+-- Copy to (vehicle pages): a section's shown values onto other vehicles' rows of the same section and label
+-- (labels, not ids: body part zones are numbered per vehicle)
+MOD.COPY_SECTIONS = { Vehicle = true, ['Body parts'] = true, Handling = true, Wheels = true }
+function MOD.copy_targets(weapon, section)
+    local labels, out = {}, {}
+    for _, r in ipairs(weapon.rows) do if r.section == section then labels[r.label] = true end end
+    for _, w in ipairs(weapons) do
+        if w ~= weapon and w.stratagem and w.stratagem.vehicle then
+            for _, r in ipairs(w.rows) do
+                if r.section == section and labels[r.label] then out[#out + 1] = w; break end
+            end
+        end
+    end
+    return out
+end
+function MOD.copy_section(weapon, section, targets)
+    local shown, done = ui.weapon, 0
+    for _, w in ipairs(targets) do
+        ui.weapon = w   -- (change() edits the shown page's rows)
+        for _, r in ipairs(weapon.rows) do
+            local v = r.section == section and row_value(r)
+            for _, t in ipairs(v and w.rows or {}) do
+                if t.section == section and t.label == r.label then change(t, 0, false, v); done = done + 1; break end
+            end
+        end
+    end
+    ui.weapon = shown
+    return done
+end
+
 -- Ends typing a value: keep = true sets it (out of the stat's range: the nearest end, and says so).
 local function finish_value(keep)
     local edit = ui.value
@@ -27730,13 +29586,9 @@ end
 
 local function reset_weapon(weapon)
     for _, row in ipairs(weapon.rows) do reset_row(weapon, row) end
-    local t = weapon.passive and tables[weapon.passive]   -- an armor passive: its stacked passives go too
-    if t and (settings.stacks[t.index.id] or settings.own_off[t.index.id]) then
-        settings.stacks[t.index.id], settings.own_off[t.index.id] = nil, nil
-        state.writes = state.writes + 1
-        mark_config_dirty()
-    end
-    if MOD.rename.texts[weapon.hash] then MOD.rename.set(weapon, 'name', nil); MOD.rename.set(weapon, 'desc', nil) end
+    if weapon.armor then MOD.kits.set(weapon, nil) end
+    local page = MOD.rename.page(weapon, 'name')
+    if MOD.rename.texts[page.hash] then MOD.rename.set(page, 'name', nil); MOD.rename.set(page, 'code', nil); MOD.rename.set(page, 'desc', nil) end
 end
 
 -- The Enemy Editor's values (enemy and spawning pages) or the Stat Editor's: presets of one leave the other's alone.
@@ -27763,21 +29615,16 @@ function MOD.reset_side(enemy)
     ui.version = ui.version + 1
 end
 
+-- the shown editor's values only
 local function reset_all()
     apply_at = 1
-    MOD.clear_grenade_pending()
-    for n = #pending, 1, -1 do
-        if pending[n].id == 'grenade' then table.remove(pending, n) end
+    if not MOD.enemy.on then   -- (grenades are the Stat Editor's)
+        MOD.clear_grenade_pending()
+        for n = #pending, 1, -1 do
+            if pending[n].id == 'grenade' then table.remove(pending, n) end
+        end
     end
-    for _, o in ipairs(overrides) do
-        local weapon = by_hash[o.hash]
-        local p = weapon and weapon.by_id[o.id]
-        local d = p and default_of(p.field)
-        if d ~= nil then write_field(p.field, d) end
-    end
-    overrides = {}
-    mark_config_dirty()
-    ui.version = ui.version + 1
+    MOD.reset_side(MOD.enemy.on)
 end
 
 function settings.set_changes(on)
@@ -27890,6 +29737,19 @@ do
         return write_lines(path, lines)
     end
 
+    -- a preset's lines after `lines`; `note` (optional): a hash's comment
+    function presets.body(preset, lines, note)
+        lines[#lines + 1] = 'name ' .. preset.name
+        if preset.desc then lines[#lines + 1] = 'desc ' .. preset.desc end
+        for _, o in ipairs(preset.values) do
+            lines[#lines + 1] = o.hash .. ' ' .. o.id .. ' ' .. number_text(o.value) .. (note and note(o.hash) or '')
+        end
+        for hash, typed in pairs(preset.texts or {}) do
+            for field, text in pairs(typed) do lines[#lines + 1] = 'rename ' .. hash .. ' ' .. field .. ' ' .. text:gsub('#', '{H}') end
+        end
+        return lines
+    end
+
     local function save_full_preset(n)
         local path = full_preset_file(n)
         if not path then return end
@@ -27903,13 +29763,318 @@ do
             MOD.enemy.on and '# SHODAN Enemy Editor preset (a custom difficulty). Load it from the Enemy Editor\'s Presets.'
                          or '# SHODAN Stat Editor preset. Load it from the Presets tab of the panel.',
             '# Lines: name <name>, then <weapon hash> <stat> <value> as in config.txt.',
-            'name ' .. full_presets[n].name,
         }
-        for _, o in ipairs(full_presets[n].values) do
-            lines[#lines + 1] = o.hash .. ' ' .. o.id .. ' ' .. number_text(o.value) .. named(o.hash)
-        end
         if full_presets[n].armor~=nil then lines[#lines+1]='armor '..require('desktop_features').hex(full_presets[n].armor)end
-        return write_lines(path, lines)
+        return write_lines(path, presets.body(full_presets[n], lines, named))
+    end
+
+    -- A preset file's lines as a preset, or nil when it was cleared.
+    function presets.parse(lines, numbers, n, file)
+        local preset = { name = 'Preset ' .. n, values = {} }
+        for i, line in ipairs(lines) do
+            if line:match('^%s*cleared') then return nil end
+            local name = line:match('^%s*name%s+(.-)%s*$')
+            local desc = line:match('^%s*desc%s+(.-)%s*$')
+            local hash, id, amount = line:match('^%s*(' .. HEX16 .. ')%s+([%w_]+)%s+(%S+)')
+            local parsed = hash and MOD.parse_number(amount)
+            local page, field, typed = line:match('^%s*rename%s+(' .. HEX16 .. ')%s+(%a+)%s+(.+)$')
+            if page then
+                preset.texts = preset.texts or {}
+                preset.texts[page:upper()] = preset.texts[page:upper()] or {}
+                preset.texts[page:upper()][field] = typed:gsub('{H}', '#')
+            elseif name and name ~= '' then
+                preset.name = name:sub(1, NAME_BYTES)
+            elseif line:match('^armor ') then
+                local ok,value=pcall(require('desktop_features').unhex,line:match('^armor (%x+)$') or '?');preset.armor=ok and value or 'INVALID'
+            elseif desc and desc ~= '' then
+                preset.desc = desc:sub(1, MOD.rename.LIMIT.desc)
+            elseif parsed then
+                preset.values[#preset.values + 1] = { hash = hash:upper(), id = id, value = parsed }
+            else
+                MOD.skipped(file, numbers[i], line)
+            end
+        end
+        return preset
+    end
+
+    -- Files someone sent you, put in StatEditor\import: each takes a free preset place, and the file goes once it
+    -- has one (no free place: it stays for the next start).
+    function presets.import()
+        local dir, ok, I = preset_file('import'), pcall(require, 'install')
+        if not (MOD.offline and dir and ok) then return end
+        I.mkdirs(dir)
+        for _, file in ipairs(I.list_files(dir, '*.txt')) do
+            local lines, numbers = read_lines(dir .. '/' .. file)
+            local enemy = lines and false
+            local raw = io.open(dir .. '/' .. file, 'rb')
+            if raw then enemy = (raw:read('*a') or ''):find('SHODAN Enemy Editor preset', 1, true) ~= nil; raw:close() end
+            local into, free = enemy and presets.enemy or presets.full, nil
+            for k = 1, FULL_PRESETS do if not into[k] then free = k; break end end
+            local preset = lines and free and presets.parse(lines, numbers, free, file)
+            if preset then
+                local was = MOD.enemy.on
+                MOD.enemy.on = enemy
+                into[free] = preset
+                save_full_preset(free)
+                MOD.enemy.on = was
+                os.remove(dir .. '/' .. file)
+                log('presets: imported ' .. file .. ' as "' .. preset.name .. '"')
+            end
+        end
+    end
+
+    -- Share codes, as small as they can be: 2 bytes of sum (catches a code cut short or mistyped), the preset's name, its
+    -- typed texts by page tag (3 bytes of a hash's sum), ids not in MOD.CODE_IDS (code_ids.txt: only ever add to its end),
+    -- then bits: each different value once, at 4 bits a character; each page's tag and its stats, sorted, as steps
+    -- through the id list, each with its value's number in that table. As letters and digits.
+    -- SSEO-S1-: the Stat Editor's, SSEO-E1-: the Enemy Editor's.
+    presets.code = { LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', DIGITS = '0123456789.-e+', GAP = 14,
+                     FIELDS = { 'name', 'code', 'desc' } }
+    function presets.code.sum(data, from)
+        local sum = 0
+        for k = from, #data do sum = (sum * 33 + data[k]) % 65536 end
+        return sum
+    end
+    function presets.code.tag(hash)
+        local sum = 0
+        for k = 1, #hash do sum = (sum * 33 + hash:byte(k)) % 4294967296 end
+        return sum % 16777216
+    end
+    function presets.code.ids()
+        local c = presets.code
+        if not c.list then
+            c.list, c.index = {}, {}
+            for id in MOD.CODE_IDS:gmatch('%S+') do c.list[#c.list + 1] = id; c.index[id] = #c.list end
+        end
+        return c.list, c.index
+    end
+    function presets.code.width(most)   -- bits that hold 0 .. most
+        local bits = 0
+        while 2 ^ bits <= most do bits = bits + 1 end
+        return bits
+    end
+    function presets.to_code(preset, enemy)
+        local c, data, order, by_page, literals, known = presets.code, { 0, 0 }, {}, {}, {}, {}
+        local list, index = c.ids()
+        local function number(n)
+            while n >= 128 do data[#data + 1] = n % 128 + 128; n = math.floor(n / 128) end
+            data[#data + 1] = n
+        end
+        local function bytes(text)
+            number(#text)
+            for k = 1, #text do data[#data + 1] = text:byte(k) end
+        end
+        local function tag3(hash)
+            local tag = c.tag(hash)
+            data[#data + 1] = math.floor(tag / 65536)
+            data[#data + 1] = math.floor(tag / 256) % 256
+            data[#data + 1] = tag % 256
+        end
+        bytes(table.concat(presets.body({ name = preset.name, desc = preset.desc, values = {} }, {}), '\n'))
+        local typed = {}
+        for hash, fields in pairs(preset.texts or {}) do
+            for n, field in ipairs(c.FIELDS) do
+                if fields[field] then typed[#typed + 1] = { hash, n, fields[field] } end
+            end
+        end
+        number(#typed)
+        for _, t in ipairs(typed) do tag3(t[1]); data[#data + 1] = t[2]; bytes(t[3]) end
+        -- stats by rank in the id list (ids it lacks: after its end), the different values, Rice's best step size
+        local table_of, values = {}, {}
+        for _, o in ipairs(preset.values) do
+            if not by_page[o.hash] then by_page[o.hash] = {}; order[#order + 1] = o.hash end
+            local rank = index[o.id] or known[o.id]
+            if not rank then
+                literals[#literals + 1] = o.id
+                rank = #list + #literals
+                known[o.id] = rank
+            end
+            local text = number_text(o.value)
+            if not text:match('^[%d%.%-e%+]+$') then text = string.format('%.6g', o.value) end
+            if not table_of[text] then values[#values + 1] = text; table_of[text] = #values - 1 end
+            by_page[o.hash][rank] = table_of[text]
+        end
+        number(#literals)
+        for _, id in ipairs(literals) do bytes(id) end
+        number(#list)
+        number(#values)
+        local rows, cost = {}, {}
+        for k = 0, 15 do cost[k] = 0 end
+        for _, hash in ipairs(order) do
+            local ranks, last = {}, 0
+            for rank in pairs(by_page[hash]) do ranks[#ranks + 1] = rank end
+            table.sort(ranks)
+            rows[hash] = ranks
+            for _, rank in ipairs(ranks) do
+                for k = 0, 15 do cost[k] = cost[k] + math.floor((rank - last - 1) / 2 ^ k) + 1 + k end
+                last = rank
+            end
+        end
+        local rice = 0
+        for k = 1, 15 do if cost[k] < cost[rice] then rice = k end end
+        local chunk, held = 0, 0
+        local function put(value, bits)
+            for k = bits - 1, 0, -1 do
+                chunk, held = chunk * 2 + math.floor(value / 2 ^ k) % 2, held + 1
+                if held == 8 then data[#data + 1] = chunk; chunk, held = 0, 0 end
+            end
+        end
+        local function gamma(n)   -- n >= 1: small numbers take few bits
+            local bits = c.width(n) - 1
+            put(0, bits)
+            put(n, bits + 1)
+        end
+        for _, text in ipairs(values) do
+            for k = 1, #text do put(c.DIGITS:find(text:sub(k, k), 1, true) - 1, 4) end
+            put(c.GAP, 4)
+        end
+        put(rice, 4)
+        gamma(#order + 1)
+        local width = c.width(math.max(0, #values - 1))
+        for _, hash in ipairs(order) do
+            local tag, last = c.tag(hash), 0
+            put(tag, 24)
+            gamma(#rows[hash])
+            for _, rank in ipairs(rows[hash]) do
+                local step = rank - last - 1
+                put(0, math.floor(step / 2 ^ rice))
+                put(1, 1)
+                put(step % 2 ^ rice, rice)
+                put(by_page[hash][rank], width)
+                last = rank
+            end
+        end
+        if held > 0 then put(0, 8 - held) end
+        local sum, out = c.sum(data, 3), {}
+        data[1], data[2] = math.floor(sum / 256), sum % 256
+        for k = 1, #data, 3 do
+            local a, b, d = data[k], data[k + 1], data[k + 2]
+            local v = a * 65536 + (b or 0) * 256 + (d or 0)
+            for j = 3, (d and 0) or (b and 1) or 2, -1 do
+                local letter = math.floor(v / 64 ^ j) % 64
+                out[#out + 1] = c.LETTERS:sub(letter + 1, letter + 1)
+            end
+        end
+        return 'SSEO-' .. (enemy and 'E' or 'S') .. '1-' .. table.concat(out)
+    end
+    -- a checked code's bytes -> the preset, and how many values this version has no page or stat for; errors on nonsense
+    function presets.code.read(data)
+        local c, at, pages, skipped = presets.code, 3, {}, 0
+        local list = c.ids()
+        local function byte()
+            local b = assert(data[at])
+            at = at + 1
+            return b
+        end
+        local function number()
+            local n, scale, b = 0, 1, byte()
+            while b >= 128 do n = n + (b - 128) * scale; scale = scale * 128; b = byte() end
+            return n + b * scale
+        end
+        local function bytes()
+            local n, out = number(), {}
+            for k = 1, n do out[k] = string.char(byte()) end
+            return table.concat(out)
+        end
+        for hash in pairs(by_hash) do pages[c.tag(hash)] = hash end
+        local lines, numbers = {}, {}
+        for n, line in MOD.lines_of(bytes()) do lines[#lines + 1] = line; numbers[#lines] = n end
+        local preset = assert(presets.parse(lines, numbers, 1, 'preset code'))
+        for _ = 1, number() do
+            local hash = pages[byte() * 65536 + byte() * 256 + byte()]
+            local field, text = assert(c.FIELDS[byte()]), bytes()
+            if hash then
+                preset.texts = preset.texts or {}
+                preset.texts[hash] = preset.texts[hash] or {}
+                preset.texts[hash][field] = text:gsub('%c', '')
+            else skipped = skipped + 1 end
+        end
+        local literals = {}
+        for k = 1, number() do literals[k] = bytes() end
+        local base, count = number(), number()
+        local chunk, left = 0, 0
+        local function get(bits)
+            local v = 0
+            for _ = 1, bits do
+                if left == 0 then chunk, left = byte(), 8 end
+                left = left - 1
+                v = v * 2 + math.floor(chunk / 2 ^ left) % 2
+            end
+            return v
+        end
+        local function gamma()
+            local bits = 0
+            while get(1) == 0 do bits = bits + 1 end
+            return 2 ^ bits + get(bits)
+        end
+        local values = {}
+        for k = 1, count do
+            local text, d = {}, get(4)
+            while d ~= c.GAP do
+                text[#text + 1] = assert(c.DIGITS:sub(d + 1, d + 1) ~= '' and c.DIGITS:sub(d + 1, d + 1))
+                d = get(4)
+            end
+            values[k] = assert(MOD.parse_number(table.concat(text)))
+        end
+        local rice = get(4)
+        local width = c.width(math.max(0, count - 1))
+        for _ = 1, gamma() - 1 do
+            local hash, rows, last = pages[get(24)], {}, 0
+            for _ = 1, gamma() do
+                local step = 0
+                while get(1) == 0 do step = step + 1 end
+                last = last + 1 + step * 2 ^ rice + get(rice)
+                local id = last > base and assert(literals[last - base]) or list[last]
+                local value = assert(values[get(width) + 1])
+                if hash and id then rows[#rows + 1] = { hash = hash, id = id, value = value }
+                else skipped = skipped + 1 end
+            end
+            table.sort(rows, function(x, y) return x.id < y.id end)   -- (armor passives: passive_1, passive_2 in order)
+            for _, row in ipairs(rows) do preset.values[#preset.values + 1] = row end
+        end
+        return preset, skipped
+    end
+    -- text with a code in it -> the preset, whether it is an Enemy Editor preset, values skipped; or nil
+    function presets.from_code(text)
+        local side, body = (text or ''):match('SSEO%-([ES])1%-([%w%+/%s]+)')
+        if not body then return nil end
+        body = body:gsub('%s', '')
+        if #body > 8000000 or #body % 4 == 1 then return nil end
+        local data, letters = {}, presets.code.LETTERS
+        for k = 1, #body, 4 do
+            local v, count = 0, math.min(4, #body - k + 1)
+            for j = 0, 3 do
+                local at = j < count and letters:find(body:sub(k + j, k + j), 1, true) or 1
+                v = v * 64 + at - 1
+            end
+            for j = 2, 4 - count, -1 do data[#data + 1] = math.floor(v / 256 ^ j) % 256 end
+        end
+        if #data < 3 or data[1] * 256 + data[2] ~= presets.code.sum(data, 3) then return nil end
+        local ok, preset, skipped = pcall(presets.code.read, data)
+        if not ok then return nil end
+        return preset, side == 'E', skipped
+    end
+    function presets.copy_code(n)
+        local code = presets.to_code(full_presets[n], MOD.enemy.on)
+        say(settings.copy(code) and ('Code copied (' .. #code .. ' characters)') or 'That did not work; see the log.')
+    end
+    -- the code box: true once its code became a preset
+    function presets.add_code(text)
+        local preset, enemy, skipped = presets.from_code(text)
+        if not preset then say('That is not a valid preset code.'); return false end
+        local into, free = enemy and presets.enemy or presets.full, nil
+        for k = 1, FULL_PRESETS do if not into[k] then free = k; break end end
+        if not free then say('No free preset place: delete one first.'); return false end
+        local was = MOD.enemy.on
+        MOD.enemy.on = enemy
+        into[free] = preset
+        save_full_preset(free)
+        MOD.enemy.on = was
+        if enemy == was then ui.fslot, ui.fscroll = free, 1 end
+        say('Added "' .. preset.name .. '"' .. (enemy == was and '' or (enemy and ' to the Enemy Editor presets' or ' to the Stat Editor presets')) ..
+            (skipped > 0 and (' (' .. skipped .. ' value(s) this version does not have)') or ''))
+        ui.version = ui.version + 1
+        return true
     end
 
     local function load_presets()
@@ -27939,29 +30104,13 @@ do
         local into = enemy and presets.enemy or presets.full
         for n = 1, FULL_PRESETS do
             local lines, numbers = read_lines(full_preset_file(n, enemy))
-            local preset = lines and { name = 'Preset ' .. n, values = {} }
-            for i, line in ipairs(lines or {}) do
-                if line:match('^%s*cleared') then preset = nil; break end
-                local name = line:match('^%s*name%s+(.-)%s*$')
-                local hash, id, amount = line:match('^%s*(' .. HEX16 .. ')%s+([%w_]+)%s+(%S+)')
-                local parsed = hash and MOD.parse_number(amount)
-                if name and name ~= '' then
-                    preset.name = name:sub(1, NAME_BYTES)
-                elseif line:match('^armor ')then
-                    local encoded=line:match('^armor (%x+)$')
-                    local ok,value=pcall(require('desktop_features').unhex,encoded or '?')
-                    preset.armor=not enemy and not preset.armor and ok and value or 'INVALID'
-                elseif parsed then
-                    preset.values[#preset.values + 1] = { hash = hash:upper(), id = id, value = parsed }
-                else
-                    MOD.skipped(presets.file_name(n, enemy), numbers[i], line)
-                end
-            end
+            local preset = lines and presets.parse(lines, numbers, n, presets.file_name(n, enemy))
             into[n] = preset
             if preset then full = full + 1 end
         end
         end
         log('presets: ' .. count .. ' weapon preset(s), ' .. full .. ' full preset(s)')
+        presets.import()
         -- the example difficulties, added once (deleted ones stay deleted)
         local marker = preset_file('enemy_examples.txt')
         local had = marker and io.open(marker, 'rb')
@@ -28082,7 +30231,32 @@ do
         for _, o in ipairs(overrides) do
             if MOD.is_enemy_value(o.hash) == MOD.enemy.on then values[#values + 1] = { hash = o.hash, id = o.id, value = o.value } end
         end
+        -- an armor's own passives live in the settings: a preset keeps them as passive_<n> <passive id> on its page
+        for armor, list in pairs(MOD.enemy.on and {} or settings.armor_passives) do
+            local hash = string.format('FFFFFFF8%08X', armor)
+            if #list == 0 then values[#values + 1] = { hash = hash, id = 'passive_none', value = 0 } end
+            for k, id in ipairs(list) do values[#values + 1] = { hash = hash, id = 'passive_' .. k, value = id } end
+        end
         return values
+    end
+    -- the shown editor's typed names and descriptions, a copy
+    function presets.current_texts()
+        local texts = {}
+        for hash, typed in pairs(MOD.rename.texts) do
+            if MOD.is_enemy_value(hash) == MOD.enemy.on then
+                texts[hash] = {}
+                for field, text in pairs(typed) do texts[hash][field] = text end
+            end
+        end
+        return texts
+    end
+    -- what a preset holds: its values and its typed texts
+    function presets.size(preset)
+        local n = #preset.values
+        for _, typed in pairs(preset.texts or {}) do
+            for _ in pairs(typed) do n = n + 1 end
+        end
+        return n
     end
     -- the example difficulties (MOD.enemy.EXAMPLES) into the Enemy Editor presets: first start, in free places;
     -- overwrite (Settings' Restore button): a preset of the same name is replaced, the player's others stay
@@ -28110,12 +30284,42 @@ do
         MOD.enemy.on = was
         return done
     end
-    presets.current_count = function() return #current_values() end
+    presets.current_count = function() return presets.size({ values = current_values(), texts = presets.current_texts() }) end
+
+    -- The preset last loaded or saved in the shown editor: its signature tells whether the values still match it.
+    function presets.marked() return settings.loaded[MOD.enemy.on and 'enemy' or 'stat'] end
+    function presets.signature()
+        local list, sum = {}, 0
+        for _, o in ipairs(current_values()) do list[#list + 1] = o.hash .. ' ' .. o.id .. ' ' .. string.format('%.4g', o.value) end
+        for hash, typed in pairs(presets.current_texts()) do
+            for field, text in pairs(typed) do list[#list + 1] = hash .. ' ' .. field .. ' ' .. text end
+        end
+        table.sort(list)
+        for _, line in ipairs(list) do
+            for k = 1, #line do sum = (sum * 33 + line:byte(k)) % 4294967296 end
+        end
+        return sum
+    end
+    function presets.mark(n)
+        settings.loaded[MOD.enemy.on and 'enemy' or 'stat'] = n and { n = n, sig = presets.signature() } or nil
+        mark_config_dirty()
+    end
+    -- the line above the tabs
+    function presets.loaded_label()
+        local at = presets.marked()
+        local preset = at and presets.list()[at.n]
+        if not preset then return nil end
+        local key = ui.version .. tostring(MOD.enemy.on) .. at.sig
+        if ui.fmark ~= key then ui.fmark, ui.fchanged = key, presets.signature() ~= at.sig end
+        return preset.name, ui.fchanged
+    end
 
     -- Preset numbers in use, in order.
     local function full_order()
         local order = {}
-        for n = 1, FULL_PRESETS do if full_presets[n] then order[#order + 1] = n end end
+        for n = 1, FULL_PRESETS do
+            if full_presets[n] then order[#order + 1] = n end
+        end
         return order
     end
 
@@ -28133,8 +30337,10 @@ do
         end
     end
 
-    local function start_rename(n)
-        if full_presets[n] then ui.editing = { n = n, text = full_presets[n].name, fresh = true } end
+    -- field: nil the name, or 'desc' (nothing typed clears it)
+    local function start_rename(n, field)
+        local p = full_presets[n]
+        if p then ui.editing = { n = n, field = field, text = p[field or 'name'] or '', fresh = not field } end
         ui.version = ui.version + 1
     end
 
@@ -28145,6 +30351,11 @@ do
         ui.version = ui.version + 1
         if not (e and keep and full_presets[e.n]) then return end
         local name = e.text:gsub('[%c#]', ''):gsub('^%s+', ''):gsub('%s+$', '')
+        if e.field then
+            full_presets[e.n][e.field] = name ~= '' and name or nil
+            save_full_preset(e.n)
+            return
+        end
         if name == '' then say('Empty name: kept "' .. full_presets[e.n].name .. '"'); return end
         full_presets[e.n].name = name
         save_full_preset(e.n)
@@ -28156,10 +30367,10 @@ do
         local e = ui.editing
         if not e then return end
         if c == false then
-            e.text = e.fresh and '' or e.text:gsub('[%z\1-\127\194-\244][\128-\191]*$', '')
+            if e.fresh then e.text = '' else MOD.caret.back(e) end
         else
             if e.fresh then e.text = '' end
-            if #e.text + #c <= NAME_BYTES then e.text = e.text .. c end
+            if #e.text + #c <= (e.field and MOD.rename.LIMIT.desc or NAME_BYTES) then MOD.caret.add(e, c) end
         end
         e.fresh = false
         ui.version = ui.version + 1
@@ -28171,7 +30382,7 @@ do
         for k = 1, FULL_PRESETS do if not full_presets[k] then n = k; break end end
         if not n then say('All ' .. FULL_PRESETS .. ' presets are in use: delete one first'); return end
         local armor=not MOD.enemy.on and state.desktop and state.desktop.armor_capture and state.desktop.armor_capture() or nil
-        full_presets[n] = { name = 'Preset ' .. n, values = current_values(),armor=armor }
+        full_presets[n] = { name = 'Preset ' .. n, values = current_values(),armor=armor,texts=presets.current_texts() }
         if not save_full_preset(n)then full_presets[n]=nil;error('预设保存失败，未创建新预设')end
         show(n)
         start_rename(n)
@@ -28182,7 +30393,7 @@ do
         if not full_presets[n] then return end
         local armor=not MOD.enemy.on and state.desktop and state.desktop.armor_capture and state.desktop.armor_capture() or nil
         local old_values,old_armor=full_presets[n].values,full_presets[n].armor
-        full_presets[n].values = current_values();full_presets[n].armor=armor
+        full_presets[n].values = current_values();full_presets[n].armor=armor;full_presets[n].texts=presets.current_texts()
         if not save_full_preset(n)then
             full_presets[n].values,full_presets[n].armor=old_values,old_armor
             error('预设保存失败，原预设已保留')
@@ -28201,8 +30412,22 @@ do
             state.desktop.armor_apply(preset.armor)
         end
         MOD.reset_side(MOD.enemy.on)
-        local refused = 0
+        local refused, passives, values = 0, {}, {}
         for _, o in ipairs(preset.values) do
+            if o.id:match('^passive_') then
+                passives[o.hash] = passives[o.hash] or {}
+                if o.id ~= 'passive_none' then table.insert(passives[o.hash], o.value) end
+            else values[#values + 1] = o end
+        end
+        -- shortcut: an armor the preset does not name keeps its passives, so older presets wipe nothing
+        for hash, list in pairs(passives) do
+            if by_hash[hash] then MOD.kits.set(by_hash[hash], list) else refused = refused + 1 end
+        end
+        for hash, typed in pairs(preset.texts or {}) do
+            for _, field in ipairs(by_hash[hash] and { 'name', 'code', 'desc' } or {}) do MOD.rename.set(by_hash[hash], field, typed[field]) end
+            if not by_hash[hash] then refused = refused + 1 end
+        end
+        for _, o in ipairs(values) do
             local weapon = by_hash[o.hash]
             local parts = weapon and MOD.parts_of(weapon, o.id, preset.values)
             local ok, why = false, weapon and ('no stat ' .. o.id) or ('unknown weapon ' .. o.hash)
@@ -28223,6 +30448,7 @@ do
             end
             if not ok then refused = refused + 1; log('preset "' .. preset.name .. '": ' .. (weapon and weapon.name or o.hash) .. ' ' .. o.id .. ': ' .. tostring(why)) end
         end
+        presets.mark(n)
         say('Loaded "' .. preset.name .. '"' .. (refused > 0 and (' (' .. refused .. ' value(s) not applied)') or ''))
         ui.version = ui.version + 1
     end
@@ -28232,6 +30458,7 @@ do
         if not preset then return end
         full_presets[n] = nil
         save_full_preset(n)
+        if presets.marked() and presets.marked().n == n then presets.mark(nil) end
         if ui.editing and ui.editing.n == n then ui.editing = nil end
         say('Deleted "' .. preset.name .. '"')
         ui.version = ui.version + 1
@@ -28262,6 +30489,32 @@ do
         local old=full_presets[n];full_presets[n]={name=name,values=values,armor=armor}
         if not save_full_preset(n) then full_presets[n]=old;error('预设保存失败，原预设已保留') end
         return n
+    end
+    -- The preset's values and typed texts go into the others: what both hold takes this one's, the rest of each stays.
+    function presets.copy_values(from, targets)
+        local source = full_presets[from]
+        if not source then return end
+        local held, armors = {}, {}
+        for _, o in ipairs(source.values) do
+            held[o.hash .. ' ' .. o.id] = true
+            if o.id:match('^passive_') then armors[o.hash] = true end   -- (an armor's passives are one set)
+        end
+        for _, n in ipairs(targets) do
+            local into, values = full_presets[n], {}
+            for _, o in ipairs(into.values) do
+                if not (held[o.hash .. ' ' .. o.id] or armors[o.hash] and o.id:match('^passive_')) then values[#values + 1] = o end
+            end
+            for _, o in ipairs(source.values) do values[#values + 1] = { hash = o.hash, id = o.id, value = o.value } end
+            into.values, into.texts = values, into.texts or {}
+            for hash, typed in pairs(source.texts or {}) do
+                into.texts[hash] = into.texts[hash] or {}
+                for field, text in pairs(typed) do into.texts[hash][field] = text end
+            end
+            save_full_preset(n)
+            if presets.marked() and presets.marked().n == n then presets.marked().sig = 0; MOD.config_changed() end   -- (shows as changed)
+        end
+        say('Copied ' .. presets.size(source) .. ' value(s) into ' .. #targets .. ' preset(s)')
+        ui.version = ui.version + 1
     end
     presets.load_presets = load_presets
     presets.weapon_preset = weapon_preset
@@ -28306,6 +30559,7 @@ local function draw(width, height)
         return nil
     end
     local GOLD, WHITE, MUTED, DIM = MOD.egg.glitch and color(60, 255, 120) or MOD.enemy.on and color(255, 72, 60) or color(255, 213, 0), color(238, 242, 246), color(153, 171, 184), color(95, 108, 120)
+    local HEADING = MUTED   -- group titles: gold already means a changed item
     MOD.enemy.ALL_INK = MOD.enemy.ALL_INK or color(120, 200, 255)   -- a value only an 'All <faction>' row changed
     local WARN, GOOD = color(255, 150, 60), color(120, 220, 140)
 
@@ -28335,7 +30589,7 @@ local function draw(width, height)
         return measure
     end
     local function width(value, size) return measure_text(settings.tr(value), size) end
-    local function text(value, x, y, size, c, limit, align_right, z)
+    local function text(value, x, y, size, c, limit, align_right, z, face)
         if value == nil or value == '' or not ink_font then return end
         value = settings.tr(value)
         size = size * s
@@ -28352,7 +30606,20 @@ local function draw(width, height)
             if align_right then px = px - measure end
         end
         step('Gui.text')
-        Gui.text(gui, value, ink_font, size, ink_material, Vector3(px, height - oy - y * s - size * 0.8, z or 953), c or WHITE)
+        Gui.text(gui, value, MOD.offline and face or ink_font, size, ink_material, Vector3(px, height - oy - y * s - size * 0.8, z or 953), c or WHITE)
+    end
+    -- the loaded preset: "Preset:", its name in gold (in either editor), then "(changed)"
+    local function preset_line(x, y, size, right)
+        local name, changed = presets.loaded_label()
+        local parts = name and { { 'Preset:', MUTED }, { name, color(255, 213, 0) } } or { { 'Preset: none', MUTED } }
+        if changed then parts[3] = { '(changed)', WARN } end
+        local total = 0
+        for _, part in ipairs(parts) do total = total + width(part[1], size) + 6 end
+        x = right and x - total + 6 or x
+        for _, part in ipairs(parts) do
+            text(part[1], x, y, size, part[2])
+            x = x + width(part[1], size) + 6
+        end
     end
     local function outline(x, y, w, h, c, z)
         z = z or 952
@@ -28414,7 +30681,30 @@ local function draw(width, height)
             tab_x = tab_x + w + (MOD.desktop_layout and 8 or 4)
         end
     end
-    button('reset_weapon', ui.weapon and (ui.weapon.passive and 'Reset passive' or ui.weapon.booster and 'Reset booster' or ui.weapon.enemy and (ui.weapon.slot == 'Spawning' and 'Reset spawning' or 'Reset enemy') or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or (MOD.enemy.on and 'Reset enemy' or 'Reset weapon'), W - 16 - 124, MOD.offline and 10 or 52, 124, MOD.offline and 30 or 32, ui.weapon ~= nil and modified(ui.weapon))
+    local reset_label = ui.weapon and (ui.weapon.passive and 'Reset passive' or (ui.weapon.armor or ui.weapon.look) and 'Reset armor' or ui.weapon.booster and 'Reset booster' or ui.weapon.enemy and (ui.weapon.slot == 'Spawning' and 'Reset spawning' or 'Reset enemy') or ui.weapon.player and 'Reset helldiver' or ui.weapon.record and 'Reset record') or (MOD.enemy.on and 'Reset enemy' or 'Reset weapon')
+    local reset_w = math.max(124, width(reset_label, 16) + 18)   -- (as wide as its translated name)
+    button('reset_weapon', reset_label, W - 16 - reset_w, MOD.offline and 10 or 52, reset_w, MOD.offline and 30 or 32, ui.weapon ~= nil and modified(ui.weapon))
+    preset_line(W - 26 - reset_w, 18, 15, true)
+
+    -- a Description box shows all of its text: value in rows that fit in room, | starts a new one
+    local function wrapped(value, room)
+        local rows, starts = {}, {}   -- starts: the bytes of value before each row
+        for at, para in (value .. '|'):gmatch('()(.-)|') do
+            local line, from = '', at - 1
+            for o, word in para:gmatch('()(%S+)') do
+                local long = line == '' and word or line .. ' ' .. word
+                if line ~= '' and width(long, 15 * s) > room * s then
+                    rows[#rows + 1], starts[#rows + 1] = line, from
+                    line, from = word, at + o - 2
+                else
+                    if line == '' then from = at + o - 2 end
+                    line = long
+                end
+            end
+            rows[#rows + 1], starts[#rows + 1] = line, from
+        end
+        return rows, starts
+    end
 
     -- a list's scroll bar (the weapon list, or the full presets): a thin track between the list and the
     -- line that parts the panel's halves, shown when the list is longer than LIST_ROWS
@@ -28431,7 +30721,7 @@ local function draw(width, height)
         region('lbar:track', 335, top, 8, len)
         region('lbar:thumb', 335, ty, 8, th)
         ui.lbar = { id = id, top = height - oy - top * s, bottom = height - oy - (top + len) * s,
-                    thumb_top = height - oy - ty * s, thumb = th * s, span = span, page = LIST_ROWS }
+                    thumb_top = height - oy - ty * s, thumb = th * s, span = span, page = MOD.list_rows() }
     end
 
     local presets_tab = ui.tab == 'Presets'
@@ -28465,7 +30755,7 @@ local function draw(width, height)
         if ui.settings then
             -- the Settings page, drawn below
         elseif not preset then
-            text(MOD.enemy.on and 'Custom difficulties' or 'Presets', x0, 94, 22, GOLD)
+            text(MOD.enemy.on and 'Custom difficulties' or 'Presets', x0, 98, 22, GOLD)
             text(MOD.enemy.on and 'A preset keeps every enemy and spawning change as one custom difficulty, under a name you choose. Your weapon changes are kept apart.'
                  or 'A preset keeps every change you have made as one set, under a name you choose.', x0, 136, 16, WHITE, W - x0 - 20)
             text('"+ New preset" (or Insert) saves your current changes as one; you name it next.', x0, 162, 16, MUTED, W - x0 - 20)
@@ -28478,41 +30768,164 @@ local function draw(width, height)
                 button('name:ok', 'OK', x0 + 426, 88, 70, 34, true)
                 button('name:cancel', 'Cancel', x0 + 502, 88, 100, 34, true)
             else
-                text(preset.name, x0, 94, 22, GOLD, W - x0 - 20)
+                text(preset.name, x0, 98, 22, ui.hover == 'fpreset:rename' and WHITE or GOLD, W - x0 - 20)
+                region('fpreset:rename', x0 - 4, 88, W - 24 - x0 + 4, 40)
             end
             local sure = ui.confirm and ui.confirm.n == chosen and ui.confirm.kind
             button('fpreset:load', 'Load', x0, 136, 100, 32, true)
-            button('fpreset:save', sure == 'save' and 'Click again to overwrite' or 'Save current changes here',
-                   x0 + 110, 136, 250, 32, true, sure == 'save')
-            button('fpreset:rename', 'Rename', x0 + 370, 136, 110, 32, true)
-            button('fpreset:delete', sure == 'delete' and 'Sure?' or 'Delete', x0 + 490, 136, 110, 32, true, sure == 'delete')
+            -- the Install button's gold while the values differ from this preset (or none is loaded)
+            local mark, moved = presets.marked(), select(2, presets.loaded_label())
+            local unsaved = mark and mark.n == chosen and moved or not mark and presets.current_count() > 0
+            button('fpreset:save', sure == 'save' and 'Click again to overwrite' or 'Save current changes',
+                   x0 + 110, 136, 250, 32, true, sure == 'save', unsaved and color(255, 213, 0) or nil)
+            button('fpreset:delete', sure == 'delete' and 'Sure?' or 'Delete', x0 + 370, 136, 110, 32, true, sure == 'delete')
+            -- the description, as the pages' Description box: grows with its text, click to type
+            local editing_desc, room = e and e.n == chosen and e.field == 'desc', W - 24 - x0 - 16
+            local rows = editing_desc and MOD.caret.lay_out(e, wrapped(e.text, room)) or wrapped(preset.desc or '', room)
+            while #rows > 7 do table.remove(rows) end
+            local box_h = 8 + 20 * #rows
+            local box_hot = editing_desc or ui.hover == 'fpreset:desc'
+            rect(x0, 178, W - 24 - x0, box_h, editing_desc and color(20, 26, 34) or box_hot and color(40, 52, 64) or color(28, 34, 42), 951)
+            outline(x0, 178, W - 24 - x0, box_h, box_hot and GOLD or color(70, 82, 94))
+            if not editing_desc and not preset.desc then rows = { 'No description' } end
+            for k, row in ipairs(rows) do text(row, x0 + 8, 184 + (k - 1) * 20, 15, (preset.desc or editing_desc) and WHITE or DIM) end
+            region('fpreset:desc', x0, 178, W - 24 - x0, box_h)
+            local below = 178 + box_h + 8
             text('Now changed: ' .. presets.current_count() .. ' value(s). Loading a preset replaces every current change' ..
                  (MOD.enemy.on and ' to enemies and spawning with it.' or ' with it.'),
-                 x0, 182, 15, MUTED, W - x0 - 20)
-            -- what it holds: weapon (or stratagem) and how many of its values
-            local y, names, counts = 212, {}, {}
-            for _, o in ipairs(preset.values) do
-                if not counts[o.hash] then counts[o.hash] = 0; names[#names + 1] = o.hash end
-                counts[o.hash] = counts[o.hash] + 1
+                 x0, below, 15, MUTED, W - x0 - 20)
+            -- what it holds: weapon (or stratagem) and how many of its values; click one for its rows
+            local y = below + 28
+            local function slot(hash) return by_hash[hash] and by_hash[hash].slot or 'Other' end
+            -- worked out once per preset state: a redraw from the mouse moving changes none of this
+            local key, sorted = table.concat({ tostring(preset.values), tostring(preset.texts), ui.version, state.tables, tostring(MOD.enemy.on) }, '|'), ui.fsorted
+            if not sorted or sorted.key ~= key then
+                sorted = { key = key, names = {}, counts = {}, held = {} }
+                ui.fsorted = sorted
+                for _, o in ipairs(preset.values) do
+                    if not sorted.counts[o.hash] then
+                        sorted.counts[o.hash], sorted.held[o.hash] = 0, {}
+                        sorted.names[#sorted.names + 1] = o.hash
+                    end
+                    sorted.counts[o.hash] = sorted.counts[o.hash] + 1
+                    table.insert(sorted.held[o.hash], o)
+                end
+                for hash, typed in pairs(preset.texts or {}) do
+                    if not sorted.counts[hash] then
+                        sorted.counts[hash], sorted.held[hash] = 0, {}
+                        sorted.names[#sorted.names + 1] = hash
+                    end
+                    for _, field in ipairs({ 'name', 'code', 'desc' }) do
+                        if typed[field] then
+                            sorted.counts[hash] = sorted.counts[hash] + 1
+                            table.insert(sorted.held[hash], { hash = hash, id = field, text = typed[field] })
+                        end
+                    end
+                end
+                -- by top tab, Attachments last, then by name
+                local rank = {}
+                for k, tab in ipairs(MOD.enemy.on and MOD.enemy.TABS or TABS) do rank[tab] = k end
+                rank.Attachments = 99
+                local function title(hash) return (by_hash[hash] and by_hash[hash].name or hash):lower() end
+                table.sort(sorted.names, function(a, b)
+                    local ra, rb = rank[slot(a)] or 50, rank[slot(b)] or 50
+                    if ra ~= rb then return ra < rb end
+                    return title(a) < title(b)
+                end)
             end
-            if #preset.values == 0 then
+            local names, counts, held = sorted.names, sorted.counts, sorted.held
+            if #names == 0 then
                 text('No changes: loading it puts every value back to the game\'s.', x0, y, 16, MUTED, W - x0 - 20)
             else
-                text(#preset.values .. ' value(s) for ' .. #names .. (MOD.enemy.on and ' page(s):' or ' weapon(s) / stratagem(s):'), x0, y, 16, WHITE)
+                text(presets.size(preset) .. ' value(s) for ' .. #names .. (MOD.enemy.on and ' page(s):' or ' item(s):'), x0, y, 16, WHITE)
+                ui.fnames = names
+                button('fopen_all:x', next(ui.fopen) and 'Close all' or 'Open all', W - 24 - 110, y - 6, 110, 26, true)
             end
             y = y + 28
-            local room = math.floor((H - 110 - y) / 22)
-            for k, hash in ipairs(names) do
-                if k == room and #names > room then
-                    text('+ ' .. (#names - room + 1) .. ' more', x0, y, 15, MUTED)
-                    break
+            -- a line per page, and an open page's rows under it, scrolled by the wheel and Up / Down
+            local lines, room = {}, math.floor((H - (settings.nav_buttons and 142 or 112) - y) / 22)
+            local group = nil
+            for _, hash in ipairs(names) do
+                if slot(hash) ~= group then
+                    group = slot(hash)
+                    if #lines > 0 then lines[#lines + 1] = { gap = true } end
+                    lines[#lines + 1] = { head = group, closed = ui.fclosed[group] }
                 end
+                if not ui.fclosed[group] then lines[#lines + 1] = { hash = hash } end
                 local weapon = by_hash[hash]
-                text(weapon and weapon.name or ('unknown ' .. hash), x0, y, 15, weapon and WHITE or WARN, 480)
-                text(counts[hash] .. ' value(s)', W - 24, y, 15, MUTED, 120, true)
+                for _, o in ipairs(not ui.fclosed[group] and ui.fopen[hash] and weapon and held[hash] or {}) do
+                    local p = weapon.by_id[o.id]
+                    if o.text then lines[#lines + 1] = { typed = o.id, value = o.text, owner = hash }
+                    elseif p then lines[#lines + 1] = { part = p, value = o.value, id = o.id, owner = hash }
+                    elseif o.id:match('^passive_') then lines[#lines + 1] = { passive = o.value, id = o.id, owner = hash } end
+                end
+            end
+            ui.fspan = #lines > room and #lines - room + 1 or 0   -- (the top row can be a group's title, kept in view)
+            ui.fscroll = math.max(1, math.min(ui.fscroll or 1, ui.fspan + 1))
+            ui.sbar = nil
+            if ui.fspan > 0 then   -- as the stats' bar, the same looks and mouse
+                local top, len = y, room * 22 - 2
+                local th = math.max(24, len * room / #lines)
+                local ty = top + (len - th) * (ui.fscroll - 1) / ui.fspan
+                rect(989, top, 5, len, color(28, 34, 42), 951)
+                rect(989, ty, 5, th, ((ui.drag and ui.drag.bar == 'sbar') or ui.hover == 'sbar:thumb') and GOLD or color(110, 124, 138), 952)
+                region('sbar:track', 986, top, 12, len)
+                region('sbar:thumb', 986, ty, 12, th)
+                ui.sbar = { id = 'fscroll', top = height - oy - top * s, bottom = height - oy - (top + len) * s,
+                            thumb_top = height - oy - ty * s, thumb = th * s, span = ui.fspan, page = room }
+            end
+            local function title(line)
+                local key = 'fhead:' .. line.head
+                rect(x0 - 6, y - 2, W - 18 - x0, 22, ui.hover == key and color(44, 56, 68) or color(23, 30, 39), 951)
+                text(line.head:upper(), x0, y + 1, 19, HEADING, nil, nil, nil, 'heading')
+                text(line.closed and '+' or '-', W - 32, y + 1, 19, HEADING, 30, true)
+                region(key, x0 - 6, y - 2, W - 18 - x0, 22)
+            end
+            local kept = nil
+            if lines[ui.fscroll] and not lines[ui.fscroll].head then
+                for j = ui.fscroll - 1, 1, -1 do
+                    if lines[j].head then kept = lines[j]; break end
+                end
+            end
+            if kept then title(kept); y = y + 22 end
+            local final = math.min(#lines, ui.fscroll + room - 1 - (kept and 1 or 0))
+            for k = ui.fscroll, final do
+                local line = lines[k]
+                if line.owner then   -- (a double click opens the item's page)
+                    if ui.hover == 'fgo:' .. line.owner then rect(x0, y - 2, W - 24 - x0, 22, color(40, 52, 64), 951) end
+                    region('fgo:' .. line.owner, x0, y - 2, W - 24 - x0, 22)
+                end
+                if line.gap then
+                    -- a blank row between groups
+                elseif line.head then
+                    title(line)
+                elseif line.hash then
+                    local weapon = by_hash[line.hash]
+                    if ui.hover == 'fopen:' .. line.hash then rect(x0, y - 2, W - 24 - x0, 22, color(40, 52, 64), 951) end
+                    text(weapon and weapon.name or ('unknown ' .. line.hash), x0, y, 15, ui.fopen[line.hash] and GOLD or weapon and WHITE or WARN, 480)
+                    text(counts[line.hash] .. ' value(s)', W - 24, y, 15, MUTED, 120, true)
+                    region('fopen:' .. line.hash, x0, y - 2, W - 24 - x0, 22)
+                elseif line.typed then
+                    text(({ name = 'Name', code = 'Designation', desc = 'Description' })[line.typed], x0 + 16, y, 14, MUTED, 130)
+                    text(line.value, W - 24, y, 14, WHITE, 420, true)
+                elseif line.passive then
+                    text(line.id == 'passive_none' and 'No passives' or KINDS[TYPES.passive].NAMES[line.passive] or ('Passive ' .. line.passive), x0 + 16, y, 14, MUTED, 400)
+                else
+                    -- shortcut: stored numbers, so a row shown as a multiplier or a time reads as its raw value
+                    text((line.part.row and line.part.row.label) or line.id, x0 + 16, y, 14, MUTED, 400)
+                    local game = default_of(line.part.field)
+                    text((game and number_text(game) or '?') .. ' -> ' .. number_text(line.value), W - 24, y, 14, WHITE, 160, true)
+                end
                 y = y + 22
             end
-            text('Saved as StatEditor\\' .. presets.file_name(chosen) .. ' (copy it to share the set).',
+            if ui.fspan > 0 then
+                if settings.nav_buttons then
+                    text(string.format('rows %d-%d of %d', ui.fscroll, final, #lines), x0, H - 128, 15, MUTED)
+                    button('fscroll:up', 'Up', W - 24 - 164, H - 134, 80, 26, ui.fscroll > 1)
+                    button('fscroll:down', 'Down', W - 24 - 80, H - 134, 80, 26, ui.fscroll <= ui.fspan)
+                end
+            end
+            text('Saved as StatEditor\\' .. presets.file_name(chosen) .. '. Copy code shares it. A code you were sent goes in the box on the left.',
                  x0, H - 100, 14, DIM, W - x0 - 20)
         end
     end
@@ -28523,8 +30936,16 @@ local function draw(width, height)
     local last_top = MOD.offline and (math.max(0,math.ceil(#list/LIST_ROWS)-1)*LIST_ROWS+1) or math.max(1,#list-LIST_ROWS+1)
     if MOD.offline then ui.page=math.floor((ui.page-1)/LIST_ROWS)*LIST_ROWS+1 end
     ui.page = math.max(1, math.min(ui.page, last_top))
-    for k = 1, LIST_ROWS do
-        local weapon = list[ui.page + k - 1]
+    -- as the stats' section titles: the top row keeps the title of the group scrolled under it
+    local kept = nil
+    if list.items and list[ui.page] and not list[ui.page].head then
+        for j = ui.page - 1, 1, -1 do
+            if list[j].head then kept = list[j]; break end
+        end
+    end
+    for k = 1, MOD.list_rows() do
+        local at = ui.page + k - 1 - (kept and 1 or 0)
+        local weapon = kept and k == 1 and kept or list[at]
         if not weapon then break end
         local y = MOD.LIST_TOP + (k - 1) * MOD.LIST_PITCH
         local key = 'weapon:' .. weapon.hash
@@ -28542,7 +30963,7 @@ local function draw(width, height)
         -- smaller, without the name it shares
         local owner = not searching and weapon.name:match('^(.+): [^:]+$')
         if owner then
-            local j = ui.page + k - 2
+            local j = at - 1
             while list[j] and list[j].name:sub(1, #owner + 2) == owner .. ': ' do j = j - 1 end
             if not (list[j] and list[j].name == owner) then owner = nil end
         end
@@ -28557,11 +30978,10 @@ local function draw(width, height)
             text((changed and '* ' or '') .. settings.tr(weapon.name) .. id, 24, y + 4, 16, ink, searching and 226 or 302)
         end
         region(key, 16, y, 318, 25)
-        -- the Armors tab's own pages (Helldiver, Armor weight): a line parts them from the passives
-        if not searching and (weapon.player or weapon.kits) then rect(16, y + 24, 318, 2, MUTED, 952) end
+        ::next_row::
     end
     -- the Boosters tab: why only some boosters are there, under the list
-    if ui.tab == 'Boosters' and not searching and not presets_tab and #list > 0 and #list <= LIST_ROWS - 5 then
+    if ui.tab == 'Boosters' and not searching and not presets_tab and #list > 0 and #list <= MOD.list_rows() - 5 then
         local line, y, words = '', 96 + #list * 26 + 12, settings.tr(MOD.boosters.WHY)
         local spaced = words:find(' ')
         for word in words:gmatch(spaced and '%S+' or '[^\128-\191][\128-\191]*') do
@@ -28574,7 +30994,7 @@ local function draw(width, height)
         end
         text(line, 24, y, 14, MUTED)
     end
-    local py = 96 + LIST_ROWS * 26 + 8
+    local py = 96 + MOD.list_rows() * 26 + 8
     if not presets_tab then
         if MOD.desktop_layout then text(ui.search.text~='' and '搜索结果' or '装备列表',24,126,14,MUTED,300) end
         if ui.search.text ~= '' and #list == 0 then text('Nothing matches.', 28, MOD.LIST_TOP+14, 16, MUTED) end
@@ -28594,7 +31014,7 @@ local function draw(width, height)
         rect(16, sy, 246, search_h, active and color(241, 246, 239) or color(247, 250, 245), 951)
         outline(16, sy, 246, search_h, active and GOLD or (ui.hover == 'search' and GOLD or color(183, 199, 188)))
         if ui.search.text == '' and not active then
-            text(MOD.enemy.on and 'Search enemies' or 'Search weapons and stratagems', 24, sy + 7, 15, DIM, 214)
+            text(MOD.SEARCH_TEXT[ui.tab] or 'Search items', 24, sy + 7, 15, DIM, 214)
         else
             text(ui.search.text .. (active and '_' or ''), 28, sy + 13, 16, WHITE, 230)
         end
@@ -28608,7 +31028,23 @@ local function draw(width, height)
     local x0 = 356
     if ui.settings then
         text('Settings', x0, 94, 22, GOLD)
-        local y = 132
+        -- the page scrolls: a row outside the view is left out whole
+        local TOP, BOTTOM, STEP = 126, 906, 12
+        ui.sbar = nil
+        ui.sscroll = ui.sscroll or 1
+        local y = 132 - (ui.sscroll - 1) * STEP
+        local draw_text, draw_button, draw_rect, draw_region = text, button, rect, region
+        local function inside(at, h) return at >= TOP and at + h <= BOTTOM end
+        local function text(value, x, at, size, ...) if inside(at, size) then draw_text(value, x, at, size, ...) end end
+        local function button(key, label, x, at, w, h, ...) if inside(at, h) then draw_button(key, label, x, at, w, h, ...) end end
+        local function rect(x, at, w, h, ...) if inside(at, h) then draw_rect(x, at, w, h, ...) end end
+        local function region(key, x, at, w, h, ...) if inside(at, h) then draw_region(key, x, at, w, h, ...) end end
+        local function heading(label)
+            y = y + 6
+            rect(x0 - 6, y, W - 14 - x0, 25, color(23, 30, 39), 951)   -- (as the list's group titles)
+            text(settings.tr(label):upper(), x0, y + 4, 19, HEADING, nil, nil, nil, 'heading')
+            y = y + 33
+        end
         local function choice(label, key, options, current)
             text(label, x0, y + 6, 16, WHITE, 270)
             for k, o in ipairs(options) do
@@ -28618,6 +31054,7 @@ local function draw(width, height)
         end
         local ONOFF = { { 'on', 'On' }, { 'off', 'Off' } }
         local function onoff(v) return v and 'on' or 'off' end
+        heading('General')
         if MOD.offline then
             text('Language', x0, y + 6, 16, WHITE, 270)
             local options = { { id = 'en', name = 'English' } }
@@ -28647,7 +31084,7 @@ local function draw(width, height)
                 rect(680, y, 80, 28, typing and color(241, 246, 239) or color(225, 238, 226), 951)
                 outline(680, y, 80, 28, GOLD)
             end
-            text(typing and (ui.value.text .. '_') or (settings[key] .. '%'), 754, y + 6, 17, WHITE, 70, true)
+            text(typing and MOD.caret.show(ui.value) or (settings[key] .. '%'), 754, y + 6, 17, WHITE, 70, true)
             region('value:' .. key, 680, y, 80, 28)
             button('set:' .. key .. ':up', '>', 764, y, 36, 28, settings[key] < r[2])
             y = y + 50
@@ -28658,6 +31095,7 @@ local function draw(width, height)
             percent('Background opacity', 'opacity')
         end
         if MOD.offline then   -- wider buttons than choice()'s: 'Automatic', 'Every commit' in every language
+            heading('Updates')
             text('Updates', x0, y + 6, 16, WHITE, 270)
             for k, o in ipairs({ { 'ask', 'Ask' }, { 'auto', 'Automatic' } }) do
                 button('set:updates:' .. o[1], o[2], 800 + (k - 1) * 156, y, 148, 38, true, settings.updates == o[1])
@@ -28684,6 +31122,7 @@ local function draw(width, height)
         y = y + 14
         end
         local notes, warn = {}, false
+        heading('Gameplay')
         choice('Several vehicles of a kind', 'vehicles', ONOFF, onoff(MOD.vehicles.on))
         text('On: a loadout can take more than one exosuit, FRV or tank.', x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
         y = y + 14
@@ -28696,6 +31135,10 @@ local function draw(width, height)
         y = y + 14
         choice('Sniper crosshair in third person', 'reticle', ONOFF, onoff(MOD.tweaks.reticle.on))
         text('On: sniper rifles show a crosshair when you aim in third person.', x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
+        y = y + 14
+        heading('Editor')
+        choice('Up/Down and arrow buttons', 'nav_buttons', ONOFF, onoff(settings.nav_buttons))
+        text('On: shows the Up, Down, < and > buttons by the lists. The mouse wheel, scroll bars and keys work either way.', x0 + 16, y - 6, 14, MUTED, W - x0 - 40)
         y = y + 14
         if not MOD.offline then   -- (the game's item list exists only while it runs)
         choice('Unlock unused items', 'unlock_all', ONOFF, onoff(settings.unlock_any()))
@@ -28722,7 +31165,7 @@ local function draw(width, height)
             button('set:tab:' .. tab, tab, tx, y, w, 28, true, not settings.hidden[tab])
             tx = tx + w + 4
         end
-        y = y + 42
+        y = y + 52
         local sure_reset = ui.confirm and ui.confirm.kind == 'reset_all'
         button('reset_all', sure_reset and 'Sure?' or 'Reset all values', x0, y, 188, 28, #overrides > 0, sure_reset)
         text('Resets all values from the current preset to default.', x0 + 16, y + 30, 14, MUTED, W - x0 - 40)
@@ -28734,11 +31177,11 @@ local function draw(width, height)
         rect(x0, y, W - x0 - 16, 1, color(183, 199, 188), 951)
         y = y + 14
         text(MOD.title .. ' v' .. MOD.version, x0, y, 18, GOLD)
-        text('Made by SHODAN', x0, y + 30, 16, WHITE)
-        if not MOD.offline then text('Bingus Shared Loader by CowboyBingus', x0, y + 54, 16, MUTED) end
-        y = y + (MOD.offline and 68 or 92)
+        text('Made by SHODAN', W - 16, y + 2, 16, WHITE, 300, true)
+        if not MOD.offline then text('Bingus Shared Loader by CowboyBingus', x0, y + 26, 16, MUTED) end
+        y = y + (MOD.offline and 30 or 54)
         text('GitHub', x0, y + 6, 16, WHITE)
-        text(settings.GITHUB:gsub('^https://', ''), x0 + 90, y + 7, 15, MUTED, 340)
+        text(settings.GITHUB:gsub('^https://', ''), x0 + 68, y + 7, 15, MUTED, 340)
         button('link:github_open', 'Open', 800, y, 88, 28, true)
         button('link:github_copy', 'Copy', 896, y, 88, 28, true)
         y = y + 50
@@ -28748,7 +31191,21 @@ local function draw(width, height)
         button('link:log_copy', 'Copy', 800, y, 88, 28, true)
         button('link:log_open', 'Folder', 896, y, 88, 28, true)
         text(MOD.offline and (data_dir('StatEditor') or ''):gsub('/', '\\') or log_dir .. '\\' .. MOD.log,
-             x0, y + 36, 14, MUTED, W - x0 - 16)
+             x0 + 128, y + 7, 14, MUTED, 300)
+        local span = math.max(0, math.ceil((y + 28 + (ui.sscroll - 1) * STEP - BOTTOM) / STEP))
+        if ui.sscroll > span + 1 then ui.sscroll, ui.version = span + 1, ui.version + 1 end
+        if span > 0 then   -- as the stats' bar, the same looks and mouse
+            local len = BOTTOM - TOP
+            local th = math.max(24, len * len / (len + span * STEP))
+            local ty = TOP + (len - th) * (ui.sscroll - 1) / span
+            local hot = (ui.drag and ui.drag.bar == 'sbar') or ui.hover == 'sbar:thumb'
+            draw_rect(989, TOP, 5, len, color(28, 34, 42), 951)
+            draw_rect(989, ty, 5, th, hot and GOLD or color(110, 124, 138), 952)
+            draw_region('sbar:track', 986, TOP, 12, len)
+            draw_region('sbar:thumb', 986, ty, 12, th)
+            ui.sbar = { id = 'sscroll', top = height - oy - TOP * s, bottom = height - oy - (TOP + len) * s,
+                        thumb_top = height - oy - ty * s, thumb = th * s, span = span, page = 20 }
+        end
     elseif presets_tab then
         -- drawn above
     elseif not weapon then
@@ -28828,7 +31285,7 @@ local function draw(width, height)
                 end
                 if row.section ~= section then
                     section = row.section
-                    local note, others = row.note or '', shared_with(weapon, row)
+                    local note, others = row.note or '', MOD._migration_shared_with(weapon, row)
                     if type(note) == 'function' then note, others = note(others), {} end
                     -- the note after the section's name (long ones: 'PARTIAL CHARGE EXPLOSION')
                     local nx=math.max(110,width(section,15)+28)
@@ -28875,6 +31332,13 @@ local function draw(width, height)
                     text('(?)',x0+math.min(width(label,16),MOD.offline and MOD.desktop_layout.label_w or 174)+6,y+bh/2-7,13,DIM)
                     if ui.hover=='row:'..n then tip_overlay={lines=help,x=x0,y=y+bh+2} end
                 end
+                if row.choice and (ui.hover == 'row:' .. n or ui.hover == 'value:' .. n) then
+                    local lines = MOD.records.source(row)
+                    if lines then
+                        for _, line in ipairs(ui.hover == 'row:' .. n and row.tip or {}) do lines[#lines + 1] = line end
+                        tip_overlay = { lines = lines, x = x0, y = y + bh + 2 }
+                    end
+                end
                 if row.code then   -- a call-in code: its arrows, and Record
                     local rec = ui.code and ui.code.n == n and ui.code.weapon == weapon and ui.code
                     if rec or ui.hover == 'value:' .. n then
@@ -28901,7 +31365,7 @@ local function draw(width, height)
                         outline(696, y, 88, bh, GOLD)
                     end
                     if typing then
-                        text(ui.value.text .. '_', 780, y + bh / 2 - 8, 17, WHITE, 84, true)
+                        text(MOD.caret.show(ui.value), 780, y + bh / 2 - 8, 17, WHITE, 84, true)
                     else
                         text(shown(value), 780, y + bh / 2 - 8, 17, ink, 84, true)
                     end
@@ -28946,64 +31410,43 @@ local function draw(width, height)
             button('scroll:down', '下一页', 874 + shift, bottom + 6, 80, MOD.offline and 36 or 26, ui.last_visible < #weapon.rows)
         end
         if stack_list then
-            y = (scrolling and bottom + 36 or y) + 12
-            text('ALSO INCLUDES', x0, y + 4, 15, MUTED)
-            text('Every armor with this passive gets their effects too (set on their own pages).',
+            y = (scrolling and bottom + (settings.nav_buttons and 36 or 0) or y) + 12
+            rect(x0 - 6, y, W - 10 - x0, 22, color(15, 20, 26), 951)
+            text('PASSIVES', x0, y + 4, 16, HEADING, nil, nil, nil, 'heading')
+            text('Only this armor. Each passive\'s values are on its own page, below the armors.',
                  x0 + 150, y + 4, 14, MUTED, W - x0 - 170)
             y = y + 26
-            -- its own effects: on (the rows above) or off (only the passives below apply)
-            local own = not settings.own_off[stack_id]
-            text('Own effects', x0, y + 6, 16, WHITE, 140)
-            text(own and 'Its stats above apply.' or 'Off: its stats above are left out; only the passives below apply.',
-                 x0 + 150, y + 7, 14, own and MUTED or WARN, 800 - x0 - 160)
-            button('stack_own:on', 'On', 800, y, 88, 28, true, own)
-            button('stack_own:off', 'Off', 896, y, 88, 28, true, not own)
-            y = y + 34
+            if #stack_list == 0 then
+                text('No passive.', x0, y + 6, 16, WHITE, 420)
+                y = y + 34
+            end
             for _, id in ipairs(stack_list) do
                 local other = by_hash[string.format('FFFFFFFE%08X', id)]
-                text(other and other.name or ('Passive ' .. id), x0, y + 6, 16, WHITE, 420)
+                local boxed = other and MOD.rename.of(other)
+                text(other and other.name or ('Passive ' .. id), x0, y + 6, 16, WHITE, boxed and 196 or 420)
+                if boxed then rename_box('line' .. id, x0 + 204, y, 766 - x0 - 204) end
                 button('stack_open:' .. id, 'Open', 800, y, 88, 28, other ~= nil)
                 button('stack_del:' .. id, 'Remove', 896, y, 88, 28, true)
                 y = y + 34
             end
-            button('stack_pick', '+ Add passive', x0, y, 188, 28, true)
+            button('stack_pick', '+ Add passive', x0, y, 188, 28, #stack_list < MOD.kits.MAX_PASSIVES)
+            if #stack_list > 1 then
+                text('The armory shows the first passive\'s name and at most 3 effects. All of them apply.',
+                     x0, y + 40, 14, MUTED, W - x0 - 20)
+            end
         end
         if rename then   -- the in-game name and description, at the very bottom
-            -- the part of value that fits in room (its end while typing)
-            local function fit(value, room, tail)
-                if width(value, 15 * s) <= room * s then return value end
-                local cs = {}
-                for c in value:gmatch('[%z\1-\127\194-\244][\128-\191]*') do cs[#cs + 1] = c end
-                local function cut(k) return tail and '...' .. table.concat(cs, '', #cs - k + 1) or table.concat(cs, '', 1, k) .. '...' end
-                local lo, hi = 0, #cs
-                while lo < hi do
-                    local mid = math.ceil((lo + hi) / 2)
-                    if width(cut(mid), 15 * s) <= room * s then lo = mid else hi = mid - 1 end
-                end
-                return cut(lo)
-            end
-            local ry = H - 70 - 40 - 88
-            text('IN-GAME TEXT', x0, ry + 4, 15, MUTED)
-            text('Click a box to type. Install puts it in the game, in every language.', x0 + 150, ry + 4, 14, MUTED, W - x0 - 170)
+            local ry = H - 70 - 40 - 88 - grown
+            rect(x0 - 6, ry, W - 10 - x0, 22, color(15, 20, 26), 951)
+            text('IN-GAME TEXT', x0, ry + 4, 16, HEADING, nil, nil, nil, 'heading')
             ry = ry + 26
-            for _, f in ipairs({ { 'name', 'Name' }, { 'desc', 'Description' } }) do
-                local field = f[1]
-                local typed = MOD.rename.texts[weapon.hash]
-                typed = typed and typed[field]
-                local editing = ui.rename and ui.rename.weapon == weapon and ui.rename.field == field and ui.rename
-                local ok = field == 'name' or rename.desc[1] ~= nil
-                local bx = x0 + 150
-                local bw = 954 - bx
-                local hot = editing or (ok and ui.hover == 'rename:' .. field)
+            for _, f in ipairs({ { 'name', 'Name' }, { 'desc', weapon.passive and 'Passive text' or 'Description' } }) do
                 text(f[2], x0, ry + 6, 16, WHITE, 140)
-                rect(bx, ry, bw, 28, editing and color(20, 26, 34) or hot and color(40, 52, 64) or color(28, 34, 42), 951)
-                outline(bx, ry, bw, 28, hot and GOLD or color(70, 82, 94))
-                local value = editing and editing.text or typed or rename.game[field] or ''
-                if editing then value = fit(value .. '_', bw - 16, true) else value = fit(value, bw - 16) end
-                text(value, bx + 8, ry + 6, 15, typed and not editing and GOLD or WHITE)
-                region('rename:' .. field, bx, ry, bw, 28, ok)
-                button('rename_reset:' .. field, 'R', 958, ry, 26, 28, typed ~= nil)
-                ry = ry + 34
+                local rows = f[1] == 'desc' and desc_rows or nil
+                local bw, code = 954 - x0 - 150, f[1] == 'name' and rename.code[1]
+                if code then rename_box('code', x0 + 150, ry, 110) end   -- the designation, glued to the name: its R resets both
+                rename_box(f[1], x0 + 150 + (code and 110 or 0), ry, code and bw - 110 or bw, rows)
+                ry = ry + 34 + (rows and (#rows - 1) * 20 or 0)
             end
         end
     end
@@ -29014,7 +31457,9 @@ local function draw(width, height)
     -- ('Back' alone is also a body part's name: the button's own text, 'Back (button)', in the translations)
     local back = settings.tr('Back (button)')
     button('settings', ui.settings and (back == 'Back (button)' and 'Back' or back) or 'Settings', W - 16 - 104, H - 54, 104, 34, true, ui.settings)
-    if ui.binding then
+    if ui.message and ui.message.warning then
+        -- alone in the footer (MOD.notify's warning)
+    elseif ui.binding then
         text('Press the key that should open and close the panel: F1-F12, Insert, Home, End, Pause or Scroll Lock. Esc cancels.',
              18, H - 56, 14, MUTED, W - 280)
     elseif ui.code then
@@ -29022,11 +31467,14 @@ local function draw(width, height)
              'one back, Esc cancels.', 18, H - 56, 14, MUTED, W - 280)
     elseif ui.settings then
         text('Settings are saved at once, in config.txt with your changes.', 18, H - 56, 14, MUTED, W - 280)
+    elseif ui.codebox then
+        text('Ctrl+V pastes a code, or type it: Enter adds the preset, Esc cancels.', 18, H - 56, 14, MUTED, W - 280)
     elseif ui.editing then
-        text('Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.',
+        text(ui.editing.field and 'Type the text: Enter keeps it, Shift+Enter starts a new line (twice leaves a gap), Esc cancels.'
+             or 'Type the name: Enter keeps it, Esc cancels. The game sees these keys too, so name presets from a menu.',
              18, H - 56, 14, MUTED, W - 280)
     elseif ui.rename then
-        text('Type the text: Enter keeps it, Esc cancels. Install puts it in the game, in every language.',
+        text('Type the text: Enter keeps it, Shift+Enter starts a new line (twice leaves a gap), Esc cancels.',
              18, H - 56, 14, MUTED, W - 280)
     elseif ui.value and ui.value.setting then
         local r = settings.RANGE[ui.value.setting]
@@ -29047,7 +31495,13 @@ local function draw(width, height)
         text('Up/Down choose a stat, Left/Right change it (Shift: bigger steps), click a value or press Enter to type it,',
              18, H - 56, 14, MUTED, W - 280)
     end
-    if ui.message then
+    if ui.message and ui.message.warning then   -- a sentence on each line, at the footer's size
+        local said = settings.tr(ui.message.text)
+        local cut = said:find('。', 1, true)
+        cut = cut and cut + 2 or said:find('. ', 1, true)
+        text(said:sub(1, cut), 18, H - 56, 14, WARN, W - 280)
+        text(said:sub(cut + 1):gsub('^ ', ''), 18, H - 34, 14, WARN, W - 280)
+    elseif ui.message then
         text(ui.message.text, 18, H - 34, 14, GOOD, W - 280)
     elseif presets_tab then
         text('Overwriting and deleting ask twice. Changes apply at once and are saved; ' .. #overrides ..
@@ -29058,9 +31512,8 @@ local function draw(width, height)
     end
     -- the passives to stack on the chosen one: over its page, until one is chosen (Cancel / Esc: none)
     if ui.stack_pick and ui.stack_pick == weapon and not ui.settings then
-        local target = tables[weapon.passive] and tables[weapon.passive].index.id
-        local taken = { [target or -1] = true }
-        for _, id in ipairs(settings.stacks[target] or {}) do taken[id] = true end
+        local taken = {}
+        for _, id in ipairs(MOD.kits.list_of(weapon)) do taken[id] = true end
         local choices = {}
         for _, w in ipairs(weapons) do
             local t = w.passive and tables[w.passive]
@@ -29072,7 +31525,7 @@ local function draw(width, height)
         outline(x, y, w, h, GOLD, 959)
         region('stack_modal', x, y, w, h, false)
         text('Add a passive to ' .. weapon.name, x + 16, y + 14, 20, GOLD, w - 32, false, 960)
-        text('Its effects are added to every armor with this passive.', x + 16, y + 44, 14, MUTED, w - 32, false, 960)
+        text('Only this armor gets it.', x + 16, y + 44, 14, MUTED, w - 32, false, 960)
         local cols, bw = 3, math.floor((w - 32 - 16) / 3)
         for k, c in ipairs(choices) do
             local col, row = (k - 1) % cols, math.floor((k - 1) / cols)
@@ -29080,6 +31533,49 @@ local function draw(width, height)
         end
         if #choices == 0 then text('Every passive is in already.', x + 16, y + 80, 16, MUTED, w - 32, false, 960) end
         button('stack_cancel', 'Cancel', x + w - 16 - 104, y + h - 16 - 30, 104, 30, true, false, nil, 961)
+    end
+    -- Copy values to: the other presets, any number chosen, then Copy
+    if ui.fcopy and (not presets_tab or ui.settings or ui.fcopy.enemy ~= MOD.enemy.on) then ui.fcopy = nil end
+    if ui.fcopy then
+        local x, y, w, h = 350, 84, W - 360, H - 104 - 84 - 8
+        rect(x, y, w, h, color(8, 11, 15), 958)
+        outline(x, y, w, h, GOLD, 959)
+        region('stack_modal', x, y, w, h, false)
+        text('Copy values to', x + 16, y + 14, 20, GOLD, w - 32, false, 960)
+        text('Choose the presets, then Copy. Values they share take this preset\'s, the rest of theirs stays.', x + 16, y + 44, 14, MUTED,
+             w - 32, false, 960)
+        local cols, bw, k = 3, math.floor((w - 32 - 16) / 3), 0
+        for _, n in ipairs(presets.full_order()) do
+            if n ~= ui.fcopy.from then
+                local col, row = k % cols, math.floor(k / cols)
+                button('fcopy_toggle:' .. n, presets.list()[n].name, x + 16 + col * (bw + 8), y + 74 + row * 34, bw, 30, true,
+                       ui.fcopy.chosen[n], nil, 961)
+                k = k + 1
+            end
+        end
+        button('fcopy_go', 'Copy', x + w - 16 - 104 - 8 - 104, y + h - 16 - 30, 104, 30, next(ui.fcopy.chosen) ~= nil, false, nil, 961)
+        button('fcopy_cancel', 'Cancel', x + w - 16 - 104, y + h - 16 - 30, 104, 30, true, false, nil, 961)
+    end
+    -- Copy to: the other vehicles with this section, any number chosen, then Copy
+    if ui.copy and ui.copy.weapon == weapon and not ui.settings then
+        local choices = MOD.copy_targets(weapon, ui.copy.section)
+        table.sort(choices, function(a, b) return a.name:lower() < b.name:lower() end)
+        local x, y, w, h = 350, 84, W - 360, H - 104 - 84 - 8
+        rect(x, y, w, h, color(8, 11, 15), 958)
+        outline(x, y, w, h, GOLD, 959)
+        region('stack_modal', x, y, w, h, false)
+        text('Copy ' .. ui.copy.section:upper() .. ' to', x + 16, y + 14, 20, GOLD, w - 32, false, 960)
+        text('Choose the vehicles, then Copy. They get every value shown in this section.', x + 16, y + 44, 14, MUTED,
+             w - 32, false, 960)
+        local cols, bw = 3, math.floor((w - 32 - 16) / 3)
+        for k, c in ipairs(choices) do
+            local col, row = (k - 1) % cols, math.floor((k - 1) / cols)
+            button('copy_toggle:' .. c.hash, c.name, x + 16 + col * (bw + 8), y + 74 + row * 34, bw, 30, true,
+                   ui.copy.chosen[c.hash], nil, 961)
+        end
+        if #choices == 0 then text('No other vehicle has this section.', x + 16, y + 80, 16, MUTED, w - 32, false, 960) end
+        button('copy_go', 'Copy', x + w - 16 - 104 - 8 - 104, y + h - 16 - 30, 104, 30, next(ui.copy.chosen) ~= nil, false, nil, 961)
+        button('copy_cancel', 'Cancel', x + w - 16 - 104, y + h - 16 - 30, 104, 30, true, false, nil, 961)
     end
     -- a hovered row's tip, under it (above it near the bottom)
     if tip_overlay then
@@ -29182,11 +31678,62 @@ function MOD.restore_last()
     ui.tab, ui.page, ui.search, ui.settings, ui.weapon = tabs[1], 1, { text = '', active = false }, false, nil
     for _, t in ipairs(tabs) do if t == last.tab then ui.tab = t end end
     local page = last.weapon and by_hash[last.weapon]
-    if page and page.slot == ui.tab and #page.rows > 0 and (page.enemy ~= nil) == MOD.enemy.on then
+    if page and page.slot == ui.tab and (#page.rows > 0 or page.armor or page.look) and (page.enemy ~= nil) == MOD.enemy.on then
         select_weapon(page)
     else
         select_weapon(weapons_in(ui.tab)[1])
     end
+end
+
+-- Back and forward through the pages seen, as a browser's (the mouse's side buttons): every change of editor, tab,
+-- page or Settings is noted, whichever way it was made.
+MOD.nav = { back = {}, forward = {}, LIMIT = 100 }
+function MOD.nav.here()
+    return { enemy = MOD.enemy.on, tab = ui.tab, weapon = ui.weapon and ui.weapon.hash, settings = ui.settings or false }
+end
+
+function MOD.nav.track()
+    local nav, at, now = MOD.nav, MOD.nav.at, MOD.nav.here()
+    if not ui.weapon or state.phase ~= 'ready' then return end
+    if at and at.enemy == now.enemy and at.tab == now.tab and at.weapon == now.weapon and at.settings == now.settings then return end
+    if at then
+        nav.back[#nav.back + 1], nav.forward = at, {}
+        if #nav.back > nav.LIMIT then table.remove(nav.back, 1) end
+    end
+    nav.at = now
+end
+
+-- An item's page, its group opened and any search closed
+function MOD.nav.show(page)
+    local _, title = MOD.group_of(page)
+    if title then ui.closed[page.slot .. '/' .. title] = nil end
+    ui.search = { text = '', active = false }
+    select_weapon(page)
+    ui.version = ui.version + 1
+end
+
+function MOD.nav.go(back)
+    local nav = MOD.nav
+    local from, into = back and nav.back or nav.forward, back and nav.forward or nav.back
+    local stop = table.remove(from)
+    if not stop then return end
+    into[#into + 1] = nav.at
+    state.switch_editor(stop.enemy)
+    if stop.tab ~= ui.tab then ui.page = 1 end
+    local page = stop.weapon and by_hash[stop.weapon]
+    if page then nav.show(page) end
+    if stop.tab == 'Presets' then ui.before_presets = page and page.slot or ui.before_presets end
+    ui.tab, ui.settings = stop.tab, stop.settings
+    nav.at = nav.here()
+    ui.version = ui.version + 1
+end
+
+-- A click on a Presets page line: true on the second one, which opens the item's page.
+function MOD.nav.twice(hash)
+    local again = ui.ftwice and ui.ftwice.hash == hash and api.now() - ui.ftwice.at < 0.5
+    ui.ftwice = not again and { hash = hash, at = api.now() } or nil
+    if again and by_hash[hash] then MOD.nav.show(by_hash[hash]) end
+    return again
 end
 
 local function click(key)
@@ -29205,11 +31752,12 @@ local function click(key)
     if kind=='value_cancel' then finish_value(false);ui.version=ui.version+1;return end
 
     -- clicking anything else while naming keeps the name typed so far
-    if ui.editing and kind ~= 'name' then presets.finish_rename(true) end
+    if ui.editing and kind ~= 'name' and not (ui.editing.field and key == 'fpreset:desc') then presets.finish_rename(true) end
     if ui.search.active and kind ~= 'search' then ui.search.active = false end
+    if ui.codebox and kind ~= 'fcode' then ui.codebox = nil end
     if ui.value and key ~= 'value:' .. ui.value.n then finish_value(true) end
     if ui.code and key ~= 'code:' .. ui.code.n then MOD.code.finish(false) end
-    if ui.rename and key ~= 'rename:' .. ui.rename.field then
+    if ui.rename and key ~= 'rename:' .. ui.rename.box then
         MOD.rename.set(ui.rename.weapon, ui.rename.field, ui.rename.text)
         ui.rename, ui.version = nil, ui.version + 1
     end
@@ -29249,6 +31797,7 @@ local function click(key)
             MOD.vehicles.on = value == 'on'; MOD.vehicles.apply()
         elseif name == 'bounce' or name == 'foliage' or name == 'reticle' then
             MOD.tweaks[name].on = value == 'on'; MOD.tweaks.apply()
+        elseif name == 'nav_buttons' then settings.nav_buttons = value == 'on'
         elseif name == 'unlock_all' then
             settings.unlock_all(value == 'on'); settings.unlock.next_check = 0
         elseif name:find('^unlock_') then
@@ -29295,6 +31844,7 @@ local function click(key)
         else
             ui.confirm = nil
             reset_all()
+            presets.mark(nil)
         end
     elseif kind == 'restore_examples' then
         local n = presets.restore_examples(true)
@@ -29306,43 +31856,72 @@ local function click(key)
         if arg == 'save' then presets.save_weapon_preset(weapon, ui.wslot)
         elseif arg == 'load' then presets.load_weapon_preset(weapon, ui.wslot)
         elseif arg == 'clear' then presets.clear_weapon_preset(weapon, ui.wslot) end
-    elseif kind == 'fslot' then ui.fslot = tonumber(arg)
+    elseif kind == 'fcode' then ui.codebox = ui.codebox or { text = '' }
+    elseif kind == 'fslot' then ui.fslot, ui.fscroll = tonumber(arg), 1
     elseif kind == 'fpage' then ui.fpage = math.max(1, ui.fpage + (arg == 'next' and LIST_ROWS or -LIST_ROWS))
     elseif kind == 'name' then presets.finish_rename(arg == 'ok')
     elseif kind == 'fpreset' then
         local n = presets.chosen()
         if arg == 'new' then presets.new_full_preset()
+        elseif n and arg == 'share' then presets.copy_code(n)
+        elseif n and arg == 'copy' then ui.fcopy = { from = n, enemy = MOD.enemy.on, chosen = {} }
         elseif n and arg == 'load' then presets.load_full_preset(n)
         elseif n and arg == 'save' then presets.confirm('save', n)
         elseif n and arg == 'delete' then presets.confirm('delete', n)
-        elseif n and arg == 'rename' then presets.start_rename(n) end
+        elseif n and arg == 'rename' then presets.start_rename(n)
+        elseif n and arg == 'desc' and not ui.editing then presets.start_rename(n, 'desc') end
+    elseif kind == 'fopen' then
+        if not MOD.nav.twice(arg) then ui.fopen[arg] = not ui.fopen[arg] or nil end
+    elseif kind == 'fgo' then MOD.nav.twice(arg)
+    elseif kind == 'nav' then MOD.nav.go(arg == 'back')
+    elseif kind == 'fhead' then ui.fclosed[arg] = not ui.fclosed[arg] or nil; ui.version = ui.version + 1
+    elseif kind == 'lhead' then
+        local group = ui.tab .. '/' .. arg
+        ui.closed[group] = not ui.closed[group] or nil
+        ui.version = ui.version + 1
+    elseif kind == 'fopen_all' then
+        local open = not next(ui.fopen)
+        ui.fopen, ui.fclosed = {}, {}
+        for _, hash in ipairs(open and ui.fnames or {}) do ui.fopen[hash] = true end
+    elseif kind == 'fscroll' then ui.fscroll = (ui.fscroll or 1) + (arg == 'down' and 10 or -10)
     elseif kind == 'stack_pick' and weapon then ui.stack_pick = weapon
     elseif kind == 'rename' and weapon and not ui.rename then
-        local ids, typed = MOD.rename.of(weapon), MOD.rename.texts[weapon.hash]
-        ui.rename = { weapon = weapon, field = arg, text = typed and typed[arg] or ids and ids.game[arg] or '' }
+        local page, field = MOD.rename.page(weapon, arg)
+        local ids, typed = MOD.rename.of(page), MOD.rename.texts[page.hash]
+        ui.rename = { weapon = page, field = field, box = arg, text = typed and typed[field] or ids and ids.game[field] or '' }
     elseif kind == 'rename_reset' and weapon then
-        MOD.rename.set(weapon, arg, nil)
+        local page, field = MOD.rename.page(weapon, arg)
+        MOD.rename.set(page, field, nil)
+        if field == 'name' then MOD.rename.set(page, 'code', nil) end
         ui.version = ui.version + 1
     elseif kind == 'stack_cancel' then ui.stack_pick = nil
-    elseif kind == 'stack_own' and weapon and weapon.passive and tables[weapon.passive] then
-        local id = tables[weapon.passive].index.id
-        if (arg == 'off') ~= (settings.own_off[id] == true) then
-            settings.own_off[id] = arg == 'off' or nil
-            state.writes = state.writes + 1   -- (the host: changed since the last install)
-            mark_config_dirty()
-            log('passive own effects: ' .. weapon.name .. ' ' .. arg)
+    elseif kind == 'fcopy_toggle' and ui.fcopy then
+        local n = tonumber(arg)
+        ui.fcopy.chosen[n] = not ui.fcopy.chosen[n] or nil
+    elseif kind == 'fcopy_cancel' then ui.fcopy = nil
+    elseif kind == 'fcopy_go' and ui.fcopy then
+        local list = {}
+        for n in pairs(ui.fcopy.chosen) do list[#list + 1] = n end
+        presets.copy_values(ui.fcopy.from, list)
+        ui.fcopy = nil
+    elseif kind == 'copy_pick' and weapon then ui.copy = { weapon = weapon, section = arg, chosen = {} }
+    elseif kind == 'copy_toggle' and ui.copy then ui.copy.chosen[arg] = not ui.copy.chosen[arg] or nil
+    elseif kind == 'copy_cancel' then ui.copy = nil
+    elseif kind == 'copy_go' and ui.copy then
+        local c, list = ui.copy, {}
+        for hash in pairs(c.chosen) do list[#list + 1] = by_hash[hash] end
+        ui.copy = nil
+        local n = MOD.copy_section(c.weapon, c.section, list)
+        if settings.changes then
+            ui.message = { text = 'Copied ' .. n .. ' value(s) to ' .. #list .. ' vehicle(s).', till = api.now() + 4 }
         end
-    elseif (kind == 'stack_add' or kind == 'stack_del') and weapon and weapon.passive and tables[weapon.passive] then
-        local target, id = tables[weapon.passive].index.id, tonumber(arg)
-        local list, kept = settings.stacks[target] or {}, {}
-        for _, other in ipairs(list) do if other ~= id then kept[#kept + 1] = other end end
-        if kind == 'stack_add' and id ~= target then kept[#kept + 1] = id end
-        settings.stacks[target] = #kept > 0 and kept or nil
+    elseif (kind == 'stack_add' or kind == 'stack_del') and weapon and weapon.armor then
+        local id, kept = tonumber(arg), {}
+        for _, other in ipairs(MOD.kits.list_of(weapon)) do if other ~= id then kept[#kept + 1] = other end end
+        if kind == 'stack_add' then kept[#kept + 1] = id end
+        MOD.kits.set(weapon, kept)
         ui.stack_pick = nil
-        state.writes = state.writes + 1   -- (the host: changed since the last install)
-        mark_config_dirty()
-        local other = by_hash[string.format('FFFFFFFE%08X', id)]
-        log('passive stack: ' .. weapon.name .. (kind == 'stack_add' and ' + ' or ' - ') .. (other and other.name or id))
+        log('armor passives: ' .. weapon.name .. ': ' .. (#kept > 0 and table.concat(kept, ', ') or 'none'))
     elseif kind == 'stack_open' then
         local other = by_hash[string.format('FFFFFFFE%08X', tonumber(arg) or 0)]
         if other then select_weapon(other) end
@@ -29552,14 +32131,14 @@ function MOD.egg.tick(now)
     ui.version = ui.version + 1
 end
 
--- Keyboard: presses, and repeats while held (after 0.4 s, every 0.08 s).
+-- Keyboard: presses, and repeats while held (after 0.4 s, every 0.08 s; or after `delay`, every `every`).
 local held = {}
-local function pressed(name, now)
+local function pressed(name, now, delay, every)
     local down = key_down(VK[name])
     local h = held[name]
     if not down then held[name] = nil; return false end
-    if not h then held[name] = { next = now + 0.4 }; return true end
-    if now >= h.next then h.next = now + 0.08; return true end
+    if not h then held[name] = { next = now + (delay or 0.4) }; return true end
+    if now >= h.next then h.next = now + (every or 0.08); return true end
     return false
 end
 
@@ -29601,6 +32180,75 @@ function MOD.typed_characters(text)
     local out = {}
     for c in text:gmatch('[%z\1-\127\194-\244][\128-\191]*') do out[#out + 1] = c end
     return out
+end
+
+-- The cursor of a text being typed (presets, values, names and descriptions, search): e.at = bytes of e.text
+-- before it, nil at the end.
+MOD.caret = { CHAR = '[%z\1-\127\194-\244][\128-\191]*', WORD = '^(.-)[^%s|]*[%s|]*$' }
+function MOD.caret.pos(e) return math.min(e.at or #e.text, #e.text) end
+function MOD.caret.show(e)
+    local at = MOD.caret.pos(e)
+    return e.text:sub(1, at) .. '_' .. e.text:sub(at + 1)
+end
+function MOD.caret.add(e, c)
+    local at = MOD.caret.pos(e)
+    e.text = e.text:sub(1, at) .. c .. e.text:sub(at + 1)
+    if e.at then e.at = at + #c end
+end
+function MOD.caret.back(e)
+    local at = MOD.caret.pos(e)
+    local before = e.text:sub(1, at)
+    if key_down(VK.Ctrl) or key_down(VK.Alt) then before = before:match(MOD.caret.WORD)   -- ('|': a new line)
+    else before = before:gsub(MOD.caret.CHAR .. '$', '') end
+    e.text = before .. e.text:sub(at + 1)
+    if e.at then e.at = #before end
+end
+-- the row of the description the cursor is on, of the rows last drawn
+function MOD.caret.row(e)
+    local at = MOD.caret.pos(e)
+    for r = #e.starts, 2, -1 do if e.starts[r] <= at then return r end end
+    return 1
+end
+-- the wrapped rows of e, the cursor drawn in; at most 7, around the cursor
+function MOD.caret.lay_out(e, rows, starts)
+    e.starts, e.lens = starts, {}
+    for r, row in ipairs(rows) do e.lens[r] = #row end
+    local r = MOD.caret.row(e)
+    local col = MOD.caret.pos(e) - starts[r]
+    rows[r] = rows[r]:sub(1, col) .. string.rep(' ', col - #rows[r]) .. '_' .. rows[r]:sub(col + 1)
+    while #rows > 7 do
+        if r > 7 then table.remove(rows, 1); r = r - 1 else table.remove(rows) end
+    end
+    return rows
+end
+-- Left, Right, Home, End, Delete, and Up, Down in a description: true when the text changed
+function MOD.caret.keys(e, now)
+    local at, text = MOD.caret.pos(e), e.text
+    local function key(name) return pressed(name, now, 0.3, 0.03) end
+    local function moved(to)
+        e.at, e.fresh = math.max(0, math.min(to, #text)), false
+        ui.version = ui.version + 1   -- (the redraw check sees the text, not the cursor)
+    end
+    if key('Left') then moved(#(text:sub(1, at):gsub(MOD.caret.CHAR .. '$', ''))) end
+    if key('Right') then moved(at + #(text:match('^' .. MOD.caret.CHAR, at + 1) or '')) end
+    if key('Home') then moved(0) end
+    if key('End') then moved(#text) end
+    for name, step in pairs({ Up = -1, Down = 1 }) do
+        local r = e.starts and MOD.caret.row(e)
+        local to = r and e.starts[r + step]
+        if key(name) and to then
+            local n = to + math.min(at - e.starts[r], e.lens[r + step])
+            while (text:byte(n + 1) or 0) >= 128 and (text:byte(n + 1) or 0) < 192 do n = n + 1 end
+            moved(n)
+        end
+    end
+    if key('Delete') then
+        if e.fresh then e.text, e.fresh = '', false; return true end
+        at = MOD.caret.pos(e)
+        local c = text:match('^' .. MOD.caret.CHAR, at + 1)
+        if c then e.text = text:sub(1, at) .. text:sub(at + 1 + #c); return true end
+    end
+    return false
 end
 
 -- The characters typed since the last frame, or nil when the host cannot hand any over (the game's engine:
@@ -29655,10 +32303,28 @@ local function keyboard(now)
         end
         return
     end
+    if ui.codebox then
+        local box = ui.codebox
+        if pressed('Escape', now) then ui.codebox = nil; return end
+        if pressed('Enter', now) then
+            if presets.add_code(box.text) then ui.codebox = nil end
+            return
+        end
+        if pressed('Backspace', now, 0.3, 0.015) then MOD.caret.back(box) end
+        if key_down(VK.Ctrl) and pressed('T86', now) then box.text = box.text .. (settings.paste() or '') end   -- Ctrl+V
+        for _, c in ipairs(typed or {}) do
+            if c:match('^[%w%+/%-]$') then box.text = box.text .. c end
+        end
+        return
+    end
     if ui.editing then
         if pressed('Escape', now) then presets.finish_rename(false); return end
-        if pressed('Enter', now) then presets.finish_rename(true); return end
-        if pressed('Backspace', now) then presets.type_char(false) end
+        if pressed('Enter', now) then
+            if not (ui.editing.field and key_down(VK.Shift)) then presets.finish_rename(true); return end
+            presets.type_char('|')
+        end
+        if pressed('Backspace', now, 0.3, 0.015) then presets.type_char(false) end
+        MOD.caret.keys(ui.editing, now)
         if poll then
             for _, vk in ipairs(TEXT_KEYS) do
                 if pressed('T' .. vk, now) then
@@ -29697,10 +32363,11 @@ local function keyboard(now)
             edit.text = edit.fresh and '' or edit.text:sub(1, -2)
             edit.fresh = false
         end
+        MOD.caret.keys(edit, now)
         local function add(c)
             if c:find('^[%d%.,%-]$') then
                 if edit.fresh then edit.text, edit.fresh = '', false end
-                if #edit.text < 16 then edit.text = edit.text .. c end
+                if #edit.text < 16 then MOD.caret.add(edit, c) end
             end
         end
         if poll then
@@ -29718,13 +32385,18 @@ local function keyboard(now)
         local edit = ui.rename
         if pressed('Escape', now) then ui.rename = nil; return end
         if pressed('Enter', now) then
-            MOD.rename.set(edit.weapon, edit.field, edit.text)
-            ui.rename, ui.version = nil, ui.version + 1
-            return
+            if edit.field ~= 'desc' or not key_down(VK.Shift) then
+                MOD.rename.set(edit.weapon, edit.field, edit.text)
+                ui.rename, ui.version = nil, ui.version + 1
+                return
+            end
+            if #edit.text < MOD.rename.LIMIT.desc then MOD.caret.add(edit, '|') end
         end
-        if pressed('Backspace', now) then edit.text = edit.text:gsub('[%z\1-\127\194-\244][\128-\191]*$', '') end
-        local function add(c)   -- ('#' starts a comment in config.txt)
-            if c ~= '#' and #edit.text + #c <= MOD.rename.LIMIT[edit.field] then edit.text = edit.text .. c end
+        -- held: about one character a frame (long descriptions)
+        if pressed('Backspace', now, 0.3, 0.015) then MOD.caret.back(edit) end
+        MOD.caret.keys(edit, now)
+        local function add(c)
+            if #edit.text + #c <= MOD.rename.LIMIT[edit.field] then MOD.caret.add(edit, c) end
         end
         if poll then
             for _, vk in ipairs(TEXT_KEYS) do
@@ -29744,8 +32416,9 @@ local function keyboard(now)
         if not native_text and pressed('Backspace', now) then
             search.text, ui.page = search.text:gsub('[%z\1-\127\194-\244][\128-\191]*$', ''), 1
         end
+        if MOD.caret.keys(search, now) then ui.page = 1 end
         local function add(c)
-            if #search.text + #c <= 40 then search.text, ui.page = search.text .. c, 1 end
+            if #search.text + #c <= 40 then MOD.caret.add(search, c); ui.page = 1 end
             local egg = MOD.egg.WORDS[MOD.egg.hash(search.text:lower())]
             if egg and MOD.egg.unlock(search.text:lower()) then MOD.egg.play(egg[1], egg[2], egg.voice, egg.subs) end
         end
@@ -29768,8 +32441,8 @@ local function keyboard(now)
         if pressed('Escape', now) then ui.settings = false end
         return
     end
-    if ui.stack_pick then   -- the passive picker is open: Esc closes it
-        if pressed('Escape', now) then ui.stack_pick = nil end
+    if ui.stack_pick or ui.copy or ui.fcopy then   -- the passive / Copy to picker is open: Esc closes it
+        if pressed('Escape', now) then ui.stack_pick, ui.copy, ui.fcopy = nil, nil, nil end
         return
     end
     if pressed('PageDown', now) or pressed('PageUp', now) then
@@ -29784,6 +32457,8 @@ local function keyboard(now)
         local forward = held.PageDown ~= nil
         at = at + (forward and 1 or -1)
         if at < 1 then at = #all elseif at > #all then at = 1 end
+        local _, title = MOD.group_of(all[at])
+        if title then ui.closed[all[at].slot .. '/' .. title] = nil end   -- (its group opens)
         select_weapon(all[at])
         return
     end
@@ -29852,7 +32527,7 @@ function ui.scroll_press(key, gy)
     if MOD.offline and name=='lbar' then return end
     if not b then return end
     if key:find(':thumb$') then ui.drag = { bar = name, from = gy, value = ui[b.id] }
-    elseif name == 'sbar' then click(gy > b.thumb_top and 'scroll:up' or 'scroll:down')
+    elseif name == 'sbar' and not b.page then click(gy > b.thumb_top and 'scroll:up' or 'scroll:down')
     else ui[b.id] = math.max(1, math.min(b.span + 1, ui[b.id] + (gy > b.thumb_top and -b.page or b.page))) end
 end
 
@@ -29916,6 +32591,12 @@ local function mouse(window)
         end
     end
     mouse_was_down = down
+    if MOD.offline then
+        -- VK_XBUTTON1 and 2, the mouse's back and forward buttons
+        local side = sr.Mouse.button(5) == 1 and 'back' or sr.Mouse.button(6) == 1 and 'forward' or nil
+        if side and side ~= ui.side and not (ui.stack_pick or ui.copy or ui.fcopy) then click('nav:' .. side) end
+        ui.side = side
+    end
 end
 
 -- ---------------------------------------------------------------- cursor
@@ -29962,7 +32643,7 @@ local function take_cursor()
         end
         log('cursor: engine Window ' .. table.concat(names, ' ') .. '; was shown: ' .. tostring(cursor.was_shown) ..
             '; now shown: ' .. tostring(engine_cursor_shown()))
-        flush_log()
+        MOD._migration_flush_log()
     end
 end
 
@@ -30044,11 +32725,11 @@ function cursor.take_input(window, now)
     if user.RegisterRawInputDevices(list, #game, 16) ~= 0 then
         raw.saved, raw.window = game, window
         raw.taken = (raw.taken or 0) + 1
-        if raw.taken <= 3 then log('input: taken from the game (' .. #game .. ' device(s))'); flush_log() end
+        if raw.taken <= 3 then log('input: taken from the game (' .. #game .. ' device(s))'); MOD._migration_flush_log() end
     else
         raw.failed = true
         log('input: could not take it from the game (error ' .. tostring(ffi.errno()) .. '); the game keeps it')
-        flush_log()
+        MOD._migration_flush_log()
     end
 end
 
@@ -30064,7 +32745,7 @@ function cursor.give_input(now)
     end
     if user.RegisterRawInputDevices(list, #raw.saved, 16) ~= 0 then
         raw.saved, raw.next_check = nil, 0
-        if raw.taken <= 3 then log('input: given back to the game'); flush_log() end
+        if raw.taken <= 3 then log('input: given back to the game'); MOD._migration_flush_log() end
         return true
     end
     raw.next_give = (now or 0) + 0.25
@@ -30227,7 +32908,7 @@ local function panel_frame(now)
     if not same_worlds(worlds, ui.worlds) or main ~= ui.main then
         if ui.worlds then
             log('panel: worlds changed (' .. #ui.worlds .. ' -> ' .. #worlds .. '); waiting for the screen to settle')
-            flush_log()
+            MOD._migration_flush_log()
         end
         clear_gui()
         ui.worlds, ui.main, ui.settled_at = worlds, main, now + SETTLE_SECONDS
@@ -30249,7 +32930,7 @@ local function panel_frame(now)
         local main_index = 0
         for k, w in ipairs(worlds) do if w == main then main_index = k end end
         log('panel: drawing on world ' .. index .. ' of ' .. #worlds .. ' (the game world is ' .. main_index .. ')')
-        flush_log()
+        MOD._migration_flush_log()
         trace_left, traced = math.max(trace_left, 2), {}
     end
 
@@ -30274,9 +32955,9 @@ local function panel_frame(now)
     local signature = table.concat({ width, height, state.phase, state.tables, ui.tab, ui.page, ui.row, ui.scroll,
                                      tostring(ui.hover), tostring(ui.drag ~= nil), ui.weapon and ui.weapon.hash or '-', ui.version,
                                      tostring(ui.settings), tostring(ui.binding), hotkey_name,
-                                     #overrides, ui.wslot, tostring(ui.fslot), ui.fpage,
+                                     #overrides, ui.wslot, tostring(ui.fslot), ui.fpage, ui.fscroll or 0, ui.sscroll or 0,
                                      ui.message and ui.message.text or '', ui.editing and ui.editing.text or '-',
-                                     ui.search.text, tostring(ui.search.active),
+                                     ui.codebox and ui.codebox.text or '-', ui.search.text, tostring(ui.search.active),
                                      ui.value and (ui.value.n .. '=' .. ui.value.text) or '-',
                                      ui.rename and (ui.rename.field .. '=' .. ui.rename.text) or '-' }, '|')
     if signature ~= ui.signature then
@@ -30298,7 +32979,7 @@ local function panel_frame(now)
             ui.font_said = font.text
             ui.measured, ui.measures = {}, 0
             log('font: ' .. font.text)
-            flush_log()
+            MOD._migration_flush_log()
         end
         ui.signature = signature
         ui.regions = draw(width, height)
@@ -30306,7 +32987,7 @@ local function panel_frame(now)
         if trace_left > 0 then
             trace_left, traced = trace_left - 1, {}
             log('panel: draw ' .. draws .. ' done at ' .. width .. 'x' .. height .. ', ' .. #ui.regions .. ' regions')
-            flush_log()
+            MOD._migration_flush_log()
         end
     end
 end
@@ -30332,7 +33013,7 @@ local function open_panel(open)
         end
         ui.worlds = nil
         log('panel opened')
-        flush_log()
+        MOD._migration_flush_log()
         local ok, why = pcall(take_cursor)
         if not ok then log('cursor: could not free it: ' .. tostring(why)) end
         cursor.raw.next_check = 0   -- the game's input: taken as soon as the hotkey is up
@@ -30837,6 +33518,114 @@ KINDS[TYPES.throwable].update_launch = function()
     end
 end
 
+-- Offline, run by Install: a stratagem's package (StratagemInfo +168) loads only when the stratagem is in the mission.
+-- Reinforcement and SOS Beacon always are, and have an empty package. +200 (additional_stratagem, how Eagles bring
+-- Eagle Rearm) adds another stratagem to the mission, and that one's +200 yet another (tested in game). So the hidden
+-- ones below hold one donor package each: hung in chains off Reinforcement, SOS and Resupply they load in every
+-- mission, hung off a support weapon's own stratagem (loadout +0 is its id) only when that weapon is brought (tested).
+-- Row gone with no use: uses 0, Clan Station origin, objective requirement, beacon call-in (all four together tested;
+-- which does it is not known). Four hidden ones hold with a full loadout and an Eagle; six and eight crash the game at
+-- deployment (probably a fixed number of stratagem rows), so those always loaded leave room for four support weapons.
+-- Only the ones holding a donor change. Returns how many donors did not fit.
+function MOD.donors()
+    local by_id, want, seen = KINDS[T_PROJECTILE].by_id or {}, {}, {}
+    local function find(id)
+        for _, group in ipairs(stratagem_groups) do
+            local at = tables[group].index[id]
+            if at then return group, at end
+        end
+    end
+    local function set(group, at, offset, value)
+        local f = field_at(group, at + offset, 'u32', 4294967295)
+        local limit = f.limit
+        f.limit = 4294967295   -- (the Uses row reads +80 with a lower one, and unused it holds 0xFFFFFFFF)
+        write_field(f, value or default_of(f))
+        f.limit = limit
+    end
+    local function hold(group, at, donor)
+        set(group, at, 168, donor and donor[1])
+        set(group, at, 172, donor and donor[2])
+    end
+    MOD.extra.always_undo(set)
+    -- A support weapon's first swap goes through its own stratagem, every other swap loads always.
+    local own, own_list = {}, {}
+    for pass = 1, 2 do
+        for _, weapon in ipairs(weapons) do
+            local at = weapon.slot == 'Support' and weapon.key and tables[TYPES.loadout].index[weapon.key]
+            local id = at and read_field(field_at(TYPES.loadout, at, 'u32', 4294967295))
+            local group, record = nil, nil
+            if id then group, record = find(id) end
+            if pass == 1 and group then set(group, record, 200) end
+            for k, row in ipairs(weapon.swaps or {}) do
+                local now = read_field(row.parts[1].field)
+                local shot = now and now ~= default_of(row.parts[1].field) and by_id[now]
+                local key = shot and shot.key and shot.key ~= weapon.key and tables[TYPES.package].index[shot.key]
+                local lo = key and read_field(field_at(TYPES.package, key + 8, 'u32', 4294967295))
+                local hi = key and read_field(field_at(TYPES.package, key + 12, 'u32', 4294967295))
+                if lo and (lo ~= 0 or hi ~= 0) then
+                    local name, mine = lo .. ':' .. hi, group and k == 1
+                    if pass == 1 and not mine and not seen[name] then
+                        seen[name] = true
+                        want[#want + 1] = { lo, hi, name = shot.label }
+                    elseif pass == 2 and mine and not seen[name] then
+                        if not own[name] then
+                            own[name] = { { lo, hi, name = shot.label } }
+                            own_list[#own_list + 1] = own[name]
+                        end
+                        own[name][#own[name] + 1] = { group, record }
+                    end
+                end
+            end
+        end
+    end
+    local used, tails = 0, {}
+    for k, id in ipairs({ 2266266587, 3193487269, 867876502 }) do
+        local group, at = find(id)
+        if group then
+            set(group, at, 200)
+            tails[#tails + 1] = { group, at }
+            if k < 3 then
+                used = used + 1
+                hold(group, at, want[used])
+            end
+        end
+    end
+    local always, links, turn = 4 - math.min(4, #own_list), 0, 0
+    for _, id in ipairs({ 2663642538, 905054095, 101457192, 3702563421, 4264661046 }) do
+        local group, at = find(id)
+        if group and #tails > 0 then
+            local donor, list = nil, nil
+            if links < always and want[used + 1] then
+                used = used + 1
+                donor = want[used]
+            elseif own_list[turn + 1] then
+                turn = turn + 1
+                list = own_list[turn]
+                donor = list[1]
+            end
+            hold(group, at, donor)
+            set(group, at, 200)
+            for offset, value in pairs({ [40] = 0, [44] = 0, [72] = 0, [176] = 0, [180] = 0, [80] = 0, [112] = 2, [116] = 2, [124] = 19 }) do
+                set(group, at, offset, donor and value)
+            end
+            local kind = default_of(field_at(group, at, 'u32', 4294967295))
+            if donor and not list then
+                local tail = links % #tails + 1
+                links = links + 1
+                set(tails[tail][1], tails[tail][2], 200, kind)
+                tails[tail] = { group, at }
+            end
+            for k = 2, list and #list or 0 do set(list[k][1], list[k][2], 200, kind) end
+        end
+    end
+    local left, shots = MOD.extra.always_apply(tails, set, links + turn), {}
+    for k = used + 1, #want do shots[#shots + 1] = want[k].name end
+    for k = turn + 1, #own_list do shots[#shots + 1] = own_list[k][1].name end
+    state.dropped = { shots = shots, stratagems = left }   -- (the host's warning lists them)
+    return #shots + #left
+end
+
+
 -- Every second: the weapons the Projectile swap rows fire from (another weapon's projectile) get their assets.
 function packages.swap_assets()
     local by_id = KINDS[T_PROJECTILE].by_id or {}
@@ -30876,7 +33665,7 @@ settings.unlock = { next_check = 0, state = {}, changed = {},
         local b = api.read(at, 8)
         return b and #b == 8 and u32(b, 0) + u32(b, 4) * 4294967296 or nil
     end
-    local function put32(b, at, v) return b:sub(1, at) .. u32_bytes(v) .. b:sub(at + 5) end
+    local function put32(b, at, v) return b:sub(1, at) .. MOD._migration_u32_bytes(v) .. b:sub(at + 5) end
     -- the address a 7-byte RIP-relative instruction at `at` refers to, and its bytes
     local function target(at)
         local b = api.read(at, 7)
@@ -30984,7 +33773,7 @@ settings.unlock = { next_check = 0, state = {}, changed = {},
             end
             local writes, b = {}, byte:byte()
             if math.floor(b / 2) % 2 == 0 then writes[#writes + 1] = { block + 0x80, byte, string.char(b + 2) } end
-            if state ~= 2 and state ~= 4 then writes[#writes + 1] = { at + 20, u32_bytes(state), u32_bytes(2) } end
+            if state ~= 2 and state ~= 4 then writes[#writes + 1] = { at + 20, MOD._migration_u32_bytes(state), MOD._migration_u32_bytes(2) } end
             if not (U.changed[item.id] and U.changed[item.id].root == s.root) then
                 local text = api.read(name, 64)
                 log(string.format('unlock %s: stratagem block %s (%s), item list %s: row %d of %d (status %d, flag %d)',
@@ -31002,7 +33791,7 @@ settings.unlock = { next_check = 0, state = {}, changed = {},
             if u32(row, 12) ~= 1 then return nil, 'unavailable: its entry in the game\'s item list differs' end
             if state == 2 or state == 4 then return {} end
             if state ~= 0 and state ~= 1 then return nil, 'unavailable: unknown status ' .. state .. ' in the game\'s item list' end
-            return { { at + 20, u32_bytes(state), u32_bytes(2) } }
+            return { { at + 20, MOD._migration_u32_bytes(state), MOD._migration_u32_bytes(2) } }
         end
         local template, tclass = item.template_key, item.class
         if not template then
@@ -31032,7 +33821,7 @@ settings.unlock = { next_check = 0, state = {}, changed = {},
         log(string.format('unlock %s: no row in the item list %s (%d rows): adding row %d (key %08X, class %d, from the row of %08X)',
             item.id, hex(s.root), s.count, s.count, key, class, template))
         return { { row_at, ZERO_ROW, new_row }, { map_at, ZERO_MAP, new_map },
-                 { s.root + U.COUNT, u32_bytes(s.count), u32_bytes(s.count + 1) } }, nil, true
+                 { s.root + U.COUNT, MOD._migration_u32_bytes(s.count), MOD._migration_u32_bytes(s.count + 1) } }, nil, true
     end
 
     local function set(item, state)
@@ -31222,7 +34011,7 @@ KINDS[T_ROUNDS].live = { RVA = 0x3326CF0, seen = {}, told = 0, next_check = 0, t
         if cap then want = math.min(want, cap) end
         if want == loaded or want < 1 then return loaded, spare end
         local left = spare + loaded - want
-        if api.write(row + 8 + sel * 4, u32_bytes(want)) and api.write(row, u32_bytes(left)) then return want, left end
+        if api.write(row + 8 + sel * 4, MOD._migration_u32_bytes(want)) and api.write(row, MOD._migration_u32_bytes(left)) then return want, left end
         return loaded, spare
     end
     -- one live manager's map + owners: its rows by live entity id ({ index, key }), or nil and why
@@ -31377,7 +34166,12 @@ local function tick()
                 if #pending == 0 then log('all saved values applied (' .. state.applied .. ')') end
             end
         end
-        if MOD.enemy.refresh_due and #pending == 0 then MOD.enemy.faction_refresh() end
+        if MOD.enemy.refresh_due and #pending == 0 then
+            local writes, touched = state.writes, state.touched
+            state.touched = {}
+            MOD.enemy.faction_refresh()
+            state.writes, state.touched = writes, touched   -- (it only follows a change: on its own it is nothing to install)
+        end
         if config_dirty_at and now >= config_dirty_at then save_config() end
         if now >= settings.unlock.next_check then
             settings.unlock.next_check = now + 2
@@ -31438,7 +34232,7 @@ local function tick()
             end
         end
     end
-    if log_dirty and now >= next_flush then next_flush = now + 1; flush_log() end
+    if log_dirty and now >= next_flush then next_flush = now + 1; MOD._migration_flush_log() end
 end
 
 -- ---------------------------------------------------------------- startup
@@ -31449,7 +34243,7 @@ local ok, failure = pcall(function()
     assert(ffi_ok and ffi, 'LuaJIT FFI is unavailable')
     assert(ffi.abi('64bit'), 'Windows x64 is required')
     assert(type(update) == 'function', 'the game update hook is unavailable')
-    api = build_api()
+    api = MOD._migration_build_api()
     local cell = ffi.new('float[1]')
     f32_bytes = function(value)
         cell[0] = value
@@ -31465,12 +34259,12 @@ end)
 if not ok then
     state.phase, state.status = 'gave_up', tostring(failure)
     print('[' .. MOD.global .. '] ' .. tostring(failure))
-    if api then pcall(flush_log) end
+    if api then pcall(MOD._migration_flush_log) end
     return
 end
 
 set_status('searching', 'waiting for the scan')
-pcall(flush_log)
+pcall(MOD._migration_flush_log)
 
 local BUS = rawget(_G, 'OCLAW_UPDATE_BUS')
 if not BUS then
@@ -31510,7 +34304,7 @@ else
     local skip_low = (own or LUA_HEAP_LIMIT) < LUA_HEAP_LIMIT
     hub = rawget(_G, HUB_NAME)
     if type(hub) ~= 'table' or hub.version ~= HUB_VERSION then
-        hub = new_hub(api, skip_low)
+        hub = MOD._migration_new_hub(api, skip_low)
         rawset(_G, HUB_NAME, hub)
         BUS.jobs[HUB_NAME] = hub.tick
     end
@@ -31575,12 +34369,12 @@ if MOD.offline then
         return '已恢复 '..n..' 个内置示例预设；自建预设保留'
     end
     function state.desktop.game_text(field, value)
-        assert(field=='name' or field=='desc','无效的文字字段')
+        assert(field=='name' or field=='code' or field=='desc','无效的文字字段')
         local w=ui.weapon
         if not w and value==nil then return {available=false} end
         assert(w,'请先选择装备')
         local ids=MOD.rename.of(w)
-        if not ids then return {available=false} end
+        if not ids or not ids[field] or #ids[field]==0 then return {available=false} end
         if value~=nil then
             assert(type(value)=='string' and not value:find('[%z\r\n#]'),'文字不能包含换行、# 或空字符')
             assert(#value<=MOD.rename.LIMIT[field],'文字过长')
@@ -31654,7 +34448,7 @@ if MOD.offline then
                 help[#help+1]=settings.tr(line)
             end
             local note=row.note
-            if type(note)=='function' then local ok,text=pcall(note,shared_with(ui.weapon,row));note=ok and text or '' end
+            if type(note)=='function' then local ok,text=pcall(note,MOD._migration_shared_with(ui.weapon,row));note=ok and text or '' end
             if type(note)=='string' and note~='' then help[#help+1]=settings.tr(note) end
             local inline_note=row.inline_note or ''
             if type(inline_note)=='function' then local ok,text=pcall(inline_note);inline_note=ok and text or '' end
@@ -31875,6 +34669,26 @@ if MOD.offline then
         local f=action=='load' and presets.load_weapon_preset or presets.clear_weapon_preset
         f(assert(ui.weapon),slot);save_config();return settings.tr(ui.message and ui.message.text or '预设已处理')
     end
+    function state.desktop.armor_item(hash, list)
+        local w=assert(by_hash[hash],'找不到护甲')
+        if not w.armor then return {available=false}end
+        if list~=nil then
+            assert(type(list)=='table' and #list<=MOD.kits.MAX_PASSIVES,'护甲被动最多 14 个')
+            local seen={};for _,id in ipairs(list)do assert(type(id)=='number' and KINDS[TYPES.passive].NAMES[id] and not seen[id],'被动编号无效或重复');seen[id]=true end
+            MOD.kits.set(w,list);save_config()
+        end
+        local choices={};for id,name in pairs(KINDS[TYPES.passive].NAMES)do choices[#choices+1]={id=id,name=settings.tr(name)}end
+        table.sort(choices,function(a,b)return a.id<b.id end)
+        return {available=true,selected=MOD.kits.list_of(w),choices=choices}
+    end
+    function state.desktop.preset_code(n)
+        local p=assert(presets.list()[n],'找不到预设')
+        return presets.to_code(p,MOD.enemy.on)
+    end
+    function state.desktop.preset_code_import(text)
+        assert(presets.add_code(text),'无效分享码或预设已满')
+        save_config();return '分享码已导入'
+    end
     function state.desktop.full_presets()
         local out={}
         for _,n in ipairs(presets.full_order()) do
@@ -31899,6 +34713,12 @@ if MOD.offline then
         ui.editing=nil;save_config();return settings.tr(ui.message and ui.message.text or '预设已处理')
     end
     require('desktop_features').attach(state.desktop,{
+        passive_value=function(w,id,value)
+            if not id:match('^passive_')then return false end
+            assert(w.armor,'此条目不是护甲');assert(type(value)=='number' and value%1==0,'被动编号必须为整数')
+            if id=='passive_none'then assert(value==0,'清空被动标记无效')else local n=tonumber(id:match('^passive_(%d+)$'));assert(n and n>=1 and n<=14 and KINDS[TYPES.passive].NAMES[value],'护甲被动编号无效')end
+            return true
+        end,
         name=MOD.desktop_name,editor=function()return MOD.enemy.on and 'enemy' or 'equipment' end,
         in_scope=function(w)return MOD.is_enemy_value(w.hash)==MOD.enemy.on end,
         validate_values=MOD.validate_preset_values,preset_warnings=MOD.extra.preset_warnings,record_pages=function()return MOD.records.pages end,preset_id=MOD.preset_id,presets=presets,by_hash=by_hash,selected=function()return ui.weapon end,
@@ -32081,7 +34901,7 @@ if MOD.offline then
         if ui.weapon then select_weapon(ui.weapon)end
     end
     require('edit_history').attach(state.desktop,MOD.history)
-    function state.desktop.flush() save_config();flush_log();return true end
+    function state.desktop.flush() save_config();MOD._migration_flush_log();return true end
 end
 
 if MOD.offline and os.getenv('SHODAN_QA_OUTPUT') then
