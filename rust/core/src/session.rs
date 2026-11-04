@@ -52,6 +52,31 @@ impl Session {
             .1
             .field_offset(field.record, field.relative, 4)
     }
+    pub fn named_field(&self, block: usize, record: Key, parameter: &str) -> Result<Field, String> {
+        let header = self.document.blocks().get(block).ok_or("数据块不存在")?;
+        let description = crate::schema::parameters(header.type_id)
+            .into_iter()
+            .find(|f| f.id == parameter)
+            .ok_or_else(|| format!("该数据块尚无参数描述：{parameter}"))?;
+        let field = Field {
+            block,
+            record,
+            relative: description.relative,
+            kind: description.kind,
+        };
+        self.offset(field)?;
+        Ok(field)
+    }
+    pub(crate) fn encoded_field(
+        &self,
+        field: Field,
+        value: f64,
+    ) -> Result<(usize, [u8; 4]), String> {
+        let offset = self.offset(field)?;
+        let edit =
+            crate::plan(self.snapshot(), offset, field.kind, value).map_err(str::to_string)?;
+        Ok((offset, edit.value))
+    }
     pub fn value(&self, field: Field) -> Result<FieldValue, String> {
         let offset = self.offset(field)?;
         let original = if let Some(baseline) = &self.baseline {

@@ -80,8 +80,8 @@ impl Document {
         let encoded = crate::plan(&self.snapshot, offset, kind, value)?;
         if self
             .pending
-            .keys()
-            .any(|&at| at != offset && at < offset + 4 && offset < at + 4)
+            .range(offset.saturating_sub(3)..=offset.saturating_add(3))
+            .any(|(&at, _)| at != offset)
         {
             return Err("参数写入范围重叠");
         }
@@ -99,8 +99,8 @@ impl Document {
         let value: [u8; 4] = bytes[offset..offset + 4].try_into().unwrap();
         if self
             .pending
-            .keys()
-            .any(|&at| at != offset && at < offset + 4 && offset < at + 4)
+            .range(offset.saturating_sub(3)..=offset.saturating_add(3))
+            .any(|(&at, _)| at != offset)
         {
             return Err("参数写入范围重叠");
         }
@@ -115,11 +115,12 @@ impl Document {
     /// Stage a whole batch or retain the exact previous pending state.
     pub fn set_batch(&mut self, fields: &[(usize, Kind, f64)]) -> Result<(), &'static str> {
         let previous = self.pending.clone();
-        let mut seen = Vec::new();
+        let mut seen = std::collections::BTreeSet::new();
         for &(offset, kind, value) in fields {
             if seen
-                .iter()
-                .any(|&at| at < offset.saturating_add(4) && offset < at + 4)
+                .range(offset.saturating_sub(3)..=offset.saturating_add(3))
+                .next()
+                .is_some()
             {
                 self.pending = previous;
                 return Err("批量修改包含重复或重叠字段");
@@ -128,7 +129,7 @@ impl Document {
                 self.pending = previous;
                 return Err(error);
             }
-            seen.push(offset);
+            seen.insert(offset);
         }
         Ok(())
     }

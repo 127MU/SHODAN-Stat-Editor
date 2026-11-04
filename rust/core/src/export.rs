@@ -8,6 +8,34 @@ pub struct Prepared {
     pub correction: correction::Report,
 }
 
+/// Variable-size passive composition has its own validated builder. Generic numeric
+/// export still refuses changed layouts; no caller-supplied arbitrary replacement.
+pub fn prepare_passives(
+    snapshot: &[u8],
+    profiles: &std::collections::BTreeMap<u32, crate::passive::Profile>,
+    options: &correction::Options,
+    progress: impl FnMut(usize),
+) -> Result<Prepared, String> {
+    if !options.float_offsets.is_empty() {
+        return Err("护甲重排后禁止沿用原浮点偏移".into());
+    }
+    let rebuilt = crate::passive::rebuild(snapshot, profiles)?;
+    let target_hash = hash::murmur64(snapshot);
+    let corrected = correction::correct(&rebuilt.bytes, target_hash, options, progress)
+        .map_err(|e| e.to_string())?;
+    let ciphertext = sealed::seal(&corrected.bytes).map_err(|e| e.to_string())?;
+    let reopened = sealed::open_data(&ciphertext).map_err(|e| e.to_string())?;
+    if reopened != corrected.bytes || hash::murmur64(&reopened) != target_hash {
+        return Err("护甲导出回读校验失败".into());
+    }
+    Ok(Prepared {
+        ciphertext,
+        target_hash,
+        plaintext_sha256: hash::sha256_hex(&reopened),
+        correction: corrected.report,
+    })
+}
+
 pub fn prepare(
     snapshot: &[u8],
     edited: &[u8],

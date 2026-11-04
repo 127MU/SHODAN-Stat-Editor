@@ -16,6 +16,8 @@ use std::{
 #[derive(Default)]
 pub struct Api {
     active: Option<(Session, PathBuf)>,
+    parameters: crate::parameters::Parameters,
+    armor: Option<(crate::armor::Armor, PathBuf)>,
 }
 fn number(v: &Value, key: &str) -> Result<usize, String> {
     usize::try_from(
@@ -28,7 +30,7 @@ fn number(v: &Value, key: &str) -> Result<usize, String> {
 fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str, String> {
     v[key].as_str().ok_or_else(|| format!("缺少文本：{key}"))
 }
-fn field(v: &Value) -> Result<Field, String> {
+fn record(v: &Value) -> Result<Key, String> {
     let record = text(v, "record")?;
     let record = if let Some(id) = record.strip_prefix("id:") {
         Key::Id(id.parse().map_err(|_| "记录 ID 无效")?)
@@ -37,6 +39,10 @@ fn field(v: &Value) -> Result<Field, String> {
     } else {
         return Err("记录必须使用 id: 或 hash: 前缀".into());
     };
+    Ok(record)
+}
+fn field(v: &Value) -> Result<Field, String> {
+    let record = record(v)?;
     let kind = match text(v, "kind")? {
         "f32" => Kind::F32,
         "u32" => Kind::U32,
@@ -54,6 +60,56 @@ impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "diagnostic-scrub" {
+            return Ok(crate::diagnostics::Privacy::local().scrub(&p["data"]));
+        }
+        if method == "armor-open" {
+            let path = PathBuf::from(text(p, "path")?);
+            let current = fs::read(&path).map_err(|_| "无法读取护甲数据")?;
+            let original = fs::read(text(p, "baseline_path")?).map_err(|_| "无法读取护甲原值")?;
+            let baseline =
+                Baseline::shipped("generated_customization_passive_bonuses.dl_plain", original)?;
+            let armor = crate::armor::Armor::new(current, baseline)?;
+            let count = armor.rows.len();
+            self.armor = Some((armor, path));
+            return Ok(json!({"rows":count}));
+        }
+        if method.starts_with("armor-") {
+            let (armor, path) = self.armor.as_mut().ok_or("请先打开护甲数据")?;
+            return match method {
+                "armor-rows" => Ok(json!(armor
+                    .rows
+                    .values()
+                    .map(
+                        |r| Ok(json!({"key":r.key,"label":r.label,"passive":r.passive,
+                    "value":armor.value(&r.key)?,"original":r.original}))
+                    )
+                    .collect::<Result<Vec<_>, String>>()?)),
+                "armor-set" => {
+                    armor.set(text(p, "key")?, p["value"].as_f64().ok_or("护甲数值无效")?)?;
+                    Ok(json!(true))
+                }
+                "armor-capture" => Ok(json!(armor.capture()?)),
+                "armor-apply-snapshot" => {
+                    armor.apply_snapshot(text(p, "text")?)?;
+                    Ok(json!(true))
+                }
+                "armor-export-copy" => {
+                    let current = fs::read(path).map_err(|_| "无法核对护甲磁盘数据")?;
+                    let bytes = armor.render(&current)?;
+                    let mut out = fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(text(p, "path")?)
+                        .map_err(|_| "无法创建新护甲导出文件")?;
+                    out.write_all(&bytes)
+                        .and_then(|_| out.sync_all())
+                        .map_err(|_| "护甲导出失败")?;
+                    Ok(json!({"bytes":bytes.len(),"installed":false}))
+                }
+                _ => Err("未提供该护甲接口".into()),
+            };
+        }
         if method == "schema" {
             let type_id =
                 u32::from_str_radix(text(p, "type")?, 16).map_err(|_| "数据块类型无效")?;
@@ -74,6 +130,8 @@ impl Api {
         }
         if method == "close" {
             self.active = None;
+            self.armor = None;
+            self.parameters = Default::default();
             return Ok(json!(true));
         }
         if method == "preset-inspect" {
@@ -99,10 +157,43 @@ impl Api {
             let report = json!({"blocks":blocks.iter().enumerate().map(|(index,b)|json!({"index":index,"type":format!("{:08X}",b.type_id),"bytes":b.payload.len()})).collect::<Vec<_>>()});
             let session = Session::new(bytes, baseline)?;
             self.active = Some((session, path));
+            self.parameters = Default::default();
             return Ok(report);
         }
         let (session, path) = self.active.as_mut().ok_or("请先打开数据文件")?;
         match method {
+            "bind-parameter" => {
+                let parts = p["fields"].as_array().ok_or("缺少参数字段")?;
+                let fields = parts
+                    .iter()
+                    .map(|part| {
+                        session.named_field(
+                            number(part, "block")?,
+                            record(part)?,
+                            text(part, "parameter")?,
+                        )
+                    })
+                    .collect::<Result<Vec<_>, String>>()?;
+                self.parameters
+                    .bind(session, text(p, "owner")?, text(p, "parameter")?, fields)?;
+                Ok(json!(true))
+            }
+            "preset-compare" | "preset-apply-values" => {
+                let preset = crate::preset::Preset::decode(text(p, "text")?)?;
+                let allow_missing = match p.get("allow_missing") {
+                    None => false,
+                    Some(v) => v.as_bool().ok_or("跳过缺失参数选项必须为布尔值")?,
+                };
+                let plan = if method == "preset-compare" {
+                    self.parameters.plan(session, &preset, allow_missing)?
+                } else {
+                    self.parameters.apply(session, &preset, allow_missing)?
+                };
+                Ok(
+                    json!({"changes":plan.changes.iter().map(|(owner,parameter,before,after)|json!({"owner":owner,"parameter":parameter,"before":before,"after":after})).collect::<Vec<_>>(),
+                    "warnings":plan.warnings,"pending":session.pending_count(),"applied":method=="preset-apply-values"}),
+                )
+            }
             "history" => {
                 let (undo, redo) = session.history();
                 Ok(json!({"undo":undo,"redo":redo}))

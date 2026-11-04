@@ -5,13 +5,19 @@ use crate::{
     tables::{self, Key, Layout, Table},
     Kind,
 };
+use std::{collections::BTreeMap, sync::Mutex};
 
 pub struct Baseline {
     bytes: Vec<u8>,
+    blocks: Vec<dlbin::Block>,
+    tables: Mutex<BTreeMap<(u32, u8, usize, usize), Table>>,
 }
 impl Baseline {
     pub fn shipped(file: &str, bytes: Vec<u8>) -> Result<Self, String> {
         let digest = match file {
+            "generated_customization_passive_bonuses.dl_plain" => {
+                "6ba67061fa05b1aa98cd9cbea19df182a80c6c07c5294440c6da41f3bbb8ad40"
+            }
             "generated_arc_settings.dl_plain" => {
                 "b9319245ea9c018376878243f5516f816ed46b27441dde98b762c795035551fc"
             }
@@ -34,12 +40,19 @@ impl Baseline {
         };
         Self::verified(bytes, digest)
     }
+    pub(crate) fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
     fn verified(bytes: Vec<u8>, digest: &str) -> Result<Self, String> {
         if hash::sha256_hex(&bytes) != digest {
             return Err("原值文件指纹不匹配，不能作为默认值".into());
         }
-        dlbin::index(&bytes).map_err(|e| e.to_string())?;
-        Ok(Self { bytes })
+        let blocks = dlbin::index(&bytes).map_err(|e| e.to_string())?;
+        Ok(Self {
+            bytes,
+            blocks,
+            tables: Mutex::new(BTreeMap::new()),
+        })
     }
     /// Locate by type + stable record key, never by current row position.
     /// Missing keys return None; ambiguous block/key layouts fail closed.
@@ -55,8 +68,8 @@ impl Baseline {
             return Err("当前表存在重复记录 ID，无法对应原值".into());
         }
         current.field_offset(key, relative, 4)?;
-        let blocks = dlbin::index(&self.bytes).map_err(|e| e.to_string())?;
-        let matching: Vec<_> = blocks
+        let matching: Vec<_> = self
+            .blocks
             .iter()
             .filter(|b| b.type_id == current.type_id)
             .collect();
@@ -66,7 +79,15 @@ impl Baseline {
         if matching.len() != 1 {
             return Err("原值文件含有重复类型块，无法唯一对应".into());
         }
-        let original = tables::parse(&self.bytes, matching[0], layout)?;
+        let cachekey = match layout {
+            Layout::Rows { stride, id_offset } => (current.type_id, 0, stride, id_offset),
+            Layout::Keyed { stride, slack } => (current.type_id, 1, stride, slack),
+        };
+        let mut cache = self.tables.lock().map_err(|_| "原值索引缓存不可用")?;
+        if let std::collections::btree_map::Entry::Vacant(entry) = cache.entry(cachekey) {
+            entry.insert(tables::parse(&self.bytes, matching[0], layout)?);
+        }
+        let original = &cache[&cachekey];
         if original.duplicate_keys != 0 {
             return Err("原值表存在重复记录 ID".into());
         }
