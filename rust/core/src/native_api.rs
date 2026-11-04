@@ -18,6 +18,30 @@ pub struct Api {
     active: Option<(Session, PathBuf)>,
     parameters: crate::parameters::Parameters,
     armor: Option<(crate::armor::Armor, PathBuf)>,
+    update_job: Option<std::thread::JoinHandle<Result<Value, String>>>,
+    resolver: Option<(
+        PathBuf,
+        u64,
+        std::time::SystemTime,
+        crate::resource_resolver::Resolver,
+    )>,
+}
+fn identity(v: &Value) -> Result<crate::dependencies::Identity, String> {
+    let hex =
+        |key| u64::from_str_radix(text(v, key)?, 16).map_err(|_| format!("无效资源身份：{key}"));
+    Ok((hex("type")?, hex("id")?))
+}
+fn identities(
+    v: &Value,
+) -> Result<std::collections::BTreeSet<crate::dependencies::Identity>, String> {
+    v.as_array()
+        .ok_or("资源清单无效")?
+        .iter()
+        .map(identity)
+        .collect()
+}
+fn identity_json((typ, id): crate::dependencies::Identity) -> Value {
+    json!({"type":format!("{typ:016x}"),"id":format!("{id:016x}")})
 }
 fn number(v: &Value, key: &str) -> Result<usize, String> {
     usize::try_from(
@@ -60,6 +84,152 @@ impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "update-parse" {
+            return crate::update::parse(text(p, "json")?, text(p, "current")?);
+        }
+        if method == "update-start" {
+            if self
+                .update_job
+                .as_ref()
+                .is_some_and(|job| !job.is_finished())
+            {
+                return Ok(json!({"pending":true}));
+            }
+            let current = text(p, "current")?.to_string();
+            self.update_job = Some(std::thread::spawn(move || crate::update::check(&current)));
+            return Ok(json!({"pending":true}));
+        }
+        if method == "update-poll" {
+            if self
+                .update_job
+                .as_ref()
+                .is_some_and(|job| !job.is_finished())
+            {
+                return Ok(json!({"pending":true}));
+            }
+            let Some(job) = self.update_job.take() else {
+                return Ok(json!({"pending":false,"idle":true}));
+            };
+            return job
+                .join()
+                .map_err(|_| "更新检查异常退出".to_string())?
+                .map(|offer| json!({"pending":false,"offer":offer}));
+        }
+        if method == "residency-plan" {
+            let root = std::path::Path::new(text(p, "root")?);
+            let ledger = crate::residency::read_ledger(std::path::Path::new(text(p, "ledger")?))?;
+            let plan = crate::residency::plan(root, &ledger, text(p, "host")?, text(p, "name")?)?;
+            let entry = ledger.iter().find(|e| {
+                e.host.eq_ignore_ascii_case(text(p, "host").unwrap_or(""))
+                    && e.name.eq_ignore_ascii_case(text(p, "name").unwrap_or(""))
+            });
+            let state = entry
+                .map(|e| crate::residency::state(root, e))
+                .transpose()?;
+            return Ok(
+                json!({"slot":plan.index,"reuse":plan.reuse,"state":state.unwrap_or(0),"read_only":true}),
+            );
+        }
+        if method == "dependency-closure" {
+            let roots = identities(&p["roots"])?;
+            let mut edges = std::collections::BTreeMap::new();
+            for edge in p["edges"].as_array().ok_or("依赖边清单无效")? {
+                if edges
+                    .insert(
+                        identity(&edge["resource"])?,
+                        identities(&edge["dependencies"])?,
+                    )
+                    .is_some()
+                {
+                    return Err("依赖节点重复".into());
+                }
+            }
+            let (all, missing) = crate::dependencies::closure(&roots, &edges, 4096)?;
+            return Ok(
+                json!({"resources":all.into_iter().map(identity_json).collect::<Vec<_>>(),"unknown":missing.into_iter().map(identity_json).collect::<Vec<_>>(),"read_only":true}),
+            );
+        }
+        if method == "resource-scan" || method == "resources-resolve" {
+            let root = fs::canonicalize(text(p, "root")?).map_err(|_| "资源目录不可读")?;
+            let meta = fs::metadata(root.join("bundles.nxa")).map_err(|_| "资源索引不可读")?;
+            let stamp = meta.modified().map_err(|_| "无法核对资源索引时间")?;
+            if !self
+                .resolver
+                .as_ref()
+                .is_some_and(|(r, len, time, _)| *r == root && *len == meta.len() && *time == stamp)
+            {
+                let resolver =
+                    crate::resource_resolver::Resolver::new(crate::bundles::Bundles::open(&root)?);
+                self.resolver = Some((root, meta.len(), stamp, resolver));
+            }
+            let resolver = &mut self.resolver.as_mut().unwrap().3;
+            let progress = |done, total| {
+                if done % 32 == 0 {
+                    eprintln!(
+                        "@shodan-progress {}",
+                        json!({"stage":"核对资源与音效来源","done":done,"total":total})
+                    );
+                }
+            };
+            if method == "resource-scan" {
+                let mut blobs = Vec::new();
+                let mut total = 0usize;
+                for input in p["blobs"].as_array().ok_or("缺少资源引用数据")? {
+                    let hex = input.as_str().ok_or("资源引用数据格式无效")?;
+                    total = total.checked_add(hex.len()).ok_or("资源引用数据过大")?;
+                    if total > 32 * 1024 * 1024
+                        || hex.len() % 2 != 0
+                        || !hex.bytes().all(|c| c.is_ascii_hexdigit())
+                    {
+                        return Err("资源引用数据过大或十六进制无效".into());
+                    }
+                    blobs.push(
+                        (0..hex.len())
+                            .step_by(2)
+                            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+                            .collect(),
+                    );
+                }
+                let found = resolver.scan(&blobs, progress)?;
+                return Ok(
+                    json!({"candidates":found.into_iter().map(identity_json).collect::<Vec<_>>(),"read_only":true,"note":"按完整资源哈希查找的候选引用，需要结合实际字段核对"}),
+                );
+            }
+            let preferred = p["preferred"]
+                .as_array()
+                .ok_or("首选资源包清单无效")?
+                .iter()
+                .map(|v| {
+                    v.as_str()
+                        .map(|s| s.to_ascii_lowercase())
+                        .ok_or("资源包名称无效")
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let resources = identities(&p["resources"])?;
+            let events = p["events"]
+                .as_array()
+                .ok_or("音效事件清单无效")?
+                .iter()
+                .map(|v| {
+                    v.as_u64()
+                        .and_then(|n| u32::try_from(n).ok())
+                        .filter(|n| *n != 0)
+                        .ok_or("音效事件 ID 无效")
+                })
+                .collect::<Result<std::collections::BTreeSet<_>, _>>()?;
+            let (resolved, providers, warnings) =
+                resolver.resolve(&preferred, &resources, &events, progress)?;
+            let mut details = Vec::new();
+            for key in &resources {
+                details.push(json!({"resource":identity_json(*key),"providers":resolved.packages.iter().filter(|n|providers[*n].resources.contains(key)).collect::<Vec<_>>(),"missing":resolved.missing_resources.contains(key)}));
+            }
+            for event in &events {
+                details.push(json!({"event":event,"providers":resolved.packages.iter().filter(|n|providers[*n].events.contains(event)).collect::<Vec<_>>(),"missing":resolved.missing_events.contains(event)}));
+            }
+            return Ok(
+                json!({"packages":resolved.packages,"details":details,"missing_resources":resolved.missing_resources.into_iter().map(identity_json).collect::<Vec<_>>(),"missing_events":resolved.missing_events,"warnings":warnings,"read_only":true,"audio_binding":"Wwise 事件目录身份匹配，不代表全部声音播放链已验证"}),
+            );
+        }
         if method == "bundle-inspect"
             || method == "bundle-package-inspect"
             || method == "bundle-patch-preview"
@@ -456,7 +626,8 @@ fn request_line(
     }
 }
 pub fn serve(mut input: impl BufRead, mut output: impl Write) -> Result<(), String> {
-    let mut api = Api::default();
+    let api = std::sync::Arc::new(std::sync::Mutex::new(Api::default()));
+    let mut mcp: Option<crate::mcp::Server> = None;
     // Permit an 8 MiB preset even if JSON escapes every byte. Bound allocation
     // while reading, and drain oversized requests so the next call remains usable.
     while let Some(line) = request_line(&mut input, 50 * 1024 * 1024)? {
@@ -469,7 +640,27 @@ pub fn serve(mut input: impl BufRead, mut output: impl Write) -> Result<(), Stri
             .and_then(|r| r.get("id"))
             .cloned()
             .unwrap_or(Value::Null);
-        let result = parsed.and_then(|r| api.invoke(&r));
+        let result = parsed.and_then(|r| match r["method"].as_str() {
+            Some("mcp-start") => {
+                if mcp.is_none() {
+                    mcp = Some(crate::mcp::Server::start(api.clone())?);
+                }
+                Ok(json!({"enabled":true,"config":mcp.as_ref().unwrap().config()}))
+            }
+            Some("mcp-stop") => {
+                mcp = None;
+                Ok(json!({"enabled":false}))
+            }
+            Some("mcp-status") => Ok(json!({"enabled":mcp.is_some()})),
+            Some("mcp-config") => mcp
+                .as_ref()
+                .map(|s| s.config())
+                .ok_or("MCP 尚未开启".into()),
+            _ => api
+                .lock()
+                .map_err(|_| "原生会话不可用".to_string())?
+                .invoke(&r),
+        });
         let response = match result {
             Ok(value) => json!({"id":id,"ok":true,"result":value}),
             Err(e) => json!({"id":id,"ok":false,"error":e}),

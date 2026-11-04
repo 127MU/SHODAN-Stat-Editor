@@ -57,6 +57,9 @@ pub fn events(
                 }
                 p = next;
             }
+            // HIRC is the event directory. Wrapped game banks may carry padding
+            // or streamed data afterwards; neither is another event directory.
+            return Ok(result);
         }
         at = end;
     }

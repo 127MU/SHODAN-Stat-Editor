@@ -12,16 +12,20 @@ pub mod dsar;
 pub mod export;
 pub mod hash;
 pub mod install;
+pub mod mcp;
 pub mod native_api;
 pub mod parameters;
 pub mod passive;
 pub mod preset;
 pub mod references;
+pub mod residency;
 pub mod resource_package;
+pub mod resource_resolver;
 pub mod schema;
 pub mod sealed;
 pub mod session;
 pub mod tables;
+pub mod update;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
