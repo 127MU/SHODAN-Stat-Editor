@@ -152,7 +152,10 @@ class _WorkbenchState extends State<Workbench> {
     });
     try {
       if (['Armor', 'Presets', 'Settings', 'Tweaks'].contains(key)) {
-        setState(() => busy = false);
+        setState(() {
+          busy = false;
+          status = key == 'Armor' ? '选择被动后，点击写入游戏生效' : '数据已就绪';
+        });
         return;
       }
       await backend.call('editor_mode', [
@@ -1452,6 +1455,7 @@ class _WorkbenchState extends State<Workbench> {
                                         )
                                       : tab == 'Armor'
                                       ? ArmorPage(
+                                          query: query,
                                           backend: backend,
                                           onError: showError,
                                           surface: (child) => surface(child),

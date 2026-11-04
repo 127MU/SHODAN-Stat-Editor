@@ -88,6 +88,21 @@ class ParityBackend extends FakeBackend {
 }
 
 void main() {
+  testWidgets('被动组合页仍显示恢复原版操作', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1100, 820));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      Workbench(backend: ParityBackend(), persistAppearance: false),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('navigation-Armors')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('被动组合'));
+    await tester.pumpAndSettle();
+    expect(find.text('恢复原版'), findsOneWidget);
+    expect(find.text('写入游戏'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('主页仅已修改筛选刷新刚编辑的装备并保留搜索', (tester) async {
     final backend = ParityBackend();
     await tester.binding.setSurfaceSize(const Size(1480, 960));
