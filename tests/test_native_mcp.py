@@ -32,6 +32,14 @@ with tempfile.TemporaryDirectory(dir=ROOT/'dist/build-temp-r19',prefix='native-m
         assert response['result']['isError'] is False,response
         assert call('get',**field)['value']==42
         call('undo');assert call('get',**field)['value']==-2.5
+        armor=pathlib.Path(folder)/'armor.plain'
+        original=ROOT/'rust/core/data/armor-baseline.bin'
+        armor.write_bytes(original.read_bytes())
+        call('armor-open',path=str(armor),baseline_path=str(original))
+        response=rpc('tools/call',dict(name='shodan_native_call',arguments=dict(method='armor-profiles-update',params=dict(id=999,own=True,policy='stack',enabled={'1':True,'2':True}))))[1]
+        assert response['result']['isError'] is False,response
+        assert call('armor-profiles-get')['groups'][0]['enabled']=={'1':True,'2':True}
+        call('armor-undo');assert call('armor-profiles-get')['groups']==[]
         assert rpc('tools/call',dict(name='shodan_native_call',arguments=dict(method='mcp-start',params={})))[1]['error']['code']==-32602
         call('mcp-stop');assert call('mcp-status')['enabled'] is False
         try:

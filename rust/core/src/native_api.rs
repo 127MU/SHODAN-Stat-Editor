@@ -17,7 +17,7 @@ use std::{
 pub struct Api {
     active: Option<(Session, PathBuf)>,
     parameters: crate::parameters::Parameters,
-    armor: Option<(crate::armor::Armor, PathBuf)>,
+    armor: Option<crate::armor_session::Session>,
     update_job: Option<std::thread::JoinHandle<Result<Value, String>>>,
     resolver: Option<(
         PathBuf,
@@ -372,51 +372,20 @@ impl Api {
             return Ok(crate::diagnostics::Privacy::local().scrub(&p["data"]));
         }
         if method == "armor-open" {
-            let path = PathBuf::from(text(p, "path")?);
-            let current = fs::read(&path).map_err(|_| "无法读取护甲数据")?;
-            let original = fs::read(text(p, "baseline_path")?).map_err(|_| "无法读取护甲原值")?;
-            let baseline =
-                Baseline::shipped("generated_customization_passive_bonuses.dl_plain", original)?;
-            let armor = crate::armor::Armor::new(current, baseline)?;
-            let count = armor.rows.len();
-            self.armor = Some((armor, path));
+            let session = crate::armor_session::Session::open(
+                PathBuf::from(text(p, "path")?),
+                text(p, "baseline_path")?,
+            )?;
+            let count = session.row_count();
+            self.armor = Some(session);
             return Ok(json!({"rows":count}));
         }
         if method.starts_with("armor-") {
-            let (armor, path) = self.armor.as_mut().ok_or("请先打开护甲数据")?;
-            return match method {
-                "armor-rows" => Ok(json!(armor
-                    .rows
-                    .values()
-                    .map(
-                        |r| Ok(json!({"key":r.key,"label":r.label,"passive":r.passive,
-                    "value":armor.value(&r.key)?,"original":r.original}))
-                    )
-                    .collect::<Result<Vec<_>, String>>()?)),
-                "armor-set" => {
-                    armor.set(text(p, "key")?, p["value"].as_f64().ok_or("护甲数值无效")?)?;
-                    Ok(json!(true))
-                }
-                "armor-capture" => Ok(json!(armor.capture()?)),
-                "armor-apply-snapshot" => {
-                    armor.apply_snapshot(text(p, "text")?)?;
-                    Ok(json!(true))
-                }
-                "armor-export-copy" => {
-                    let current = fs::read(path).map_err(|_| "无法核对护甲磁盘数据")?;
-                    let bytes = armor.render(&current)?;
-                    let mut out = fs::OpenOptions::new()
-                        .write(true)
-                        .create_new(true)
-                        .open(text(p, "path")?)
-                        .map_err(|_| "无法创建新护甲导出文件")?;
-                    out.write_all(&bytes)
-                        .and_then(|_| out.sync_all())
-                        .map_err(|_| "护甲导出失败")?;
-                    Ok(json!({"bytes":bytes.len(),"installed":false}))
-                }
-                _ => Err("未提供该护甲接口".into()),
-            };
+            return self
+                .armor
+                .as_mut()
+                .ok_or("请先打开护甲数据")?
+                .invoke(method, p);
         }
         if method == "schema" {
             let type_id =

@@ -1,5 +1,7 @@
 //! Typed little-endian numeric editing. Baselines are immutable original bytes.
 pub mod armor;
+pub mod armor_profiles;
+pub mod armor_session;
 pub mod audio;
 pub mod baseline;
 pub mod bundles;

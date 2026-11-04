@@ -1,11 +1,12 @@
 //! Armor passive composition from current stored rows, without retuning values.
 use std::collections::{BTreeMap, BTreeSet};
 pub const TYPE: u32 = 0x63CE0FEB;
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Policy {
     Stack,
     Strongest,
 }
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Profile {
     pub own: bool,
     pub enabled: Vec<u32>,
@@ -127,6 +128,7 @@ fn strength(typ: u32, value: f32) -> f64 {
 }
 fn combine<const N: usize>(rows: Vec<[u8; N]>, policy: Policy) -> Result<Vec<[u8; N]>, String> {
     let mut index = BTreeMap::new();
+    let mut values: BTreeMap<u32, Vec<f32>> = BTreeMap::new();
     let mut out: Vec<[u8; N]> = Vec::new();
     for row in rows {
         let key = u32at(&row, 0)?;
@@ -134,6 +136,13 @@ fn combine<const N: usize>(rows: Vec<[u8; N]>, policy: Policy) -> Result<Vec<[u8
         if !value.is_finite() {
             return Err("护甲修饰项数值无效".into());
         }
+        // The compatibility engine deduplicates identical numeric values
+        // before comparing strength, even when their operation types differ.
+        let previous_values = values.entry(key).or_default();
+        if previous_values.contains(&value) {
+            continue;
+        }
+        previous_values.push(value);
         let typ = if N == 16 { u32at(&row, 4)? } else { 2 };
         if let Some(&at) = index.get(&key) {
             if policy == Policy::Strongest {
@@ -193,15 +202,25 @@ pub struct Report {
     pub groups: usize,
     pub sources: usize,
 }
-pub fn rebuild(file: &[u8], profiles: &BTreeMap<u32, Profile>) -> Result<Report, String> {
-    let blocks = crate::dlbin::index(file).map_err(|e| e.to_string())?;
-    let mut catalog = BTreeMap::new();
-    for block in blocks.iter().filter(|b| b.type_id == TYPE) {
-        let p = Passive::parse(&file[block.payload.clone()])?;
-        if catalog.insert(p.id, p).is_some() {
-            return Err("护甲被动 ID 重复".into());
+pub fn catalog(file: &[u8]) -> Result<BTreeMap<u32, Passive>, String> {
+    let mut out = BTreeMap::new();
+    for block in crate::dlbin::index(file).map_err(|e| e.to_string())? {
+        if block.type_id != TYPE {
+            continue;
+        }
+        let p = Passive::parse(&file[block.payload])?;
+        if p.id == crate::armor_profiles::EVERY || out.insert(p.id, p).is_some() {
+            return Err("护甲被动 ID 无效或重复".into());
         }
     }
+    if out.is_empty() {
+        return Err("护甲数据中没有被动记录".into());
+    }
+    Ok(out)
+}
+pub fn rebuild(file: &[u8], profiles: &BTreeMap<u32, Profile>) -> Result<Report, String> {
+    let blocks = crate::dlbin::index(file).map_err(|e| e.to_string())?;
+    let catalog = catalog(file)?;
     let mut out = Vec::new();
     let mut cursor = 0;
     let mut groups = 0;
@@ -348,5 +367,37 @@ mod tests {
         )
         .unwrap();
         assert!(empty.modifiers.is_empty());
+    }
+    #[test]
+    fn strongest_deduplicates_equal_values_before_comparing_operation_types() {
+        let ratio = row(10, 2.0);
+        let mut amount = ratio;
+        amount[4..8].copy_from_slice(&1u32.to_le_bytes());
+        let catalog = BTreeMap::from([
+            (1, passive(1, vec![ratio])),
+            (2, passive(2, vec![amount, row(10, 3.0)])),
+        ]);
+        let result = compose(
+            &catalog,
+            1,
+            &Profile {
+                own: true,
+                enabled: vec![2],
+                policy: Policy::Strongest,
+            },
+        )
+        .unwrap();
+        assert_eq!(result.modifiers, vec![row(10, 3.0)]);
+        let result = compose(
+            &catalog,
+            1,
+            &Profile {
+                own: true,
+                enabled: vec![2],
+                policy: Policy::Stack,
+            },
+        )
+        .unwrap();
+        assert_eq!(result.modifiers, vec![ratio]);
     }
 }
