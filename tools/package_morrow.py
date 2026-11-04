@@ -32,10 +32,11 @@ def main():
  version=tomllib.loads((ROOT/'rust/core/Cargo.toml').read_text(encoding='utf8'))['package']['version']
  manifest={'version':version,'status':'release','ui':'Morrow / Flutter','host':'Rust + compatibility Lua engine','core_version':'4.6.0','files':{str(f.relative_to(a.output)).replace('\\','/'):hashlib.sha256(f.read_bytes()).hexdigest() for f in a.output.rglob('*')if f.is_file()}}
  (a.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf8')
- with zipfile.ZipFile(a.output.with_suffix('.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=9)as z:
+ archive=a.output.parent/(a.output.name+'.zip')
+ with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9)as z:
   for f in a.output.rglob('*'):
    if f.is_file():z.write(f,a.output.name+'/'+f.relative_to(a.output).as_posix())
- print(json.dumps({'folder':str(a.output),'files':len(manifest['files']),'zip_bytes':a.output.with_suffix('.zip').stat().st_size}))
- if a.output.with_suffix('.zip').stat().st_size >= 20_000_000:
+ print(json.dumps({'folder':str(a.output),'archive':str(archive),'files':len(manifest['files']),'zip_bytes':archive.stat().st_size}))
+ if archive.stat().st_size >= 20_000_000:
   raise SystemExit('Package exceeds the 20 MB limit')
 if __name__=='__main__':main()
