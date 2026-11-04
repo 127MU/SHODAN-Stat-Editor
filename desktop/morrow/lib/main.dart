@@ -20,6 +20,7 @@ import 'armor_item.dart';
 import 'game_text.dart';
 import 'preset_page.dart';
 import 'review_body.dart';
+import 'release_updates.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,8 @@ class _WorkbenchState extends State<Workbench> {
   late final Backend backend = widget.backend ?? Backend();
   bool ready = false, busy = false, dark = true;
   bool diagnosing = false;
+  bool checkingUpdates = false;
+  String updateStatus = '启动时自动检查一次正式发行版';
   bool onlyChanged = false, catalogOnlyChanged = false;
   String diagnosticResult = '';
   String status = '正在读取数据…', tab = 'Primary';
@@ -133,8 +136,39 @@ class _WorkbenchState extends State<Workbench> {
       if (!mounted) return;
       setState(() => ready = true);
       await load('Primary');
+      if (mounted && widget.backend == null)
+        unawaited(checkUpdates(automatic: true));
     } catch (e) {
       if (mounted) setState(() => status = '启动失败：$e');
+    }
+  }
+
+  Future<void> checkUpdates({bool automatic = false}) async {
+    if (checkingUpdates || !mounted) return;
+    setState(() {
+      checkingUpdates = true;
+      updateStatus = '正在检查更新…';
+    });
+    try {
+      final offer = await checkNativeRelease(backend);
+      if (!mounted) return;
+      setState(() {
+        checkingUpdates = false;
+        updateStatus = offer['newer'] == true
+            ? '发现新版本 ${offer['version']}'
+            : '当前已是最新正式版本';
+      });
+      if (offer['newer'] == true) {
+        final context = navigator.currentContext;
+        if (context != null && context.mounted)
+          await showReleaseOffer(context, backend, offer);
+      }
+    } catch (e) {
+      backend.diagnostics.record('原生更新检查失败：$e');
+      if (mounted)
+        setState(() => updateStatus = automatic ? '暂时无法检查更新，可点击重试' : '$e');
+    } finally {
+      if (mounted) setState(() => checkingUpdates = false);
     }
   }
 
@@ -667,6 +701,31 @@ class _WorkbenchState extends State<Workbench> {
 
   Widget settingsPage() => ListView(
     children: [
+      surface(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '版本更新 · 4.6.0',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Text(updateStatus),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: checkingUpdates ? null : () => checkUpdates(),
+              icon: const Icon(Icons.system_update_alt),
+              label: Text(checkingUpdates ? '正在检查' : '检查更新'),
+            ),
+            if (checkingUpdates)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: LinearProgressIndicator(),
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
       surface(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,

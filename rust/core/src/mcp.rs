@@ -172,20 +172,23 @@ fn request(client: &mut TcpStream, port: u16, secret: &str) -> Result<Value, u16
     let get = |key| headers.get(key).map_or("", String::as_str);
     let host = format!("127.0.0.1:{port}");
     let localhost = format!("localhost:{port}");
+    let mut denied = None;
     if ![host.as_str(), localhost.as_str()].contains(&get("host")) {
-        return Err(403);
+        denied = Some(403);
     }
     if headers.contains_key("origin")
         && ![format!("http://{host}"), format!("http://{localhost}")]
             .contains(&get("origin").to_string())
     {
-        return Err(403);
+        denied = Some(403);
     }
     if !equal(
         get("authorization").as_bytes(),
         format!("Bearer {secret}").as_bytes(),
     ) {
-        return Err(401);
+        if denied.is_none() {
+            denied = Some(401);
+        }
     }
     if headers.contains_key("transfer-encoding")
         || get("content-type").split(';').next().unwrap_or("").trim() != "application/json"
@@ -201,7 +204,18 @@ fn request(client: &mut TcpStream, port: u16, secret: &str) -> Result<Value, u16
         return Err(413);
     }
     let mut body = vec![0; length];
-    reader.read_exact(&mut body).map_err(|_| 400u16)?;
+    // Consume bounded request bodies before replying to a rejected request.
+    // Closing Windows TCP sockets with unread data can reset the connection and
+    // discard the response body, turning a clear 401/403 into a connection error.
+    for chunk in body.chunks_mut(8192) {
+        if Instant::now() > deadline {
+            return Err(408);
+        }
+        reader.read_exact(chunk).map_err(|_| 400u16)?;
+    }
+    if let Some(status) = denied {
+        return Err(status);
+    }
     serde_json::from_slice(&body).map_err(|_| 422)
 }
 fn rpc_error(id: Value, code: i32, message: &str) -> Value {

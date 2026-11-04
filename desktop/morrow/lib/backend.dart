@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'diagnostics.dart';
+import 'native_service.dart';
 
 class Backend {
   Backend({this.runtimeDirectory, AppDiagnostics? diagnostics})
@@ -9,6 +10,14 @@ class Backend {
   final AppDiagnostics diagnostics;
   final progress = StreamController<Map<String, dynamic>>.broadcast();
   final String? runtimeDirectory;
+  late final native = NativeService(
+    runtimeDirectory ?? File(Platform.resolvedExecutable).parent.path,
+    diagnostics,
+  );
+  Future<dynamic> nativeCall(
+    String method, [
+    Map<String, dynamic> params = const {},
+  ]) => native.call(method, params);
   Process? _process;
   int _next = 0;
   String _diagnostics = "";
@@ -135,6 +144,7 @@ class Backend {
         runtimeDirectory ?? File(Platform.resolvedExecutable).parent.path;
     for (final name in [
       'shodan-core.exe',
+      'shodan-native.exe',
       'lua51.dll',
       'libsodium.dll',
       'shodan_hash.dll',
@@ -188,6 +198,7 @@ class Backend {
   }
 
   Future<void> _shutdown() async {
+    await native.close();
     if (_process != null) {
       if (_failure != null) {
         _process = null;

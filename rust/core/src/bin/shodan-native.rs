@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! Standalone Rust codec and read-only LDLD inspection.
 //! Does not load the compatibility host, DLLs, or Lua source files.
 use serde_json::json;

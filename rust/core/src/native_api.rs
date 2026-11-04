@@ -84,6 +84,10 @@ impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "update-open-link" {
+            crate::update::open_link(text(p, "url")?)?;
+            return Ok(json!(true));
+        }
         if method == "update-parse" {
             return crate::update::parse(text(p, "json")?, text(p, "current")?);
         }

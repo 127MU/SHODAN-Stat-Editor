@@ -1,6 +1,62 @@
 //! Release metadata only: no Lua/DLL helper, installer execution or game traffic.
 use serde_json::{json, Value};
 const REPO: &str = "127MU/SHODAN-Stat-Editor";
+pub fn open_link(url: &str) -> Result<(), String> {
+    let prefix = format!("https://github.com/{REPO}/releases/");
+    let tail = url.strip_prefix(&prefix).ok_or("更新链接与项目不匹配")?;
+    if url.len() > 4096 || url.chars().any(|c| c.is_whitespace() || c.is_control()) {
+        return Err("更新链接格式无效".into());
+    }
+    if let Some(tag) = tail.strip_prefix("tag/") {
+        version(tag)?;
+    } else if let Some(download) = tail.strip_prefix("download/") {
+        let (tag, file) = download.split_once('/').ok_or("下载链接格式无效")?;
+        version(tag)?;
+        if file.is_empty()
+            || file.contains(['/', '\\', '?', '#'])
+            || !file.to_ascii_lowercase().ends_with(".exe")
+        {
+            return Err("下载链接格式无效".into());
+        }
+    } else {
+        return Err("未提供此更新链接类型".into());
+    }
+    open_browser(url)
+}
+#[cfg(not(windows))]
+fn open_browser(_: &str) -> Result<(), String> {
+    Err("当前平台尚未提供打开更新链接功能".into())
+}
+#[cfg(windows)]
+fn open_browser(url: &str) -> Result<(), String> {
+    use std::{ffi::c_void, ptr};
+    #[link(name = "shell32")]
+    unsafe extern "system" {
+        fn ShellExecuteW(
+            window: *mut c_void,
+            verb: *const u16,
+            file: *const u16,
+            params: *const u16,
+            directory: *const u16,
+            show: i32,
+        ) -> isize;
+    }
+    let wide = |s: &str| s.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
+    let result = unsafe {
+        ShellExecuteW(
+            ptr::null_mut(),
+            wide("open").as_ptr(),
+            wide(url).as_ptr(),
+            ptr::null(),
+            ptr::null(),
+            1,
+        )
+    };
+    if result <= 32 {
+        return Err(format!("无法打开更新链接（{result}）"));
+    }
+    Ok(())
+}
 fn version(text: &str) -> Result<[u32; 4], String> {
     let text = text.strip_prefix('v').unwrap_or(text);
     let (base, revision) = text.split_once("-r").unwrap_or((text, "0"));
@@ -273,5 +329,16 @@ mod tests {
         data["html_url"] = json!("https://example.com");
         assert!(parse(&data.to_string(), "4.6.0").is_err());
         assert!(version("v4.6.0<script>").is_err());
+    }
+    #[test]
+    fn foreign_or_malformed_links_never_reach_the_browser() {
+        for url in [
+            "file:///C:/bad.exe",
+            "https://example.com/download.exe",
+            "https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/v4.6.0?next=bad",
+            "https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v4.6.0/bad.exe/extra",
+        ] {
+            assert!(open_link(url).is_err());
+        }
     }
 }
