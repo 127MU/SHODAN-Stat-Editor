@@ -27,6 +27,8 @@ class FakeBackend extends Backend {
       case 'select':
         return true;
       case 'rows':
+      case 'rows_fast':
+      case 'rows_section':
         return [
           {
             'id': 1,
@@ -66,7 +68,7 @@ class ScrollingBackend extends FakeBackend {
   Future<dynamic> call(String method, [List<dynamic> args = const []]) async {
     if (method == 'game_text')
       return {'available': true, 'value': '测试', 'original': '原文'};
-    if (method == 'rows')
+    if (method == 'rows' || method == 'rows_fast' || method == 'rows_section')
       return List.generate(
         36,
         (i) => {
@@ -118,7 +120,7 @@ void main() {
       Workbench(backend: FakeBackend(), persistAppearance: false),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(ListTile), findsNWidgets(8));
+    expect(find.byType(ListTile), findsNWidgets(9));
     expect(find.widgetWithText(ChoiceChip, '配件'), findsOneWidget);
     await tester.tap(find.widgetWithText(ChoiceChip, '配件'));
     await tester.pumpAndSettle();

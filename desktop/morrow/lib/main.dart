@@ -1,3 +1,7 @@
+import 'catalog_groups.dart';
+import 'group_chooser.dart';
+import 'editor_tools.dart';
+import 'game_tweaks.dart';
 import 'glass_theme.dart';
 import 'install_dialog.dart';
 import 'diagnostics_ui.dart';
@@ -16,6 +20,8 @@ import 'armor_item.dart';
 import 'game_text.dart';
 import 'preset_page.dart';
 import 'review_body.dart';
+import 'release_updates.dart';
+import 'app_version.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,9 +41,23 @@ class _WorkbenchState extends State<Workbench> {
   late final Backend backend = widget.backend ?? Backend();
   bool ready = false, busy = false, dark = true;
   bool diagnosing = false;
+  bool checkingUpdates = false;
+  String updateStatus = '启动时自动检查一次正式发行版';
+  bool onlyChanged = false, catalogOnlyChanged = false;
   String diagnosticResult = '';
-  String status = '正在读取数据…', query = '', tab = 'Primary';
+  String status = '正在读取数据…', tab = 'Primary';
+  String catalogQuery = '', parameterQuery = '';
+  String get query => current == null ? catalogQuery : parameterQuery;
+  set query(String value) {
+    if (current == null) {
+      catalogQuery = value;
+    } else {
+      parameterQuery = value;
+    }
+  }
+
   Map? current;
+  String? activeSection;
   List<dynamic> items = [], rows = [];
   int epoch = 0;
   String material = 'liquid';
@@ -46,7 +66,10 @@ class _WorkbenchState extends State<Workbench> {
   double backgroundDim = .35;
   Timer? styleTimer;
   Future<void> styleWrite = Future.value();
-  final search = TextEditingController();
+  final catalogSearch = TextEditingController();
+  final parameterSearch = TextEditingController();
+  TextEditingController get search =>
+      current == null ? catalogSearch : parameterSearch;
   final navigator = GlobalKey<NavigatorState>();
   final rowRevision = ValueNotifier<int>(0);
   static const tabs = {
@@ -54,6 +77,7 @@ class _WorkbenchState extends State<Workbench> {
     'Armors': '护甲、头盔与披风',
     'Presets': '全局预设',
     'Settings': '设置',
+    'Tweaks': '游戏参数',
     'Primary': '主武器',
     'Secondary': '副武器',
     'Support': '支援武器',
@@ -78,6 +102,7 @@ class _WorkbenchState extends State<Workbench> {
     'Helldiver': ('潜兵', Icons.person_outline),
     'Terminids': ('敌人', Icons.pest_control_outlined),
     'Records': ('数据与预设', Icons.storage_outlined),
+    'Tweaks': ('游戏参数', Icons.settings_outlined),
     'Settings': ('设置', Icons.tune),
   };
   List<String> peers(String key) {
@@ -112,8 +137,39 @@ class _WorkbenchState extends State<Workbench> {
       if (!mounted) return;
       setState(() => ready = true);
       await load('Primary');
+      if (mounted && widget.backend == null)
+        unawaited(checkUpdates(automatic: true));
     } catch (e) {
       if (mounted) setState(() => status = '启动失败：$e');
+    }
+  }
+
+  Future<void> checkUpdates({bool automatic = false}) async {
+    if (checkingUpdates || !mounted) return;
+    setState(() {
+      checkingUpdates = true;
+      updateStatus = '正在检查更新…';
+    });
+    try {
+      final offer = await checkNativeRelease(backend);
+      if (!mounted) return;
+      setState(() {
+        checkingUpdates = false;
+        updateStatus = offer['newer'] == true
+            ? '发现新版本 ${offer['version']}'
+            : '当前已是最新正式版本';
+      });
+      if (offer['newer'] == true) {
+        final context = navigator.currentContext;
+        if (context != null && context.mounted)
+          await showReleaseOffer(context, backend, offer);
+      }
+    } catch (e) {
+      backend.diagnostics.record('原生更新检查失败：$e');
+      if (mounted)
+        setState(() => updateStatus = automatic ? '暂时无法检查更新，可点击重试' : '$e');
+    } finally {
+      if (mounted) setState(() => checkingUpdates = false);
     }
   }
 
@@ -122,13 +178,19 @@ class _WorkbenchState extends State<Workbench> {
     setState(() {
       tab = key;
       current = null;
-      query = '';
-      search.clear();
+      catalogOnlyChanged = false;
+      catalogQuery = '';
+      parameterQuery = '';
+      catalogSearch.clear();
+      parameterSearch.clear();
       busy = true;
     });
     try {
-      if (['Armor', 'Presets', 'Settings'].contains(key)) {
-        setState(() => busy = false);
+      if (['Armor', 'Presets', 'Settings', 'Tweaks'].contains(key)) {
+        setState(() {
+          busy = false;
+          status = key == 'Armor' ? '选择被动后，点击写入游戏生效' : '数据已就绪';
+        });
         return;
       }
       await backend.call('editor_mode', [
@@ -159,18 +221,35 @@ class _WorkbenchState extends State<Workbench> {
     }
   }
 
+  Future<void> openCatalogGroup(CatalogGroup group) async {
+    if (busy) return;
+    if (group.entries.length == 1) {
+      await select(group.entries.single);
+      return;
+    }
+    final entry = await showDialog<Map>(
+      context: navigator.currentContext!,
+      builder: (_) => GroupChooser(group: group),
+    );
+    if (entry != null && mounted) await select(entry);
+  }
+
   Future<void> select(Map item) async {
     final ticket = ++epoch;
-    setState(() {
-      current = item;
-      rows = [];
-      busy = true;
-    });
+    setState(() => busy = true);
     try {
       await backend.call('select', [item['id']]);
-      final result = await backend.call('rows');
-      if (mounted && ticket == epoch)
-        setState(() => rows = result is List ? result : []);
+      final result = await backend.call('rows_fast');
+      if (mounted && ticket == epoch) {
+        setState(() {
+          current = item;
+          activeSection = null;
+          parameterQuery = '';
+          parameterSearch.clear();
+          onlyChanged = false;
+          rows = result is List ? result : [];
+        });
+      }
     } catch (e) {
       showError(e);
     } finally {
@@ -178,17 +257,49 @@ class _WorkbenchState extends State<Workbench> {
     }
   }
 
+  Future<void> backToCatalog() async {
+    if (busy) return;
+    final ticket = ++epoch;
+    setState(() => busy = true);
+    try {
+      final result = await backend.call('items', [tab, '']);
+      if (mounted && ticket == epoch)
+        setState(() {
+          items = result is List ? result : [];
+          current = null;
+          activeSection = null;
+          status =
+              '${items.where((item) => item['changed'] == true).length} 项已修改 / 共 ${items.length} 项';
+        });
+    } catch (e) {
+      showError(e);
+    } finally {
+      if (mounted && ticket == epoch) setState(() => busy = false);
+    }
+  }
+
+  Future<void> refreshCurrent() async {
+    final ticket = epoch;
+    var result = await backend.call('rows_fast');
+    if (activeSection != null && mounted && ticket == epoch) {
+      final updated = await backend.call('rows_section', [activeSection]);
+      if (result is List && updated is List) {
+        final byId = {for (final row in updated) row['id']: row};
+        result = [for (final row in result) byId[row['id']] ?? row];
+      }
+    }
+    if (mounted && ticket == epoch) {
+      setState(() => rows = result is List ? result : []);
+      rowRevision.value++;
+    }
+  }
+
   Future<bool> edit(String method, List<dynamic> args) async {
     final ticket = epoch;
     try {
       await backend.call(method, args);
-      final result = await backend.call('rows');
-      if (mounted && ticket == epoch)
-        setState(() {
-          rows = result is List ? result : [];
-          status = '修改已保存，写入游戏后生效';
-        });
-      if (mounted && ticket == epoch) rowRevision.value++;
+      await refreshCurrent();
+      if (mounted && ticket == epoch) setState(() => status = '修改已保存，写入游戏后生效');
       return true;
     } catch (e) {
       showError(e);
@@ -295,6 +406,37 @@ class _WorkbenchState extends State<Workbench> {
       }
     } catch (e) {
       showError(e);
+    }
+  }
+
+  Future<void> restoreGame() async {
+    final yes = await showDialog<bool>(
+      context: navigator.currentContext!,
+      builder: (ctx) => GlassDialog(
+        title: const Text('恢复原版'),
+        content: const Text('请先完全退出游戏。恢复编辑器管理的游戏文件；修改配置和预设仍保留。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认恢复'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    setState(() => busy = true);
+    try {
+      await showDialog<dynamic>(
+        context: navigator.currentContext!,
+        barrierDismissible: false,
+        builder: (_) => InstallDialog(backend: backend, restore: true),
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -467,7 +609,7 @@ class _WorkbenchState extends State<Workbench> {
                             await backend.call('preset', [op.key, slot]);
                             await refresh();
                             update(() {});
-                            final x = await backend.call('rows');
+                            final x = await backend.call('rows_fast');
                             if (mounted) setState(() => rows = x as List);
                           } catch (e) {
                             showError(e);
@@ -560,6 +702,31 @@ class _WorkbenchState extends State<Workbench> {
 
   Widget settingsPage() => ListView(
     children: [
+      surface(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '版本更新 · $appVersion',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Text(updateStatus),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: checkingUpdates ? null : () => checkUpdates(),
+              icon: const Icon(Icons.system_update_alt),
+              label: Text(checkingUpdates ? '正在检查' : '检查更新'),
+            ),
+            if (checkingUpdates)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: LinearProgressIndicator(),
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
       surface(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -788,7 +955,7 @@ class _WorkbenchState extends State<Workbench> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            const Text('4.6.0 · Rust Host + Lua 数据兼容层'),
+            const Text('$appVersion · Rust Host + Lua 数据兼容层'),
             const Text('界面字体：MiSans（小米），保留中英文及常用符号。'),
             const Text('游戏路径由现有核心自动检测，不固定其他人的安装目录。'),
             const SizedBox(height: 8),
@@ -874,17 +1041,92 @@ class _WorkbenchState extends State<Workbench> {
         if ((row['inline_note'] ?? '').toString().isNotEmpty)
           Text(row['inline_note']),
         if (row['changed'] == true) const Text('已修改'),
+        if (row['shared_pending'] == true ||
+            (row['shared'] is List && (row['shared'] as List).isNotEmpty))
+          TextButton(
+            onPressed: () async {
+              List shared;
+              try {
+                final result = row['shared_pending'] == true
+                    ? await backend.call('shared', [row['id']])
+                    : row['shared'];
+                shared = result is List ? result : [];
+                if (!mounted) return;
+              } catch (e) {
+                showError(e);
+                return;
+              }
+              final item = await showDialog<Map>(
+                context: navigator.currentContext!,
+                builder: (ctx) => GlassDialog(
+                  title: const Text('共享影响'),
+                  content: SizedBox(
+                    width: 600,
+                    height: 360,
+                    child: ListView(
+                      children: [
+                        if (shared.isEmpty)
+                          const ListTile(title: Text('未发现其他共享此参数的条目')),
+                        for (final owner in shared)
+                          ListTile(
+                            title: Text('${owner['name'] ?? owner['id']}'),
+                            onTap: () => Navigator.pop(ctx, owner),
+                          ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('关闭'),
+                    ),
+                  ],
+                ),
+              );
+              if (item != null && mounted) {
+                Navigator.pop(navigator.currentContext!);
+                await select(item);
+              }
+            },
+            child: Text(
+              row['shared_pending'] == true
+                  ? '查看共享影响'
+                  : '共享影响 ${(row['shared'] as List).length} 项',
+            ),
+          ),
       ],
     ),
   );
   Widget parameterPage() {
     final filtered = rows
-        .where((r) => r.toString().toLowerCase().contains(query))
+        .where(
+          (r) =>
+              r.toString().toLowerCase().contains(query) &&
+              (!onlyChanged ||
+                  r['changed'] == true ||
+                  r['patch_pending'] == true),
+        )
         .toList();
     final sections = filtered.map((r) => r['section'] ?? '参数').toSet();
     return CustomScrollView(
       key: PageStorageKey('parameter-categories:${current?['id']}'),
       slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: EditorTools(
+              key: ValueKey('editor-tools:${current?['id']}'),
+              backend: backend,
+              revision: rowRevision,
+              onRefresh: refreshCurrent,
+              onError: showError,
+              onRecord: select,
+              onPresets: equipmentPresets,
+              onlyChanged: onlyChanged,
+              onOnlyChanged: (value) => setState(() => onlyChanged = value),
+            ),
+          ),
+        ),
         if (tab == 'Armors')
           SliverToBoxAdapter(
             child: ArmorItem(
@@ -946,6 +1188,26 @@ class _WorkbenchState extends State<Workbench> {
   }
 
   Future<void> openSection(String section) async {
+    if (busy) return;
+    final ticket = epoch;
+    setState(() => busy = true);
+    try {
+      final result = await backend.call('rows_section', [section]);
+      if (!mounted || ticket != epoch) return;
+      if (result is! List) throw StateError('参数分类响应格式错误');
+      final updated = {for (final row in result) row['id']: row};
+      setState(
+        () => rows = [for (final row in rows) updated[row['id']] ?? row],
+      );
+      rowRevision.value++;
+    } catch (e) {
+      showError(e);
+      return;
+    } finally {
+      if (mounted && ticket == epoch) setState(() => busy = false);
+    }
+    if (!mounted || ticket != epoch) return;
+    activeSection = section;
     await showDialog<void>(
       context: navigator.currentContext!,
       builder: (ctx) => GlassDialog(
@@ -965,7 +1227,10 @@ class _WorkbenchState extends State<Workbench> {
                     children: [
                       for (final r in rows)
                         if ((r['section'] ?? '参数') == section &&
-                            r.toString().toLowerCase().contains(query))
+                            r.toString().toLowerCase().contains(query) &&
+                            (!onlyChanged ||
+                                r['changed'] == true ||
+                                r['patch_pending'] == true))
                           SizedBox(width: width, child: field(r as Map)),
                     ],
                   ),
@@ -985,6 +1250,7 @@ class _WorkbenchState extends State<Workbench> {
         ],
       ),
     );
+    activeSection = null;
   }
 
   @override
@@ -1007,47 +1273,47 @@ class _WorkbenchState extends State<Workbench> {
       ),
       navigatorKey: navigator,
       home: Scaffold(
-        body: DesktopFrame(
-          enabled: widget.persistAppearance,
-          onClose: shutdown,
-          child: BackdropGroup(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                image: backgroundPath.isEmpty
-                    ? null
-                    : DecorationImage(
-                        image: FileImage(File(backgroundPath)),
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(
-                          (dark ? Colors.black : Colors.white).withValues(
-                            alpha: backgroundDim,
-                          ),
-                          BlendMode.srcOver,
+        body: BackdropGroup(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              image: backgroundPath.isEmpty
+                  ? null
+                  : DecorationImage(
+                      image: FileImage(File(backgroundPath)),
+                      fit: BoxFit.cover,
+                      colorFilter: ColorFilter.mode(
+                        (dark ? Colors.black : Colors.white).withValues(
+                          alpha: backgroundDim,
                         ),
-                        onError: (_, _) {
-                          if (mounted)
-                            setState(() {
-                              backgroundPath = '';
-                              status = '背景图片无法读取，已使用默认背景';
-                            });
-                        },
+                        BlendMode.srcOver,
                       ),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: dark
-                      ? [
-                          const Color(0xff101427),
-                          const Color(0xff292038),
-                          const Color(0xff153033),
-                        ]
-                      : [
-                          const Color(0xffdce9ff),
-                          const Color(0xfff4dfef),
-                          const Color(0xffdef4ee),
-                        ],
-                ),
+                      onError: (_, _) {
+                        if (mounted)
+                          setState(() {
+                            backgroundPath = '';
+                            status = '背景图片无法读取，已使用默认背景';
+                          });
+                      },
+                    ),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: dark
+                    ? [
+                        const Color(0xff101427),
+                        const Color(0xff292038),
+                        const Color(0xff153033),
+                      ]
+                    : [
+                        const Color(0xffdce9ff),
+                        const Color(0xfff4dfef),
+                        const Color(0xffdef4ee),
+                      ],
               ),
+            ),
+            child: DesktopFrame(
+              enabled: widget.persistAppearance,
+              onClose: shutdown,
               child: SafeArea(
                 child: Row(
                   children: [
@@ -1070,7 +1336,7 @@ class _WorkbenchState extends State<Workbench> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const Text('4.6.0'),
+                              const Text(appVersion),
                               const SizedBox(height: 20),
                               Expanded(
                                 child: ListView(
@@ -1128,8 +1394,7 @@ class _WorkbenchState extends State<Workbench> {
                               children: [
                                 if (current != null)
                                   IconButton(
-                                    onPressed: () =>
-                                        setState(() => current = null),
+                                    onPressed: busy ? null : backToCatalog,
                                     icon: const Icon(Icons.arrow_back),
                                   ),
                                 Expanded(
@@ -1141,18 +1406,17 @@ class _WorkbenchState extends State<Workbench> {
                                     ),
                                   ),
                                 ),
-                                if (current != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 12),
-                                    child: OutlinedButton(
-                                      onPressed: busy ? null : equipmentPresets,
-                                      child: const Text('装备预设'),
-                                    ),
-                                  ),
                                 FilledButton.icon(
                                   onPressed: ready && !busy ? install : null,
                                   icon: const Icon(Icons.save_outlined),
                                   label: const Text('写入游戏'),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton(
+                                  onPressed: ready && !busy
+                                      ? restoreGame
+                                      : null,
+                                  child: const Text('恢复原版'),
                                 ),
                               ],
                             ),
@@ -1177,8 +1441,17 @@ class _WorkbenchState extends State<Workbench> {
                                   ],
                                 ),
                               ),
-                            if (tab != 'Settings')
+                            if (![
+                              'Settings',
+                              'Tweaks',
+                              'Presets',
+                            ].contains(tab))
                               TextField(
+                                key: ValueKey(
+                                  current == null
+                                      ? 'catalog-search'
+                                      : 'parameter-search',
+                                ),
                                 controller: search,
                                 decoration: InputDecoration(
                                   prefixIcon: const Icon(Icons.search),
@@ -1188,6 +1461,28 @@ class _WorkbenchState extends State<Workbench> {
                                 ),
                                 onChanged: (value) =>
                                     setState(() => query = value.toLowerCase()),
+                              ),
+                            if (current == null &&
+                                ![
+                                  'Settings',
+                                  'Tweaks',
+                                  'Presets',
+                                  'Armor',
+                                ].contains(tab))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: FilterChip(
+                                    label: const Text('仅已修改'),
+                                    selected: catalogOnlyChanged,
+                                    onSelected: busy
+                                        ? null
+                                        : (value) => setState(
+                                            () => catalogOnlyChanged = value,
+                                          ),
+                                  ),
+                                ),
                               ),
                             const SizedBox(height: 20),
                             if (busy) const LinearProgressIndicator(),
@@ -1212,8 +1507,15 @@ class _WorkbenchState extends State<Workbench> {
                                   ),
                                   child: tab == 'Settings'
                                       ? settingsPage()
+                                      : tab == 'Tweaks'
+                                      ? GameTweaksPage(
+                                          backend: backend,
+                                          onError: showError,
+                                          surface: (child) => surface(child),
+                                        )
                                       : tab == 'Armor'
                                       ? ArmorPage(
+                                          query: query,
                                           backend: backend,
                                           onError: showError,
                                           surface: (child) => surface(child),
@@ -1227,14 +1529,12 @@ class _WorkbenchState extends State<Workbench> {
                                       ? LayoutBuilder(
                                           builder: (context, box) {
                                             const columns = 4;
-                                            final visible = items
-                                                .where(
-                                                  (x) => x
-                                                      .toString()
-                                                      .toLowerCase()
-                                                      .contains(query),
-                                                )
-                                                .toList();
+                                            final visible = buildCatalogGroups(
+                                              items,
+                                              tab,
+                                              query: query,
+                                              onlyChanged: catalogOnlyChanged,
+                                            );
                                             return GridView.builder(
                                               gridDelegate:
                                                   SliverGridDelegateWithFixedCrossAxisCount(
@@ -1246,7 +1546,7 @@ class _WorkbenchState extends State<Workbench> {
                                                   ),
                                               itemCount: visible.length,
                                               itemBuilder: (context, i) {
-                                                final item = visible[i] as Map;
+                                                final group = visible[i];
                                                 return surface(
                                                   Column(
                                                     crossAxisAlignment:
@@ -1254,7 +1554,7 @@ class _WorkbenchState extends State<Workbench> {
                                                             .start,
                                                     children: [
                                                       Text(
-                                                        item['name'] ?? '',
+                                                        group.name,
                                                         style: const TextStyle(
                                                           fontSize: 19,
                                                           fontWeight:
@@ -1265,7 +1565,9 @@ class _WorkbenchState extends State<Workbench> {
                                                             .ellipsis,
                                                       ),
                                                       Text(
-                                                        item['changed'] == true
+                                                        group.entries.length > 1
+                                                            ? '${group.entries.length} 个关联条目${group.changed ? ' · 含修改' : ''}'
+                                                            : group.changed
                                                             ? '已修改'
                                                             : '原版参数',
                                                       ),
@@ -1273,19 +1575,27 @@ class _WorkbenchState extends State<Workbench> {
                                                       Align(
                                                         alignment: Alignment
                                                             .centerRight,
-                                                        child:
-                                                            FilledButton.tonal(
-                                                              onPressed: () =>
-                                                                  select(item),
-                                                              child: const Text(
-                                                                '打开',
-                                                              ),
-                                                            ),
+                                                        child: FilledButton.tonal(
+                                                          onPressed: busy
+                                                              ? null
+                                                              : () =>
+                                                                    openCatalogGroup(
+                                                                      group,
+                                                                    ),
+                                                          child: Text(
+                                                            group
+                                                                        .entries
+                                                                        .length >
+                                                                    1
+                                                                ? '选择打开'
+                                                                : '打开',
+                                                          ),
+                                                        ),
                                                       ),
                                                     ],
                                                   ),
                                                   key: ValueKey(
-                                                    'item:${item['id']}',
+                                                    'item:${group.id}',
                                                   ),
                                                 );
                                               },
@@ -1320,7 +1630,8 @@ class _WorkbenchState extends State<Workbench> {
   void dispose() {
     styleTimer?.cancel();
     rowRevision.dispose();
-    search.dispose();
+    catalogSearch.dispose();
+    parameterSearch.dispose();
     backend.close().catchError((_) {});
     super.dispose();
   }

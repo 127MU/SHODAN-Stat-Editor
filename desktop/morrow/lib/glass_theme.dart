@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'third_party/liquid_glass.dart';
+import 'window_activity.dart';
 
 @immutable
 class GlassAppearance extends ThemeExtension<GlassAppearance> {
@@ -20,26 +21,34 @@ class GlassAppearance extends ThemeExtension<GlassAppearance> {
         blur: 18,
         opacity: .3,
       );
-  Widget wrap(Widget child, {Key? key}) => LiquidGlassSurface(
+  Widget wrap(Widget child, {Key? key}) => ValueListenableBuilder<bool>(
     key: key,
-    material: mode == 'liquid'
-        ? null
-        : GlassMaterial(
-            blur: mode == 'frosted' ? blur : 0,
-            liquid: 0,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              color: (dark ? const Color(0xff20243c) : Colors.white).withValues(
-                alpha: opacity,
-              ),
-              border: Border.all(color: dark ? Colors.white24 : Colors.white70),
-            ),
-          ),
-    tint: dark ? const Color(0xff293044) : const Color(0xffe6ecff),
-    dark: dark,
-    borderRadius: BorderRadius.circular(22),
-    readable: true,
+    valueListenable: windowResizing,
     child: child,
+    builder: (context, resizing, child) {
+      return LiquidGlassSurface(
+        liveResize: resizing,
+        material: mode == 'liquid'
+            ? null
+            : GlassMaterial(
+                blur: mode == 'frosted' ? blur : 0,
+                liquid: 0,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  color: (dark ? const Color(0xff20243c) : Colors.white)
+                      .withValues(alpha: opacity),
+                  border: Border.all(
+                    color: dark ? Colors.white24 : Colors.white70,
+                  ),
+                ),
+              ),
+        tint: dark ? const Color(0xff293044) : const Color(0xffe6ecff),
+        dark: dark,
+        borderRadius: BorderRadius.circular(22),
+        readable: true,
+        child: child!,
+      );
+    },
   );
   @override
   GlassAppearance copyWith({

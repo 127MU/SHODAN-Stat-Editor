@@ -130,6 +130,10 @@ fn run() -> Result<(), String> {
     );
     std::env::set_current_dir(&root).map_err(|e| e.to_string())?;
     let mut lua = unsafe { Lua::new(&root)? };
+    lua.eval(&format!(
+        "SHODAN_APP_VERSION={};return ''",
+        literal(&json!(env!("CARGO_PKG_VERSION")))
+    ))?;
     lua.eval(include_str!("bridge.lua"))?;
     let mut out = io::stdout().lock();
     let mut output_ok = true;
@@ -150,9 +154,10 @@ fn run() -> Result<(), String> {
         }
         let args = req.get("args").cloned().unwrap_or(json!([]));
         let code = format!(
-            "return invoke({}, {})",
+            "return invoke({}, {}, {})",
             literal(&json!(method)),
-            literal(&args)
+            literal(&args),
+            args.as_array().map_or(0, |args| args.len())
         );
         let response = match lua
             .eval(&code)

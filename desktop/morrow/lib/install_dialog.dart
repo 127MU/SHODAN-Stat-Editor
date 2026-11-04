@@ -5,9 +5,15 @@ import 'glass_theme.dart';
 import 'diagnostics_ui.dart';
 
 class InstallDialog extends StatefulWidget {
-  const InstallDialog({super.key, required this.backend, this.preview = false});
+  const InstallDialog({
+    super.key,
+    required this.backend,
+    this.preview = false,
+    this.restore = false,
+  });
   final Backend backend;
   final bool preview;
+  final bool restore;
   @override
   State<InstallDialog> createState() => _InstallDialogState();
 }
@@ -22,7 +28,11 @@ class _InstallDialogState extends State<InstallDialog> {
   @override
   void initState() {
     super.initState();
-    stage = widget.preview ? '正在检查修改并生成写入预览' : stage;
+    stage = widget.preview
+        ? '正在检查修改并生成写入预览'
+        : widget.restore
+        ? '正在恢复游戏文件'
+        : stage;
     subscription = widget.backend.progress.stream.listen((event) {
       if (!mounted || finished) return;
       setState(() {
@@ -40,7 +50,11 @@ class _InstallDialogState extends State<InstallDialog> {
     widget.backend.diagnostics.record(widget.preview ? '开始安装预览' : '开始写入游戏');
     try {
       result = await widget.backend.call(
-        widget.preview ? 'install_preview' : 'install_task',
+        widget.preview
+            ? 'install_preview'
+            : widget.restore
+            ? 'restore_task'
+            : 'install_task',
       );
       if (!mounted) return;
       success = widget.preview || result is Map && result['ok'] == true;
@@ -66,7 +80,9 @@ class _InstallDialogState extends State<InstallDialog> {
     if (mounted)
       setState(() {
         finished = true;
-        stage = success ? '安装完成' : '安装未完成';
+        stage = widget.restore
+            ? (success ? '恢复完成' : '恢复未完成')
+            : (success ? '安装完成' : '安装未完成');
       });
   }
 
@@ -74,7 +90,13 @@ class _InstallDialogState extends State<InstallDialog> {
   Widget build(BuildContext context) => PopScope(
     canPop: finished,
     child: GlassDialog(
-      title: Text(widget.preview ? '写入前检查' : '安装到游戏'),
+      title: Text(
+        widget.preview
+            ? '写入前检查'
+            : widget.restore
+            ? '恢复原版'
+            : '安装到游戏',
+      ),
       content: SizedBox(
         width: 640,
         child: Column(

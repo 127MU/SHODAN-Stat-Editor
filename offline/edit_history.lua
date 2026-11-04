@@ -49,7 +49,7 @@ function M.attach(B,C)
         if original then B[name]=function(...)
             local result=original(...)
             local action=select(1,...)
-            if name=='tweaks' or action=='load' then undo={};redo={}end
+            if (name=='tweaks' and action~=nil) or action=='load' then undo={};redo={}end
             return result
         end end
     end

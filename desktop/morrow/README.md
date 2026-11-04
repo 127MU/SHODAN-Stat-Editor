@@ -9,3 +9,5 @@ Flutter 界面使用 Morrow 的玻璃组件和着色器；Rust 宿主运行兼�
 打包运行 `python tools/package_morrow.py --output <新输出目录>`；需要 offline/runtime、offline/launcher 运行库和可信原始数据。单文件构建沿用 `tools/package_onefile.py`，打包文件限制小于 20 MB。
 
 安装弹窗展示引擎发送的实际阶段和阶段内进度，不模拟百分比。设置支持诊断模式、只读检查和 JSON 日志导出，日志不自动上传。
+
+打包图标检查需要 Python 的 fonttools 包。package_morrow.py 会根据应用实际引用修补 Material 图标子集，并验证诊断、导出等按钮的图标字形均包含在包内。
