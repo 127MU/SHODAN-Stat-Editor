@@ -261,15 +261,53 @@ impl Api {
         }
     }
 }
-pub fn serve(input: impl BufRead, mut output: impl Write) -> Result<(), String> {
+fn request_line(
+    input: &mut impl BufRead,
+    limit: usize,
+) -> Result<Option<Result<Vec<u8>, String>>, String> {
+    let mut line = Vec::new();
+    let mut too_large = false;
+    loop {
+        let buffer = input.fill_buf().map_err(|_| "请求读取失败")?;
+        if buffer.is_empty() {
+            return if line.is_empty() && !too_large {
+                Ok(None)
+            } else {
+                Ok(Some(if too_large {
+                    Err("请求过大".into())
+                } else {
+                    Ok(line)
+                }))
+            };
+        }
+        let newline = buffer.iter().position(|b| *b == b'\n');
+        let consumed = newline.map_or(buffer.len(), |at| at + 1);
+        if !too_large {
+            if line.len().saturating_add(consumed) > limit {
+                too_large = true;
+                line.clear();
+            } else {
+                line.extend_from_slice(&buffer[..consumed]);
+            }
+        }
+        input.consume(consumed);
+        if newline.is_some() {
+            return Ok(Some(if too_large {
+                Err("请求过大".into())
+            } else {
+                Ok(line)
+            }));
+        }
+    }
+}
+pub fn serve(mut input: impl BufRead, mut output: impl Write) -> Result<(), String> {
     let mut api = Api::default();
-    for line in input.lines() {
-        let line = line.map_err(|_| "请求读取失败")?;
-        let parsed = if line.len() > 1_048_576 {
-            Err("请求过大".to_string())
-        } else {
-            serde_json::from_str::<Value>(&line).map_err(|_| "请求 JSON 无效".to_string())
-        };
+    // Permit an 8 MiB preset even if JSON escapes every byte. Bound allocation
+    // while reading, and drain oversized requests so the next call remains usable.
+    while let Some(line) = request_line(&mut input, 50 * 1024 * 1024)? {
+        let parsed = line.and_then(|line| {
+            serde_json::from_slice::<Value>(&line).map_err(|_| "请求 JSON 无效".to_string())
+        });
         let id = parsed
             .as_ref()
             .ok()
@@ -290,6 +328,16 @@ pub fn serve(input: impl BufRead, mut output: impl Write) -> Result<(), String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn oversized_lines_are_drained_and_following_requests_remain_readable() {
+        let mut input = std::io::BufReader::with_capacity(3, &b"123456789\n{}\n"[..]);
+        assert!(request_line(&mut input, 5).unwrap().unwrap().is_err());
+        assert_eq!(
+            request_line(&mut input, 5).unwrap().unwrap().unwrap(),
+            b"{}\n"
+        );
+        assert!(request_line(&mut input, 5).unwrap().is_none());
+    }
     #[test]
     fn transport_preserves_ids_and_recovers_after_bad_requests() {
         let input=b"bad\n{\"id\":7,\"method\":\"get\",\"params\":{}}\n{\"id\":\"hello\",\"method\":\"info\"}\n";
