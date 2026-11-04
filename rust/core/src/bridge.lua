@@ -32,7 +32,7 @@ SHODAN_EUI_PROGRESS=function(stage,done,total)
  io.stderr:write('@shodan-progress ',encode({stage=stage,done=done or 0,total=total or 0}),'\n');io.stderr:flush()
 end
 function invoke(method,args,count)
- if method=='info' then return encode({game=API.game,armor=API.armor_list,version='4.6.0'}) end
+ if method=='info' then return encode({game=API.game,armor=API.armor_list,version=SHODAN_APP_VERSION or '4.6.0'}) end
  assert(type(API[method])=='function','未提供接口：'..method)
  return encode(API[method](unpack(args,1,count or #args)),0,arrays[method])
 end

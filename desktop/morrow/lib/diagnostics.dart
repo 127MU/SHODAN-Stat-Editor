@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'app_version.dart';
 
 class AppDiagnostics {
   AppDiagnostics({this.directory, this.persist = true});
@@ -133,7 +134,7 @@ class AppDiagnostics {
     }
     return Map<String, dynamic>.from(
       scrub({
-            'version': '4.6.0',
+            'version': appVersion,
             'created': DateTime.now().toIso8601String(),
             'os': Platform.operatingSystemVersion,
             'diagnostic_mode': enabled,

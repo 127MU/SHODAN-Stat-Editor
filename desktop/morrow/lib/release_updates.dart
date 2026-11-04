@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'backend.dart';
 import 'glass_theme.dart';
+import 'app_version.dart';
 
 Future<Map<String, dynamic>> checkNativeRelease(Backend backend) async {
-  await backend.nativeCall('update-start', {'current': '4.6.0'});
+  await backend.nativeCall('update-start', {'current': appVersion});
   for (var attempt = 0; attempt < 180; attempt++) {
     final response = await backend.nativeCall('update-poll') as Map;
     if (response['pending'] != true) {

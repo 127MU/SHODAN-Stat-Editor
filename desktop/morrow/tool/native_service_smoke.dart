@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import '../lib/native_service.dart';
 import '../lib/diagnostics.dart';
+import '../lib/app_version.dart';
 
 Future<void> main(List<String> args) async {
   final root = await Directory.systemTemp.createTemp('shodan-native-ui-');
@@ -17,6 +18,8 @@ Future<void> main(List<String> args) async {
     ]);
     if (replies.any((r) => r['lua'] != false))
       throw StateError('Unexpected compatibility runtime');
+    if (replies.any((r) => r['version'] != appVersion))
+      throw StateError('Native and UI versions disagree');
     final offer = await service.call('update-parse', {
       'current': '4.6.0',
       'json': jsonEncode({

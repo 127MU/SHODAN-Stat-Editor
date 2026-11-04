@@ -1,5 +1,5 @@
 """Package the Flutter UI and Rust host, excluding Qt and network proxy runtimes."""
-import argparse,hashlib,json,pathlib,shutil,zipfile
+import argparse,hashlib,json,pathlib,shutil,zipfile,tomllib
 from package_lab import MODULES
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def main():
@@ -29,7 +29,8 @@ def main():
  for name in ('MORROW-LICENSE','NOTICE.md'):shutil.copy2(ROOT/'desktop/morrow'/name,a.output/'licenses'/name)
  shutil.copy2(ROOT/'desktop/morrow/assets/fonts/MiSans-font-notice.txt',a.output/'licenses/MiSans-font-notice.txt')
  shutil.copy2(ROOT/'LICENSE',a.output/'LICENSE')
- manifest={'version':'4.6.0','status':'release','ui':'Morrow / Flutter','host':'Rust + compatibility Lua engine','core_version':'4.6.0','files':{str(f.relative_to(a.output)).replace('\\','/'):hashlib.sha256(f.read_bytes()).hexdigest() for f in a.output.rglob('*')if f.is_file()}}
+ version=tomllib.loads((ROOT/'rust/core/Cargo.toml').read_text(encoding='utf8'))['package']['version']
+ manifest={'version':version,'status':'release','ui':'Morrow / Flutter','host':'Rust + compatibility Lua engine','core_version':'4.6.0','files':{str(f.relative_to(a.output)).replace('\\','/'):hashlib.sha256(f.read_bytes()).hexdigest() for f in a.output.rglob('*')if f.is_file()}}
  (a.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf8')
  with zipfile.ZipFile(a.output.with_suffix('.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=9)as z:
   for f in a.output.rglob('*'):

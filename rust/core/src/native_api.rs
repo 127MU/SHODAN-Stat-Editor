@@ -433,7 +433,7 @@ impl Api {
         }
         if method == "info" {
             return Ok(
-                json!({"runtime":"rust-native","version":"4.6.0","lua":false,"installation":false}),
+                json!({"runtime":"rust-native","version":env!("CARGO_PKG_VERSION"),"lua":false,"installation":false}),
             );
         }
         if method == "close" {

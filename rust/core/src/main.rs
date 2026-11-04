@@ -130,6 +130,10 @@ fn run() -> Result<(), String> {
     );
     std::env::set_current_dir(&root).map_err(|e| e.to_string())?;
     let mut lua = unsafe { Lua::new(&root)? };
+    lua.eval(&format!(
+        "SHODAN_APP_VERSION={};return ''",
+        literal(&json!(env!("CARGO_PKG_VERSION")))
+    ))?;
     lua.eval(include_str!("bridge.lua"))?;
     let mut out = io::stdout().lock();
     let mut output_ok = true;

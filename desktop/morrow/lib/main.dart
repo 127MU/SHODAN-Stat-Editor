@@ -21,6 +21,7 @@ import 'game_text.dart';
 import 'preset_page.dart';
 import 'review_body.dart';
 import 'release_updates.dart';
+import 'app_version.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -706,7 +707,7 @@ class _WorkbenchState extends State<Workbench> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '版本更新 · 4.6.0',
+              '版本更新 · $appVersion',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
@@ -954,7 +955,7 @@ class _WorkbenchState extends State<Workbench> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            const Text('4.6.0 · Rust Host + Lua 数据兼容层'),
+            const Text('$appVersion · Rust Host + Lua 数据兼容层'),
             const Text('界面字体：MiSans（小米），保留中英文及常用符号。'),
             const Text('游戏路径由现有核心自动检测，不固定其他人的安装目录。'),
             const SizedBox(height: 8),
@@ -1335,7 +1336,7 @@ class _WorkbenchState extends State<Workbench> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const Text('4.6.0'),
+                              const Text(appVersion),
                               const SizedBox(height: 20),
                               Expanded(
                                 child: ListView(

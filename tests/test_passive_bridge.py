@@ -1,5 +1,5 @@
 """Actual desktop IPC regression, isolated profile; never installs game files."""
-import argparse,json,os,pathlib,shutil,subprocess,tempfile
+import argparse,json,os,pathlib,shutil,subprocess,tempfile,tomllib
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('--runtime',type=pathlib.Path,required=True);a=p.parse_args()
 with tempfile.TemporaryDirectory(dir=ROOT/'dist/build-temp-r19',prefix='passive-ipc-') as folder:
@@ -18,7 +18,9 @@ with tempfile.TemporaryDirectory(dir=ROOT/'dist/build-temp-r19',prefix='passive-
         reply=json.loads(process.stdout.readline());assert 'error' not in reply,reply
         return reply['data']
     try:
-        info=call('info');ids=[p['id'] for p in info['armor']]
+        info=call('info')
+        assert info['version']==tomllib.loads((ROOT/'rust/core/Cargo.toml').read_text(encoding='utf8'))['package']['version']
+        ids=[p['id'] for p in info['armor']]
         tested=sorted(set([ids[0],ids[1],ids[-1]]))
         for pid in tested:
             call('armor_update',999,pid,True,None,None)

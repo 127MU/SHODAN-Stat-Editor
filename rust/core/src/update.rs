@@ -225,7 +225,7 @@ fn get(host: &str, path: &str) -> Result<(u32, String), String> {
     let wide = |s: &str| s.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
     unsafe {
         let session = handle(WinHttpOpen(
-            wide("SHODAN-Native-Update/4.6.0").as_ptr(),
+            wide(concat!("SHODAN-Native-Update/", env!("CARGO_PKG_VERSION"))).as_ptr(),
             4,
             ptr::null(),
             ptr::null(),
