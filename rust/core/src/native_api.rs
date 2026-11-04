@@ -60,6 +60,140 @@ impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "bundle-inspect"
+            || method == "bundle-package-inspect"
+            || method == "bundle-patch-preview"
+        {
+            let mut bundles =
+                crate::bundles::Bundles::open(std::path::Path::new(text(p, "root")?))?;
+            if method == "bundle-inspect" {
+                return Ok(
+                    json!({"count":bundles.packages.len(),"names":bundles.packages.keys().take(100).collect::<Vec<_>>()}),
+                );
+            }
+            if method == "bundle-patch-preview" {
+                let mode = match text(p, "mode")? {
+                    "light" => crate::bundles::Mode::Light,
+                    "full" => crate::bundles::Mode::Full,
+                    "res" => crate::bundles::Mode::Overrides,
+                    _ => return Err("驻留模式无效".into()),
+                };
+                let mut overrides = std::collections::BTreeMap::new();
+                if let Some(entries) = p.get("overrides") {
+                    for entry in entries.as_array().ok_or("覆盖清单无效")? {
+                        let id = u64::from_str_radix(text(entry, "id")?, 16)
+                            .map_err(|_| "资源 ID 无效")?;
+                        let typ = u64::from_str_radix(text(entry, "type")?, 16)
+                            .map_err(|_| "资源类型无效")?;
+                        let hex = text(entry, "hex")?;
+                        if hex.len() % 2 != 0 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+                            return Err("资源覆盖内容不是有效十六进制".into());
+                        }
+                        let bytes = (0..hex.len())
+                            .step_by(2)
+                            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+                            .collect();
+                        if overrides.insert((typ, id), bytes).is_some() {
+                            return Err("资源覆盖身份重复".into());
+                        }
+                    }
+                }
+                let built = bundles.build_patch(text(p, "name")?, mode, &overrides)?;
+                let report = |bytes: &[u8]| json!({"bytes":bytes.len(),"sha256":crate::hash::sha256_hex(bytes)});
+                return Ok(
+                    json!({"toc":report(&built.toc),"gpu":report(&built.gpu),"stream":report(&built.stream),"installed":false}),
+                );
+            }
+            let package = bundles.package(text(p, "name")?)?;
+            return Ok(
+                json!({"entries":package.entries.len(),"types":package.types.len(),"read_only":true}),
+            );
+        }
+        if method == "package-inspect" || method == "package-rebuild-copy" {
+            let input = fs::read(text(p, "path")?).map_err(|_| "无法读取资源包")?;
+            let package = crate::resource_package::Package::parse(&input)?;
+            if method == "package-inspect" {
+                return Ok(
+                    json!({"types":package.types.len(),"entries":package.entries.iter().map(|e|json!({
+                "id":format!("{:016X}",u64::from_le_bytes(e[..8].try_into().unwrap())),"type":format!("{:016X}",u64::from_le_bytes(e[8..16].try_into().unwrap()))})).collect::<Vec<_>>()}),
+                );
+            }
+            let side = |key| -> Result<Vec<u8>, String> {
+                if p[key].is_null() {
+                    Ok(Vec::new())
+                } else {
+                    fs::read(text(p, key)?).map_err(|_| "无法读取资源伴生文件".into())
+                }
+            };
+            let blobs = package.blobs(&input, &side("gpu_path")?, &side("stream_path")?)?;
+            let built = package.build(&blobs)?;
+            let out = PathBuf::from(text(p, "output")?);
+            // All three files are one export transaction; no game directory is inferred.
+            let parent = out.parent().ok_or("导出目录无效")?;
+            let backup = parent.join(format!(
+                "shodan-export-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|_| "系统时间无效")?
+                    .as_nanos()
+            ));
+            let gpu = PathBuf::from(format!("{}.gpu_resources", out.display()));
+            let stream = PathBuf::from(format!("{}.stream", out.display()));
+            if out.exists() || gpu.exists() || stream.exists() {
+                return Err("导出文件已存在，不会覆盖".into());
+            }
+            crate::install::apply(
+                vec![
+                    crate::install::Change {
+                        path: out,
+                        before: None,
+                        after: Some(built.toc),
+                    },
+                    crate::install::Change {
+                        path: gpu,
+                        before: None,
+                        after: Some(built.gpu),
+                    },
+                    crate::install::Change {
+                        path: stream,
+                        before: None,
+                        after: Some(built.stream),
+                    },
+                ],
+                &backup,
+                |_| {},
+            )?;
+            return Ok(json!({"resources":blobs.len(),"installed":false}));
+        }
+        if method == "reference-files" {
+            let paths = p["paths"].as_array().ok_or("缺少引用数据文件")?;
+            if paths.len() > 64 {
+                return Err("引用数据文件过多".into());
+            }
+            let sessions = paths
+                .iter()
+                .map(|v| {
+                    let bytes = fs::read(v.as_str().ok_or("文件路径无效")?)
+                        .map_err(|_| "引用数据无法读取")?;
+                    Session::new(bytes, None)
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let data = crate::references::Data::new(sessions.iter().collect())?;
+            let roots = p["roots"]
+                .as_array()
+                .ok_or("缺少引用根节点")?
+                .iter()
+                .map(|root| {
+                    Ok((
+                        text(root, "kind")?.to_string(),
+                        u32::try_from(number(root, "id")?).map_err(|_| "引用 ID 超出范围")?,
+                        root["via"].as_str().unwrap_or("当前记录").to_string(),
+                    ))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            return data.graph(&roots);
+        }
         if method == "diagnostic-scrub" {
             return Ok(crate::diagnostics::Privacy::local().scrub(&p["data"]));
         }
@@ -162,6 +296,27 @@ impl Api {
         }
         let (session, path) = self.active.as_mut().ok_or("请先打开数据文件")?;
         match method {
+            "references" => {
+                let data = crate::references::Data::new(vec![session])?;
+                let roots = if let Some(entity) = p["entity"].as_str() {
+                    data.roots(u64::from_str_radix(entity, 16).map_err(|_| "实体哈希无效")?)?
+                } else {
+                    p["roots"]
+                        .as_array()
+                        .ok_or("缺少引用根节点")?
+                        .iter()
+                        .map(|root| {
+                            Ok((
+                                text(root, "kind")?.to_string(),
+                                u32::try_from(number(root, "id")?)
+                                    .map_err(|_| "引用 ID 超出范围")?,
+                                "当前数据记录".into(),
+                            ))
+                        })
+                        .collect::<Result<Vec<_>, String>>()?
+                };
+                data.graph(&roots)
+            }
             "bind-parameter" => {
                 let parts = p["fields"].as_array().ok_or("缺少参数字段")?;
                 let fields = parts

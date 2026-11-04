@@ -147,6 +147,9 @@ impl Session {
     pub fn snapshot(&self) -> &[u8] {
         self.document.snapshot()
     }
+    pub fn number_at(&self, offset: usize, kind: Kind) -> Result<f64, String> {
+        self.document.value(offset, kind).map_err(str::to_string)
+    }
     pub fn render(&self, current_disk: &[u8]) -> Result<Vec<u8>, String> {
         self.document.render(current_disk).map_err(str::to_string)
     }

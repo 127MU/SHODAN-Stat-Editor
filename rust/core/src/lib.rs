@@ -1,10 +1,12 @@
 //! Typed little-endian numeric editing. Baselines are immutable original bytes.
 pub mod armor;
 pub mod baseline;
+pub mod bundles;
 pub mod correction;
 pub mod diagnostics;
 pub mod dlbin;
 pub mod document;
+pub mod dsar;
 pub mod export;
 pub mod hash;
 pub mod install;
@@ -12,6 +14,8 @@ pub mod native_api;
 pub mod parameters;
 pub mod passive;
 pub mod preset;
+pub mod references;
+pub mod resource_package;
 pub mod schema;
 pub mod sealed;
 pub mod session;
