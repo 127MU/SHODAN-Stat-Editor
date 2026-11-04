@@ -16,7 +16,8 @@ def reference(payload, base, layout):
         assert zero == 0 and 16+count*stride <= len(payload)
         for k in range(count):
             at = 16+k*stride
-            key = 'id:'+str(struct.unpack_from('<I', payload, at)[0])
+            id_offset = int(re.search(r'id_offset: (\d+)', layout)[1])
+            key = 'id:'+str(struct.unpack_from('<I', payload, at+id_offset)[0])
             rows.setdefault(key, {'key': key, 'offset': base+at, 'bytes': stride})
     else:
         # Try every feasible bucket count using size, slot range and occupancy.
@@ -74,6 +75,9 @@ def main():
         result = json.loads(subprocess.check_output([str(a.exe.resolve()), 'tables', str(file.resolve())], encoding='utf8'))
         assert not result['problems'], (file.name, result['problems'])
         for table in result['tables']:
+            expected_id = {'30EB6399': 4, '1E604234': 8}.get(table['type'], 0)
+            if table['layout'].startswith('Rows'):
+                assert int(re.search(r'id_offset: (\d+)', table['layout'])[1]) == expected_id
             b = blocks[table['offset']]
             base = b['payload_offset']
             payload = data[base:base+b['payload_bytes']]

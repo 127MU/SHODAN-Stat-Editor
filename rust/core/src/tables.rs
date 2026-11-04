@@ -208,12 +208,18 @@ pub fn layouts(type_id: u32) -> Vec<Layout> {
         0x2AEA2592 => Some(152),
         0xC5085606 => Some(112),
         0x30EB6399 => Some(400),
+        0xC63E0B22 => Some(160),
+        0x1E604234 => Some(88),
         _ => None,
     };
     if let Some(stride) = rows {
         return vec![Layout::Rows {
             stride,
-            id_offset: 0,
+            id_offset: match type_id {
+                0x30EB6399 => 4,
+                0x1E604234 => 8,
+                _ => 0,
+            },
         }];
     }
     let strides: &[usize] = match type_id {
@@ -227,8 +233,58 @@ pub fn layouts(type_id: u32) -> Vec<Layout> {
         0x8E551126 => &[224],
         0xBBA9003F => &[192],
         0xB87BA9ED => &[80],
+        0xB3915DE3 => &[22096],            // health
+        0x14729B6A => &[44],               // sensor
+        0xFF67A367 => &[24],               // detector
+        0xDDB5C03F => &[12],               // hellpod payload
+        0xEBA8F3D0 => &[4872],             // default customization
+        0xAF16BCB5 | 0xF5CF9B8C => &[360], // throwable / explosive
+        0xEAEB2B0D => &[3704],             // vehicle
+        0x3845B1E0 => &[120],              // mounts
+        0x5653EA91 => &[152],              // faction
+        0xBA9B803D => &[12],               // behavior
+        0x4AEAFC86 => &[424],              // seat collection
+        0x5154DB66 => &[344],              // shield
+        0xA98BB156 => &[568],              // hellpod rack
+        0xEAC335A1 => &[216],              // charge
+        0x54270608 => &[280],              // jump pack
+        0x1F42878E => &[4],                // recharge
+        0xA7813546 => &[632],              // warp pack
+        0xC435BA85 => &[152],              // charges
+        0x7A858691 => &[32],               // loadout package
+        0x991D454E => &[80],               // reload
+        0x84CE7EEE => &[36],               // windup
+        0xA29A84D8 => &[752],              // mine thrower
+        0x74FEF89A => &[44],               // minefield
+        0x0697FED6 => &[32],               // mine spawner
+        0xCDBC43D8 => &[192],              // bombardment
+        0x556FF68B => &[152, 336],         // eagle layouts (field mapping is separate)
+        0xBF3A6789 => &[272],              // seeking missile
+        0x84957034 => &[124],              // guidance
+        0x32528174 => &[64],               // designator
+        0x40EF204C => &[852],              // avatar
+        0x726A4F6B => &[64],               // drownable
+        0x7EF5CC55 => &[104],              // hellpod
         _ => &[],
     };
+    if type_id == 0x9AF175A4 {
+        return vec![Layout::Keyed {
+            stride: 76,
+            slack: 4,
+        }];
+    }
+    if type_id == 0x1EBA7593 {
+        return vec![
+            Layout::Keyed {
+                stride: 76,
+                slack: 0,
+            },
+            Layout::Keyed {
+                stride: 76,
+                slack: 4,
+            },
+        ];
+    }
     strides
         .iter()
         .map(|&stride| Layout::Keyed { stride, slack: 0 })

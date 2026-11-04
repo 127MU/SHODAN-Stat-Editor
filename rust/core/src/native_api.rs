@@ -54,6 +54,19 @@ impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "schema" {
+            let type_id =
+                u32::from_str_radix(text(p, "type")?, 16).map_err(|_| "数据块类型无效")?;
+            let fields = crate::schema::parameters(type_id);
+            if fields.is_empty() {
+                return Err("该类型的原生参数描述尚未迁移".into());
+            }
+            return Ok(json!(fields
+                .iter()
+                .map(|f| json!({"id":f.id,"label":f.label,"relative":f.relative,
+                "kind":match f.kind {Kind::F32=>"f32",Kind::U32=>"u32",Kind::I32=>"i32"}}))
+                .collect::<Vec<_>>()));
+        }
         if method == "info" {
             return Ok(
                 json!({"runtime":"rust-native","version":"4.6.0","lua":false,"installation":false}),

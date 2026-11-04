@@ -27,6 +27,9 @@ with tempfile.TemporaryDirectory(prefix="native-api-", dir=ROOT / "dist/build-te
         return response
     try:
         assert call("info")["result"]["lua"] is False
+        schema = call("schema", type="BD4042C2")["result"]
+        assert next(f for f in schema if f["id"] == "mass")["kind"] == "f32"
+        assert len([f for f in schema if f["id"] == "blast_angle"]) == 1
         assert call("open", path=str(disk))["ok"]
         assert call("index", block=0, layout="rows", stride=8, id_offset=0)["ok"]
         field = dict(block=0, record="id:9", relative=4, kind="f32")
