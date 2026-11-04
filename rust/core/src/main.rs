@@ -150,9 +150,10 @@ fn run() -> Result<(), String> {
         }
         let args = req.get("args").cloned().unwrap_or(json!([]));
         let code = format!(
-            "return invoke({}, {})",
+            "return invoke({}, {}, {})",
             literal(&json!(method)),
-            literal(&args)
+            literal(&args),
+            args.as_array().map_or(0, |args| args.len())
         );
         let response = match lua
             .eval(&code)
