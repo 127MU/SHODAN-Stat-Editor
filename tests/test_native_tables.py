@@ -8,7 +8,7 @@ from pathlib import Path
 from test_native_data import expected
 
 
-def reference(payload, base, layout):
+def reference(payload, base, layout, type_id):
     stride = int(re.search(r'stride: (\d+)', layout)[1])
     rows = {}
     if layout.startswith('Rows'):
@@ -19,6 +19,24 @@ def reference(payload, base, layout):
             id_offset = int(re.search(r'id_offset: (\d+)', layout)[1])
             key = 'id:'+str(struct.unpack_from('<I', payload, at+id_offset)[0])
             rows.setdefault(key, {'key': key, 'offset': base+at, 'bytes': stride})
+    elif type_id == '4F2CF417':
+        live, fits = [], []
+        for slot_index, (key, slot, pad) in enumerate(struct.iter_unpack('<QII', payload[:len(payload)//16*16])):
+            if pad or slot > 100000:
+                break
+            if key:
+                live.append((slot_index, key, slot))
+            count = slot_index + 1
+            if count < 64 or count != 2 * len(live):
+                continue
+            records = (len(payload) - count * 16) // stride
+            if all((index - key % count) % count < 16 and slot < records for index, key, slot in live):
+                fits.append((count, list(live)))
+        assert len(fits) == 1
+        buckets, entries = fits[0]
+        for _, key, slot in entries:
+            name = f'hash:{key:016X}'
+            rows.setdefault(name, {'key': name, 'offset': base+buckets*16+slot*stride, 'bytes': stride})
     else:
         # Try every feasible bucket count using size, slot range and occupancy.
         candidates, twice = [], []
@@ -81,7 +99,7 @@ def main():
             b = blocks[table['offset']]
             base = b['payload_offset']
             payload = data[base:base+b['payload_bytes']]
-            rows = reference(payload, base, table['layout'])
+            rows = reference(payload, base, table['layout'], table['type'])
             assert rows == {r['key']: r for r in table['rows']}, (file.name, table['type'])
             reports.append({'file': file.name, 'type': table['type'], 'rows': len(rows), 'layout': table['layout']})
     assert reports

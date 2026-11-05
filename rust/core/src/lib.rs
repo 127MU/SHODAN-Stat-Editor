@@ -1,12 +1,18 @@
 //! Typed little-endian numeric editing. Baselines are immutable original bytes.
 pub mod armor;
+pub mod armor_assign;
 pub mod armor_profiles;
 pub mod armor_session;
+pub mod arrays;
 pub mod audio;
 pub mod baseline;
+pub mod binary;
 pub mod bundles;
+pub mod catalog;
+pub mod catalog_edit;
 pub mod correction;
 pub mod dependencies;
+pub mod destruction;
 pub mod diagnostics;
 pub mod dlbin;
 pub mod document;
@@ -28,6 +34,8 @@ pub mod sealed;
 pub mod session;
 pub mod tables;
 pub mod update;
+pub mod workspace;
+pub mod workspace_api;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {

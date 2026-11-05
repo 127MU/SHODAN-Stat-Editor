@@ -43,6 +43,9 @@ impl Baseline {
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
+    pub(crate) fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
     fn verified(bytes: Vec<u8>, digest: &str) -> Result<Self, String> {
         if hash::sha256_hex(&bytes) != digest {
             return Err("原值文件指纹不匹配，不能作为默认值".into());

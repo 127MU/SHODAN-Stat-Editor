@@ -18,6 +18,8 @@ pub struct Api {
     active: Option<(Session, PathBuf)>,
     parameters: crate::parameters::Parameters,
     armor: Option<crate::armor_session::Session>,
+    workspace: Option<crate::workspace::Workspace>,
+    catalog: Option<crate::catalog::Catalog>,
     update_job: Option<std::thread::JoinHandle<Result<Value, String>>>,
     resolver: Option<(
         PathBuf,
@@ -84,6 +86,89 @@ impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "catalog-load" {
+            let path = std::path::Path::new(text(p, "path")?);
+            if fs::metadata(path)
+                .map_err(|_| "无法读取原生参数目录")?
+                .len()
+                > 16 * 1024 * 1024
+            {
+                return Err("参数目录压缩文件过大".into());
+            }
+            let bytes = fs::read(path).map_err(|_| "无法读取原生参数目录")?;
+            let catalog = crate::catalog::Catalog::from_gzip(&bytes)?;
+            let info = catalog.info();
+            self.catalog = Some(catalog);
+            return Ok(info);
+        }
+        if method.starts_with("catalog-") {
+            let catalog = self.catalog.as_ref().ok_or("请先载入原生参数目录")?;
+            return match method {
+                "catalog-info" => Ok(catalog.info()),
+                "catalog-set" | "catalog-restore" | "catalog-edit-preview" => {
+                    let workspace = self.workspace.as_mut().ok_or("请先打开原生工作区")?;
+                    let value = if method == "catalog-restore" {
+                        None
+                    } else {
+                        Some(p["value"].as_f64().ok_or("缺少有效参数数值")?)
+                    };
+                    let plan = crate::catalog_edit::prepare(
+                        catalog,
+                        workspace,
+                        text(p, "owner")?,
+                        text(p, "key")?,
+                        value,
+                    )?;
+                    if method != "catalog-edit-preview" {
+                        workspace.set_batch(&plan.values, Some(plan.metadata))?;
+                    }
+                    Ok(
+                        json!({"changes":plan.changes,"applied":method!="catalog-edit-preview","installed":false}),
+                    )
+                }
+                "catalog-items" => {
+                    Ok(catalog.items(p["tab"].as_str(), p["query"].as_str().unwrap_or("")))
+                }
+                "catalog-describe" => Ok(json!(catalog.owner(text(p, "owner")?)?.1)),
+                "catalog-read-rows" => catalog.read_rows(
+                    text(p, "owner")?,
+                    self.workspace.as_ref().ok_or("请先打开原生工作区")?,
+                ),
+                "catalog-read-fields" => catalog.read_fields(
+                    &p["indices"],
+                    self.workspace.as_ref().ok_or("请先打开原生工作区")?,
+                ),
+                "catalog-row-values" => catalog.row_values(
+                    &p["owners"],
+                    self.workspace.as_ref().ok_or("请先打开原生工作区")?,
+                ),
+                "catalog-open-resources" => Ok(json!(catalog.open_resources(
+                    self.workspace.as_mut().ok_or("请先打开原生工作区")?,
+                    &p["files"]
+                )?)),
+                _ => Err("未提供该原生目录接口".into()),
+            };
+        }
+        if method == "armor-assign-preview" || method == "armor-assign-export-copy" {
+            return crate::armor_assign::invoke(p, method == "armor-assign-export-copy");
+        }
+        if method == "workspace-open" {
+            let workspace = crate::workspace_api::open(p)?;
+            let problems = workspace.problems();
+            self.workspace = Some(workspace);
+            return Ok(json!({"problems":problems}));
+        }
+        if method == "workspace-close" {
+            self.workspace = None;
+            return Ok(json!(true));
+        }
+        if method.starts_with("workspace-") {
+            return crate::workspace_api::invoke(
+                self.workspace.as_mut().ok_or("请先打开原生工作区")?,
+                method,
+                p,
+            );
+        }
         if method == "update-open-link" {
             crate::update::open_link(text(p, "url")?)?;
             return Ok(json!(true));
@@ -408,6 +493,7 @@ impl Api {
         if method == "close" {
             self.active = None;
             self.armor = None;
+            self.workspace = None;
             self.parameters = Default::default();
             return Ok(json!(true));
         }
