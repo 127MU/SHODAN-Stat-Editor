@@ -17,7 +17,9 @@ use std::{
 pub struct Api {
     active: Option<(Session, PathBuf)>,
     parameters: crate::parameters::Parameters,
-    armor: Option<(crate::armor::Armor, PathBuf)>,
+    armor: Option<crate::armor_session::Session>,
+    workspace: Option<crate::workspace::Workspace>,
+    catalog: Option<crate::catalog::Catalog>,
     update_job: Option<std::thread::JoinHandle<Result<Value, String>>>,
     resolver: Option<(
         PathBuf,
@@ -84,6 +86,89 @@ impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "catalog-load" {
+            let path = std::path::Path::new(text(p, "path")?);
+            if fs::metadata(path)
+                .map_err(|_| "无法读取原生参数目录")?
+                .len()
+                > 16 * 1024 * 1024
+            {
+                return Err("参数目录压缩文件过大".into());
+            }
+            let bytes = fs::read(path).map_err(|_| "无法读取原生参数目录")?;
+            let catalog = crate::catalog::Catalog::from_gzip(&bytes)?;
+            let info = catalog.info();
+            self.catalog = Some(catalog);
+            return Ok(info);
+        }
+        if method.starts_with("catalog-") {
+            let catalog = self.catalog.as_ref().ok_or("请先载入原生参数目录")?;
+            return match method {
+                "catalog-info" => Ok(catalog.info()),
+                "catalog-set" | "catalog-restore" | "catalog-edit-preview" => {
+                    let workspace = self.workspace.as_mut().ok_or("请先打开原生工作区")?;
+                    let value = if method == "catalog-restore" {
+                        None
+                    } else {
+                        Some(p["value"].as_f64().ok_or("缺少有效参数数值")?)
+                    };
+                    let plan = crate::catalog_edit::prepare(
+                        catalog,
+                        workspace,
+                        text(p, "owner")?,
+                        text(p, "key")?,
+                        value,
+                    )?;
+                    if method != "catalog-edit-preview" {
+                        workspace.set_batch(&plan.values, Some(plan.metadata))?;
+                    }
+                    Ok(
+                        json!({"changes":plan.changes,"applied":method!="catalog-edit-preview","installed":false}),
+                    )
+                }
+                "catalog-items" => {
+                    Ok(catalog.items(p["tab"].as_str(), p["query"].as_str().unwrap_or("")))
+                }
+                "catalog-describe" => Ok(json!(catalog.owner(text(p, "owner")?)?.1)),
+                "catalog-read-rows" => catalog.read_rows(
+                    text(p, "owner")?,
+                    self.workspace.as_ref().ok_or("请先打开原生工作区")?,
+                ),
+                "catalog-read-fields" => catalog.read_fields(
+                    &p["indices"],
+                    self.workspace.as_ref().ok_or("请先打开原生工作区")?,
+                ),
+                "catalog-row-values" => catalog.row_values(
+                    &p["owners"],
+                    self.workspace.as_ref().ok_or("请先打开原生工作区")?,
+                ),
+                "catalog-open-resources" => Ok(json!(catalog.open_resources(
+                    self.workspace.as_mut().ok_or("请先打开原生工作区")?,
+                    &p["files"]
+                )?)),
+                _ => Err("未提供该原生目录接口".into()),
+            };
+        }
+        if method == "armor-assign-preview" || method == "armor-assign-export-copy" {
+            return crate::armor_assign::invoke(p, method == "armor-assign-export-copy");
+        }
+        if method == "workspace-open" {
+            let workspace = crate::workspace_api::open(p)?;
+            let problems = workspace.problems();
+            self.workspace = Some(workspace);
+            return Ok(json!({"problems":problems}));
+        }
+        if method == "workspace-close" {
+            self.workspace = None;
+            return Ok(json!(true));
+        }
+        if method.starts_with("workspace-") {
+            return crate::workspace_api::invoke(
+                self.workspace.as_mut().ok_or("请先打开原生工作区")?,
+                method,
+                p,
+            );
+        }
         if method == "update-open-link" {
             crate::update::open_link(text(p, "url")?)?;
             return Ok(json!(true));
@@ -372,51 +457,20 @@ impl Api {
             return Ok(crate::diagnostics::Privacy::local().scrub(&p["data"]));
         }
         if method == "armor-open" {
-            let path = PathBuf::from(text(p, "path")?);
-            let current = fs::read(&path).map_err(|_| "无法读取护甲数据")?;
-            let original = fs::read(text(p, "baseline_path")?).map_err(|_| "无法读取护甲原值")?;
-            let baseline =
-                Baseline::shipped("generated_customization_passive_bonuses.dl_plain", original)?;
-            let armor = crate::armor::Armor::new(current, baseline)?;
-            let count = armor.rows.len();
-            self.armor = Some((armor, path));
+            let session = crate::armor_session::Session::open(
+                PathBuf::from(text(p, "path")?),
+                text(p, "baseline_path")?,
+            )?;
+            let count = session.row_count();
+            self.armor = Some(session);
             return Ok(json!({"rows":count}));
         }
         if method.starts_with("armor-") {
-            let (armor, path) = self.armor.as_mut().ok_or("请先打开护甲数据")?;
-            return match method {
-                "armor-rows" => Ok(json!(armor
-                    .rows
-                    .values()
-                    .map(
-                        |r| Ok(json!({"key":r.key,"label":r.label,"passive":r.passive,
-                    "value":armor.value(&r.key)?,"original":r.original}))
-                    )
-                    .collect::<Result<Vec<_>, String>>()?)),
-                "armor-set" => {
-                    armor.set(text(p, "key")?, p["value"].as_f64().ok_or("护甲数值无效")?)?;
-                    Ok(json!(true))
-                }
-                "armor-capture" => Ok(json!(armor.capture()?)),
-                "armor-apply-snapshot" => {
-                    armor.apply_snapshot(text(p, "text")?)?;
-                    Ok(json!(true))
-                }
-                "armor-export-copy" => {
-                    let current = fs::read(path).map_err(|_| "无法核对护甲磁盘数据")?;
-                    let bytes = armor.render(&current)?;
-                    let mut out = fs::OpenOptions::new()
-                        .write(true)
-                        .create_new(true)
-                        .open(text(p, "path")?)
-                        .map_err(|_| "无法创建新护甲导出文件")?;
-                    out.write_all(&bytes)
-                        .and_then(|_| out.sync_all())
-                        .map_err(|_| "护甲导出失败")?;
-                    Ok(json!({"bytes":bytes.len(),"installed":false}))
-                }
-                _ => Err("未提供该护甲接口".into()),
-            };
+            return self
+                .armor
+                .as_mut()
+                .ok_or("请先打开护甲数据")?
+                .invoke(method, p);
         }
         if method == "schema" {
             let type_id =
@@ -439,6 +493,7 @@ impl Api {
         if method == "close" {
             self.active = None;
             self.armor = None;
+            self.workspace = None;
             self.parameters = Default::default();
             return Ok(json!(true));
         }

@@ -11,6 +11,7 @@ pub struct Row {
 pub struct Armor {
     document: Document,
     pub rows: BTreeMap<String, Row>,
+    pub available: std::collections::BTreeSet<u32>,
 }
 pub fn catalog() -> serde_json::Value {
     serde_json::from_str(include_str!("../data/armor-catalog.json"))
@@ -60,6 +61,10 @@ fn numbers(bytes: &[u8]) -> Result<BTreeMap<String, (u32, f32, usize)>, String> 
 }
 impl Armor {
     pub fn new(current: Vec<u8>, baseline: Baseline) -> Result<Self, String> {
+        let available = passive::catalog(&current)?
+            .into_keys()
+            .filter(|id| *id != 0)
+            .collect();
         let originals = numbers(baseline.bytes())?;
         let values = numbers(&current)?;
         let data = catalog();
@@ -124,6 +129,7 @@ impl Armor {
         Ok(Self {
             document: Document::new(current, None)?,
             rows,
+            available,
         })
     }
     pub fn value(&self, key: &str) -> Result<f64, String> {
@@ -183,6 +189,12 @@ impl Armor {
     }
     pub fn render(&self, disk: &[u8]) -> Result<Vec<u8>, String> {
         self.document.render(disk).map_err(str::to_string)
+    }
+    pub(crate) fn checkpoint(&self) -> BTreeMap<usize, [u8; 4]> {
+        self.document.checkpoint()
+    }
+    pub(crate) fn resume(&mut self, checkpoint: BTreeMap<usize, [u8; 4]>) {
+        self.document.resume(checkpoint);
     }
 }
 #[cfg(test)]

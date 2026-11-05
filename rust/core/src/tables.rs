@@ -186,8 +186,72 @@ fn keyed(
     Ok(result)
 }
 
+/// Loadout's bounded-probe map does not use the general component-table
+/// placement rule. Its keys may sit past empty buckets, within 16 slots of home.
+fn loadout(data: &[u8], base: usize, type_id: u32) -> Result<Table, String> {
+    let mut keys = Vec::new();
+    let mut candidates = Vec::new();
+    for at in (0..data.len().saturating_sub(15)).step_by(16) {
+        let slot = u32_at(data, at + 8)? as usize;
+        if u32_at(data, at + 12)? != 0 || slot > 100000 {
+            break;
+        }
+        let hash = u64_at(data, at)?;
+        if hash != 0 {
+            keys.push((at / 16, hash, slot));
+        }
+        let buckets = at / 16 + 1;
+        let records = (data.len() - buckets * 16) / 32;
+        if buckets >= 64
+            && buckets == 2 * keys.len()
+            && records > 0
+            && keys.iter().all(|(bucket, hash, slot)| {
+                (*bucket + buckets - (*hash % buckets as u64) as usize) % buckets < 16
+                    && *slot < records
+            })
+        {
+            candidates.push(buckets);
+        }
+    }
+    if candidates.len() != 1 {
+        return Err("配装条目哈希表布局不唯一".into());
+    }
+    let buckets = candidates[0];
+    let start = buckets * 16;
+    let records = (data.len() - start) / 32;
+    let mut result = Table {
+        type_id,
+        rows: BTreeMap::new(),
+        duplicate_keys: 0,
+        tail: base + start + records * 32..base + data.len(),
+    };
+    for at in (0..start).step_by(16) {
+        let key = u64_at(data, at)?;
+        if key == 0 {
+            continue;
+        }
+        let slot = u32_at(data, at + 8)? as usize;
+        let row = base + start + slot * 32;
+        if result.rows.insert(Key::Hash(key), row..row + 32).is_some() {
+            result.duplicate_keys += 1;
+        }
+    }
+    Ok(result)
+}
 pub fn parse(file: &[u8], block: &Block, layout: Layout) -> Result<Table, String> {
     let data = file.get(block.payload.clone()).ok_or("表载荷越界")?;
+    if block.type_id == 0x4F2CF417 {
+        if !matches!(
+            layout,
+            Layout::Keyed {
+                stride: 32,
+                slack: 0
+            }
+        ) {
+            return Err("配装条目布局不匹配".into());
+        }
+        return loadout(data, block.payload.start, block.type_id);
+    }
     match layout {
         Layout::Rows { stride, id_offset } => {
             rows(data, block.payload.start, block.type_id, stride, id_offset)
@@ -224,6 +288,7 @@ pub fn layouts(type_id: u32) -> Vec<Layout> {
     }
     let strides: &[usize] = match type_id {
         0x88E4DBB1 => &[1232, 1240],
+        0x4F2CF417 => &[32], // loadout entity hash map
         0xFB8D88A3 => &[160],
         0x66081072 => &[136],
         0x45171B68 => &[616],
@@ -265,6 +330,25 @@ pub fn layouts(type_id: u32) -> Vec<Layout> {
         0x40EF204C => &[852],              // avatar
         0x726A4F6B => &[64],               // drownable
         0x7EF5CC55 => &[104],              // hellpod
+        0x5FEF63C4 => &[80],               // AI character
+        0x5357A825 => &[232],              // equipment
+        0xD0207221 => &[1084],             // hive mind
+        0x8ADAB43B => &[144],              // inventory
+        0xFCCA29DB => &[1104],             // pickup
+        0x6062C233 => &[46600],            // status effects taken
+        0x498CE7C7 => &[48],               // transport
+        0xC677F538 => &[12],               // danger sensor
+        0x595A2910 => &[28],               // scrambler
+        0x333C9A62 => &[752],              // flight path
+        0xD57D0101 => &[4836],             // hit reaction
+        0xD2B93CD8 => &[168],              // squad transport
+        0x2C0968D2 => &[64],               // targeting
+        0xC8033E7F => &[16],               // hearing
+        0x9D0EEFB5 => &[736],              // enemy AI
+        0x8C5F8AB7 => &[20],               // jammer
+        0x4437574D => &[136],              // unit
+        0xD74E6E1A => &[96],               // spawn floor
+        0x8A40FE2F => &[56],               // encyclopedia
         _ => &[],
     };
     if type_id == 0x9AF175A4 {
@@ -287,7 +371,14 @@ pub fn layouts(type_id: u32) -> Vec<Layout> {
     }
     strides
         .iter()
-        .map(|&stride| Layout::Keyed { stride, slack: 0 })
+        .map(|&stride| Layout::Keyed {
+            stride,
+            slack: if matches!(type_id, 0x8C5F8AB7 | 0xC677F538) {
+                4
+            } else {
+                0
+            },
+        })
         .collect()
 }
 
