@@ -15,6 +15,24 @@ use std::{
     time::{Duration, Instant},
 };
 pub const METHODS: &[&str] = &[
+    "desktop-call",
+    "catalog-load",
+    "catalog-info",
+    "catalog-items",
+    "catalog-describe",
+    "catalog-read-rows",
+    "catalog-read-fields",
+    "catalog-row-values",
+    "catalog-edit-preview",
+    "catalog-set",
+    "catalog-restore",
+    "catalog-reference-choices",
+    "catalog-reference-detail",
+    "catalog-references",
+    "catalog-shared",
+    "catalog-preset-preview",
+    "catalog-preset-apply",
+    "catalog-preset-export",
     "workspace-open",
     "workspace-close",
     "workspace-get",
@@ -26,6 +44,7 @@ pub const METHODS: &[&str] = &[
     "workspace-history",
     "workspace-preview",
     "workspace-export-copy",
+    "workspace-export-sealed-copy",
     "update-parse",
     "update-start",
     "update-poll",
@@ -69,6 +88,7 @@ pub const METHODS: &[&str] = &[
     "armor-undo",
     "armor-redo",
     "diagnostic-scrub",
+    "diagnostic-check",
     "package-inspect",
     "package-rebuild-copy",
     "bundle-inspect",
@@ -292,6 +312,11 @@ fn handle(
             if request["params"]["name"] != "shodan_native_call"
                 || !METHODS.contains(&args["method"].as_str().unwrap_or(""))
                 || !args["params"].is_object()
+                || (args["method"] == "desktop-call"
+                    && matches!(
+                        args["params"]["name"].as_str(),
+                        Some("install_task" | "restore_task")
+                    ))
             {
                 reply(
                     client,
@@ -305,7 +330,7 @@ fn handle(
                 return;
             }
             let outcome = match api.try_lock() {
-                Ok(mut api) => api.invoke(args),
+                Ok(mut api) => api.invoke_mcp(args),
                 Err(_) => Err("数据引擎忙，请稍后重试".into()),
             };
             match outcome {

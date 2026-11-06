@@ -3,6 +3,15 @@ name = "shodan-core"
 version = "4.6.0-r1"
 edition = "2021"
 license = "GPL-3.0-or-later"
+autobins = false
+
+[[bin]]
+name = "shodan-native"
+path = "src/bin/shodan-native.rs"
+
+[[bin]]
+name = "shodan-portable"
+path = "src/bin/shodan-portable.rs"
 
 [dependencies]
 serde_json = "=1.0.154"

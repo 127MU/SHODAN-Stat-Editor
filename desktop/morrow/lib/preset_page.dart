@@ -15,11 +15,26 @@ class PresetPage extends StatefulWidget {
 class _PresetPageState extends State<PresetPage> {
   List<dynamic> presets = [];
   bool busy = false;
+  bool enemy = false;
   String result = '';
   @override
   void initState() {
     super.initState();
-    refresh();
+    changeScope(false);
+  }
+
+  Future<void> changeScope(bool value) async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      await widget.backend.call('editor_mode', [value]);
+      if (mounted) setState(() => enemy = value);
+      await refresh();
+    } catch (e) {
+      widget.onError(e);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> refresh() async {
@@ -121,6 +136,21 @@ class _PresetPageState extends State<PresetPage> {
         spacing: 12,
         runSpacing: 12,
         children: [
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('装备预设')),
+              ButtonSegment(value: true, label: Text('敌人预设')),
+            ],
+            selected: {enemy},
+            onSelectionChanged: busy
+                ? null
+                : (value) => changeScope(value.single),
+          ),
+          if (enemy)
+            OutlinedButton(
+              onPressed: busy ? null : () => action('restore_examples', []),
+              child: const Text('恢复内置示例'),
+            ),
           FilledButton.icon(
             onPressed: busy
                 ? null
@@ -169,6 +199,8 @@ class _PresetPageState extends State<PresetPage> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     Text('${p['count']} 项参数'),
+                    if (p['description'] is String)
+                      Text(p['description'] as String),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -196,6 +228,41 @@ class _PresetPageState extends State<PresetPage> {
                                     ]);
                                 },
                           child: const Text('重命名'),
+                        ),
+                        TextButton(
+                          onPressed: busy
+                              ? null
+                              : () async {
+                                  final text = await input(
+                                    '预设说明',
+                                    p['description'] as String? ?? '',
+                                  );
+                                  if (text != null)
+                                    await action('preset_description', [
+                                      'full',
+                                      p['id'],
+                                      text,
+                                    ]);
+                                },
+                          child: const Text('编辑说明'),
+                        ),
+                        TextButton(
+                          onPressed: busy
+                              ? null
+                              : () async {
+                                  final text = await input(
+                                    '副本名称',
+                                    '${p['name']} 副本',
+                                  );
+                                  if (text != null && text.trim().isNotEmpty) {
+                                    await action('preset_duplicate', [
+                                      'full',
+                                      p['id'],
+                                      text,
+                                    ]);
+                                  }
+                                },
+                          child: const Text('创建副本'),
                         ),
                         TextButton(
                           onPressed: busy

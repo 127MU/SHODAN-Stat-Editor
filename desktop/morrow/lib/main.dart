@@ -13,6 +13,7 @@ import 'package:file_selector/file_selector.dart';
 import 'number_display.dart';
 import 'preference_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'backend.dart';
 import 'desktop_frame.dart';
 import 'armor_page.dart';
@@ -42,6 +43,7 @@ class _WorkbenchState extends State<Workbench> {
   bool ready = false, busy = false, dark = true;
   bool diagnosing = false;
   bool checkingUpdates = false;
+  bool mcpEnabled = false, mcpBusy = false;
   String updateStatus = '启动时自动检查一次正式发行版';
   bool onlyChanged = false, catalogOnlyChanged = false;
   String diagnosticResult = '';
@@ -170,6 +172,32 @@ class _WorkbenchState extends State<Workbench> {
         setState(() => updateStatus = automatic ? '暂时无法检查更新，可点击重试' : '$e');
     } finally {
       if (mounted) setState(() => checkingUpdates = false);
+    }
+  }
+
+  Future<void> toggleMcp(bool on) async {
+    if (mcpBusy) return;
+    setState(() => mcpBusy = true);
+    try {
+      final reply = await backend.nativeCall(on ? 'mcp-start' : 'mcp-stop');
+      if (mounted)
+        setState(() => mcpEnabled = reply is Map && reply['enabled'] == true);
+    } catch (e) {
+      if (mounted) showError(e);
+    } finally {
+      if (mounted) setState(() => mcpBusy = false);
+    }
+  }
+
+  Future<void> copyMcp() async {
+    try {
+      final config = await backend.nativeCall('mcp-config');
+      await Clipboard.setData(
+        ClipboardData(text: const JsonEncoder.withIndent('  ').convert(config)),
+      );
+      if (mounted) setState(() => status = '已复制 MCP 配置');
+    } catch (e) {
+      if (mounted) showError(e);
     }
   }
 
@@ -483,7 +511,11 @@ class _WorkbenchState extends State<Workbench> {
         final result = await showDialog<dynamic>(
           context: navigator.currentContext!,
           barrierDismissible: false,
-          builder: (_) => InstallDialog(backend: backend),
+          builder: (_) => InstallDialog(
+            backend: backend,
+            allowFloatAdjustment:
+                preview is Map && preview['allow_float_adjustment'] == true,
+          ),
         );
         if (mounted)
           setState(
@@ -727,6 +759,27 @@ class _WorkbenchState extends State<Workbench> {
         ),
       ),
       const SizedBox(height: 16),
+      if (backend.usesNativeDesktop)
+        surface(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('MCP 接口'),
+                subtitle: const Text('开启后可通过本机连接读取和编辑当前会话。连接配置包含本次会话的访问凭据。'),
+                value: mcpEnabled,
+                onChanged: mcpBusy ? null : toggleMcp,
+              ),
+              OutlinedButton.icon(
+                onPressed: mcpEnabled && !mcpBusy ? copyMcp : null,
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('复制 MCP 配置'),
+              ),
+            ],
+          ),
+        ),
+      if (backend.usesNativeDesktop) const SizedBox(height: 16),
       surface(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -771,9 +824,7 @@ class _WorkbenchState extends State<Workbench> {
                 OutlinedButton.icon(
                   onPressed: () async {
                     try {
-                      final saved = await exportDiagnostics(
-                        backend.diagnostics,
-                      );
+                      final saved = await exportDiagnostics(backend);
                       if (saved && mounted)
                         setState(() => diagnosticResult = '诊断日志已导出。');
                     } catch (e) {
@@ -955,7 +1006,7 @@ class _WorkbenchState extends State<Workbench> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            const Text('$appVersion · Rust Host + Lua 数据兼容层'),
+            const Text('$appVersion · Rust 数据引擎'),
             const Text('界面字体：MiSans（小米），保留中英文及常用符号。'),
             const Text('游戏路径由现有核心自动检测，不固定其他人的安装目录。'),
             const SizedBox(height: 8),

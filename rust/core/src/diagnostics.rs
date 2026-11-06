@@ -1,5 +1,20 @@
 //! Privacy filtering for native diagnostic exports. No automatic upload.
-use serde_json::Value;
+use serde_json::{json, Value};
+use std::path::Path;
+
+pub(crate) fn checks(runtime: &Path, game: Option<&Path>) -> Value {
+    let mut results = Vec::new();
+    for name in ["shodan-native.exe", "catalog.json.gz", "data/app.so"] {
+        let ok = std::fs::metadata(runtime.join(name)).is_ok_and(|m| m.is_file() && m.len() > 0);
+        results.push(json!({"name":name,"ok":ok,
+            "message":if ok {"文件存在且非空"} else {"文件缺失或为空"}}));
+    }
+    results.push(json!({"name":"Rust 数据引擎","ok":true,"message":"响应正常"}));
+    let game = game.is_some_and(|path| path.join("game.dll").is_file());
+    results.push(json!({"name":"游戏数据目录","ok":game,
+        "message":if game {"已读取游戏工作区"} else {"工作区尚未打开"}}));
+    json!(results)
+}
 pub struct Privacy {
     pub profile: Option<String>,
     pub username: Option<String>,

@@ -170,7 +170,15 @@ pub fn open(p: &Value) -> Result<Workspace, String> {
             return Err("同一个文件被重复添加到工作区".into());
         }
         let current = bounded_read(&path, &mut total)?;
-        let baseline = if input["baseline_path"].is_null() {
+        let baseline = if input["embedded_armor"] == true {
+            if text(input, "name")? != crate::desktop_armor::PASSIVE {
+                return Err("嵌入原值只能用于护甲被动表".into());
+            }
+            Some(crate::baseline::Baseline::shipped(
+                "generated_customization_passive_bonuses.dl_plain",
+                crate::desktop_armor::BASELINE.to_vec(),
+            )?)
+        } else if input["baseline_path"].is_null() {
             None
         } else {
             let bytes = bounded_read(Path::new(text(input, "baseline_path")?), &mut total)?;
@@ -179,10 +187,12 @@ pub fn open(p: &Value) -> Result<Workspace, String> {
                 bytes,
             )?)
         };
-        workspace.add(
-            text(input, "name")?.into(),
-            File::new(path, current, baseline)?,
-        )?;
+        let file = match input.get("sealed") {
+            None | Some(Value::Bool(false)) => File::new(path, current, baseline),
+            Some(Value::Bool(true)) => File::sealed(path, current, baseline),
+            Some(_) => return Err("密封输入选项必须为布尔值".into()),
+        }?;
+        workspace.add(text(input, "name")?.into(), file)?;
     }
     Ok(workspace)
 }
@@ -211,13 +221,24 @@ pub(crate) fn export_prepared(
     prepared: &BTreeMap<String, Vec<u8>>,
     output: &Path,
 ) -> Result<Value, String> {
+    export_files(prepared, output, "dl_plain")
+}
+
+fn export_files(
+    prepared: &BTreeMap<String, Vec<u8>>,
+    output: &Path,
+    format: &str,
+) -> Result<Value, String> {
     let mut names = BTreeSet::new();
+    let filename = |name: &str| {
+        let stem = name.strip_suffix(".dl_bin").unwrap_or(name);
+        format!("{stem}.{format}")
+    };
     for name in prepared.keys() {
         if name.is_empty() || name.contains(['/', '\\', ':', '\0']) || name == "." || name == ".." {
             return Err("导出文件名无效".into());
         }
-        let filename = format!("{}.dl_plain", name.strip_suffix(".dl_bin").unwrap_or(name));
-        if !names.insert(filename.to_lowercase()) {
+        if !names.insert(filename(name).to_lowercase()) {
             return Err("导出文件名重复".into());
         }
     }
@@ -226,7 +247,7 @@ pub(crate) fn export_prepared(
     let result = (|| {
         let mut reports = Vec::new();
         for (name, bytes) in prepared {
-            let filename = format!("{}.dl_plain", name.strip_suffix(".dl_bin").unwrap_or(name));
+            let filename = filename(name);
             let path = output.join(&filename);
             let mut file = fs::OpenOptions::new()
                 .write(true)
@@ -242,7 +263,7 @@ pub(crate) fn export_prepared(
             }
             reports.push(json!({"name":filename,"bytes":bytes.len(),"sha256":crate::hash::sha256_hex(bytes)}));
         }
-        Ok(json!({"files":reports,"format":"dl_plain","installed":false}))
+        Ok(json!({"files":reports,"format":format,"installed":false}))
     })();
     if result.is_err() {
         for path in owned {
@@ -298,6 +319,47 @@ pub fn invoke(workspace: &mut Workspace, method: &str, p: &Value) -> Result<Valu
             json!({"pending_bytes":workspace.pending_count(),"metadata":workspace.metadata(),"problems":workspace.problems(),"installed":false}),
         ),
         "workspace-export-copy" => export(workspace, Path::new(text(p, "output")?)),
+        "workspace-export-sealed-copy" => {
+            let output = Path::new(text(p, "output")?);
+            let floats = p
+                .get("float_fields")
+                .map(|fields| {
+                    let fields = fields.as_array().ok_or("允许微调的参数清单格式无效")?;
+                    if fields.len() > 64 {
+                        return Err("允许微调的参数数量过多".into());
+                    }
+                    fields
+                        .iter()
+                        .map(|field| {
+                            if field["encoding"] != "f32" {
+                                return Err("只可明确允许微调浮点参数".into());
+                            }
+                            location(field)
+                        })
+                        .collect::<Result<Vec<_>, String>>()
+                })
+                .transpose()?
+                .unwrap_or_default();
+            let prepared = workspace.prepare_sealed(&floats)?;
+            if prepared.is_empty() {
+                return Ok(json!({"files":[],"format":"dl_bin","installed":false}));
+            }
+            let mut reports = Vec::new();
+            let files = prepared
+                .into_iter()
+                .map(|(name, file)| {
+                    if let Some((offset, before, after)) = file.correction.adjusted_float {
+                        reports.push(
+                            json!({"file":name,"offset":offset,"before":before,"after":after}),
+                        );
+                    }
+                    (name, file.ciphertext)
+                })
+                .collect();
+            let mut report = export_files(&files, output, "dl_bin")?;
+            report["adjusted_floats"] = json!(reports);
+            Ok(report)
+        }
         _ => Err("未提供该工作区接口".into()),
     }
 }

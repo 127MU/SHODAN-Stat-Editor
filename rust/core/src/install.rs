@@ -1,7 +1,7 @@
 //! Native filesystem transaction. Prepared files are verified before replacement;
 //! failure rolls back only files still matching this transaction's output.
 use crate::hash::sha256_hex;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{
     collections::BTreeSet,
     fs,
@@ -22,7 +22,7 @@ pub struct Progress {
     pub done: usize,
     pub total: usize,
 }
-fn read(path: &Path) -> Result<Option<Vec<u8>>, String> {
+pub(crate) fn read(path: &Path) -> Result<Option<Vec<u8>>, String> {
     match fs::read(path) {
         Ok(bytes) => Ok(Some(bytes)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
@@ -67,6 +67,49 @@ fn replace(source: &Path, target: &Path) -> Result<(), String> {
 fn stage_path(path: &Path, tag: &str, index: usize) -> Result<PathBuf, String> {
     let parent = path.parent().ok_or("目标缺少父目录")?;
     Ok(parent.join(format!(".shodan-{tag}-{index}.tmp")))
+}
+pub(crate) fn save_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let folder = path.parent().ok_or("缺少配置目录")?;
+    fs::create_dir_all(folder).map_err(|_| "无法创建配置目录")?;
+    if fs::symlink_metadata(path).is_ok_and(|m| !m.is_file()) {
+        return Err("配置目标必须是普通文件".into());
+    }
+    let tag = format!(
+        "{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| "系统时间无效")?
+            .as_nanos()
+    );
+    let stage = stage_path(path, &tag, 0)?;
+    let result = create(&stage, bytes).and_then(|()| replace(&stage, path));
+    if stage.is_file() {
+        let _ = fs::remove_file(stage);
+    }
+    result
+}
+pub(crate) fn lock_transaction(backup: &Path) -> Result<fs::File, String> {
+    let path = backup.join("active.lock");
+    if fs::symlink_metadata(&path).is_ok_and(|m| !m.is_file()) {
+        return Err("事务锁必须是普通文件".into());
+    }
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)
+        .map_err(|_| "无法打开安装事务锁")?;
+    file.try_lock().map_err(|_| "该安装事务正在处理")?;
+    Ok(file)
+}
+pub(crate) fn committed(backup: &Path) -> Result<bool, String> {
+    match read(&backup.join("committed"))?.as_deref() {
+        Some(b"1\n") => Ok(true),
+        None | Some(b"" | b"1") => Ok(false),
+        _ => Err("事务完成标记无效".into()),
+    }
 }
 fn commit_one(change: &Change, stage: &Path) -> Result<(), String> {
     if read(&change.path)? != change.before {
@@ -118,6 +161,7 @@ pub fn apply(
         });
     }
     fs::create_dir(backup).map_err(|_| "无法创建全新的备份目录")?;
+    let _lock = lock_transaction(backup)?;
     let tag = format!(
         "{}-{}",
         std::process::id(),
@@ -226,50 +270,146 @@ pub fn apply(
 }
 
 /// Build reverse changes only after checking every backup and installed fingerprint.
-pub fn restore(
-    backup: &Path,
-    new_backup: &Path,
-    progress: impl FnMut(Progress),
-) -> Result<Receipt, String> {
-    if !backup.join("committed").is_file() {
-        return Err("该事务未完成，不能按已安装记录恢复".into());
-    }
-    let bytes = fs::read(backup.join("journal.json")).map_err(|_| "无法读取备份日志")?;
-    if bytes.len() > 8 * 1024 * 1024 {
+fn read_journal(backup: &Path) -> Result<Value, String> {
+    let path = backup.join("journal.json");
+    let meta = fs::symlink_metadata(&path).map_err(|_| "无法读取备份日志")?;
+    if !meta.is_file() || meta.len() > 8 * 1024 * 1024 {
         return Err("备份日志过大".into());
     }
+    let bytes = fs::read(path).map_err(|_| "无法读取备份日志")?;
     let journal: serde_json::Value =
         serde_json::from_slice(&bytes).map_err(|_| "备份日志格式无效")?;
     if journal["version"] != 1 || journal["state"] != "prepared" {
         return Err("不支持的备份版本".into());
     }
+    Ok(journal)
+}
+
+fn fingerprint(row: &Value, key: &str) -> Result<Option<String>, String> {
+    match row.get(key) {
+        Some(Value::Null) => Ok(None),
+        Some(Value::String(hash))
+            if hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_hexdigit()) =>
+        {
+            Ok(Some(hash.to_ascii_lowercase()))
+        }
+        _ => Err("备份日志指纹无效".into()),
+    }
+}
+
+fn original(
+    backup: &Path,
+    index: usize,
+    expected: Option<&str>,
+) -> Result<Option<Vec<u8>>, String> {
+    let Some(expected) = expected else {
+        return Ok(None);
+    };
+    // The journal never supplies the location of the backup bytes.
+    let path = backup.join(format!("{index}.original"));
+    if !fs::symlink_metadata(&path).is_ok_and(|m| m.is_file()) {
+        return Err("原始备份缺失或不是普通文件".into());
+    }
+    let bytes = fs::read(path).map_err(|_| "原始备份缺失")?;
+    if sha256_hex(&bytes) != expected {
+        return Err("原始备份指纹不匹配".into());
+    }
+    Ok(Some(bytes))
+}
+
+/// Build reverse changes only after checking every backup and installed fingerprint.
+pub fn restore(
+    backup: &Path,
+    new_backup: &Path,
+    progress: impl FnMut(Progress),
+) -> Result<Receipt, String> {
+    let _lock = lock_transaction(backup)?;
+    if !committed(backup)? {
+        return Err("该事务未完成，不能按已安装记录恢复".into());
+    }
+    let journal = read_journal(backup)?;
     let rows = journal["files"].as_array().ok_or("缺少备份条目")?;
     let mut changes = Vec::new();
     for (index, row) in rows.iter().enumerate() {
         let path = PathBuf::from(row["target"].as_str().ok_or("备份目标无效")?);
         let current = read(&path)?;
         let actual = current.as_ref().map(|b| sha256_hex(b));
-        let expected = row["after"].as_str();
-        if actual.as_deref() != expected {
+        let expected = fingerprint(row, "after")?;
+        if actual != expected {
             return Err("目标已被外部修改，停止恢复".into());
         }
-        // Never accept a path supplied in the journal for reading backup contents.
-        let before = if let Some(expected) = row["before"].as_str() {
-            let bytes =
-                fs::read(backup.join(format!("{index}.original"))).map_err(|_| "原始备份缺失")?;
-            if sha256_hex(&bytes) != expected {
-                return Err("原始备份指纹不匹配".into());
-            }
-            Some(bytes)
-        } else {
-            None
-        };
+        let before = original(backup, index, fingerprint(row, "before")?.as_deref())?;
         changes.push(Change {
             path,
             before: current,
             after: before,
         });
     }
+    apply(changes, new_backup, progress)
+}
+
+/// Recover a prepared transaction after a process exit. Every target must be
+/// either unchanged or an exact transaction output before any reversal starts.
+pub fn recover_interrupted(
+    backup: &Path,
+    new_backup: &Path,
+    target_root: &Path,
+    progress: impl FnMut(Progress),
+) -> Result<Receipt, String> {
+    recover_scoped(backup, new_backup, &[target_root], progress)
+}
+
+pub(crate) fn recover_scoped(
+    backup: &Path,
+    new_backup: &Path,
+    target_roots: &[&Path],
+    progress: impl FnMut(Progress),
+) -> Result<Receipt, String> {
+    let roots = target_roots
+        .iter()
+        .map(|root| {
+            let root = fs::canonicalize(root).map_err(|_| "无法确认事务目标目录")?;
+            if !root.is_dir() {
+                return Err("事务目标范围必须是目录");
+            }
+            Ok(root)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let _lock = lock_transaction(backup)?;
+    if committed(backup)? {
+        return Err("该事务已完成，请使用备份恢复".into());
+    }
+    let journal = read_journal(backup)?;
+    let rows = journal["files"].as_array().ok_or("缺少备份条目")?;
+    let mut changes = Vec::new();
+    for (index, row) in rows.iter().enumerate() {
+        let path = PathBuf::from(row["target"].as_str().ok_or("备份目标无效")?);
+        let parent = path.parent().ok_or("备份目标缺少父目录")?;
+        let parent = fs::canonicalize(parent).map_err(|_| "无法核对备份目标目录")?;
+        if !roots.iter().any(|root| parent.starts_with(root)) {
+            return Err("备份目标超出当前事务目录".into());
+        }
+        let path = parent.join(path.file_name().ok_or("备份目标文件名无效")?);
+        if fs::symlink_metadata(&path).is_ok_and(|m| !m.is_file()) {
+            return Err("备份目标不是普通文件".into());
+        }
+        let current = read(&path)?;
+        let actual = current.as_ref().map(|bytes| sha256_hex(bytes));
+        let before = fingerprint(row, "before")?;
+        let after = fingerprint(row, "after")?;
+        if actual == before {
+            continue;
+        }
+        if actual != after {
+            return Err("中断后发现外部修改，已保留当前文件".into());
+        }
+        changes.push(Change {
+            path,
+            before: current,
+            after: original(backup, index, before.as_deref())?,
+        });
+    }
+    changes.reverse();
     apply(changes, new_backup, progress)
 }
 
@@ -380,5 +520,59 @@ mod tests {
         fs::write(&a, b"external").unwrap();
         assert!(restore(&backup, &s.path.join("r2"), |_| {}).is_err());
         assert_eq!(fs::read(&a).unwrap(), b"external");
+    }
+
+    #[test]
+    fn interrupted_recovery_checks_scope_lock_and_fingerprints_before_reversing() {
+        let s = Sandbox::new();
+        let data = s.path.join("data");
+        fs::create_dir(&data).unwrap();
+        let a = data.join("已替换");
+        let b = data.join("已新增");
+        let c = data.join("尚未替换");
+        fs::write(&a, b"A").unwrap();
+        fs::write(&c, b"C").unwrap();
+        let backup = s.path.join("backup");
+        let recovered = s.path.join("recovered");
+        apply(
+            vec![
+                change(a.clone(), Some(b"A"), Some(b"newA")),
+                change(b.clone(), None, Some(b"B")),
+                change(c.clone(), Some(b"C"), Some(b"newC")),
+            ],
+            &backup,
+            |progress| {
+                if progress.stage == "commit" {
+                    assert!(recover_interrupted(&backup, &recovered, &data, |_| {}).is_err());
+                }
+            },
+        )
+        .unwrap();
+        fs::write(backup.join("committed"), b"").unwrap();
+        fs::write(&c, b"C").unwrap();
+        let unrelated = s.path.join("unrelated");
+        fs::create_dir(&unrelated).unwrap();
+        assert!(recover_interrupted(&backup, &recovered, &unrelated, |_| {}).is_err());
+        fs::write(&c, b"external").unwrap();
+        assert!(recover_interrupted(&backup, &recovered, &data, |_| {}).is_err());
+        assert_eq!(fs::read(&a).unwrap(), b"newA");
+        assert_eq!(fs::read(&b).unwrap(), b"B");
+        assert!(!recovered.exists());
+        fs::write(&c, b"C").unwrap();
+        assert_eq!(
+            recover_interrupted(&backup, &recovered, &data, |_| {})
+                .unwrap()
+                .changed,
+            2
+        );
+        assert_eq!(fs::read(&a).unwrap(), b"A");
+        assert_eq!(fs::read(&c).unwrap(), b"C");
+        assert!(!b.exists());
+        assert_eq!(
+            recover_interrupted(&backup, &recovered, &data, |_| {})
+                .unwrap()
+                .changed,
+            0
+        );
     }
 }

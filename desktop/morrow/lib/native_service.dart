@@ -5,9 +5,10 @@ import 'diagnostics.dart';
 
 /// Transport only. Release parsing and data operations stay in Rust.
 class NativeService {
-  NativeService(this.root, this.diagnostics);
+  NativeService(this.root, this.diagnostics, {this.onProgress});
   final String root;
   final AppDiagnostics diagnostics;
+  final void Function(Map<String, dynamic>)? onProgress;
   Process? _process;
   Future<void>? _starting;
   final _pending = <int, Completer<dynamic>>{};
@@ -47,10 +48,19 @@ class NativeService {
     process.stderr
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .listen(
-          (line) => diagnostics.record('原生服务：$line', detail: true),
-          onError: _fail,
-        );
+        .listen((line) {
+          const prefix = '@shodan-progress ';
+          if (line.startsWith(prefix)) {
+            try {
+              final event = jsonDecode(line.substring(prefix.length));
+              if (event is Map<String, dynamic>) onProgress?.call(event);
+            } catch (_) {
+              diagnostics.record('原生服务：无法解析安装进度');
+            }
+          } else {
+            diagnostics.record('原生服务：$line', detail: true);
+          }
+        }, onError: _fail);
     unawaited(
       process.exitCode.then((code) {
         if (identical(_process, process)) {
@@ -86,7 +96,12 @@ class NativeService {
       _process!.stdin.writeln(
         jsonEncode({'id': id, 'method': method, 'params': params}),
       );
-      return await pending.future.timeout(const Duration(minutes: 5));
+      final args = params['name'];
+      return await pending.future.timeout(
+        Duration(
+          minutes: method == 'desktop-call' && args == 'install_task' ? 20 : 5,
+        ),
+      );
     } finally {
       _pending.remove(id);
     }

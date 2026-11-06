@@ -15,6 +15,8 @@ pub struct Preset {
     pub weapon: Option<String>,
     pub editor: Option<String>,
     pub armor: Option<String>,
+    pub description: Option<String>,
+    pub texts: BTreeMap<String, BTreeMap<String, String>>,
     pub values: Vec<Value>,
 }
 fn hex(text: &str) -> String {
@@ -49,6 +51,7 @@ impl Preset {
         let mut meta = BTreeMap::new();
         let mut values = Vec::new();
         let mut seen = BTreeSet::new();
+        let mut texts = BTreeMap::<String, BTreeMap<String, String>>::new();
         for line in lines.filter(|l| !l.is_empty()) {
             let (key, body) = line.split_once(' ').ok_or("预设行格式错误")?;
             if key == "value" {
@@ -76,11 +79,27 @@ impl Preset {
                     parameter,
                     value,
                 });
-                if values.len() > 100000 {
+                if values.len() > 150000 {
                     return Err("预设参数过多".into());
                 }
+            } else if key == "text" {
+                let mut p = body.split_whitespace();
+                let owner = hash(p.next().ok_or("预设文字缺少条目")?)?;
+                let field = p.next().ok_or("预设文字缺少字段")?;
+                let value = unhex(p.next().ok_or("预设文字缺少内容")?)?;
+                crate::desktop_text::validate(field, &value)?;
+                if p.next().is_some()
+                    || value.is_empty()
+                    || texts
+                        .entry(owner)
+                        .or_default()
+                        .insert(field.into(), value)
+                        .is_some()
+                {
+                    return Err("预设包含重复或无效的文字字段".into());
+                }
             } else {
-                if !["kind", "name", "weapon", "editor", "armor"].contains(&key)
+                if !["kind", "name", "weapon", "editor", "armor", "description"].contains(&key)
                     || body.is_empty()
                     || meta.insert(key, body).is_some()
                 {
@@ -106,12 +125,19 @@ impl Preset {
             return Err("预设编辑器类型无效".into());
         }
         let armor = meta.get("armor").map(|s| unhex(s)).transpose()?;
+        let description = meta.get("description").map(|s| unhex(s)).transpose()?;
+        if description
+            .as_ref()
+            .is_some_and(|s| s.len() > 400 || s.chars().any(char::is_control))
+        {
+            return Err("预设说明无效".into());
+        }
         if armor.is_some() && (kind != "full" || editor.as_deref() == Some("enemy")) {
             return Err("此预设不应包含护甲数值".into());
         }
         if kind == "weapon" {
             let owner = weapon.as_ref().ok_or("缺少装备标识")?;
-            if values.iter().any(|v| &v.owner != owner) {
+            if values.iter().any(|v| &v.owner != owner) || texts.keys().any(|key| key != owner) {
                 return Err("装备预设混入了其他装备".into());
             }
         } else if weapon.is_some() {
@@ -123,6 +149,8 @@ impl Preset {
             weapon,
             editor,
             armor,
+            description,
+            texts,
             values,
         })
     }
@@ -140,6 +168,14 @@ impl Preset {
         }
         if let Some(armor) = &self.armor {
             lines.push(format!("armor {}", hex(armor)));
+        }
+        if let Some(description) = self.description.as_deref().filter(|s| !s.is_empty()) {
+            lines.push(format!("description {}", hex(description)));
+        }
+        for (owner, fields) in &self.texts {
+            for (field, value) in fields {
+                lines.push(format!("text {owner} {field} {}", hex(value)));
+            }
         }
         for value in &self.values {
             lines.push(format!(

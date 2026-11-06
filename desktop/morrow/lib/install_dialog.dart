@@ -10,10 +10,12 @@ class InstallDialog extends StatefulWidget {
     required this.backend,
     this.preview = false,
     this.restore = false,
+    this.allowFloatAdjustment = false,
   });
   final Backend backend;
   final bool preview;
   final bool restore;
+  final bool allowFloatAdjustment;
   @override
   State<InstallDialog> createState() => _InstallDialogState();
 }
@@ -55,6 +57,7 @@ class _InstallDialogState extends State<InstallDialog> {
             : widget.restore
             ? 'restore_task'
             : 'install_task',
+        widget.allowFloatAdjustment ? [true] : [],
       );
       if (!mounted) return;
       success = widget.preview || result is Map && result['ok'] == true;
@@ -163,7 +166,7 @@ class _InstallDialogState extends State<InstallDialog> {
           TextButton(
             onPressed: () async {
               try {
-                await exportDiagnostics(widget.backend.diagnostics);
+                await exportDiagnostics(widget.backend);
               } catch (e) {
                 if (mounted) setState(() => message = '日志导出失败：$e');
               }

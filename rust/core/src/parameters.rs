@@ -154,6 +154,8 @@ mod tests {
             weapon: None,
             editor: None,
             armor: None,
+            description: None,
+            texts: Default::default(),
             values,
         }
     }

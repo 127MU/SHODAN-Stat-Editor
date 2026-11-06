@@ -4,6 +4,7 @@
 use crate::{
     binary::Encoding,
     catalog::{Catalog, Expression, Mode, Owner, Row},
+    catalog_refs,
     workspace::{Location, Workspace},
 };
 use serde_json::{json, Value};
@@ -13,27 +14,36 @@ pub struct Plan {
     pub metadata: Value,
     pub changes: Value,
 }
-struct Builder<'a> {
-    catalog: &'a Catalog,
-    workspace: &'a Workspace,
-    fields: BTreeMap<usize, f64>,
+pub(crate) struct Builder<'a> {
+    pub(crate) catalog: &'a Catalog,
+    pub(crate) workspace: &'a Workspace,
+    pub(crate) fields: BTreeMap<usize, f64>,
     metadata: Value,
     active: BTreeSet<usize>,
 }
 impl<'a> Builder<'a> {
-    fn current(&self, index: usize) -> Result<f64, String> {
+    pub(crate) fn new(catalog: &'a Catalog, workspace: &'a Workspace) -> Self {
+        Self {
+            catalog,
+            workspace,
+            fields: BTreeMap::new(),
+            metadata: workspace.metadata().clone(),
+            active: BTreeSet::new(),
+        }
+    }
+    pub(crate) fn current(&self, index: usize) -> Result<f64, String> {
         self.fields.get(&index).copied().map(Ok).unwrap_or_else(|| {
             self.catalog
                 .field_value(index, self.workspace, Mode::Current)?
                 .ok_or("参数当前值不可读".into())
         })
     }
-    fn original(&self, index: usize) -> Result<f64, String> {
+    pub(crate) fn original(&self, index: usize) -> Result<f64, String> {
         self.catalog
             .field_value(index, self.workspace, Mode::Original)?
             .ok_or("该参数没有可信原始值，未应用任何修改".into())
     }
-    fn write(&mut self, index: usize, mut value: f64) -> Result<(), String> {
+    pub(crate) fn write(&mut self, index: usize, mut value: f64) -> Result<(), String> {
         if !value.is_finite() {
             return Err("联动计算产生非有限数值，未应用任何修改".into());
         }
@@ -52,13 +62,23 @@ impl<'a> Builder<'a> {
                 return Err("该字段不支持所选枚举值".into());
             }
             if field.storage == "virtual" {
+                let loaded = if field.stratagem_code.is_some() {
+                    if value.fract() != 0.0 || !(1.0..=u32::MAX as f64).contains(&value) {
+                        return Err("战备指令无效".into());
+                    }
+                    crate::stratagem_code::directions(value as u32)?;
+                    self.catalog
+                        .field_value(index, self.workspace, Mode::Loaded)?
+                } else {
+                    field.virtual_default
+                };
                 if !self.metadata.is_object() {
                     self.metadata = json!({});
                 }
                 if !self.metadata["virtual"].is_object() {
                     self.metadata["virtual"] = json!({});
                 }
-                if field.virtual_default == Some(value) {
+                if loaded == Some(value) {
                     self.metadata["virtual"]
                         .as_object_mut()
                         .unwrap()
@@ -113,27 +133,97 @@ impl<'a> Builder<'a> {
             }
         }
     }
+    fn reference(
+        &mut self,
+        owner: &Owner,
+        row: &Row,
+        target: f64,
+        restore: bool,
+        kind: &str,
+        allow_zero: bool,
+    ) -> Result<(), String> {
+        for part in &row.parts {
+            let value = if restore {
+                self.original(part.field)?
+            } else {
+                target
+            };
+            if self.current(part.field)? == value {
+                continue;
+            }
+            // A trusted original fire-mode reference may be empty.
+            let field = &self.catalog.fields[part.field];
+            let extra_ammo = field.switch.is_some() || field.toggle.is_some();
+            let id = catalog_refs::validate_record(
+                self.workspace,
+                kind,
+                allow_zero || restore || extra_ammo,
+                value,
+            )?;
+            if kind == "status" {
+                let locations = &self.catalog.bindings[part.field]
+                    .as_ref()
+                    .ok_or("状态效果槽没有绑定")?
+                    .locations;
+                for location in locations {
+                    catalog_refs::status_neighbor(self.workspace, location, id)?;
+                }
+                if id != 0 && !restore {
+                    let strength = owner
+                        .rows
+                        .iter()
+                        .filter(|r| r.id == format!("{}_strength", part.id))
+                        .flat_map(|r| &r.parts)
+                        .find(|p| {
+                            self.catalog.bindings[p.field]
+                                .as_ref()
+                                .is_some_and(|binding| {
+                                    binding.locations.len() == locations.len()
+                                        && locations.iter().zip(&binding.locations).all(
+                                            |(slot, strength)| {
+                                                slot.file == strength.file
+                                                    && slot.typ == strength.typ
+                                                    && slot.record == strength.record
+                                                    && slot.relative + 4 == strength.relative
+                                            },
+                                        )
+                                })
+                        })
+                        .ok_or("状态效果强度字段缺失")?;
+                    if self.current(strength.field)? == 0.0 {
+                        self.write(strength.field, catalog_refs::status_strength(id))?;
+                    }
+                }
+            }
+            self.write(part.field, value)?;
+        }
+        Ok(())
+    }
     fn row(&mut self, owner: &Owner, row: &Row, target: f64, restore: bool) -> Result<(), String> {
         if row.code {
-            return Err("战备指令需要专用录入接口".into());
+            let field = row.parts.first().ok_or("战备指令未绑定字段")?.field;
+            if self.catalog.fields[field].stratagem_code.is_none() {
+                return Err("战备指令未绑定记录".into());
+            }
+            return self.write(
+                field,
+                if restore {
+                    self.original(field)?
+                } else {
+                    target
+                },
+            );
         }
         if row.unresolved.is_some() {
             return Err("该参数规则尚未完成原生迁移".into());
         }
-        if matches!(
-            row.choice.as_str(),
-            Some(
-                "resomode"
-                    | "smmode"
-                    | "smres"
-                    | "grenade"
-                    | "status"
-                    | "explosion"
-                    | "shrapnel"
-                    | "stratagem"
-            )
-        ) || row.choice == true
-        {
+        if let Some((kind, allow_zero)) = catalog_refs::namespace(row) {
+            return self.reference(owner, row, target, restore, kind, allow_zero);
+        }
+        if row.choice == "stratagem" && !restore {
+            Encoding::U32.encode(0, target)?;
+        }
+        if matches!(row.choice.as_str(), Some("resomode" | "smmode" | "grenade")) {
             return Err("该选择需要完整引用或资源事务，当前接口未应用任何修改".into());
         }
         if restore {
@@ -154,6 +244,9 @@ impl<'a> Builder<'a> {
         } else {
             target
         };
+        if row.id == "second_toggle" && ![1.0, 2.0].contains(&target) {
+            return Err("第二弹种只能替换功能键 1 或 2".into());
+        }
         if row.suppression {
             if row.parts.len() != 2 {
                 return Err("消音联动字段不完整".into());
@@ -330,45 +423,102 @@ pub fn prepare(
     if value.is_some_and(|v| !v.is_finite()) {
         return Err("请输入有限数值".into());
     }
-    let mut builder = Builder {
-        catalog,
-        workspace,
-        fields: BTreeMap::new(),
-        metadata: workspace.metadata().clone(),
-        active: BTreeSet::new(),
-    };
+    let mut builder = Builder::new(catalog, workspace);
     builder.row(owner, row, value.unwrap_or(0.0), value.is_none())?;
-    let mut values = Vec::new();
-    let mut changes = Vec::new();
-    for (index, value) in builder.fields {
-        let field = &catalog.fields[index];
-        let before = catalog.field_value(index, workspace, Mode::Current)?;
-        if before != Some(value) {
-            changes.push(json!({"field":field.key,"before":before,"after":value}));
+    builder.finish()
+}
+
+impl Builder<'_> {
+    fn ammo_switches(&mut self) -> Result<(), String> {
+        let changed: Vec<_> = self.fields.keys().copied().collect();
+        for index in changed {
+            let f = &self.catalog.fields[index];
+            if let Some(switch) = f.switch {
+                let on = self.current(index)? != 0.0;
+                self.write(switch, if on { 8.0 } else { self.original(switch)? })?;
+            }
+            if let Some(toggle) = f.toggle {
+                let on = self.current(toggle.second)? != 0.0;
+                let pick = self.current(toggle.pick)?;
+                for (side, index) in [(1.0, toggle.left), (2.0, toggle.right)] {
+                    let wanted = if on && pick == side {
+                        8.0
+                    } else {
+                        self.original(index)?
+                    };
+                    self.write(index, wanted)?;
+                }
+            }
         }
-        if let Some(binding) = &catalog.bindings[index] {
-            for location in &binding.locations {
-                values.push((location.clone(), binding.encoding.clone(), value));
+        Ok(())
+    }
+    pub(crate) fn finish(mut self) -> Result<Plan, String> {
+        self.ammo_switches()?;
+        let mut values = Vec::new();
+        let mut changes = Vec::new();
+        for (index, value) in self.fields {
+            let field = &self.catalog.fields[index];
+            let before = self
+                .catalog
+                .field_value(index, self.workspace, Mode::Current)?;
+            if before != Some(value) {
+                changes.push(json!({"field":field.key,"before":before,"after":value}));
+            }
+            if let Some(binding) = &self.catalog.bindings[index] {
+                for location in &binding.locations {
+                    values.push((location.clone(), binding.encoding.clone(), value));
+                }
+            }
+        }
+        if self.metadata["virtual"]
+            .as_object()
+            .is_some_and(|values| values.is_empty())
+        {
+            self.metadata.as_object_mut().unwrap().remove("virtual");
+        }
+        if self
+            .metadata
+            .as_object()
+            .is_some_and(|values| values.is_empty())
+            && self.workspace.metadata().is_null()
+        {
+            self.metadata = Value::Null;
+        }
+        Ok(Plan {
+            values,
+            metadata: self.metadata,
+            changes: json!(changes),
+        })
+    }
+}
+
+pub(crate) fn reset_owner(
+    catalog: &Catalog,
+    workspace: &Workspace,
+    owner: &Owner,
+) -> Result<Plan, String> {
+    let mut builder = Builder::new(catalog, workspace);
+    for row in &owner.rows {
+        if row.unresolved.is_some()
+            || matches!(
+                row.choice.as_str(),
+                Some("resomode" | "smmode" | "smres" | "grenade")
+            )
+        {
+            continue;
+        }
+        for part in &row.parts {
+            if builder.fields.contains_key(&part.field) {
+                continue;
+            }
+            if let (Ok(current), Ok(original)) =
+                (builder.current(part.field), builder.original(part.field))
+            {
+                if current != original {
+                    builder.write(part.field, original)?;
+                }
             }
         }
     }
-    if builder.metadata["virtual"]
-        .as_object()
-        .is_some_and(|values| values.is_empty())
-    {
-        builder.metadata.as_object_mut().unwrap().remove("virtual");
-    }
-    if builder
-        .metadata
-        .as_object()
-        .is_some_and(|values| values.is_empty())
-        && workspace.metadata().is_null()
-    {
-        builder.metadata = Value::Null;
-    }
-    Ok(Plan {
-        values,
-        metadata: builder.metadata,
-        changes: json!(changes),
-    })
+    builder.finish()
 }

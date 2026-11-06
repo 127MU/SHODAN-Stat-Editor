@@ -1,5 +1,5 @@
 //! Line-delimited JSON transport for the Rust-only editing engine.
-//! No Lua fallback, installation or implicit game-directory writes.
+//! Explicit game installation is isolated from the generic editing endpoints.
 use crate::{
     baseline::Baseline,
     session::{Field, Session},
@@ -20,6 +20,8 @@ pub struct Api {
     armor: Option<crate::armor_session::Session>,
     workspace: Option<crate::workspace::Workspace>,
     catalog: Option<crate::catalog::Catalog>,
+    game: Option<crate::game_workspace::Game>,
+    desktop: crate::desktop::Desktop,
     update_job: Option<std::thread::JoinHandle<Result<Value, String>>>,
     resolver: Option<(
         PathBuf,
@@ -84,9 +86,99 @@ fn field(v: &Value) -> Result<Field, String> {
 }
 impl Api {
     pub fn invoke(&mut self, request: &Value) -> Result<Value, String> {
+        self.invoke_with_game_writes(request, true)
+    }
+    pub(crate) fn invoke_mcp(&mut self, request: &Value) -> Result<Value, String> {
+        self.invoke_with_game_writes(request, false)
+    }
+    fn invoke_with_game_writes(
+        &mut self,
+        request: &Value,
+        game_writes: bool,
+    ) -> Result<Value, String> {
         let method = text(request, "method")?;
         let p = &request["params"];
+        if method == "desktop-call" {
+            return self.desktop_call(
+                text(p, "name")?,
+                p["args"].as_array().map(Vec::as_slice).unwrap_or(&[]),
+                game_writes,
+            );
+        }
+        if method == "game-open" {
+            let runtime = p["runtime"]
+                .as_str()
+                .map(PathBuf::from)
+                .or_else(|| {
+                    std::env::current_exe()
+                        .ok()?
+                        .parent()
+                        .map(std::path::Path::to_path_buf)
+                })
+                .ok_or("无法定位程序目录")?;
+            let profile = crate::game_workspace::profile();
+            let root = crate::game_workspace::find_game(
+                p["game"].as_str().map(std::path::Path::new),
+                &runtime,
+                &profile,
+            )?;
+            let bytes =
+                fs::read(runtime.join("catalog.json.gz")).map_err(|_| "缺少原生参数目录")?;
+            let catalog = crate::catalog::Catalog::from_gzip(&bytes)?;
+            let (game, workspace) =
+                crate::game_workspace::Game::open(&catalog, root, &runtime, &profile)?;
+            let info = json!({"game":game.root,"problems":workspace.problems(),
+                "migration_notes":game.migration_notes,"catalog":catalog.info()});
+            self.catalog = Some(catalog);
+            self.workspace = Some(workspace);
+            self.game = Some(game);
+            self.desktop = Default::default();
+            return Ok(info);
+        }
+        if matches!(method, "game-install" | "game-restore" | "game-recover") {
+            let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+            let progress = |event: crate::install::Progress| {
+                let stage = match event.stage {
+                    "prepare" => "正在准备并封装数值",
+                    "backup" => "正在创建备份",
+                    "commit" => "正在写入游戏文件",
+                    "rollback" => "正在回滚",
+                    _ => "写入完成",
+                };
+                eprintln!(
+                    "@shodan-progress {}",
+                    json!({"stage":stage,"done":event.done,"total":event.total})
+                );
+            };
+            let report = match method {
+                "game-install" => {
+                    let workspace = self.workspace.as_ref().ok_or("请先打开游戏工作区")?;
+                    let catalog = self.catalog.as_ref().ok_or("原生参数目录未载入")?;
+                    let allowed = if p["allow_float_adjustment"] == true {
+                        crate::game_workspace::changed_floats(catalog, workspace)
+                    } else {
+                        Vec::new()
+                    };
+                    let (codes, _) = catalog.code_overrides(workspace, workspace.metadata())?;
+                    game.install(catalog, workspace, &allowed, &codes, progress)?
+                }
+                "game-restore" => game.restore(
+                    self.catalog.as_ref().ok_or("原生参数目录未载入")?,
+                    self.workspace.as_ref().ok_or("请先打开游戏工作区")?,
+                    progress,
+                )?,
+                _ => {
+                    let files = game.recover(progress)?;
+                    json!({"ok":true,"files":files,"message":"中断事务已恢复"})
+                }
+            };
+            self.workspace = Some(game.reopen()?);
+            return Ok(report);
+        }
         if method == "catalog-load" {
+            if self.game.is_some() {
+                return Err("桌面会话已载入与游戏版本绑定的参数目录".into());
+            }
             let path = std::path::Path::new(text(p, "path")?);
             if fs::metadata(path)
                 .map_err(|_| "无法读取原生参数目录")?
@@ -119,16 +211,101 @@ impl Api {
                         text(p, "key")?,
                         value,
                     )?;
-                    if method != "catalog-edit-preview" {
+                    let mut warnings =
+                        crate::extra_stratagem::validate(catalog, workspace, &plan.values)?;
+                    warnings.extend(catalog.code_overrides(workspace, &plan.metadata)?.1);
+                    if method == "catalog-edit-preview" {
+                        workspace.validate_batch(&plan.values)?;
+                    } else {
                         workspace.set_batch(&plan.values, Some(plan.metadata))?;
                     }
                     Ok(
-                        json!({"changes":plan.changes,"applied":method!="catalog-edit-preview","installed":false}),
+                        json!({"changes":plan.changes,"warnings":warnings,"applied":method!="catalog-edit-preview","installed":false}),
                     )
                 }
                 "catalog-items" => {
                     Ok(catalog.items(p["tab"].as_str(), p["query"].as_str().unwrap_or("")))
                 }
+                "catalog-preset-preview" | "catalog-preset-apply" => {
+                    let workspace = self.workspace.as_mut().ok_or("请先打开原生工作区")?;
+                    let preset = crate::preset::Preset::decode(text(p, "text")?)?;
+                    let (plan, mut warnings) = crate::catalog_preset::prepare(
+                        catalog,
+                        workspace,
+                        &preset,
+                        p["skip_missing"].as_bool().unwrap_or(false),
+                        p["replace_pending"].as_bool().unwrap_or(false),
+                    )?;
+                    let extra_warnings =
+                        crate::extra_stratagem::validate(catalog, workspace, &plan.values)?;
+                    warnings.extend(catalog.code_overrides(workspace, &plan.metadata)?.1);
+                    let applied = method == "catalog-preset-apply";
+                    if applied {
+                        if !extra_warnings.is_empty()
+                            && p["accept_warnings"].as_bool() != Some(true)
+                        {
+                            return Err("预设含重复附赠战备，请先预览并确认是否继续".into());
+                        }
+                        workspace.set_batch(&plan.values, Some(plan.metadata))?;
+                    }
+                    warnings.extend(extra_warnings);
+                    Ok(
+                        json!({"name":preset.name,"kind":preset.kind,"changes":plan.changes,
+                        "warnings":warnings,"applied":applied,"installed":false}),
+                    )
+                }
+                "catalog-preset-export" => {
+                    let preset = crate::preset::Preset {
+                        kind: text(p, "kind")?.into(),
+                        name: text(p, "name")?.into(),
+                        weapon: p["owner"].as_str().map(str::to_ascii_uppercase),
+                        editor: p["editor"].as_str().map(str::to_owned),
+                        armor: None,
+                        description: None,
+                        texts: Default::default(),
+                        values: Vec::new(),
+                    };
+                    preset.encode()?;
+                    let workspace = self.workspace.as_ref().ok_or("请先打开原生工作区")?;
+                    Ok(json!({"text":crate::catalog_preset::export(catalog, workspace, preset)?}))
+                }
+                "catalog-reference-choices" | "catalog-reference-detail" | "catalog-shared" => {
+                    let (_, owner) = catalog.owner(text(p, "owner")?)?;
+                    let key = text(p, "key")?;
+                    let row = owner
+                        .rows
+                        .iter()
+                        .find(|r| r.key == key)
+                        .ok_or("找不到参数")?;
+                    if method == "catalog-shared" {
+                        return Ok(catalog.shared(owner, row));
+                    }
+                    let workspace = self.workspace.as_ref().ok_or("请先打开原生工作区")?;
+                    if method == "catalog-reference-detail" {
+                        let value = catalog.row_value(
+                            owner,
+                            row,
+                            workspace,
+                            crate::catalog::Mode::Current,
+                        )?;
+                        let reference = crate::catalog_refs::row_link(catalog, row, value);
+                        let rows = reference
+                            .as_ref()
+                            .and_then(|r| r["owner"].as_str())
+                            .map(|owner| catalog.read_rows(owner, workspace))
+                            .transpose()?;
+                        return Ok(json!({"reference":reference,"rows":rows}));
+                    }
+                    if row.choice == "stratagem" {
+                        return crate::extra_stratagem::choices(catalog, workspace, row);
+                    }
+                    crate::catalog_refs::choices(catalog, workspace, row)
+                }
+                "catalog-references" => crate::catalog_refs::graph(
+                    catalog,
+                    self.workspace.as_ref().ok_or("请先打开原生工作区")?,
+                    catalog.owner(text(p, "owner")?)?.1,
+                ),
                 "catalog-describe" => Ok(json!(catalog.owner(text(p, "owner")?)?.1)),
                 "catalog-read-rows" => catalog.read_rows(
                     text(p, "owner")?,
@@ -153,12 +330,17 @@ impl Api {
             return crate::armor_assign::invoke(p, method == "armor-assign-export-copy");
         }
         if method == "workspace-open" {
+            if self.game.is_some() {
+                return Err("桌面会话已载入游戏工作区".into());
+            }
             let workspace = crate::workspace_api::open(p)?;
             let problems = workspace.problems();
             self.workspace = Some(workspace);
+            self.game = None;
             return Ok(json!({"problems":problems}));
         }
         if method == "workspace-close" {
+            self.game = None;
             self.workspace = None;
             return Ok(json!(true));
         }
@@ -456,6 +638,33 @@ impl Api {
         if method == "diagnostic-scrub" {
             return Ok(crate::diagnostics::Privacy::local().scrub(&p["data"]));
         }
+        if method == "diagnostic-check" {
+            let runtime = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(std::path::Path::to_owned))
+                .ok_or("无法定位运行目录")?;
+            return Ok(crate::diagnostics::checks(
+                &runtime,
+                self.game.as_ref().map(|g| g.root.as_path()),
+            ));
+        }
+        if method == "diagnostic-export" {
+            if !game_writes {
+                return Err("请从桌面选择日志导出位置".into());
+            }
+            let path = std::path::Path::new(text(p, "path")?);
+            if path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_none_or(|ext| !ext.eq_ignore_ascii_case("json"))
+            {
+                return Err("诊断报告路径必须使用 .json 后缀".into());
+            }
+            let report = crate::diagnostics::Privacy::local().scrub(&p["report"]);
+            let bytes = serde_json::to_vec_pretty(&report).map_err(|_| "诊断报告编码失败")?;
+            crate::install::save_atomic(path, &bytes)?;
+            return Ok(json!(true));
+        }
         if method == "armor-open" {
             let session = crate::armor_session::Session::open(
                 PathBuf::from(text(p, "path")?),
@@ -642,6 +851,340 @@ impl Api {
                 )
             }
             _ => Err(format!("未提供原生接口：{method}")),
+        }
+    }
+
+    fn desktop_call(
+        &mut self,
+        method: &str,
+        args: &[Value],
+        game_writes: bool,
+    ) -> Result<Value, String> {
+        use crate::desktop;
+        let arg = |i| args.get(i).unwrap_or(&Value::Null);
+        if method == "install_task" || method == "restore_task" {
+            if !game_writes {
+                return Err("请从桌面确认游戏文件写入".into());
+            }
+            return self.invoke(
+                &json!({"method":if method=="install_task" {"game-install"} else {"game-restore"},
+                "params":{"allow_float_adjustment":arg(0)==&Value::Bool(true)}}),
+            );
+        }
+        let catalog = self.catalog.as_ref().ok_or("请先打开游戏工作区")?;
+        let workspace = self.workspace.as_mut().ok_or("请先打开游戏工作区")?;
+        match method {
+            "tweaks" => return crate::desktop_tweaks::call(catalog, workspace, args),
+            "ragdoll_preview" | "ragdoll_apply" => {
+                let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+                let on = if method == "ragdoll_apply" {
+                    if !game_writes {
+                        return Err("请从桌面确认资源补丁写入".into());
+                    }
+                    Some(arg(0).as_bool().ok_or("开关必须为布尔值")?)
+                } else {
+                    None
+                };
+                return crate::desktop_resource_edits::ragdoll(game, on);
+            }
+            "info" => {
+                return Ok(json!({"game":self.game.as_ref().map(|g|&g.root),
+                "armor":crate::armor::catalog()["list"],"version":env!("CARGO_PKG_VERSION"),"runtime":"rust-native"}))
+            }
+            "flush" => return Ok(json!(true)),
+            "extra_warnings" | "extra_validate" => {
+                return Ok(json!(crate::extra_stratagem::current_warnings(
+                    catalog, workspace
+                )?));
+            }
+            "status" => {
+                return Ok(json!({"phase":"ready","dirty":workspace.pending_count()!=0,
+                "problems":workspace.problems()}))
+            }
+            "editor_mode" => {
+                if let Some(enemy) = arg(0).as_bool() {
+                    self.desktop.enemy = enemy;
+                }
+                return Ok(json!(self.desktop.enemy));
+            }
+            "items" => {
+                return Ok(desktop::items(
+                    catalog,
+                    workspace,
+                    arg(0).as_str().unwrap_or(""),
+                    arg(1).as_str().unwrap_or(""),
+                ))
+            }
+            "select" => {
+                let owner = catalog.owner(arg(0).as_str().ok_or("缺少条目标识")?)?.1;
+                self.desktop.selected = Some(owner.id.clone());
+                return Ok(json!(true));
+            }
+            "history" => {
+                let (undo, redo) = workspace.history();
+                return Ok(
+                    json!({"undo":undo,"redo":redo,"entries":desktop::pending(catalog,workspace)}),
+                );
+            }
+            "undo" => return Ok(json!(workspace.replay(false)?)),
+            "redo" => return Ok(json!(workspace.replay(true)?)),
+            "armor_rows" | "armor_set" | "armor_profile" | "armor_update" | "armor_item"
+            | "armor_capture" | "armor_apply" | "armor_compare" | "armor_count"
+            | "armor_validate" => {
+                return crate::desktop_armor::invoke(catalog, workspace, method, args);
+            }
+            "full_presets" | "full_preset" | "preset" | "preset_info" | "preset_compare"
+            | "preset_export" | "preset_import" | "preset_rename" | "preset_code"
+            | "preset_code_import" | "preset_description" | "preset_duplicate"
+            | "restore_examples" => {
+                return crate::desktop_presets::invoke(
+                    catalog,
+                    workspace,
+                    &self.desktop,
+                    method,
+                    args,
+                );
+            }
+            "install_preview" | "pending_preview" => {
+                let mut entries = desktop::pending(catalog, workspace);
+                if let Some(array) = entries.as_array_mut() {
+                    array.extend(crate::desktop_armor::preview(workspace)?);
+                }
+                if method == "pending_preview" {
+                    return Ok(entries);
+                }
+                let (_, mut warnings) = catalog.code_overrides(workspace, workspace.metadata())?;
+                warnings.extend(crate::extra_stratagem::current_warnings(
+                    catalog, workspace,
+                )?);
+                warnings.extend(crate::extra_stratagem::derive(catalog, workspace)?.warnings);
+                let allow_float_adjustment =
+                    !crate::game_workspace::changed_floats(catalog, workspace).is_empty();
+                if allow_float_adjustment {
+                    warnings.push(
+                        "部分文件的校验空间不足时，需要明确允许微调本次已修改的浮点数值。".into(),
+                    );
+                }
+                return Ok(
+                    json!({"entries":entries,"problems":workspace.problems(),"warnings":warnings,
+                        "allow_float_adjustment":allow_float_adjustment}),
+                );
+            }
+            _ => {}
+        }
+        if method == "game_text" && self.desktop.selected.is_none() && arg(1).is_null() {
+            return Ok(json!({"available":false}));
+        }
+        let id = self.desktop.selected.as_deref().ok_or("请先选择条目")?;
+        let owner = catalog.owner(id)?.1;
+        if method == "game_text" {
+            let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+            let field = arg(0).as_str().ok_or("无效的文字字段")?;
+            if owner.text.is_none() {
+                return Ok(json!({"available":false}));
+            }
+            let mut originals = game.text_originals.borrow_mut();
+            if originals.is_none() {
+                *originals = Some(crate::desktop_text::load_originals(game)?);
+            }
+            return crate::desktop_text::edit(
+                workspace,
+                owner,
+                originals.as_ref().unwrap(),
+                field,
+                arg(1).as_str(),
+            );
+        }
+        if matches!(method, "choices" | "choose" | "set" | "reset") && !arg(0).is_null() {
+            let row = desktop::row(owner, arg(0))?;
+            if row.choice == "smres" && method == "choices" {
+                let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+                return crate::desktop_resource_edits::machine_choices(
+                    game, catalog, workspace, owner, row,
+                );
+            }
+            if row.choice == "smres" && matches!(method, "choose" | "set") {
+                let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+                let requested = desktop::number(arg(1))?;
+                let choices = crate::desktop_resource_edits::machine_choices(
+                    game, catalog, workspace, owner, row,
+                )?;
+                if !choices
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .any(|item| item["id"].as_f64() == Some(requested))
+                {
+                    return Err("所选状态机不在资源包内".into());
+                }
+            }
+            if row.choice == "smmode" && method != "choices" {
+                if !game_writes {
+                    return Err("请从桌面确认资源补丁写入".into());
+                }
+                let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+                let mode = if method == "reset" {
+                    2.0
+                } else {
+                    desktop::number(arg(1))?
+                };
+                let on = match mode {
+                    0.0 => return Ok(json!("未更改状态机补丁")),
+                    1.0 => true,
+                    2.0 => false,
+                    _ => return Err("状态机补丁模式无效".into()),
+                };
+                return crate::desktop_resource_edits::machine(
+                    game,
+                    catalog,
+                    workspace,
+                    owner,
+                    row,
+                    Some(on),
+                );
+            }
+        }
+        if method == "diagnostic_resources" {
+            let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+            let mut report = game.resource_report(
+                crate::desktop_resources::plan(catalog, workspace, owner, true)?,
+                id,
+                None,
+            )?;
+            report["equipment"] = json!(owner.name);
+            report["owner"] = json!(owner.id);
+            return Ok(report);
+        }
+        if matches!(method, "choose" | "set" | "reset")
+            && !arg(0).is_null()
+            && desktop::row(owner, arg(0))?.choice == "resomode"
+        {
+            if !game_writes {
+                return Err("请从桌面确认资源补丁写入".into());
+            }
+            let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
+            let mode = if method == "reset" {
+                3.0
+            } else {
+                desktop::number(arg(1))?
+            };
+            if mode == 0.0 {
+                return Ok(json!("未更改资源驻留补丁"));
+            }
+            let plan = match mode {
+                1.0 => crate::desktop_resources::plan(catalog, workspace, owner, false)?,
+                3.0 => Default::default(),
+                _ => return Err("请选择完整驻留或移除补丁".into()),
+            };
+            return game.resource_report(plan, id, Some(mode as u32));
+        }
+        match method {
+            "rows" | "rows_fast" | "rows_section" | "rows_delta" => {
+                let section = if method == "rows_section" {
+                    Some(arg(0).as_str().ok_or("分类无效")?)
+                } else {
+                    None
+                };
+                let row = if method == "rows_delta" {
+                    Some(desktop::row(owner, arg(0))?)
+                } else {
+                    None
+                };
+                let mut rows = desktop::rows(catalog, workspace, owner, section, row);
+                if method != "rows_fast" {
+                    if let Some(entry) = rows
+                        .as_array_mut()
+                        .into_iter()
+                        .flatten()
+                        .find(|r| r["choice_kind"] == "resomode")
+                    {
+                        if let Some(game) = &self.game {
+                            match game.residency_state(id) {
+                                Ok(on) => {
+                                    entry["value"] = json!(u32::from(on));
+                                    entry["choice_name"] = json!(if on {
+                                        "完整（含贴图）"
+                                    } else {
+                                        "未安装"
+                                    });
+                                    entry["patch_pending"] = json!(false);
+                                }
+                                Err(err) => {
+                                    entry["error"] = json!(err);
+                                }
+                            }
+                        }
+                    }
+                    if let Some(game) = &self.game {
+                        for entry in rows
+                            .as_array_mut()
+                            .into_iter()
+                            .flatten()
+                            .filter(|r| r["choice_kind"] == "smmode")
+                        {
+                            let row = desktop::row(owner, &entry["id"])?;
+                            match crate::desktop_resource_edits::machine(
+                                game, catalog, workspace, owner, row, None,
+                            ) {
+                                Ok(state) => {
+                                    let on = state["enabled"] == true;
+                                    entry["value"] = json!(u32::from(on));
+                                    entry["choice_name"] =
+                                        json!(if on { "已安装" } else { "未安装" });
+                                    entry["patch_pending"] = json!(false);
+                                }
+                                Err(err) => {
+                                    entry["error"] = json!(err);
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(rows)
+            }
+            "shared" => Ok(catalog.shared(owner, desktop::row(owner, arg(0))?)),
+            "choices" => desktop::choices(catalog, workspace, desktop::row(owner, arg(0))?),
+            "diagnostic_chain" => crate::catalog_refs::graph(catalog, workspace, owner),
+            "set" | "choose" => desktop::apply(
+                catalog,
+                workspace,
+                id,
+                &desktop::row(owner, arg(0))?.key,
+                Some(desktop::number(arg(1))?),
+            ),
+            "reset" if arg(0).is_null() => {
+                let plan = crate::catalog_edit::reset_owner(catalog, workspace, owner)?;
+                crate::extra_stratagem::validate(catalog, workspace, &plan.values)?;
+                catalog.code_overrides(workspace, &plan.metadata)?;
+                workspace.set_batch(&plan.values, Some(plan.metadata))?;
+                Ok(json!(true))
+            }
+            "reset" => desktop::apply(
+                catalog,
+                workspace,
+                id,
+                &desktop::row(owner, arg(0))?.key,
+                None,
+            ),
+            "code_set" => {
+                let row = desktop::row(owner, arg(0))?;
+                if !row.code {
+                    return Err("此参数不是战备指令".into());
+                }
+                let arrows = arg(1)
+                    .as_array()
+                    .ok_or("战备方向输入无效")?
+                    .iter()
+                    .map(|d| {
+                        d.as_u64()
+                            .and_then(|n| u8::try_from(n).ok())
+                            .ok_or("战备方向输入无效")
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let value = crate::stratagem_code::number(&arrows)?;
+                desktop::apply(catalog, workspace, id, &row.key, Some(f64::from(value)))
+            }
+            _ => Err(format!("该桌面操作尚未接入原生数据核心：{method}")),
         }
     }
 }

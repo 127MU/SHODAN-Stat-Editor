@@ -7,9 +7,9 @@ use crate::{
     dlbin,
     tables::{self, Key},
 };
-use std::{collections::BTreeMap, fs, ops::Range, path::PathBuf};
+use std::{borrow::Cow, collections::BTreeMap, fs, ops::Range, path::PathBuf};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Location {
     pub file: String,
     pub typ: u32,
@@ -209,24 +209,27 @@ impl Index {
         }
         Ok(Some(row.start + location.relative))
     }
-    fn codec(&self, encoding: &Encoding) -> Result<Encoding, String> {
+    fn codec<'a>(&self, encoding: &'a Encoding) -> Result<Cow<'a, Encoding>, String> {
         if matches!(encoding, Encoding::Demolition) {
-            return Ok(Encoding::Tier(
+            return Ok(Cow::Owned(Encoding::Tier(
                 self.destruction
                     .as_ref()
                     .ok_or("当前文件没有拆毁模板")?
                     .tiers
                     .clone(),
-            ));
+            )));
         }
-        Ok(encoding.clone())
+        Ok(Cow::Borrowed(encoding))
     }
 }
 pub struct File {
     pub path: PathBuf,
+    sealed_source: Option<(usize, String)>,
     document: Document,
     index: Index,
     original: Option<(Vec<u8>, Index)>,
+    codebook: Option<crate::stratagem_code::Codebook>,
+    original_codebook: Option<crate::stratagem_code::Codebook>,
 }
 impl File {
     pub fn new(
@@ -238,12 +241,40 @@ impl File {
         let original = original
             .map(|b| Index::build(b.bytes()).map(|i| (b.into_bytes(), i)))
             .transpose()?;
+        let has_codes = path.file_name().and_then(|s| s.to_str()).is_some_and(|s| {
+            s == crate::stratagem_code::FILE || s == "generated_stratagem_settings.dl_plain"
+        });
+        let codebook = has_codes
+            .then(|| crate::stratagem_code::Codebook::parse(&current))
+            .transpose()?;
+        let original_codebook = if has_codes {
+            original
+                .as_ref()
+                .map(|(bytes, _)| crate::stratagem_code::Codebook::parse(bytes))
+                .transpose()?
+        } else {
+            None
+        };
         Ok(Self {
             path,
+            sealed_source: None,
             index,
             document: Document::new(current)?,
             original,
+            codebook,
+            original_codebook,
         })
+    }
+    pub(crate) fn sealed(
+        path: PathBuf,
+        cipher: Vec<u8>,
+        original: Option<Baseline>,
+    ) -> Result<Self, String> {
+        let plain = crate::sealed::open_data(&cipher).map_err(|e| e.to_string())?;
+        let source = (cipher.len(), crate::hash::sha256_hex(&cipher));
+        let mut file = Self::new(path, plain, original)?;
+        file.sealed_source = Some(source);
+        Ok(file)
     }
     /// The caller authenticates archive originals against a compiled manifest;
     /// unknown data remains editable but cannot provide reset/default values.
@@ -269,10 +300,39 @@ impl File {
         });
         Ok(Self {
             path,
+            sealed_source: None,
             document: Document::resource(current)?,
             index,
             original,
+            codebook: None,
+            original_codebook: None,
         })
+    }
+    fn disk_bytes(&self) -> Result<Vec<u8>, String> {
+        let size = self
+            .sealed_source
+            .as_ref()
+            .map_or(self.document.snapshot().len(), |(size, _)| *size);
+        if fs::metadata(&self.path)
+            .map_err(|_| "无法核对磁盘数据")?
+            .len()
+            != size as u64
+        {
+            return Err("打开后的磁盘数据已被修改，未导出".into());
+        }
+        let bytes = fs::read(&self.path).map_err(|_| "无法核对磁盘数据")?;
+        if let Some((_, expected)) = &self.sealed_source {
+            if crate::hash::sha256_hex(&bytes) != *expected {
+                return Err("打开后的密封数据已被修改，未导出".into());
+            }
+        } else if bytes != self.document.snapshot() {
+            return Err("打开后的磁盘数据已被修改，未导出".into());
+        }
+        Ok(bytes)
+    }
+    fn checked_render(&self) -> Result<Vec<u8>, String> {
+        self.disk_bytes()?;
+        self.document.render(self.document.snapshot())
     }
 }
 #[derive(Clone, PartialEq)]
@@ -286,6 +346,23 @@ pub struct Workspace {
     metadata: serde_json::Value,
     undo: Vec<Checkpoint>,
     redo: Vec<Checkpoint>,
+    draft: Option<(PathBuf, Option<Vec<u8>>)>,
+    loaded_metadata: serde_json::Value,
+}
+#[derive(serde::Deserialize, serde::Serialize)]
+struct Draft {
+    version: u32,
+    metadata: serde_json::Value,
+    files: BTreeMap<String, DraftFile>,
+}
+#[derive(serde::Deserialize, serde::Serialize)]
+struct DraftFile {
+    source: String,
+    bytes: BTreeMap<usize, u8>,
+}
+pub(crate) struct RestoredFile {
+    pub bytes: Vec<u8>,
+    pub source: String,
 }
 pub struct Value {
     pub current: f64,
@@ -295,6 +372,151 @@ pub struct Value {
 impl Workspace {
     pub(crate) fn contains(&self, name: &str) -> bool {
         self.files.keys().any(|key| key.eq_ignore_ascii_case(name))
+    }
+    pub(crate) fn table_ids(&self, typ: u32) -> Result<Vec<u32>, String> {
+        let mut ids = std::collections::BTreeSet::new();
+        for file in self.files.values() {
+            for ((kind, record), rows) in file.index.rows.range((typ, Key::Id(0).into())..) {
+                if *kind != typ {
+                    break;
+                }
+                if let Record::Table(Key::Id(id)) = record {
+                    if rows.len() != 1 || !ids.insert(*id) {
+                        return Err("数据表存在重复记录编号".into());
+                    }
+                }
+            }
+        }
+        Ok(ids.into_iter().collect())
+    }
+    pub(crate) fn table_value(
+        &self,
+        typ: u32,
+        key: Key,
+        relative: usize,
+    ) -> Result<Option<f64>, String> {
+        let location = Location {
+            file: String::new(),
+            typ,
+            record: key.into(),
+            relative,
+        };
+        let mut result = None;
+        for file in self.files.values() {
+            if let Some(at) = file.index.offset(&location, 4)? {
+                if result.is_some() {
+                    return Err("跨数据文件存在重复引用身份".into());
+                }
+                result = Some(file.document.value(at, &Encoding::U32)?);
+            }
+        }
+        Ok(result)
+    }
+    pub(crate) fn table_location(
+        &self,
+        typ: u32,
+        id: u32,
+        relative: usize,
+    ) -> Result<Location, String> {
+        let record = Record::from(Key::Id(id));
+        let mut result = None;
+        for (name, file) in &self.files {
+            if file.index.rows.contains_key(&(typ, record.clone())) {
+                if result.is_some() {
+                    return Err("跨数据文件存在重复引用身份".into());
+                }
+                result = Some(Location {
+                    file: name.clone(),
+                    typ,
+                    record: record.clone(),
+                    relative,
+                });
+            }
+        }
+        result.ok_or_else(|| "当前数据中没有该记录".into())
+    }
+    pub(crate) fn table_locations(
+        &self,
+        typ: u32,
+        relative: impl Fn(usize) -> usize,
+    ) -> Result<Vec<Location>, String> {
+        let mut list = Vec::new();
+        for (name, file) in &self.files {
+            for ((kind, record), ranges) in &file.index.rows {
+                if *kind != typ {
+                    continue;
+                }
+                if ranges.len() != 1 {
+                    return Err("参数表身份重复".into());
+                }
+                list.push(Location {
+                    file: name.clone(),
+                    typ,
+                    record: record.clone(),
+                    relative: relative(ranges[0].len()),
+                });
+            }
+        }
+        Ok(list)
+    }
+    pub(crate) fn table_bytes(
+        &self,
+        typ: u32,
+        key: Key,
+        original: bool,
+    ) -> Result<Option<&[u8]>, String> {
+        let mut result = None;
+        let record: Record = key.into();
+        for file in self.files.values() {
+            let (bytes, index) = if original {
+                let Some((bytes, index)) = &file.original else {
+                    continue;
+                };
+                (bytes.as_slice(), index)
+            } else {
+                (file.document.snapshot(), &file.index)
+            };
+            if let Some(rows) = index.rows.get(&(typ, record.clone())) {
+                if rows.len() != 1 || result.is_some() {
+                    return Err("数据表存在重复引用身份".into());
+                }
+                result = bytes.get(rows[0].clone());
+            }
+        }
+        Ok(result)
+    }
+    pub(crate) fn table_payload_slice(
+        &self,
+        typ: u32,
+        key: Key,
+        relative: usize,
+        size: usize,
+    ) -> Result<&[u8], String> {
+        let record: Record = key.into();
+        let mut result = None;
+        for file in self.files.values() {
+            if let Some(rows) = file.index.rows.get(&(typ, record.clone())) {
+                if rows.len() != 1 || result.is_some() {
+                    return Err("数据表存在重复引用身份".into());
+                }
+                let block = file
+                    .document
+                    .blocks()
+                    .iter()
+                    .find(|b| b.type_id == typ && b.payload.contains(&rows[0].start))
+                    .ok_or("找不到资源数组所属数据块")?;
+                let at = block
+                    .payload
+                    .start
+                    .checked_add(relative)
+                    .ok_or("资源数组偏移溢出")?;
+                if !block.contains(at, size) {
+                    return Err("资源数组越界".into());
+                }
+                result = Some(&file.document.snapshot()[at..at + size]);
+            }
+        }
+        result.ok_or_else(|| "找不到资源数组".into())
     }
     pub(crate) fn has_path(&self, path: &std::path::Path) -> bool {
         self.files.values().any(|file| {
@@ -349,6 +571,17 @@ impl Workspace {
     pub fn metadata(&self) -> &serde_json::Value {
         &self.metadata
     }
+    pub(crate) fn loaded_metadata(&self) -> &serde_json::Value {
+        &self.loaded_metadata
+    }
+    pub(crate) fn set_loaded_metadata(&mut self, value: serde_json::Value) -> Result<(), String> {
+        if !(value.is_object() || value.is_null()) {
+            return Err("已安装编辑器配置无效".into());
+        }
+        self.loaded_metadata = value.clone();
+        self.metadata = value;
+        Ok(())
+    }
     pub fn pending_count(&self) -> usize {
         self.files
             .values()
@@ -358,23 +591,275 @@ impl Workspace {
     pub fn history(&self) -> (usize, usize) {
         (self.undo.len(), self.redo.len())
     }
-    pub fn undo(&mut self) -> bool {
-        if let Some(before) = self.undo.pop() {
-            self.redo.push(self.checkpoint());
-            self.resume(before);
-            true
-        } else {
-            false
+    fn fingerprint(&self, name: &str) -> String {
+        let file = &self.files[name];
+        file.sealed_source.as_ref().map_or_else(
+            || crate::hash::sha256_hex(file.document.snapshot()),
+            |(_, hash)| hash.clone(),
+        )
+    }
+    pub(crate) fn configure_draft(&mut self, path: PathBuf) -> Result<(), String> {
+        let disk = crate::install::read(&path)?;
+        if let Some(bytes) = &disk {
+            if bytes.len() > 8 * 1024 * 1024 {
+                return Err("编辑草稿过大".into());
+            }
+            let draft: Draft = serde_json::from_slice(bytes).map_err(|_| "编辑草稿无效")?;
+            if draft.version != 1 || !(draft.metadata.is_null() || draft.metadata.is_object()) {
+                return Err("编辑草稿版本无效".into());
+            }
+            let mut snapshot = self.checkpoint();
+            for (name, pending) in draft.files {
+                let file = self.files.get(&name).ok_or("草稿引用的源文件缺失")?;
+                if pending.source != self.fingerprint(&name) {
+                    return Err(format!(
+                        "{name} 已由其他工具或游戏更新改变，保留草稿以供恢复"
+                    ));
+                }
+                for &offset in pending.bytes.keys() {
+                    file.document.slice(offset, 1)?;
+                }
+                snapshot.files.insert(name, pending.bytes);
+            }
+            snapshot.metadata = draft.metadata;
+            self.resume(snapshot);
         }
+        self.draft = Some((path, disk));
+        Ok(())
+    }
+    fn persist(&mut self, next: &Checkpoint) -> Result<(), String> {
+        let Some((path, disk)) = &self.draft else {
+            return Ok(());
+        };
+        let mut files = BTreeMap::new();
+        for (name, bytes) in &next.files {
+            if !bytes.is_empty() {
+                files.insert(
+                    name.clone(),
+                    DraftFile {
+                        source: self.fingerprint(name),
+                        bytes: bytes.clone(),
+                    },
+                );
+            }
+        }
+        let encoded = serde_json::to_vec(&Draft {
+            version: 1,
+            metadata: next.metadata.clone(),
+            files,
+        })
+        .map_err(|_| "无法编码编辑草稿")?;
+        if encoded.len() > 8 * 1024 * 1024 {
+            return Err("编辑草稿过大".into());
+        }
+        let folder = path.parent().ok_or("草稿目录无效")?;
+        fs::create_dir_all(folder).map_err(|_| "无法创建草稿目录")?;
+        let _lock = crate::install::lock_transaction(folder)?;
+        if crate::install::read(path)? != *disk {
+            return Err("其他编辑器实例已更改草稿，请重新打开".into());
+        }
+        crate::install::save_atomic(path, &encoded)?;
+        self.draft.as_mut().unwrap().1 = Some(encoded);
+        Ok(())
+    }
+    pub(crate) fn finish_draft(&self) -> Option<crate::install::Change> {
+        let (path, disk) = self.draft.as_ref()?;
+        disk.as_ref()?;
+        Some(crate::install::Change {
+            path: path.clone(),
+            before: disk.clone(),
+            after: None,
+        })
+    }
+    pub(crate) fn migrate_draft(
+        &mut self,
+        build: impl FnOnce(&mut Self) -> Result<Vec<String>, String>,
+    ) -> Result<Vec<String>, String> {
+        let Some(draft) = self.draft.take() else {
+            return Ok(Vec::new());
+        };
+        let before = self.checkpoint();
+        let result = build(self);
+        self.draft = Some(draft);
+        let result = result.and_then(|warnings| {
+            self.persist(&self.checkpoint())?;
+            Ok(warnings)
+        });
+        if result.is_err() {
+            self.resume(before);
+        }
+        self.undo.clear();
+        self.redo.clear();
+        result
+    }
+    pub(crate) fn restored_draft(
+        &self,
+        catalog: &crate::catalog::Catalog,
+        restored: &BTreeMap<String, RestoredFile>,
+        mut metadata: serde_json::Value,
+    ) -> Result<Option<crate::install::Change>, String> {
+        let Some((path, disk)) = &self.draft else {
+            return Ok(None);
+        };
+        let words = crate::extra_stratagem::clear_words(self)?;
+        let mut locations = BTreeMap::<&str, BTreeMap<&Location, usize>>::new();
+        for binding in catalog.bindings.iter().flatten() {
+            let width = binding.encoding.width()?;
+            for location in &binding.locations {
+                if restored.contains_key(&location.file) {
+                    let fields = locations.entry(&location.file).or_default();
+                    let stored = fields.entry(location).or_default();
+                    *stored = (*stored).max(width);
+                }
+            }
+        }
+        let mut files = BTreeMap::new();
+        for (name, file) in &self.files {
+            let pending = file.document.checkpoint();
+            let Some(after) = restored.get(name) else {
+                if !pending.is_empty() {
+                    files.insert(
+                        name.clone(),
+                        DraftFile {
+                            source: self.fingerprint(name),
+                            bytes: pending,
+                        },
+                    );
+                }
+                continue;
+            };
+            let resource = matches!(
+                file.index.rows.keys().next(),
+                Some((_, Record::Resource { .. }))
+            );
+            let target = if resource {
+                file.index.clone()
+            } else {
+                Index::build(&after.bytes)?
+            };
+            let mut current = file.document.render(file.document.snapshot())?;
+            for (location, value) in words.iter().filter(|(location, _)| location.file == *name) {
+                let at = file.index.offset(location, 4)?.ok_or("派生战备记录缺失")?;
+                current[at..at + 4].copy_from_slice(&value.to_le_bytes());
+            }
+            let mut staged = BTreeMap::new();
+            let mut moved = std::collections::BTreeSet::new();
+            let copy = |from: usize,
+                        to: usize,
+                        width: usize,
+                        staged: &mut BTreeMap<usize, u8>,
+                        moved: &mut std::collections::BTreeSet<usize>|
+             -> Result<(), String> {
+                let bytes = current.get(from..from + width).ok_or("原草稿字段越界")?;
+                let original = after
+                    .bytes
+                    .get(to..to + width)
+                    .ok_or("恢复后的草稿字段越界")?;
+                for (i, (&wanted, &old)) in bytes.iter().zip(original).enumerate() {
+                    if pending.contains_key(&(from + i)) {
+                        moved.insert(from + i);
+                    }
+                    if wanted != old {
+                        staged.insert(to + i, wanted);
+                    }
+                }
+                Ok(())
+            };
+            if resource && after.bytes.len() == current.len() {
+                copy(0, 0, current.len(), &mut staged, &mut moved)?;
+            } else if let Some(fields) = locations.get(name.as_str()) {
+                for (location, &width) in fields {
+                    let (Some(from), Some(to)) = (
+                        file.index.offset(location, width)?,
+                        target.offset(location, width)?,
+                    ) else {
+                        continue;
+                    };
+                    let derived_armor = (name == crate::desktop_armor::PASSIVE
+                        || name == crate::desktop_armor::KITS && location.relative == 28)
+                        && !metadata["armor"].is_null();
+                    if !derived_armor || pending.range(from..from + width).next().is_some() {
+                        copy(from, to, width, &mut staged, &mut moved)?;
+                    }
+                }
+            }
+            if moved.len() != pending.len() {
+                return Err(format!(
+                    "{name} 的未写入参数无法安全映射到恢复后的数据。请先保存为预设。"
+                ));
+            }
+            if name == crate::stratagem_code::FILE {
+                let book = crate::stratagem_code::Codebook::parse(&after.bytes)?;
+                for field in &catalog.fields {
+                    let Some(typ) = field.stratagem_code else {
+                        continue;
+                    };
+                    if !metadata["virtual"][&field.key].is_null() {
+                        continue;
+                    }
+                    if let (Some(current), Some(original)) = (
+                        self.codebook(false).and_then(|book| book.get(typ)),
+                        book.get(typ),
+                    ) {
+                        if current != original {
+                            metadata["virtual"][&field.key] = serde_json::json!(current);
+                        }
+                    }
+                }
+            }
+            if !staged.is_empty() {
+                files.insert(
+                    name.clone(),
+                    DraftFile {
+                        source: after.source.clone(),
+                        bytes: staged,
+                    },
+                );
+            }
+        }
+        if let Some(object) = metadata.as_object_mut() {
+            object.remove(crate::extra_stratagem::GENERATED);
+        }
+        if disk.is_none() && files.is_empty() && metadata.is_null() {
+            return Ok(None);
+        }
+        let after = serde_json::to_vec(&Draft {
+            version: 1,
+            metadata,
+            files,
+        })
+        .map_err(|_| "无法保存恢复后的编辑草稿")?;
+        if after.len() > 8 * 1024 * 1024 {
+            return Err("恢复后的草稿过大，请先保存为预设".into());
+        }
+        Ok(Some(crate::install::Change {
+            path: path.clone(),
+            before: disk.clone(),
+            after: Some(after),
+        }))
+    }
+    pub fn undo(&mut self) -> bool {
+        self.replay(false).unwrap_or(false)
     }
     pub fn redo(&mut self) -> bool {
-        if let Some(after) = self.redo.pop() {
-            self.undo.push(self.checkpoint());
-            self.resume(after);
-            true
+        self.replay(true).unwrap_or(false)
+    }
+    pub(crate) fn replay(&mut self, redo: bool) -> Result<bool, String> {
+        let stack = if redo { &self.redo } else { &self.undo };
+        let Some(next) = stack.last().cloned() else {
+            return Ok(false);
+        };
+        self.persist(&next)?;
+        let current = self.checkpoint();
+        if redo {
+            self.redo.pop();
+            self.undo.push(current);
         } else {
-            false
+            self.undo.pop();
+            self.redo.push(current);
         }
+        self.resume(next);
+        Ok(true)
     }
     fn edit(&mut self, change: impl FnOnce(&mut Self) -> Result<(), String>) -> Result<(), String> {
         let before = self.checkpoint();
@@ -382,7 +867,12 @@ impl Workspace {
             self.resume(before);
             return Err(error);
         }
-        if self.checkpoint() != before {
+        let next = self.checkpoint();
+        if next != before {
+            if let Err(err) = self.persist(&next) {
+                self.resume(before);
+                return Err(err);
+            }
             if self.undo.len() == 100 {
                 self.undo.remove(0);
             }
@@ -452,11 +942,10 @@ impl Workspace {
         }
         best.ok_or_else(|| "该方向没有可用的拆毁模板".into())
     }
-    pub fn set_batch(
-        &mut self,
+    fn encode_batch(
+        &self,
         values: &[(Location, Encoding, f64)],
-        metadata: Option<serde_json::Value>,
-    ) -> Result<(), String> {
+    ) -> Result<BTreeMap<String, Vec<Patch>>, String> {
         let mut changes: BTreeMap<String, Vec<Patch>> = BTreeMap::new();
         for (location, encoding, value) in values {
             let file = self
@@ -472,6 +961,23 @@ impl Workspace {
                 .or_default()
                 .push(file.index.codec(encoding)?.encode(at, *value)?);
         }
+        Ok(changes)
+    }
+    pub(crate) fn validate_batch(
+        &self,
+        values: &[(Location, Encoding, f64)],
+    ) -> Result<(), String> {
+        for (name, patches) in self.encode_batch(values)? {
+            self.files[&name].document.validate(&patches)?;
+        }
+        Ok(())
+    }
+    pub fn set_batch(
+        &mut self,
+        values: &[(Location, Encoding, f64)],
+        metadata: Option<serde_json::Value>,
+    ) -> Result<(), String> {
+        let changes = self.encode_batch(values)?;
         self.edit(move |workspace| {
             for (name, patches) in changes {
                 workspace
@@ -510,22 +1016,196 @@ impl Workspace {
             .iter()
             .map(|(name, file)| (name.as_str(), file.document.snapshot()))
     }
+    pub(crate) fn snapshot(&self, name: &str) -> Result<&[u8], String> {
+        self.files
+            .get(name)
+            .map(|file| file.document.snapshot())
+            .ok_or_else(|| format!("未载入 {name}"))
+    }
+    pub(crate) fn original_snapshot(&self, name: &str) -> Option<&[u8]> {
+        self.files
+            .get(name)?
+            .original
+            .as_ref()
+            .map(|(bytes, _)| bytes.as_slice())
+    }
     /// Read and validate every source before returning any prepared plaintext.
     pub fn render_all(&self) -> Result<BTreeMap<String, Vec<u8>>, String> {
         self.files
             .iter()
             .map(|(name, file)| {
-                let disk =
-                    fs::read(&file.path).map_err(|_| format!("无法核对 {name} 的磁盘数据"))?;
-                file.document
-                    .render(&disk)
+                file.checked_render()
                     .map(|bytes| (name.clone(), bytes))
+                    .map_err(|error| format!("{name}：{error}"))
             })
             .collect()
+    }
+    pub(crate) fn prepare_sealed(
+        &self,
+        allowed_floats: &[Location],
+    ) -> Result<BTreeMap<String, crate::export::Prepared>, String> {
+        self.prepare_game_changes(
+            allowed_floats,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        )
+    }
+    pub(crate) fn prepare_game_changes(
+        &self,
+        allowed_floats: &[Location],
+        codes: &BTreeMap<u32, u32>,
+        rebuilt_files: &BTreeMap<String, Vec<u8>>,
+        words: &BTreeMap<Location, u32>,
+    ) -> Result<BTreeMap<String, crate::export::Prepared>, String> {
+        let mut offsets = BTreeMap::<&str, Vec<usize>>::new();
+        for location in allowed_floats {
+            let file = self
+                .files
+                .get(&location.file)
+                .ok_or("找不到允许微调的数值文件")?;
+            if file.sealed_source.is_none() || file.document.pending_count() == 0 {
+                return Err("只允许微调已修改的密封数据文件".into());
+            }
+            let offset = file
+                .index
+                .offset(location, 4)?
+                .ok_or("找不到允许微调的数值记录")?;
+            let positions = offsets.entry(&location.file).or_default();
+            if !positions.contains(&offset) {
+                positions.push(offset);
+            }
+        }
+        let mut files = BTreeMap::new();
+        for (name, file) in &self.files {
+            let planned = words.iter().filter(|(location, _)| location.file == *name);
+            let has_words = planned.clone().next().is_some();
+            let rebuild_codes = name == crate::stratagem_code::FILE && !codes.is_empty();
+            let rebuilt = rebuilt_files.get(name);
+            if file.document.pending_count() == 0
+                && !rebuild_codes
+                && rebuilt.is_none()
+                && !has_words
+            {
+                continue;
+            }
+            if file.sealed_source.is_none() {
+                if matches!(
+                    file.index.rows.keys().next(),
+                    Some((_, Record::Resource { .. }))
+                ) {
+                    continue;
+                }
+                return Err(format!("{name} 需要独立明文或资源事务"));
+            }
+            let mut edited = file
+                .checked_render()
+                .map_err(|error| format!("{name}：{error}"))?;
+            for (location, value) in planned {
+                let at = file
+                    .index
+                    .offset(location, 4)?
+                    .ok_or("无法定位派生战备参数")?;
+                edited[at..at + 4].copy_from_slice(&value.to_le_bytes());
+            }
+            if &edited == file.document.snapshot() && rebuilt.is_none() && !rebuild_codes {
+                continue;
+            }
+            let options = crate::correction::Options {
+                float_offsets: offsets.get(name.as_str()).map(Vec::as_slice).unwrap_or(&[]),
+                ..Default::default()
+            };
+            let prepared = if let Some(rebuilt) = rebuilt {
+                if !options.float_offsets.is_empty() {
+                    return Err("重建后的文件不能沿用原浮点字段位置".into());
+                }
+                if rebuilt == file.document.snapshot() {
+                    continue;
+                }
+                crate::export::prepare_rebuilt(file.document.snapshot(), rebuilt, &options, |_| {})
+            } else if rebuild_codes {
+                if !options.float_offsets.is_empty() {
+                    return Err("战备指令重建不能同时微调此文件的浮点字段".into());
+                }
+                let book = crate::stratagem_code::Codebook::parse(&edited)?;
+                let rebuilt = book.rebuild(&edited, codes)?;
+                crate::export::prepare_rebuilt(file.document.snapshot(), &rebuilt, &options, |_| {})
+            } else {
+                crate::export::prepare(file.document.snapshot(), &edited, &options, |_| {})
+            }
+            .map_err(|error| format!("{name}：{error}"))?;
+            files.insert(name.clone(), prepared);
+        }
+        Ok(files)
     }
     pub fn rendered(&self, name: &str) -> Result<Vec<u8>, String> {
         let file = self.files.get(name).ok_or("工作区没有该数据文件")?;
         file.document.render(file.document.snapshot())
+    }
+    pub(crate) fn rebase_passive_changes(
+        &self,
+        name: &str,
+        mut base: Vec<u8>,
+    ) -> Result<Vec<u8>, String> {
+        let file = self.files.get(name).ok_or("缺少护甲被动数据")?;
+        let pending = file.document.checkpoint();
+        if pending.is_empty() {
+            return Ok(base);
+        }
+        let clean = Index::build(&base)?;
+        let mut applied = 0;
+        for ((typ, record), ranges) in &file.index.rows {
+            if *typ != crate::passive::TYPE || ranges.len() != 1 {
+                continue;
+            }
+            let range = &ranges[0];
+            for (&at, &value) in pending.range(range.clone()) {
+                let key = (*typ, record.clone());
+                let target = clean
+                    .rows
+                    .get(&key)
+                    .filter(|rows| rows.len() == 1)
+                    .map(|rows| &rows[0])
+                    .ok_or("草稿引用了组合生成的护甲被动")?;
+                if target.len() != range.len() {
+                    return Err("护甲被动结构变化，无法保留组合内的直接数值修改".into());
+                }
+                base[target.start + at - range.start] = value;
+                applied += 1;
+            }
+        }
+        if applied != pending.len() {
+            return Err("无法定位所有待写入的护甲被动字段".into());
+        }
+        Ok(base)
+    }
+    pub(crate) fn changed_resources(&self) -> Vec<&str> {
+        self.files
+            .iter()
+            .filter_map(|(name, file)| {
+                (file.document.pending_count() != 0
+                    && matches!(
+                        file.index.rows.keys().next(),
+                        Some((_, Record::Resource { .. }))
+                    ))
+                .then_some(name.as_str())
+            })
+            .collect()
+    }
+    pub(crate) fn checked_cipher(&self, name: &str) -> Result<Vec<u8>, String> {
+        let file = self.files.get(name).ok_or("工作区没有该数据文件")?;
+        if file.sealed_source.is_none() {
+            return Err("数据源不是密封游戏文件".into());
+        }
+        file.disk_bytes()
+    }
+    pub(crate) fn codebook(&self, original: bool) -> Option<&crate::stratagem_code::Codebook> {
+        let file = self.files.get(crate::stratagem_code::FILE)?;
+        if original {
+            file.original_codebook.as_ref()
+        } else {
+            file.codebook.as_ref()
+        }
     }
 }
 #[cfg(test)]

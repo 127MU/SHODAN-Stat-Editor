@@ -75,7 +75,7 @@ mod tests {
             .any(|v| v["kind"] == "damage"));
     }
 }
-fn kind(name: &str) -> Option<u32> {
+pub(crate) fn kind(name: &str) -> Option<u32> {
     Some(match name {
         "shot" => 0xBD4042C2,
         "blast" => 0x2AEA2592,
@@ -143,87 +143,109 @@ impl<'a> Data<'a> {
             .map(Some)
     }
     pub fn roots(&self, entity: u64) -> Result<Vec<(String, u32, String)>, String> {
-        let mut roots = Vec::new();
-        for (typ, offset, target, label) in [
-            (0x45171B68, 0, "shot", "主射击模式"),
-            (0x45171B68, 576, "shot", "第二射击模式"),
-            (0x66081072, 64, "shot", "主弹种"),
-            (0x66081072, 68, "shot", "备选弹种"),
-            (0xEAC335A1, 4, "shot", "蓄力阶段 1"),
-            (0xEAC335A1, 28, "shot", "蓄力阶段 2"),
-            (0xEAC335A1, 52, "shot", "蓄力阶段 3"),
-            (0xF0721C2C, 0, "beam", "激光类型"),
-            (0xB87BA9ED, 0, "arc", "电弧类型"),
-            (0x8E551126, 200, "damage", "喷流伤害"),
-            (0x8E551126, 196, "shot", "喷流射弹"),
-            (0xBBA9003F, 12, "damage", "近战伤害"),
-        ] {
-            if let Some(id) = self.number(typ, Key::Hash(entity), offset, Kind::U32)? {
-                if id > 0.0 {
-                    roots.push((target.into(), id as u32, label.into()));
-                }
-            }
-        }
-        Ok(roots)
+        roots(false, |typ, offset| {
+            self.number(typ, Key::Hash(entity), offset, Kind::U32)
+        })
     }
     pub fn graph(&self, roots: &[(String, u32, String)]) -> Result<Value, String> {
-        let mut out = Vec::new();
-        let mut expanded = BTreeSet::new();
-        let mut edges = BTreeSet::new();
-        let mut limited = false;
-        let mut pending = roots
-            .iter()
-            .rev()
-            .map(|(kind, id, via)| (kind.clone(), *id, via.clone(), String::new(), 0))
-            .collect::<Vec<_>>();
-        while let Some((name, id, via, parent, depth)) = pending.pop() {
-            if id == 0 {
-                continue;
+        graph(roots, |typ, id, offset| {
+            self.number(typ, Key::Id(id), offset, Kind::U32)
+        })
+    }
+}
+
+pub(crate) fn roots(
+    bound_fire_modes: bool,
+    number: impl Fn(u32, usize) -> Result<Option<f64>, String>,
+) -> Result<Vec<(String, u32, String)>, String> {
+    let mut roots = Vec::new();
+    for (typ, offset, target, label) in [
+        (0x45171B68, 0, "shot", "主射击模式"),
+        (0x45171B68, 576, "shot", "第二射击模式"),
+        (0x66081072, 64, "shot", "主弹种"),
+        (0x66081072, 68, "shot", "备选弹种"),
+        (0xEAC335A1, 4, "shot", "蓄力阶段 1"),
+        (0xEAC335A1, 28, "shot", "蓄力阶段 2"),
+        (0xEAC335A1, 52, "shot", "蓄力阶段 3"),
+        (0xF0721C2C, 0, "beam", "激光类型"),
+        (0xB87BA9ED, 0, "arc", "电弧类型"),
+        (0x8E551126, 200, "damage", "喷流伤害"),
+        (0x8E551126, 196, "shot", "喷流射弹"),
+        (0xBBA9003F, 12, "damage", "近战伤害"),
+    ] {
+        if bound_fire_modes && matches!(typ, 0x45171B68 | 0x66081072) {
+            continue;
+        }
+        if let Some(id) = number(typ, offset)? {
+            if id > 0.0 {
+                roots.push((target.into(), id as u32, label.into()));
             }
-            let typ = kind(&name).ok_or("未知引用命名空间")?;
-            let key = format!("{name}:{id}");
-            if !edges.insert((parent.clone(), key.clone(), via.clone())) {
-                continue;
-            }
-            if out.len() >= 512 || depth > 24 {
-                limited = true;
-                continue;
-            }
-            let exists = self.number(typ, Key::Id(id), 0, Kind::U32)?.is_some();
-            let repeated = expanded.contains(&key);
-            out.push(json!({"key":key,"kind":name,"id":id,"parent":parent,"via":via,"depth":depth,"missing":!exists,"repeated":repeated}));
-            if !exists || !expanded.insert(key.clone()) {
-                continue;
-            }
-            let specs: Vec<(&str, usize, String)> = match name.as_str() {
-                "shot" => vec![
-                    ("damage", 60, "直接命中伤害".into()),
-                    ("blast", 144, "命中爆炸".into()),
-                    ("blast", 156, "到期爆炸".into()),
-                ],
-                "blast" => {
-                    let mut s = vec![("damage", 4, "爆炸伤害".into())];
-                    if self.number(typ, Key::Id(id), 80, Kind::U32)?.unwrap_or(0.0) > 0.0 {
-                        s.push(("shot", 84, "破片射弹".into()));
-                    }
-                    s
+        }
+    }
+    Ok(roots)
+}
+
+pub(crate) fn graph(
+    roots: &[(String, u32, String)],
+    number: impl Fn(u32, u32, usize) -> Result<Option<f64>, String>,
+) -> Result<Value, String> {
+    let mut out = Vec::new();
+    let mut expanded = BTreeSet::new();
+    let mut edges = BTreeSet::new();
+    let mut limited = false;
+    let mut pending = roots
+        .iter()
+        .rev()
+        .map(|(kind, id, via)| (kind.clone(), *id, via.clone(), String::new(), 0))
+        .collect::<Vec<_>>();
+    while let Some((name, id, via, parent, depth)) = pending.pop() {
+        if id == 0 {
+            continue;
+        }
+        let typ = kind(&name).ok_or("未知引用命名空间")?;
+        let key = format!("{name}:{id}");
+        if !edges.insert((parent.clone(), key.clone(), via.clone())) {
+            continue;
+        }
+        if out.len() >= 512 || depth > 24 {
+            limited = true;
+            continue;
+        }
+        let exists = number(typ, id, 0)?.is_some();
+        let repeated = expanded.contains(&key);
+        out.push(json!({"key":key,"kind":name,"id":id,"parent":parent,"via":via,"depth":depth,"missing":!exists,"repeated":repeated}));
+        if !exists || !expanded.insert(key.clone()) {
+            continue;
+        }
+        let specs: Vec<(&str, usize, String)> = match name.as_str() {
+            "shot" => vec![
+                ("damage", 60, "直接命中伤害".into()),
+                ("blast", 144, "命中爆炸".into()),
+                ("blast", 156, "到期爆炸".into()),
+            ],
+            "blast" => {
+                let mut s = vec![("damage", 4, "爆炸伤害".into())];
+                if number(typ, id, 80)?.unwrap_or(0.0) > 0.0 {
+                    s.push(("shot", 84, "破片射弹".into()));
                 }
-                "damage" => (0..4)
-                    .map(|slot| ("status", 44 + slot * 8, format!("状态槽 {}", slot + 1)))
-                    .collect(),
-                "status" => vec![("damage", 44, "每跳伤害".into())],
-                "arc" => vec![("damage", 36, "电弧伤害".into())],
-                "beam" => vec![("damage", 12, "激光伤害".into())],
-                _ => vec![],
-            };
-            for (target, offset, label) in specs.into_iter().rev() {
-                if let Some(value) = self.number(typ, Key::Id(id), offset, Kind::U32)? {
-                    if value > 0.0 {
-                        pending.push((target.into(), value as u32, label, key.clone(), depth + 1));
-                    }
+                s.push(("arc", 120, "爆炸电弧".into()));
+                s
+            }
+            "damage" => (0..4)
+                .map(|slot| ("status", 44 + slot * 8, format!("状态槽 {}", slot + 1)))
+                .collect(),
+            "status" => vec![("damage", 44, "每跳伤害".into())],
+            "arc" => vec![("damage", 36, "电弧伤害".into())],
+            "beam" => vec![("damage", 12, "激光伤害".into())],
+            _ => vec![],
+        };
+        for (target, offset, label) in specs.into_iter().rev() {
+            if let Some(value) = number(typ, id, offset)? {
+                if value > 0.0 {
+                    pending.push((target.into(), value as u32, label, key.clone(), depth + 1));
                 }
             }
         }
-        Ok(json!({"entries":out,"limited":limited,"read_only":true}))
     }
+    Ok(json!({"entries":out,"limited":limited,"read_only":true}))
 }
