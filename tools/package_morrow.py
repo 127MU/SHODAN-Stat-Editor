@@ -79,7 +79,8 @@ def main():
         target.write(hashlib.sha256(payload).digest())
         target.write(struct.pack('<QQ16s', len(payload), len(directory), b'SHODAN-PORTABLE!'))
     sizes = {'zip_bytes': archive.stat().st_size, 'exe_bytes': single.stat().st_size}
-    print(json.dumps({'archive': str(archive), 'exe': str(single), **sizes}, ensure_ascii=False))
+    # Windows CI may redirect stdout through a code page without CJK characters.
+    print(json.dumps({'archive': str(archive), 'exe': str(single), **sizes}))
     if max(sizes.values()) >= SIZE_LIMIT:
         raise SystemExit('Package exceeds the 20 MB limit')
 
