@@ -113,6 +113,7 @@ class _GameTweaksPageState extends State<GameTweaksPage> {
           '解除部分战备只能在导航网格上部署的限制；岩石、高台及碰撞仍可能使策略球弹开，不保证任意表面粘附。',
         ),
         ('foliage', '射弹交互', '射弹穿过树冠与灌木', ''),
+        ('vehicles', '载具配装', '允许携带多种同类载具', '放宽同类机甲、快速侦察车和坦克的配装数量限制。'),
       ])
         Padding(
           padding: const EdgeInsets.only(top: 16),

@@ -15,12 +15,31 @@ use std::{
 struct Source {
     format: String,
     version: u32,
+    #[serde(default)]
+    game_build: Option<String>,
     owners: Vec<Owner>,
     fields: Vec<Field>,
     #[serde(default)]
     registries: BTreeMap<String, Vec<Choice>>,
     #[serde(default)]
     resource_sources: BTreeMap<String, ResourceSource>,
+    #[serde(default)]
+    tweaks: BTreeMap<String, Vec<Tweak>>,
+    #[serde(default)]
+    code_ids: Vec<String>,
+    #[serde(default)]
+    projectile_sources: BTreeMap<u32, ProjectileSource>,
+}
+#[derive(Deserialize)]
+pub(crate) struct ProjectileSource {
+    pub key: String,
+    pub label: String,
+}
+#[derive(Deserialize)]
+pub(crate) struct Tweak {
+    pub field: usize,
+    pub before: f64,
+    pub after: f64,
 }
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Choice {
@@ -36,6 +55,8 @@ pub struct Choice {
 pub struct ResourceSource {
     pub bytes: usize,
     pub sha256: String,
+    #[serde(default)]
+    pub package: String,
 }
 #[derive(Deserialize, Serialize)]
 pub struct Owner {
@@ -47,6 +68,23 @@ pub struct Owner {
     pub note: String,
     #[serde(default)]
     pub groups: Value,
+    #[serde(default)]
+    pub enemy: bool,
+    #[serde(default)]
+    pub player: bool,
+    pub armor: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) text: Option<crate::desktop_text::Bindings>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_key: Option<String>,
+    #[serde(default, skip_serializing)]
+    pub(crate) swaps: Vec<usize>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub legacy: BTreeMap<String, Vec<String>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub aliases: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub preset_ambiguous: BTreeMap<String, bool>,
     pub rows: Vec<Row>,
 }
 #[derive(Deserialize, Serialize)]
@@ -78,11 +116,15 @@ pub struct Row {
     #[serde(default)]
     pub note: String,
     #[serde(default)]
+    pub inline_note: String,
+    #[serde(default)]
     pub choice: Value,
     #[serde(default)]
     pub lead: bool,
     #[serde(default)]
     pub show_first: bool,
+    #[serde(default)]
+    pub each: bool,
     #[serde(default)]
     pub mult: bool,
     #[serde(default)]
@@ -113,6 +155,10 @@ pub struct Field {
     pub encoding: Option<Value>,
     pub resource: Option<ResourceBinding>,
     pub virtual_default: Option<f64>,
+    pub stratagem_code: Option<u32>,
+    pub stratagem_always: Option<u32>,
+    pub switch: Option<usize>,
+    pub toggle: Option<AmmoToggle>,
     #[serde(default)]
     pub allowed: Vec<u64>,
     pub unset: Option<f64>,
@@ -120,16 +166,27 @@ pub struct Field {
     pub death: Option<usize>,
     pub unresolved: Option<String>,
 }
+#[derive(Deserialize, Clone, Copy)]
+pub struct AmmoToggle {
+    pub left: usize,
+    pub right: usize,
+    pub pick: usize,
+    pub second: usize,
+}
 pub struct Binding {
     pub locations: Vec<Location>,
     pub encoding: Encoding,
 }
 pub struct Catalog {
+    pub(crate) game_build: Option<String>,
     pub owners: Vec<Owner>,
     pub fields: Vec<Field>,
     pub bindings: Vec<Option<Binding>>,
     pub registries: BTreeMap<String, Vec<Choice>>,
     pub resources: BTreeMap<String, ResourceSource>,
+    pub(crate) tweaks: BTreeMap<String, Vec<Tweak>>,
+    pub(crate) code_ids: Vec<String>,
+    pub(crate) projectile_sources: BTreeMap<u32, ProjectileSource>,
     by_owner: BTreeMap<String, usize>,
     pub users: Vec<BTreeSet<usize>>,
 }
@@ -165,6 +222,9 @@ impl Catalog {
         let mut by_owner = BTreeMap::new();
         let mut users = vec![BTreeSet::new(); data.fields.len()];
         for (index, owner) in data.owners.iter().enumerate() {
+            if owner.swaps.iter().any(|&field| field >= data.fields.len()) {
+                return Err("射弹替换绑定无效".into());
+            }
             if owner.id.len() != 16
                 || !owner.id.bytes().all(|b| b.is_ascii_hexdigit())
                 || by_owner
@@ -191,7 +251,16 @@ impl Catalog {
         }
         let mut bindings = Vec::with_capacity(data.fields.len());
         for field in &data.fields {
-            for index in [field.auto_drop, field.death].into_iter().flatten() {
+            for index in [field.auto_drop, field.death, field.switch]
+                .into_iter()
+                .flatten()
+                .chain(
+                    field
+                        .toggle
+                        .into_iter()
+                        .flat_map(|t| [t.left, t.right, t.pick, t.second]),
+                )
+            {
                 if index >= data.fields.len() {
                     return Err("联动参数索引越界".into());
                 }
@@ -239,11 +308,22 @@ impl Catalog {
                 encoding: crate::workspace_api::encoding(&codec)?,
             }));
         }
+        if data.tweaks.values().flatten().any(|edit| {
+            !edit.before.is_finite()
+                || !edit.after.is_finite()
+                || bindings.get(edit.field).is_none_or(Option::is_none)
+        }) {
+            return Err("游戏参数开关绑定无效".into());
+        }
         Ok(Self {
+            game_build: data.game_build,
             owners: data.owners,
             fields: data.fields,
             registries: data.registries,
             resources: data.resource_sources,
+            tweaks: data.tweaks,
+            code_ids: data.code_ids,
+            projectile_sources: data.projectile_sources,
             by_owner,
             bindings,
             users,
@@ -264,13 +344,27 @@ impl Catalog {
     ) -> Result<Option<f64>, String> {
         let field = self.fields.get(index).ok_or("参数索引越界")?;
         if field.storage == "virtual" {
-            return Ok(if matches!(mode, Mode::Current) {
-                workspace.metadata()["virtual"][&field.key]
-                    .as_f64()
-                    .or(field.virtual_default)
-            } else {
-                field.virtual_default
-            });
+            if let Some(id) = field.stratagem_code {
+                let number = workspace
+                    .codebook(matches!(mode, Mode::Original))
+                    .and_then(|book| book.get(id))
+                    .map(f64::from);
+                return Ok(if matches!(mode, Mode::Current) {
+                    workspace.metadata()["virtual"][&field.key]
+                        .as_f64()
+                        .or(number)
+                } else {
+                    number
+                });
+            }
+            let values = match mode {
+                Mode::Current => Some(workspace.metadata()),
+                Mode::Loaded => Some(workspace.loaded_metadata()),
+                Mode::Original => None,
+            };
+            return Ok(values
+                .and_then(|v| v["virtual"][&field.key].as_f64())
+                .or(field.virtual_default));
         }
         let binding = self.bindings[index]
             .as_ref()
@@ -297,6 +391,44 @@ impl Catalog {
             result = Some(value);
         }
         Ok(result)
+    }
+    pub(crate) fn code_overrides(
+        &self,
+        workspace: &Workspace,
+        metadata: &Value,
+    ) -> Result<(BTreeMap<u32, u32>, Vec<String>), String> {
+        let mut codes = BTreeMap::new();
+        if let Some(values) = metadata["virtual"].as_object() {
+            for field in &self.fields {
+                let Some(id) = field.stratagem_code else {
+                    continue;
+                };
+                if let Some(value) = values.get(&field.key) {
+                    let number = value
+                        .as_f64()
+                        .filter(|n| n.fract() == 0.0 && (1.0..=u32::MAX as f64).contains(n))
+                        .ok_or("战备指令编号无效")? as u32;
+                    if codes.insert(id, number).is_some_and(|old| old != number) {
+                        return Err("同一战备存在冲突的指令修改".into());
+                    }
+                }
+            }
+        }
+        let warnings = if codes.is_empty() {
+            Vec::new()
+        } else {
+            workspace
+                .codebook(false)
+                .ok_or("尚未载入战备指令数据")?
+                .validate(
+                    &codes,
+                    self.registries
+                        .get("stratagem")
+                        .map(Vec::as_slice)
+                        .unwrap_or(&[]),
+                )?
+        };
+        Ok((codes, warnings))
     }
     fn expression(&self, e: &Expression, w: &Workspace, m: Mode) -> Result<Option<f64>, String> {
         match e {
@@ -393,12 +525,34 @@ impl Catalog {
         let q = query.trim().to_lowercase();
         json!(self.owners.iter().filter(|o|tab.is_none_or(|tab|tab==o.tab) && (q.is_empty() || o.name.to_lowercase().contains(&q) || o.english.to_lowercase().contains(&q) || o.id.to_ascii_lowercase().contains(&q))).map(|o|json!({"id":o.id,"name":o.name,"english":o.english,"tab":o.tab,"note":o.note,"groups":o.groups})).collect::<Vec<_>>())
     }
+    pub fn shared(&self, owner: &Owner, row: &Row) -> Value {
+        let indices: BTreeSet<_> = row
+            .parts
+            .iter()
+            .flat_map(|part| &self.users[part.field])
+            .copied()
+            .collect();
+        let mut affected: Vec<_> = indices
+            .into_iter()
+            .map(|index| &self.owners[index])
+            .filter(|other| {
+                other.id != owner.id && (owner.tab == "Records" || other.tab != "Records")
+            })
+            .collect();
+        affected.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+        json!(affected
+            .into_iter()
+            .map(|other| json!({"id":other.id,"name":other.name,"category":other.tab}))
+            .collect::<Vec<_>>())
+    }
     pub fn read_rows(&self, id: &str, w: &Workspace) -> Result<Value, String> {
         let (_, owner) = self.owner(id)?;
         Ok(json!(owner.rows.iter().map(|r|{
             let current=self.row_value(owner,r,w,Mode::Current);let original=self.row_value(owner,r,w,Mode::Original);let loaded=self.row_value(owner,r,w,Mode::Loaded);
+            let value=current.as_ref().ok().copied().flatten();
+            let reference=crate::catalog_refs::row_link(self,r,value);
             json!({"id":r.key,"parameter":r.id,"label":r.label,"section":r.section,"help":r.help,"note":r.note,"choice":r.choice,"storage":r.storage,
-                "value":current.as_ref().ok().copied().flatten(),"original":original.as_ref().ok().copied().flatten(),"loaded":loaded.as_ref().ok().copied().flatten(),"error":current.err(),"original_error":original.err()})
+                "value":value,"original":original.as_ref().ok().copied().flatten(),"loaded":loaded.as_ref().ok().copied().flatten(),"reference":reference,"error":current.err(),"original_error":original.err()})
         }).collect::<Vec<_>>()))
     }
     pub fn read_fields(&self, indices: &Value, w: &Workspace) -> Result<Value, String> {

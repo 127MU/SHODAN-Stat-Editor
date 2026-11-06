@@ -20,20 +20,7 @@ pub fn prepare_passives(
         return Err("护甲重排后禁止沿用原浮点偏移".into());
     }
     let rebuilt = crate::passive::rebuild(snapshot, profiles)?;
-    let target_hash = hash::murmur64(snapshot);
-    let corrected = correction::correct(&rebuilt.bytes, target_hash, options, progress)
-        .map_err(|e| e.to_string())?;
-    let ciphertext = sealed::seal(&corrected.bytes).map_err(|e| e.to_string())?;
-    let reopened = sealed::open_data(&ciphertext).map_err(|e| e.to_string())?;
-    if reopened != corrected.bytes || hash::murmur64(&reopened) != target_hash {
-        return Err("护甲导出回读校验失败".into());
-    }
-    Ok(Prepared {
-        ciphertext,
-        target_hash,
-        plaintext_sha256: hash::sha256_hex(&reopened),
-        correction: corrected.report,
-    })
+    prepare_rebuilt(snapshot, &rebuilt.bytes, options, progress)
 }
 
 pub fn prepare(
@@ -61,6 +48,15 @@ pub fn prepare(
             return Err(format!("只能明确允许微调已修改的浮点字段：{at:#x}"));
         }
     }
+    prepare_rebuilt(snapshot, edited, options, progress)
+}
+
+pub(crate) fn prepare_rebuilt(
+    snapshot: &[u8],
+    edited: &[u8],
+    options: &correction::Options,
+    progress: impl FnMut(usize),
+) -> Result<Prepared, String> {
     let target_hash = hash::murmur64(snapshot);
     let corrected =
         correction::correct(edited, target_hash, options, progress).map_err(|e| e.to_string())?;

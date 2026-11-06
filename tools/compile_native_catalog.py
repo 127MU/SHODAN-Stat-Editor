@@ -71,6 +71,65 @@ def special_ranges(source):
                 out.append((0xD6A11545,start,start+12,f'demolition:{entity:016X}:{level}:{direct}'))
     return out
 
+def switch_bindings():
+    """Known switch targets come from shipped originals, never the live fixture."""
+    out={}
+    originals=ROOT/'offline/originals'
+    hashes=json.loads((ROOT/'rust/core/src/foliage_targets.json').read_text())
+    for name,stem,typ,stride,relative,before,after in (
+        ('bounce','stratagem_settings',0x30EB6399,400,368,1,0),
+        ('vehicles','stratagem_settings',0x30EB6399,400,260,1,0),
+        ('foliage','projectile_settings',0xBD4042C2,272,248,0,3),
+        ('reticle','entities',0x88E4DBB1,1240,404,3,0),
+    ):
+        filename=f'generated_{stem}.dl_bin'
+        data=(originals/f'generated_{stem}.dl_plain').read_bytes()
+        targets={}
+        for kind,start,end in blocks(data):
+            if kind!=typ:continue
+            rows=[]
+            if name=='reticle':
+                candidates=[]
+                for width in (1232,1240):
+                    live=0
+                    for at in range(start,end-15,16):
+                        key,index,zero=struct.unpack_from('<QII',data,at)
+                        if zero:break
+                        live+=bool(key)
+                        slots=(at-start)//16+1; remain=end-(at+16)
+                        if live and slots==2*live and remain in (live*width,(live+1)*width,(live+2)*width):
+                            candidates.append((width,slots,at+16))
+                if len(candidates)!=1:continue
+                width,slots,rows_start=candidates[0]
+                for i in range(slots):
+                    key,index,_=struct.unpack_from('<QII',data,start+i*16)
+                    if key:rows.append((f'hash:{key:016X}',rows_start+index*width,404 if width==1240 else 400))
+            else:
+                count=struct.unpack_from('<I',data,start+8)[0]
+                for i in range(count):
+                    at=start+16+i*stride
+                    ident=struct.unpack_from('<I',data,at+(4 if name in ('bounce','vehicles') else 0))[0]
+                    if name=='foliage' and hashes.get(str(ident))!=struct.unpack_from('<I',data,at+8)[0]:continue
+                    rows.append((f'id:{ident}',at,relative))
+            for record,at,offset in rows:
+                if name=='vehicles':
+                    flags=struct.unpack_from('<I',data,at+offset)[0]
+                    for mask in (0x100000,0x200000,0x400000):
+                        if flags&mask:
+                            binding=dict(file=filename,type=f'{typ:08X}',record=record,relative=offset)
+                            field=dict(key=f'native-tweak:{name}:{record}:{mask}',storage='flag',
+                                       bindings=[binding],encoding=dict(kind='flag',width=4,mask=mask))
+                            targets[record,mask]=(field,before,after)
+                    continue
+                value=(data[at+offset]>>1)&1 if name=='bounce' else struct.unpack_from('<I',data,at+offset)[0]
+                if value==before:
+                    binding=dict(file=filename,type=f'{typ:08X}',record=record,relative=relative)
+                    codec=dict(kind='flag',width=1,mask=2) if name=='bounce' else 'u32'
+                    field=dict(key=f'native-tweak:{name}:{record}',storage='flag' if name=='bounce' else 'u32',bindings=[binding],encoding=codec)
+                    targets[record]=(field,before,after)
+        out[name]=list(targets.values())
+    return out
+
 def compile_catalog(source):
     source=pathlib.Path(source);inventory=json.loads((source/'catalog.json').read_text(encoding='utf8'))
     fields=inventory['fields'];keys=sorted(fields);indices={key:n for n,key in enumerate(keys)}
@@ -83,16 +142,18 @@ def compile_catalog(source):
     for key in keys:
         field=fields[key];storage=field['storage'];encodings[storage]+=1
         result={'key':key,'storage':storage,'bindings':[]}
-        for name in ['allowed','unset','bolt_on','bolt_off']:
+        for name in ['allowed','unset','bolt_on','bolt_off','stratagem_code','stratagem_always']:
             if name in field and field[name]!=[]:result[name]=field[name]
-        for name in ['auto_drop','death']:
+        for name in ['auto_drop','death','switch']:
             if name in field:result[name]=indices[field[name]]
+        if field.get('toggle'):result['toggle']={name:indices[key] for name,key in field['toggle'].items()}
         if storage=='virtual':
             result['virtual_default']=field.get('default')
             if field['functions']:result['unresolved']='virtual callback: '+','.join(field['functions'])
         elif field.get('resource'):
             result['resource']={'identity':field['resource'],'relative':field['relative']}
-            result['unresolved']='archive resource binding'
+            if field['resource'] not in inventory.get('resource_fixtures',{}):
+                result['unresolved']='archive source missing'
         elif 'file'not in field:result['unresolved']='source file missing'
         else:
             typ=field.get('type',field['kind']);record=field.get('record');relative=field.get('relative',field['offset'])
@@ -131,11 +192,15 @@ def compile_catalog(source):
     for owner in inventory['owners']:
         item=owner['item'];out={key:item[key]for key in ['id','name','english','groups','note']if key in item}
         out['tab']=owner['tab'];out['rows']=[]
+        if owner.get('swaps'):out['swaps']=[indices[key] for key in owner['swaps']]
+        for key in ['native_key','enemy','legacy','aliases','preset_ambiguous','player','armor','text']:
+            if owner.get(key):out[key]=owner[key]
         for row in owner['rows']:
             ui=row['ui'];r={key:row[key]for key in ['id','storage','choice','lead','show_first','mult','inverse','scale','zero','never','rate_plus','suppression','code','slot','drow','set','add','each','rack','hash32']if key in row}
             r.update(label=ui['label'],section=ui['section'],help=ui.get('help',[]),note=ui.get('note',''),parts=[dict(field=indices[p['field']],id=p['id'])for p in row['parts']])
             if r['help']==[]:r.pop('help')
             if not r['note']:r.pop('note')
+            if ui.get('inline_note'):r['inline_note']=ui['inline_note']
             if 'drain'in row:r['drain']=row['drain']
             if 'span_expression'in row:
                 def expr(e):return {k:indices[v]if k=='field'else expr(v)if isinstance(v,dict)else v for k,v in e.items()}
@@ -165,6 +230,17 @@ def compile_catalog(source):
         owners.append(out)
     result=dict(format='SHODAN-NATIVE-DESCRIPTORS',version=1,owners=owners,fields=compiled,registries=registries,
                 sources=inventory['sources'],resource_sources=inventory.get('resource_fixtures',{}))
+    result['tweaks']={name:[dict(edit,field=indices[edit['field']]) for edit in edits]
+                      for name,edits in inventory.get('tweaks',{}).items()}
+    for name,targets in switch_bindings().items():
+        if result['tweaks'].get(name):continue
+        result['tweaks'][name]=[]
+        for field,before,after in targets:
+            result['tweaks'][name].append(dict(field=len(compiled),before=before,after=after))
+            compiled.append(field)
+    result['code_ids']=inventory.get('code_ids',[])
+    result['projectile_sources']=inventory.get('projectile_sources',{})
+    if inventory.get('game_build'):result['game_build']=inventory['game_build']
     audit=dict(owners=len(owners),rows=sum(len(o['rows'])for o in owners),fields=len(compiled),encodings=dict(encodings),unresolved=dict(unresolved),
                unresolved_rows=sum('unresolved'in r for o in owners for r in o['rows']),physical_defaults_embedded=False,executable_callbacks_embedded=False)
     return result,audit

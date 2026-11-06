@@ -250,7 +250,7 @@ impl Document {
     pub fn value(&self, at: usize, encoding: &Encoding) -> Result<f64, String> {
         encoding.read(&self.slice(at, encoding.width()?)?)
     }
-    pub fn apply(&mut self, patches: &[Patch]) -> Result<(), String> {
+    fn merge(&self, patches: &[Patch]) -> Result<BTreeMap<usize, (u8, u8)>, String> {
         let mut merged: BTreeMap<usize, (u8, u8)> = BTreeMap::new();
         for patch in patches {
             if patch.bytes.is_empty() || patch.bytes.len() != patch.mask.len() {
@@ -267,6 +267,13 @@ impl Document {
                 *bits |= *mask;
             }
         }
+        Ok(merged)
+    }
+    pub(crate) fn validate(&self, patches: &[Patch]) -> Result<(), String> {
+        self.merge(patches).map(|_| ())
+    }
+    pub fn apply(&mut self, patches: &[Patch]) -> Result<(), String> {
+        let merged = self.merge(patches)?;
         for (at, (mask, value)) in merged {
             let old = self.pending.get(&at).copied().unwrap_or(self.snapshot[at]);
             let byte = (old & !mask) | (value & mask);

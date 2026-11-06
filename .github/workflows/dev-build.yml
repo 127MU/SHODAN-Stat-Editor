@@ -1,4 +1,3 @@
-# Build the current desktop UI. Stable releases are uploaded after native QA.
 name: Desktop build
 
 on:
@@ -15,82 +14,53 @@ concurrency:
   group: dev-build-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  LUAJIT_COMMIT: a4c064539ea931274d407e1249b4bb575424a0f4
-  RUNTIME_RELEASE: https://github.com/127MU/SHODAN-Stat-Editor/releases/download/v4.5.1-r1/SHODAN_4.5.1-r1_Windows.zip
-  RUNTIME_SHA256: F3CE6F362A7A1C808AFE028EDF8AD456C39799A27E992CFD2BF39308905F2878
-
 jobs:
   build:
     runs-on: windows-2022
+    env:
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt and MinGW
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.3'
-          arch: win64_mingw
-          modules: qtshadertools
-          tools: tools_mingw1310
-          cache: true
-
-      - name: Get pinned runtime and LuaJIT source
+      - name: Set up Flutter and Rust
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          git clone --quiet https://github.com/LuaJIT/LuaJIT.git "$env:RUNNER_TEMP\LuaJIT"
-          if ($LASTEXITCODE) { throw 'LuaJIT clone failed' }
-          git -C "$env:RUNNER_TEMP\LuaJIT" checkout --quiet $env:LUAJIT_COMMIT
-          if ($LASTEXITCODE) { throw 'LuaJIT checkout failed' }
-          $archive = "$env:RUNNER_TEMP\runtime.zip"
-          Invoke-WebRequest $env:RUNTIME_RELEASE -OutFile $archive
-          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne $env:RUNTIME_SHA256) { throw 'Pinned runtime archive hash mismatch' }
-          Expand-Archive $archive "$env:RUNNER_TEMP\runtime"
-          $runtime = "$env:RUNNER_TEMP\runtime\SHODAN_4.5.1-r1"
-          New-Item -ItemType Directory -Force offline\runtime | Out-Null
-          Copy-Item "$runtime\libsodium.dll" offline\runtime\
+          git clone --quiet --depth 1 --branch 3.47.9 https://github.com/flutter/flutter.git "$env:RUNNER_TEMP/flutter"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "$env:RUNNER_TEMP/flutter/bin" >> $env:GITHUB_PATH
+          rustup toolchain install 1.99.1 --profile minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup override set 1.99.1
 
-      - name: Build LuaJIT, the launcher and shodan_hash.dll
-        shell: cmd
+      - name: Verify and build Rust engine
         run: |
-          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set "VS=%%i"
-          call "%VS%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
-          rem the debug record names the .pdb only (no build folder path in the DLL)
-          set "LINK=/PDBALTPATH:%%_PDB%%"
-          cd /d "%RUNNER_TEMP%\LuaJIT\src"
-          rem msvcbuild runs the tools it builds from its own folder
-          set NoDefaultCurrentDirectoryInExePath=
-          set "PATH=.;%PATH%"
-          call "%CD%\msvcbuild.bat" || exit /b 1
-          set "LINK="
-          copy /y lua51.dll "%GITHUB_WORKSPACE%\offline\runtime\" || exit /b 1
-          set "LJ=%RUNNER_TEMP%\LuaJIT\src"
-          cd /d "%GITHUB_WORKSPACE%\offline\launcher"
-          cl /nologo /O2 /W3 /MT /LD hashsolve.c fetch.c update.c /link winhttp.lib user32.lib /OUT:shodan_hash.dll
-          if errorlevel 1 exit /b 1
-          if not exist shodan_hash.dll exit /b 1
+          cargo test --workspace --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build --workspace --release --locked
 
-      - name: Build current desktop
-        shell: pwsh
+      - name: Verify and build Flutter UI
+        working-directory: desktop/morrow
         run: |
-          $ErrorActionPreference = 'Stop'
-          $compiler = Split-Path (Get-Command g++.exe).Source
-          cmake -S desktop/huskar -B build/huskar -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR" "-DCMAKE_C_COMPILER=$compiler/gcc.exe" "-DCMAKE_CXX_COMPILER=$compiler/g++.exe"
-          if ($LASTEXITCODE) { throw 'CMake configure failed' }
-          cmake --build build/huskar --parallel 2
-          if ($LASTEXITCODE) { throw 'HuskarUI build failed' }
-          python tools/package_huskar.py --build-dir build/huskar --qt-dir "$env:QT_ROOT_DIR" --compiler-bin "$compiler" --huskar-root build/huskar/_deps/huskar-src --output-root dist/desktop
-          if ($LASTEXITCODE) { throw 'Desktop packaging failed' }
-          $release = Get-ChildItem dist/desktop -Directory | Where-Object Name -like 'SHODAN_*' | Select-Object -First 1
-          python tools/package_onefile.py --release $release.FullName --compiler-bin "$compiler"
-          if ($LASTEXITCODE) { throw 'Single-file packaging failed' }
+          flutter pub get --enforce-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          flutter test --no-pub
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          flutter build windows --release --no-pub
 
-      - name: Keep desktop packages
-        uses: actions/upload-artifact@v4
+      - name: Package and verify desktop artifacts
+        run: |
+          python -m pip install fonttools==4.68.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/package_morrow.py --output dist/SHODAN_Windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $package = Get-ChildItem -LiteralPath dist -Filter '*.exe' | Select-Object -First 1
+          $verification = Start-Process -FilePath $package.FullName -ArgumentList '--verify-package' -WindowStyle Hidden -Wait -PassThru
+          exit $verification.ExitCode
+
+      - uses: actions/upload-artifact@v4
         with:
           name: desktop-build
           if-no-files-found: error
           path: |
-            dist/desktop/*.zip
-            dist/desktop/*.exe
+            dist/*.zip
+            dist/*.exe

@@ -7,11 +7,46 @@ pub enum Mode {
     Overrides,
 }
 impl Bundles {
+    pub(crate) fn entries(&mut self, name: &str, typ: u64) -> Result<Vec<(u64, u32)>, String> {
+        let package = self.package(name)?;
+        package
+            .entries
+            .iter()
+            .filter(|e| u64::from_le_bytes(e[8..16].try_into().unwrap()) == typ)
+            .map(|e| Ok((u64at(e, 0)?, u32at(e, 56)?)))
+            .collect()
+    }
+    pub(crate) fn resource(
+        &mut self,
+        name: &str,
+        (typ, id): (u64, u64),
+    ) -> Result<Vec<u8>, String> {
+        let package = self.package(name)?;
+        let entry = package
+            .entries
+            .iter()
+            .find(|e| {
+                u64::from_le_bytes(e[..8].try_into().unwrap()) == id
+                    && u64::from_le_bytes(e[8..16].try_into().unwrap()) == typ
+            })
+            .ok_or_else(|| format!("资源包 {name} 缺少 {typ:016x}:{id:016x}"))?;
+        self.read(name, u64at(entry, 16)?, u32at(entry, 56)? as usize)
+    }
     pub fn build_patch(
         &mut self,
         name: &str,
         mode: Mode,
         overrides: &BTreeMap<(u64, u64), Vec<u8>>,
+    ) -> Result<crate::resource_package::Built, String> {
+        self.build_patch_shared(name, mode, overrides, &BTreeMap::new())
+    }
+
+    pub(crate) fn build_patch_shared(
+        &mut self,
+        name: &str,
+        mode: Mode,
+        overrides: &BTreeMap<(u64, u64), Vec<u8>>,
+        shared: &BTreeMap<(u64, u64), Vec<u8>>,
     ) -> Result<crate::resource_package::Built, String> {
         let mut package = self.package(name)?;
         let mut pending = overrides
@@ -26,10 +61,12 @@ impl Bundles {
             let gpu_size = u32at(entry, 64)?;
             let stream_size = u32at(entry, 60)?;
             let heavy = gpu_size > 0 || stream_size > 0;
-            let replacement = overrides.get(&key);
-            if replacement.is_some() {
+            let owned = overrides.get(&key);
+            if owned.is_some() {
                 pending.remove(&key);
             }
+            let replacement =
+                owned.or_else(|| (mode == Mode::Full).then(|| shared.get(&key)).flatten());
             if mode == Mode::Light && heavy {
                 if replacement.is_some() {
                     return Err("轻量驻留无法覆盖带伴生数据的资源，请选择完整驻留".into());
@@ -101,7 +138,7 @@ impl Bundles {
 use std::{
     collections::{BTreeMap, VecDeque},
     fs::File,
-    io::Read,
+    io::{Read, Seek, SeekFrom},
     path::{Path, PathBuf},
 };
 fn u32at(b: &[u8], at: usize) -> Result<u32, String> {
@@ -131,6 +168,7 @@ pub struct Package {
 }
 pub struct Bundles {
     root: PathBuf,
+    standalone: bool,
     pub packages: BTreeMap<String, Package>,
     streams: BTreeMap<u8, Dsar<File>>,
     order: VecDeque<u8>,
@@ -138,7 +176,13 @@ pub struct Bundles {
 impl Bundles {
     pub fn open(root: &Path) -> Result<Self, String> {
         let path = root.join("bundles.nxa");
-        let mut file = File::open(&path).map_err(|_| "资源包总索引无法读取")?;
+        let mut file = match File::open(&path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Self::standalone(root)
+            }
+            Err(_) => return Err("资源包总索引无法读取".into()),
+        };
         let mut magic = [0; 4];
         file.read_exact(&mut magic)
             .map_err(|_| "资源包总索引截断")?;
@@ -211,6 +255,46 @@ impl Bundles {
         }
         Ok(Self {
             root: root.to_path_buf(),
+            standalone: false,
+            packages,
+            streams: BTreeMap::new(),
+            order: VecDeque::new(),
+        })
+    }
+    fn standalone(root: &Path) -> Result<Self, String> {
+        let mut packages = BTreeMap::new();
+        for entry in std::fs::read_dir(root).map_err(|_| "无法读取独立资源包目录")? {
+            let entry = entry.map_err(|_| "无法读取独立资源包")?;
+            let Ok(name) = entry.file_name().into_string() else {
+                continue;
+            };
+            let base = name
+                .strip_suffix(".gpu_resources")
+                .or_else(|| name.strip_suffix(".stream"))
+                .unwrap_or(&name);
+            if !crate::residency::package_name(base)
+                || !entry.file_type().is_ok_and(|t| t.is_file())
+            {
+                continue;
+            }
+            let size = entry
+                .metadata()
+                .map_err(|_| "无法读取独立资源包大小")?
+                .len();
+            packages.insert(
+                name,
+                Package {
+                    size,
+                    fragments: Vec::new(),
+                },
+            );
+        }
+        if packages.is_empty() {
+            return Err("未找到游戏资源索引或独立资源包".into());
+        }
+        Ok(Self {
+            root: root.to_path_buf(),
+            standalone: true,
             packages,
             streams: BTreeMap::new(),
             order: VecDeque::new(),
@@ -239,6 +323,22 @@ impl Bundles {
             .ok_or("资源包读取范围溢出")?;
         if finish > package.size {
             return Err("资源包读取范围越界".into());
+        }
+        if self.standalone {
+            let mut file = File::open(self.root.join(name)).map_err(|_| "无法打开独立资源包")?;
+            file.seek(SeekFrom::Start(offset))
+                .map_err(|_| "无法定位独立资源包")?;
+            let mut bytes = Vec::new();
+            bytes
+                .try_reserve_exact(size)
+                .map_err(|_| "独立资源包读取内存不足")?;
+            file.take(size as u64)
+                .read_to_end(&mut bytes)
+                .map_err(|_| "无法读取独立资源包")?;
+            if bytes.len() != size {
+                return Err("独立资源包内容被截断".into());
+            }
+            return Ok(bytes);
         }
         let mut plan = Vec::new();
         let mut cursor = offset;

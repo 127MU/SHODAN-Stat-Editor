@@ -7,6 +7,7 @@ import struct
 import subprocess
 import tempfile
 from test_native_data import expected
+from test_native_codec import murmur
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser()
@@ -83,6 +84,31 @@ with tempfile.TemporaryDirectory(dir=ROOT/'dist/build-temp-r19',prefix='native-w
         paths[1].write_bytes(damage+b'changed externally')
         stale=folder/'stale';call('workspace-export-copy',ok=False,output=str(stale));assert not stale.exists()
         assert paths[0].read_bytes()==loaded
+        cipher=folder/'projectiles.dl_bin'
+        subprocess.run([str(exe),'seal-copy',str(projectile_source),str(cipher)],check=True,capture_output=True)
+        sealed_input=dict(name='projectiles',path=str(cipher),sealed=True)
+        call('workspace-open',files=[sealed_input])
+        empty=folder/'no-changes';assert call('workspace-export-sealed-copy',output=str(empty))['files']==[]
+        assert not empty.exists()
+        call('workspace-apply',values=[dict(field=mass,value=4321)])
+        sealed=folder/'sealed-export'
+        call('workspace-export-sealed-copy',ok=False,output=str(sealed))
+        call('workspace-export-sealed-copy',ok=False,output=str(sealed),float_fields=[gravity])
+        assert not sealed.exists()
+        report=call('workspace-export-sealed-copy',output=str(sealed),float_fields=[mass])
+        assert report['format']=='dl_bin' and len(report['files'])==1
+        plain=folder/'reopened.dl_plain'
+        subprocess.run([str(exe),'unseal-copy',str(sealed/'projectiles.dl_bin'),str(plain)],check=True,capture_output=True)
+        data=plain.read_bytes()
+        assert murmur(data)==murmur(projectiles)
+        adjusted=report['adjusted_floats']
+        assert adjusted[0]['before']==4321 and adjusted[0]['offset']==pa+36
+        assert struct.unpack_from('<f',data,pa+36)[0]==adjusted[0]['after']
+        assert int.from_bytes(data[pa+36:pa+40],'little') ^ int.from_bytes(struct.pack('<f',4321),'little') <= 4095
+        changed=bytearray(cipher.read_bytes());changed[-1]^=1;cipher.write_bytes(changed)
+        stale=folder/'stale-sealed';call('workspace-export-sealed-copy',ok=False,output=str(stale));assert not stale.exists()
+        call('workspace-open',ok=False,files=[sealed_input])
+        assert call('workspace-get',**mass)['value']==4321
     finally:
         process.stdin.close();assert process.wait(timeout=10)==0
 assert projectile_source.read_bytes()==projectiles and damage_source.read_bytes()==damage

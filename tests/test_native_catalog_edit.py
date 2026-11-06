@@ -56,7 +56,7 @@ with tempfile.TemporaryDirectory(dir=ROOT/'dist/build-temp-r19',prefix='native-r
         assert call('workspace-redo')is True and current('mult')==2
         previous=call('workspace-preview');call('catalog-set',ok=False,owner=owner,key='inverse',value=0)
         assert call('workspace-preview')==previous
-        call('catalog-set',ok=False,owner=owner,key='swap',value=123)
+        call('catalog-set',ok=False,owner=owner,key='swap',value=4294967295)
         assert call('workspace-preview')==previous
         call('catalog-restore',owner=owner,key='mult');struct.pack_into('<f',wanted,at+36,original_mass)
         assert current('mult')==1 and exported('restored')==wanted
@@ -68,6 +68,10 @@ with tempfile.TemporaryDirectory(dir=ROOT/'dist/build-temp-r19',prefix='native-r
         assert exported('undo-suppressed')==wanted
         call('catalog-set',ok=False,owner=owner,key='mass',value=1e100)
         assert exported('after-failure')==wanted
+        preset=f'SHODAN-PRESET 1\nkind weapon\nname 54657374\nweapon {owner}\nvalue {owner} gravity 2.25\n'
+        call('catalog-preset-apply',text=preset,replace_pending=True)
+        assert current('mass')==4321 and current('gravity')==2.25
+        assert call('workspace-undo')is True and exported('undo-replaced-preset')==wanted
         assert path.read_bytes()==loaded
     finally:
         process.stdin.close();assert process.wait(timeout=10)==0

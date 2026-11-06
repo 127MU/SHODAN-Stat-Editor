@@ -1,13 +1,11 @@
-# SHODAN 4.6.0 桌面界面
+# Windows 桌面构建
 
-Flutter 界面使用 Morrow 的玻璃组件和着色器；Rust 宿主运行兼容数据引擎。源代码许可及第三方声明见 MORROW-LICENSE、NOTICE.md 和应用目录的 licenses。
+Flutter 界面使用 Morrow 的玻璃组件与着色器。Rust 数据进程和单文件启动器由根目录的 Cargo 工作区构建。依赖、组件许可与字体声明随发行包提供。
 
-在仓库根目录执行 `cargo build --release --workspace`，然后在本目录执行 `flutter pub get`、`flutter analyze`、`flutter test`、`flutter build windows --release`。Windows 构建需要 Visual Studio C++ 桌面工具链。
+1. 在仓库根目录运行 `cargo test --workspace --locked` 和 `cargo build --release --workspace --locked`。
+2. 在本目录运行 `flutter pub get --enforce-lockfile`、`flutter test --no-pub`、`flutter build windows --release --no-pub`。Windows 构建需要 Visual Studio 的桌面 C++ 工具链。
+3. 安装 Python 的 `fonttools` 后，在仓库根目录运行 `python tools/package_morrow.py --output dist/SHODAN_Windows`，生成单文件 EXE 和 ZIP。目录名称须未被占用。
 
-字体为用户提供 MiSans Regular 的字符子集，保留中英文及常用符号。重新生成可运行 `python tools/build_misans_subset.py <MiSans.zip>`，需要 fonttools。
+如需重建 MiSans 子集，在仓库根目录执行 `python tools/build_misans_subset.py <MiSans.zip> --catalog rust/core/data/catalog.json.gz`。子集包含界面、参数目录用字、常用中文与拉丁字符。
 
-打包运行 `python tools/package_morrow.py --output <新输出目录>`；需要 offline/runtime、offline/launcher 运行库和可信原始数据。单文件构建沿用 `tools/package_onefile.py`，打包文件限制小于 20 MB。
-
-安装弹窗展示引擎发送的实际阶段和阶段内进度，不模拟百分比。设置支持诊断模式、只读检查和 JSON 日志导出，日志不自动上传。
-
-打包图标检查需要 Python 的 fonttools 包。package_morrow.py 会根据应用实际引用修补 Material 图标子集，并验证诊断、导出等按钮的图标字形均包含在包内。
+写入弹窗显示 Rust 进程提供的安装阶段和文件进度。诊断模式与脱敏日志保存在本机。

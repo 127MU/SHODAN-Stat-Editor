@@ -85,7 +85,7 @@ pub fn slots(root: &Path, host: &str) -> Result<Slots, String> {
     if !package_name(host) {
         return Err("宿主资源包名称无效".into());
     }
-    if metadata(&root.join("bundles.nxa"))?.is_none() {
+    if metadata(&root.join("bundles.nxa"))?.is_none() && metadata(&root.join(host))?.is_none() {
         return Err("游戏资源索引不存在".into());
     }
     let prefix = format!("{}.patch_", host.to_ascii_lowercase());
