@@ -160,7 +160,7 @@ impl<'a> Builder<'a> {
                 allow_zero || restore || extra_ammo,
                 value,
             )?;
-            if kind == "status" {
+            if row.choice == "status" {
                 let locations = &self.catalog.bindings[part.field]
                     .as_ref()
                     .ok_or("状态效果槽没有绑定")?
@@ -217,6 +217,40 @@ impl<'a> Builder<'a> {
         if row.unresolved.is_some() {
             return Err("该参数规则尚未完成原生迁移".into());
         }
+        if !row.recipes.is_empty() && !restore && target != 0.0 {
+            if row.choice == "spear_dual" {
+                let projectile = |key| -> Result<f64, String> {
+                    let part = owner
+                        .rows
+                        .iter()
+                        .find(|r| r.id == key)
+                        .and_then(|r| r.parts.first())
+                        .ok_or("飞矛射弹绑定缺失")?;
+                    self.current(part.field)
+                };
+                if projectile("projectile")? != 229.0 {
+                    return Err("请先恢复飞矛的原配主射弹 #229".into());
+                }
+                let mode = self.current(row.parts[0].field)?;
+                let alternate = projectile("projectile_2")?;
+                if (mode, alternate) != (0.0, 0.0) && (mode, alternate) != (8.0, 223.0) {
+                    return Err("飞矛的功能档位或备用射弹已被占用，请先恢复这些参数".into());
+                }
+            }
+            let recipe = row
+                .recipes
+                .get(&(target as u32))
+                .filter(|_| target.fract() == 0.0)
+                .ok_or("不支持所选参数预设")?;
+            for (part, step) in row.parts.iter().zip(recipe) {
+                let value = match *step {
+                    Some(value) => value,
+                    None => self.original(part.field)?,
+                };
+                self.write(part.field, value)?;
+            }
+            return Ok(());
+        }
         if let Some((kind, allow_zero)) = catalog_refs::namespace(row) {
             return self.reference(owner, row, target, restore, kind, allow_zero);
         }
@@ -226,7 +260,7 @@ impl<'a> Builder<'a> {
         if matches!(row.choice.as_str(), Some("resomode" | "smmode" | "grenade")) {
             return Err("该选择需要完整引用或资源事务，当前接口未应用任何修改".into());
         }
-        if restore {
+        if restore || !row.recipes.is_empty() {
             for part in &row.parts {
                 self.write(part.field, self.original(part.field)?)?;
             }

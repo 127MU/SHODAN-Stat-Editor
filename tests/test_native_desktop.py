@@ -27,7 +27,8 @@ def main():
     names = {binding['file'] for field in catalog['fields']
              for binding in field.get('bindings', [])}
     names.update({'game.dll', 'generated_customization_passive_bonuses.dl_bin',
-                  'generated_customization_armor_sets.dl_bin'})
+                  'generated_customization_armor_sets.dl_bin',
+                  'generated_weapon_customization_settings.dl_bin'})
     for name in names:
         shutil.copy2(source / name, game / name)
     # Resource bundles are read-only sources. Every writable target (numeric
@@ -41,9 +42,10 @@ def main():
     selected = next(owner for owner in catalog['owners'] if owner['name'].startswith('AR-11 '))
     sentry = next(owner for owner in catalog['owners'] if owner['name'].startswith('A/G-16 '))
     armor = next(owner for owner in catalog['owners'] if 'armor' in owner)
-    def start():
+    def start(profile=None, expect_conflict=False):
         p = subprocess.Popen([options.exe.resolve(), '--stdio'], stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, text=True, encoding='utf8', env=env)
+                             stdout=subprocess.PIPE, text=True, encoding='utf8',
+                             env=env if profile is None else env | {'SHODAN_PROFILE': str(profile)})
         def call(method, **params):
             request = {'method': method, 'params': params}
             p.stdin.write(json.dumps(request) + '\n')
@@ -54,12 +56,46 @@ def main():
         def desktop(name, *args):
             return call('desktop-call', name=name, args=args)
         opened = call('game-open', runtime=str(runtime), game=str(game))
-        assert not opened['problems'], opened['problems']
+        assert bool(opened['problems']) == expect_conflict, opened['problems']
         return p, call, desktop
 
     p, call, desktop = start()
     try:
         assert desktop('select', selected['id'])
+        attachments = desktop('attachment_options')
+        assert len(attachments) == 252, len(attachments)
+        assert any(item['hex'] == '0xE790FA4F' and item['slots'] == ['瞄具'] for item in attachments)
+        assert not desktop('baseline_check')['problems']
+        terminids = desktop('items', 'Terminids', '')
+        assert terminids and not any(item['changed'] for item in terminids), terminids
+        for owner, key, choice in [
+            ('80932FA0ED6901D3', 'empty_weapon', 1),
+            ('25AA2FD4643CF4EE', 'spear_arc', 1),
+            ('25AA2FD4643CF4EE', 'spear_dual', 1),
+            ('CC786F6491FE7E65', 'wasp_burst', 1),
+            ('CC786F6491FE7E65', 'wasp_burst', 2),
+            ('295BEB26DC4F8FF1', 'heatlvl1_status', 43),
+        ]:
+            assert desktop('select', owner)
+            before = next(row for row in desktop('rows_fast') if row['id'] == key)
+            assert before['original'] is not None, before
+            assert any(item['id'] == choice for item in desktop('choices', key))
+            desktop('choose', key, choice)
+            actual = next(row for row in desktop('rows_delta', key) if row['id'] == key)
+            assert actual['value'] == choice and actual['changed'], actual
+            if key == 'heatlvl1_status':
+                assert any(entry['kind'] == 'status' and entry['id'] == 43
+                           for entry in desktop('diagnostic_chain')['entries'])
+            desktop('reset', key)
+            actual = next(row for row in desktop('rows_delta', key) if row['id'] == key)
+            assert actual['value'] == before['original'], (before, actual)
+        desktop('select', '4D1C334D294DFA97')
+        slide = next(row for row in desktop('rows_fast') if row['id'] == 'slide_flat_time')
+        assert slide['original'] == 0.5, slide
+        desktop('set', 'slide_flat_time', 0.75)
+        assert desktop('rows_delta', 'slide_flat_time')[0]['value'] == 0.75
+        desktop('reset', 'slide_flat_time')
+        desktop('select', selected['id'])
         assert desktop('game_text', 'name')['available']
         assert desktop('armor_item', armor['id'])['available']
         armor_profile = desktop('armor_profile', 999)
@@ -114,6 +150,13 @@ def main():
         installed = call('game-install', allow_float_adjustment=True)
         assert installed['files'] > 0, installed
         assert {name: digest(game / name) for name in names} != targets
+        assert desktop('items', 'Primary', selected['name'])[0]['changed']
+        external, _, external_desktop = start(root / 'external-profile')
+        try:
+            assert not external_desktop('items', 'Primary', selected['name'])[0]['changed']
+        finally:
+            external.stdin.close()
+            assert external.wait(timeout=30) == 0
         restored = call('game-restore')
         assert restored['files'] == installed['files'], (installed, restored)
         assert {name: digest(game / name) for name in names} == targets
@@ -168,6 +211,38 @@ def main():
         desktop('ragdoll_apply', False)
         assert not desktop('ragdoll_preview')['enabled']
         assert not list(data.glob('*.patch_*'))
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    # Simulate a deleted editor-managed slot which held an archived parameter.
+    resource, spec = next(iter(catalog['resource_sources'].items()))
+    package = spec['package']
+    key = resource.removesuffix('.resource')
+    ledger = state.with_name('residency.json')
+    ledger.write_text(json.dumps({'groups': {}, 'vacant': {}, 'overrides': {package: [key]},
+                                  'slots': {package: {'index': 121, 'hashes': ['a' * 64, None, None]}}}),
+                      encoding='utf8')
+    p, call, desktop = start(expect_conflict=True)
+    try:
+        assert desktop('items', 'Primary', selected['name'])
+        assert any('.patch_121' in issue for issue in desktop('baseline_check')['problems'])
+        assert desktop('install_preview')['problems']
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    assert ledger.is_file() and not list(data.glob('*.patch_*'))
+
+    ledger.unlink()
+    p, call, desktop = start()
+    try:
+        desktop('select', '25AA2FD4643CF4EE')
+        desktop('choose', 'spear_dual', 1)
+        assert call('game-install', allow_float_adjustment=True)['files'] > 0
+        row = next(r for r in desktop('rows_fast') if r['id'] == 'spear_dual')
+        assert row['value'] == 1 and row['original'] == 0 and row['changed'], row
+        desktop('reset', 'spear_dual')
+        call('game-restore')
+        assert {name: digest(game / name) for name in names} == targets
     finally:
         p.stdin.close()
         p.wait(timeout=30)

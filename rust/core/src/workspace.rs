@@ -343,6 +343,9 @@ pub struct Checkpoint {
 #[derive(Default)]
 pub struct Workspace {
     files: BTreeMap<String, File>,
+    blocked_files: BTreeMap<String, String>,
+    suspended_draft: BTreeMap<String, DraftFile>,
+    installed_from: BTreeMap<String, Option<(Vec<u8>, Index)>>,
     metadata: serde_json::Value,
     undo: Vec<Checkpoint>,
     redo: Vec<Checkpoint>,
@@ -355,7 +358,7 @@ struct Draft {
     metadata: serde_json::Value,
     files: BTreeMap<String, DraftFile>,
 }
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 struct DraftFile {
     source: String,
     bytes: BTreeMap<usize, u8>,
@@ -370,6 +373,81 @@ pub struct Value {
     pub loaded: f64,
 }
 impl Workspace {
+    pub(crate) fn block_resource(&mut self, name: String, error: String) {
+        self.blocked_files.insert(name, error);
+    }
+    pub(crate) fn resource_conflicts(&self) -> impl Iterator<Item = &String> {
+        self.blocked_files.values()
+    }
+    pub(crate) fn disk_checks(&self) -> Vec<(&str, Result<&str, String>)> {
+        self.files
+            .iter()
+            .filter(|(_, file)| file.sealed_source.is_some())
+            .map(|(name, file)| {
+                let status = file.disk_bytes().map(|_| {
+                    if self.installed_from.contains_key(name) {
+                        "编辑器已安装"
+                    } else if let Some((original, _)) = &file.original {
+                        if file.document.snapshot() == original {
+                            "与可信原值一致"
+                        } else {
+                            "打开时与可信原值不同"
+                        }
+                    } else {
+                        "与打开时一致，缺少独立原值"
+                    }
+                });
+                (name.as_str(), status)
+            })
+            .collect()
+    }
+    pub(crate) fn remember_install_source(
+        &mut self,
+        name: &str,
+        original: Vec<u8>,
+    ) -> Result<(), String> {
+        let file = self.files.get(name).ok_or("已安装文件缺少工作区记录")?;
+        let source = if file
+            .original
+            .as_ref()
+            .is_some_and(|(bytes, _)| bytes == &original)
+        {
+            None
+        } else {
+            let index = Index::build(&original)?;
+            Some((original, index))
+        };
+        self.installed_from.insert(name.to_string(), source);
+        Ok(())
+    }
+    pub(crate) fn field_edited(
+        &self,
+        location: &Location,
+        encoding: &Encoding,
+    ) -> Result<bool, String> {
+        let values = self.value(location, encoding)?;
+        if values.current != values.loaded {
+            return Ok(true);
+        }
+        if matches!(location.record, Record::Resource { .. }) {
+            return Ok(values
+                .original
+                .is_some_and(|before| before != values.current));
+        }
+        match self.installed_from.get(&location.file) {
+            Some(Some((bytes, index))) => {
+                let width = encoding.width()?;
+                let Some(at) = index.offset(location, width)? else {
+                    return Ok(false);
+                };
+                Ok(index.codec(encoding)?.read(&bytes[at..at + width])? != values.current)
+            }
+            Some(None) => Ok(values
+                .original
+                .is_some_and(|before| before != values.current)),
+            None => Ok(false),
+        }
+    }
     pub(crate) fn contains(&self, name: &str) -> bool {
         self.files.keys().any(|key| key.eq_ignore_ascii_case(name))
     }
@@ -610,6 +688,10 @@ impl Workspace {
             }
             let mut snapshot = self.checkpoint();
             for (name, pending) in draft.files {
+                if self.blocked_files.contains_key(&name) {
+                    self.suspended_draft.insert(name, pending);
+                    continue;
+                }
                 let file = self.files.get(&name).ok_or("草稿引用的源文件缺失")?;
                 if pending.source != self.fingerprint(&name) {
                     return Err(format!(
@@ -631,7 +713,7 @@ impl Workspace {
         let Some((path, disk)) = &self.draft else {
             return Ok(());
         };
-        let mut files = BTreeMap::new();
+        let mut files = self.suspended_draft.clone();
         for (name, bytes) in &next.files {
             if !bytes.is_empty() {
                 files.insert(
@@ -1009,6 +1091,7 @@ impl Workspace {
                     .iter()
                     .map(move |why| format!("{name}: {why}"))
             })
+            .chain(self.blocked_files.values().cloned())
             .collect()
     }
     pub fn snapshots(&self) -> impl Iterator<Item = (&str, &[u8])> {

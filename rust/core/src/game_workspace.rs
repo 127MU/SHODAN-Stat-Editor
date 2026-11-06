@@ -351,9 +351,16 @@ impl Game {
                     return Err(format!("独立资源 {name} 与该版本的参数目录不匹配"));
                 }
                 if !overrides.contains_key(&spec.package) {
-                    overrides.insert(spec.package.clone(), self.overrides(&spec.package)?);
+                    overrides.insert(spec.package.clone(), self.overrides(&spec.package));
                 }
-                let current = overrides[&spec.package]
+                let changes = match &overrides[&spec.package] {
+                    Ok(changes) => changes,
+                    Err(error) => {
+                        workspace.block_resource(name.clone(), error.clone());
+                        continue;
+                    }
+                };
+                let current = changes
                     .get(&(typ, id))
                     .cloned()
                     .unwrap_or_else(|| base.clone());
@@ -367,6 +374,19 @@ impl Game {
                         Some(base),
                     )?,
                 )?;
+            }
+        }
+        if let Ok((_, owned)) = self.owned() {
+            for (name, item) in owned
+                .iter()
+                .filter(|(name, _)| workspace.contains(name))
+                .collect::<Vec<_>>()
+            {
+                if let Ok((_, bytes)) = self.verified_backup(name, item) {
+                    if let Ok(original) = crate::sealed::open_data(&bytes) {
+                        let _ = workspace.remember_install_source(name, original);
+                    }
+                }
             }
         }
         if let Some(bytes) = install::read(&self.state.join("configuration.json"))? {
@@ -387,6 +407,51 @@ impl Game {
             return Err("打开编辑器后游戏版本已改变，请重新启动编辑器".into());
         }
         Ok(bytes)
+    }
+
+    pub(crate) fn baseline_check(&self, workspace: &Workspace) -> Value {
+        let mut problems: BTreeSet<_> = workspace.resource_conflicts().cloned().collect();
+        let mut warnings = Vec::new();
+        let mut entries = Vec::new();
+        match self.game_dll() {
+            Ok(_) => entries.push(
+                json!({"equipment":"游戏版本","parameter":"game.dll","after":"与当前参数目录一致"}),
+            ),
+            Err(error) => {
+                problems.insert(error);
+            }
+        }
+        for (name, status) in workspace.disk_checks() {
+            match status {
+                Ok(status) => {
+                    entries.push(json!({"equipment":"数值文件","parameter":name,"after":status}))
+                }
+                Err(error) => {
+                    problems.insert(format!("{name}：{error}"));
+                }
+            }
+        }
+        match self.data().and_then(|root| {
+            crate::residency_install::audit(root, &self.state.join("residency.json"))
+        }) {
+            Ok(result) => problems.extend(result),
+            Err(error) => {
+                problems.insert(error);
+            }
+        }
+        match self.interrupted() {
+            Ok(transactions) if !transactions.is_empty() => {
+                problems.insert("发现未完成的安装事务，请先恢复".into());
+            }
+            Err(error) => {
+                problems.insert(error);
+            }
+            _ => {}
+        }
+        if !problems.is_empty() {
+            warnings.push("请核对游戏更新、其他工具和已登记补丁。检查未写入任何文件。");
+        }
+        json!({"entries":entries,"problems":problems,"warnings":warnings})
     }
 
     fn owned(&self) -> Result<(Option<Vec<u8>>, BTreeMap<String, Owned>), String> {
@@ -694,6 +759,9 @@ impl Game {
         mut progress: impl FnMut(Progress),
     ) -> Result<Value, String> {
         require_closed()?;
+        if let Some(error) = workspace.resource_conflicts().next() {
+            return Err(error.clone());
+        }
         let (_lock, transaction, backup) = self.begin()?;
         let dll = self.game_dll()?;
         progress(Progress {
@@ -833,6 +901,9 @@ impl Game {
         progress: impl FnMut(Progress),
     ) -> Result<Value, String> {
         require_closed()?;
+        if let Some(error) = workspace.resource_conflicts().next() {
+            return Err(error.clone());
+        }
         let (_lock, _, backup) = self.begin()?;
         self.game_dll()?;
         let (disk, owned) = self.owned()?;

@@ -44,6 +44,14 @@ fn static_choices(kind: &str) -> &'static [(u64, &'static str)] {
         "pod_twin" => &[(1, "原配：一件"), (2, "双侧投放：两件")],
         "weight" => &[(0, "轻型"), (1, "中型"), (2, "重型")],
         "apex_fire" => &[(2677, "原始开火动作"), (2719, "站立开火")],
+        "empty_weapon" => &[(0, "原版：打空丢弃"), (1, "打空后保留")],
+        "spear_arc" => &[(0, "原版"), (1, "锁定高抛")],
+        "spear_dual" => &[(0, "原版"), (1, "锁定制导／免锁直射")],
+        "wasp_burst" => &[
+            (0, "原版"),
+            (1, "保留弧线，不打转"),
+            (2, "收窄散射，不打转"),
+        ],
         "slot" => &[(1, "主武器"), (3, "副武器")],
         "mountside" => &[(0, "默认"), (1, "右侧"), (2, "左侧")],
         "faction" => &[
@@ -78,6 +86,9 @@ fn static_choices(kind: &str) -> &'static [(u64, &'static str)] {
 }
 
 fn choice_name(catalog: &Catalog, row: &Row, value: f64) -> String {
+    if !row.recipes.is_empty() && value == 255.0 {
+        return "自定义".into();
+    }
     if value == 0.0 && catalog_refs::namespace(row).is_some() {
         return "无".into();
     }
@@ -182,7 +193,7 @@ pub(crate) fn rows(
                 "choice":choice,"choice_kind":kind,"choice_name":value.filter(|_|choice).map(|v|choice_name(catalog,row,v)),
                 "note":row.note,"inline_note":row.inline_note,"help":row.help,"shared_pending":row.parts.iter().any(|p|catalog.users[p.field].len()>1),
                 "reference":reference,"projectile_source":row.choice==true,
-                "changed":value.is_some()&&(original.or(loaded).is_some_and(|base|Some(base)!=value)),
+                "changed":row.parts.iter().any(|p| catalog.field_edited(p.field, workspace)),
                 "error":current.err(),"patch_pending":matches!(kind,"resomode"|"smmode")})
         }).collect::<Vec<_>>())
 }
@@ -241,24 +252,8 @@ pub(crate) fn items(catalog: &Catalog, workspace: &Workspace, tab: &str, query: 
         .map(|owner| {
             let changed = owner.rows.iter().any(|r| {
                 r.parts.iter().any(|p| {
-                    *changes[p.field].get_or_insert_with(|| {
-                        let current = catalog
-                            .field_value(p.field, workspace, Mode::Current)
-                            .ok()
-                            .flatten();
-                        current.is_some()
-                            && catalog
-                                .field_value(p.field, workspace, Mode::Original)
-                                .ok()
-                                .flatten()
-                                .or_else(|| {
-                                    catalog
-                                        .field_value(p.field, workspace, Mode::Loaded)
-                                        .ok()
-                                        .flatten()
-                                })
-                                .is_some_and(|base| Some(base) != current)
-                    })
+                    *changes[p.field]
+                        .get_or_insert_with(|| catalog.field_edited(p.field, workspace))
                 })
             });
             json!({"id":owner.id,"name":owner.name,"english":owner.english,"groups":owner.groups,

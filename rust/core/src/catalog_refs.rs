@@ -14,7 +14,7 @@ pub(crate) fn namespace(row: &Row) -> Option<(&'static str, bool)> {
     match row.choice.as_str() {
         Some("explosion") => Some(("blast", true)),
         Some("shrapnel") => Some(("shot", true)),
-        Some("status") => Some(("status", true)),
+        Some("status" | "heat_status") => Some(("status", true)),
         _ if row.choice == true => Some(("shot", false)),
         _ => None,
     }
@@ -140,7 +140,7 @@ pub(crate) fn choices(
     if allow_zero {
         ids.insert(0, 0);
     }
-    let status = if kind == "status" {
+    let status = if row.choice == "status" {
         Some(status_locations(catalog, row)?)
     } else {
         None
@@ -187,6 +187,14 @@ pub(crate) fn graph(
     if roots.is_empty() {
         let mut bound_fire_modes = false;
         for row in &owner.rows {
+            if row.choice == "heat_status" {
+                if let Some(id) = catalog
+                    .row_value(owner, row, workspace, Mode::Current)?
+                    .filter(|id| *id > 0.0)
+                {
+                    roots.push(("status".into(), id as u32, row.label.clone()));
+                }
+            }
             if row.choice != true {
                 continue;
             }

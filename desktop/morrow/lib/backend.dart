@@ -13,6 +13,7 @@ class Backend {
   String get root =>
       runtimeDirectory ?? File(Platform.resolvedExecutable).parent.path;
   bool usesNativeDesktop = false;
+  String? startupProblem;
 
   late final native = NativeService(
     root,
@@ -29,7 +30,14 @@ class Backend {
 
   Future<void> start() async {
     diagnostics.record('数据引擎启动');
+    startupProblem = null;
     final opened = await native.call('game-open', {'runtime': root});
+    if (opened is Map &&
+        opened['problems'] is List &&
+        (opened['problems'] as List).isNotEmpty) {
+      startupProblem = (opened['problems'] as List).first.toString();
+      diagnostics.record('工作区检查：$startupProblem');
+    }
     if (opened is Map && opened['migration_notes'] is List) {
       for (final note in opened['migration_notes'] as List) {
         diagnostics.record('$note');

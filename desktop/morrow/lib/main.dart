@@ -139,6 +139,9 @@ class _WorkbenchState extends State<Workbench> {
       if (!mounted) return;
       setState(() => ready = true);
       await load('Primary');
+      if (mounted && backend.startupProblem != null) {
+        setState(() => status = '部分数据需检查 · ${backend.startupProblem}');
+      }
       if (mounted && widget.backend == null)
         unawaited(checkUpdates(automatic: true));
     } catch (e) {
@@ -468,6 +471,84 @@ class _WorkbenchState extends State<Workbench> {
     }
   }
 
+  Future<void> inspectCatalog({required bool attachments}) async {
+    final request = backend.call(attachments ? 'attachment_options' : 'baseline_check');
+    var query = '';
+    await showDialog<void>(
+      context: navigator.currentContext ?? context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => GlassDialog(
+          title: Text(attachments ? '武器配件选项目录' : '游戏文件与补丁检查'),
+          content: SizedBox(
+            width: 660,
+            height: 450,
+            child: FutureBuilder<dynamic>(
+              future: request,
+              builder: (context, result) {
+                if (result.hasError) return SelectableText('${result.error}');
+                if (!result.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (attachments) {
+                  final options = result.data is List
+                      ? (result.data as List).whereType<Map>()
+                          .where((row) => row.toString().toLowerCase().contains(query)).toList()
+                      : <Map>[];
+                  return Column(
+                    children: [
+                      const Text('此目录显示游戏定义的选项和槽位。具体武器可用哪些配件由游戏决定。'),
+                      TextField(
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: '搜索配件名、槽位、十六进制或数字 ID',
+                        ),
+                        onChanged: (value) => update(() => query = value.trim().toLowerCase()),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: options.length,
+                          itemBuilder: (context, i) {
+                            final item = options[i];
+                            return ListTile(
+                              title: Text('${item['name']}'),
+                              subtitle: SelectableText(
+                                '${(item['slots'] as List).join('、')} · ${item['hex']} · #${item['id']}',
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                final data = result.data as Map;
+                return ListView(
+                  children: [
+                    for (final problem in data['problems'] as List)
+                      ListTile(
+                        leading: const Icon(Icons.error_outline),
+                        title: SelectableText('$problem'),
+                      ),
+                    for (final item in data['entries'] as List)
+                      ListTile(
+                        title: Text('${item['parameter']}'),
+                        subtitle: Text('${item['after']}'),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> install() async {
     if (busy) return;
     setState(() => busy = true);
@@ -734,6 +815,20 @@ class _WorkbenchState extends State<Workbench> {
 
   Widget settingsPage() => ListView(
     children: [
+      if (backend.usesNativeDesktop)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: surface(
+            ListTile(
+              title: const Text('游戏文件与补丁检查'),
+              subtitle: const Text('核对游戏版本、原值参考和已登记补丁的完整性。'),
+              trailing: OutlinedButton(
+                onPressed: ready && !busy ? () => inspectCatalog(attachments: false) : null,
+                child: const Text('检查'),
+              ),
+            ),
+          ),
+        ),
       surface(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1494,6 +1589,12 @@ class _WorkbenchState extends State<Workbench> {
                                             ? null
                                             : (_) => load(key),
                                       ),
+                                    if (tab == 'Attachments' && backend.usesNativeDesktop)
+                                      OutlinedButton.icon(
+                                        onPressed: busy ? null : () => inspectCatalog(attachments: true),
+                                        icon: const Icon(Icons.search),
+                                        label: const Text('配件选项目录'),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -1625,7 +1726,7 @@ class _WorkbenchState extends State<Workbench> {
                                                             ? '${group.entries.length} 个关联条目${group.changed ? ' · 含修改' : ''}'
                                                             : group.changed
                                                             ? '已修改'
-                                                            : '原版参数',
+                                                            : '未修改',
                                                       ),
                                                       const Spacer(),
                                                       Align(

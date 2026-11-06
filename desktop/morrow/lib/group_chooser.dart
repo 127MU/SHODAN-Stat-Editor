@@ -54,7 +54,7 @@ class _GroupChooserState extends State<GroupChooser> {
                               : '${item['name']}',
                         ),
                         subtitle: Text(
-                          item['changed'] == true ? '已修改' : '原版参数',
+                          item['changed'] == true ? '已修改' : '未修改',
                         ),
                         trailing: const Icon(Icons.arrow_forward),
                         onTap: () => Navigator.pop(context, item),

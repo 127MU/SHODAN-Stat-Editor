@@ -10,6 +10,8 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     io::Read,
 };
+#[path = "catalog_supplement.rs"]
+mod supplement;
 
 #[derive(Deserialize)]
 struct Source {
@@ -141,6 +143,8 @@ pub struct Row {
     #[serde(default)]
     pub code: bool,
     pub unresolved: Option<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) recipes: BTreeMap<u32, Vec<Option<f64>>>,
 }
 #[derive(Deserialize)]
 pub struct ResourceBinding {
@@ -211,7 +215,7 @@ impl Catalog {
         if raw.len() > 64 * 1024 * 1024 {
             return Err("参数目录解压后过大".into());
         }
-        let data: Source =
+        let mut data: Source =
             serde_json::from_slice(&raw).map_err(|e| format!("参数目录格式无效：{e}"))?;
         if data.format != "SHODAN-NATIVE-DESCRIPTORS" || data.version != 1 {
             return Err("参数目录版本不支持".into());
@@ -219,6 +223,7 @@ impl Catalog {
         if data.owners.len() > 10000 || data.fields.len() > 200000 {
             return Err("参数目录数量过大".into());
         }
+        supplement::extend(&mut data);
         let mut by_owner = BTreeMap::new();
         let mut users = vec![BTreeSet::new(); data.fields.len()];
         for (index, owner) in data.owners.iter().enumerate() {
@@ -246,6 +251,13 @@ impl Catalog {
                 }
                 if let Some(span) = &row.span {
                     validate_expression(span, data.fields.len(), 0)?;
+                }
+                if row
+                    .recipes
+                    .iter()
+                    .any(|(&id, recipe)| id == 0 || id == 255 || recipe.len() != row.parts.len())
+                {
+                    return Err("参数预设配方绑定无效".into());
                 }
             }
         }
@@ -392,6 +404,19 @@ impl Catalog {
         }
         Ok(result)
     }
+    pub(crate) fn field_edited(&self, index: usize, workspace: &Workspace) -> bool {
+        let field = &self.fields[index];
+        if field.storage == "virtual" {
+            return workspace.metadata()["virtual"][&field.key].is_number();
+        }
+        self.bindings[index].as_ref().is_some_and(|binding| {
+            binding.locations.iter().any(|location| {
+                workspace
+                    .field_edited(location, &binding.encoding)
+                    .unwrap_or(false)
+            })
+        })
+    }
     pub(crate) fn code_overrides(
         &self,
         workspace: &Workspace,
@@ -453,6 +478,45 @@ impl Catalog {
             return Ok(None);
         };
         let first_value = self.field_value(first.field, w, m)?;
+        if !row.recipes.is_empty() {
+            let mut values = Vec::with_capacity(row.parts.len());
+            for part in &row.parts {
+                let Some(value) = self.field_value(part.field, w, m)? else {
+                    return Ok(None);
+                };
+                values.push(value);
+            }
+            for (&id, recipe) in &row.recipes {
+                let mut matches = true;
+                for ((part, &value), step) in row.parts.iter().zip(&values).zip(recipe) {
+                    let expected = match step {
+                        Some(v) => Some(*v),
+                        None => self.field_value(part.field, w, Mode::Original)?,
+                    };
+                    let codec = &self.bindings[part.field]
+                        .as_ref()
+                        .ok_or("参数配方缺少存储绑定")?
+                        .encoding;
+                    if expected
+                        .map(|v| codec.encode(0, v).and_then(|p| codec.read(&p.bytes)))
+                        .transpose()?
+                        != Some(value)
+                    {
+                        matches = false;
+                        break;
+                    }
+                }
+                if matches {
+                    return Ok(Some(f64::from(id)));
+                }
+            }
+            for (part, value) in row.parts.iter().zip(values) {
+                if self.field_value(part.field, w, Mode::Original)? != Some(value) {
+                    return Ok(Some(255.0));
+                }
+            }
+            return Ok(Some(0.0));
+        }
         if row.choice == "holster" {
             return Ok(first_value.map(|v| if v == 0xCCF501C7u32 as f64 { 1.0 } else { 0.0 }));
         }

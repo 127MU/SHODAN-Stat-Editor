@@ -18,41 +18,47 @@ class ReviewBody extends StatelessWidget {
           '${entries.length} 项变化 · 原值 → 待写入值',
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        if (problems.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: SelectableText(
-              problems.join('\n'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-        if (warnings.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: SelectableText(
-              warnings.join('\n'),
-              style: const TextStyle(color: Colors.orange),
-            ),
-          ),
         Expanded(
-          child: entries.isEmpty
-              ? const Center(child: Text('没有参数变化'))
-              : ListView.separated(
-                  itemCount: entries.length,
-                  separatorBuilder: (_, i) => const Divider(),
-                  itemBuilder: (context, i) {
-                    final e = entries[i];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        '${e['equipment'] ?? ''} · ${e['parameter'] ?? ''}',
-                      ),
-                      subtitle: SelectableText(
-                        '${e['before'] ?? ''} → ${e['after'] ?? ''}\n${e['file'] ?? ''}',
-                      ),
-                    );
-                  },
+          child: ListView.builder(
+            itemCount:
+                problems.length +
+                warnings.length +
+                (entries.isEmpty ? 1 : entries.length),
+            itemBuilder: (context, index) {
+              if (index < problems.length) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: SelectableText(
+                    '${problems[index]}',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                );
+              }
+              index -= problems.length;
+              if (index < warnings.length) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: SelectableText(
+                    '${warnings[index]}',
+                    style: const TextStyle(color: Colors.orange),
+                  ),
+                );
+              }
+              if (entries.isEmpty) return const Center(child: Text('没有参数变化'));
+              final e = entries[index - warnings.length];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  '${e['equipment'] ?? ''} · ${e['parameter'] ?? ''}',
                 ),
+                subtitle: SelectableText(
+                  '${e['before'] ?? ''} → ${e['after'] ?? ''}\n${e['file'] ?? ''}',
+                ),
+              );
+            },
+          ),
         ),
       ],
     );

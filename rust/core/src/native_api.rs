@@ -874,6 +874,18 @@ impl Api {
         let catalog = self.catalog.as_ref().ok_or("请先打开游戏工作区")?;
         let workspace = self.workspace.as_mut().ok_or("请先打开游戏工作区")?;
         match method {
+            "attachment_options" => {
+                return crate::attachments::list(
+                    &self.game.as_ref().ok_or("请先打开游戏工作区")?.root,
+                )
+            }
+            "baseline_check" => {
+                return Ok(self
+                    .game
+                    .as_ref()
+                    .ok_or("请先打开游戏工作区")?
+                    .baseline_check(workspace))
+            }
             "tweaks" => return crate::desktop_tweaks::call(catalog, workspace, args),
             "ragdoll_preview" | "ragdoll_apply" => {
                 let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
@@ -965,8 +977,30 @@ impl Api {
                         "部分文件的校验空间不足时，需要明确允许微调本次已修改的浮点数值。".into(),
                     );
                 }
+                let mut problems = workspace.problems();
+                if let Some(game) = &self.game {
+                    let report = game.baseline_check(workspace);
+                    problems.extend(
+                        report["problems"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(Value::as_str)
+                            .map(str::to_owned),
+                    );
+                    warnings.extend(
+                        report["warnings"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(Value::as_str)
+                            .map(str::to_owned),
+                    );
+                    problems.sort();
+                    problems.dedup();
+                }
                 return Ok(
-                    json!({"entries":entries,"problems":workspace.problems(),"warnings":warnings,
+                    json!({"entries":entries,"problems":problems,"warnings":warnings,
                         "allow_float_adjustment":allow_float_adjustment}),
                 );
             }

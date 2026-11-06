@@ -4,6 +4,7 @@ pub mod armor_assign;
 pub mod armor_profiles;
 pub mod armor_session;
 pub mod arrays;
+mod attachments;
 pub mod audio;
 pub mod baseline;
 pub mod binary;

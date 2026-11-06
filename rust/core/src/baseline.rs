@@ -14,6 +14,8 @@ pub struct Baseline {
 }
 impl Baseline {
     pub fn shipped(file: &str, bytes: Vec<u8>) -> Result<Self, String> {
+        // The 26251122 damage and projectile tables were decrypted from copies
+        // matching the published vanilla file fingerprints for that build.
         let digest = match file {
             "generated_customization_passive_bonuses.dl_plain" => {
                 "6ba67061fa05b1aa98cd9cbea19df182a80c6c07c5294440c6da41f3bbb8ad40"
@@ -22,7 +24,7 @@ impl Baseline {
                 "b9319245ea9c018376878243f5516f816ed46b27441dde98b762c795035551fc"
             }
             "generated_damage_settings.dl_plain" => {
-                "c28bce58c816a8008ca9e4a761eca6249c34680cb23c6f988a2435ec677c598d"
+                "240343e52c73c7d58c2806216171e2ac58e8a7aed8fc1ca25080e03873dd72eb"
             }
             "generated_entities.dl_plain" => {
                 "dc6d52a14900942b2f59f56bf8ab1552259832202dcb0745c3c84a009ff5f98b"
@@ -31,7 +33,7 @@ impl Baseline {
                 "96d0b30f5ef3e68d882beca7058f16defce345d1631656ed1ee5f8907b3eea79"
             }
             "generated_projectile_settings.dl_plain" => {
-                "a2f3046fb251bd7ce456e88db4df1d7e1def3b778df4a020ce3a631d7454ae82"
+                "18419e3ee058fbd4ef68bca6ab42da7ff2cf59f7e87c24428057d04f21e9f43d"
             }
             "generated_stratagem_settings.dl_plain" => {
                 "925fc5da32a1e3a822807ea7571fd0979c571e5e4ea16142ee6a4968d40ca078"

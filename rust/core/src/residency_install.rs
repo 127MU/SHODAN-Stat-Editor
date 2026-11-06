@@ -98,6 +98,51 @@ fn checked(root: &Path, slot: &Slot) -> Result<[Option<Vec<u8>>; 3], String> {
     Ok(parts)
 }
 
+pub(crate) fn audit(root: &Path, ledger: &Path) -> Result<Vec<String>, String> {
+    use sha2::{Digest, Sha256};
+    use std::io::{ErrorKind, Read};
+    let (_, ledger) = load(ledger)?;
+    let mut problems = Vec::new();
+    let mut buf = [0; 64 * 1024];
+    for slot in ledger.slots.values().chain(ledger.vacant.values()) {
+        for (suffix, expected) in SUFFIXES.iter().zip(&slot.hashes) {
+            let target = path(root, slot.index, suffix);
+            let label = target.file_name().unwrap().to_string_lossy();
+            match (std::fs::symlink_metadata(&target), expected) {
+                (Err(e), _) if e.kind() != ErrorKind::NotFound => {
+                    problems.push(format!("{label} 无法检查：{e}"))
+                }
+                (Err(_), Some(_)) => problems.push(format!("{label} 缺失")),
+                (Ok(_), None) => problems.push(format!("{label} 出现未登记的伴生文件")),
+                (Ok(meta), Some(expected)) if meta.is_file() => {
+                    let result = (|| -> std::io::Result<String> {
+                        let mut file = std::fs::File::open(&target)?;
+                        let mut hash = Sha256::new();
+                        loop {
+                            let count = file.read(&mut buf)?;
+                            if count == 0 {
+                                break;
+                            }
+                            hash.update(&buf[..count]);
+                        }
+                        Ok(format!("{:x}", hash.finalize()))
+                    })();
+                    match result {
+                        Ok(actual) if &actual != expected => {
+                            problems.push(format!("{label} 内容已改变"))
+                        }
+                        Err(error) => problems.push(format!("{label} 无法读取：{error}")),
+                        _ => {}
+                    }
+                }
+                (Ok(_), Some(_)) => problems.push(format!("{label} 已被替换为非普通文件")),
+                (Err(_), None) => {}
+            }
+        }
+    }
+    Ok(problems)
+}
+
 fn put(
     root: &Path,
     index: u32,
