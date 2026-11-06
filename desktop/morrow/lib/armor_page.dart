@@ -84,33 +84,11 @@ class _ArmorPageState extends State<ArmorPage> {
       final rows = result is List ? result : [];
       await showDialog<void>(
         context: context,
-        builder: (ctx) => GlassDialog(
-          title: Text('${passive['zh']} · 被动数值'),
-          content: SizedBox(
-            width: 660,
-            height: 440,
-            child: ListView(
-              children: [
-                for (final row in rows)
-                  ArmorValue(
-                    key: ValueKey(row['key']),
-                    row: row,
-                    save: (value) => widget.backend.call('armor_set', [
-                      passive['id'],
-                      row['key'],
-                      value,
-                    ]),
-                    onError: widget.onError,
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('关闭'),
-            ),
-          ],
+        builder: (ctx) => _ArmorValuesDialog(
+          name: passive['zh'],
+          rows: rows.cast<Map>(),
+          save: (key, value) =>
+              widget.backend.call('armor_set', [passive['id'], key, value]),
         ),
       );
     } catch (e) {
@@ -315,100 +293,162 @@ class _ArmorPageState extends State<ArmorPage> {
   }
 }
 
-class ArmorValue extends StatefulWidget {
-  const ArmorValue({
-    super.key,
-    required this.row,
+class _ArmorValuesDialog extends StatefulWidget {
+  const _ArmorValuesDialog({
+    required this.name,
+    required this.rows,
     required this.save,
-    required this.onError,
   });
-  final Map row;
-  final Future<dynamic> Function(double) save;
-  final void Function(Object) onError;
+  final String name;
+  final List<Map> rows;
+  final Future<dynamic> Function(String, double) save;
   @override
-  State<ArmorValue> createState() => _ArmorValueState();
+  State<_ArmorValuesDialog> createState() => _ArmorValuesDialogState();
 }
 
-class _ArmorValueState extends State<ArmorValue> {
-  late final c = TextEditingController(
-    text: displayNumber(widget.row['value']),
-  );
-  final focus = FocusNode();
-  late String saved = c.text;
-  bool busy = false;
-  bool queued = false;
-  @override
-  void initState() {
-    super.initState();
-    focus.addListener(() {
-      if (!focus.hasFocus) commit();
-    });
-  }
+class _ArmorValuesDialogState extends State<_ArmorValuesDialog> {
+  late final saved = <String, String>{
+    for (final row in widget.rows) row['key']: displayNumber(row['value']),
+  };
+  late final inputs = {
+    for (final entry in saved.entries)
+      entry.key: TextEditingController(text: entry.value),
+  };
+  Future<bool>? saving;
+  bool closing = false;
+  String? error;
 
-  Future<void> commit() async {
-    if (busy) {
-      queued = true;
-      return;
-    }
-    if (c.text == saved) return;
-    busy = true;
-    do {
-      queued = false;
-      final text = c.text;
-      final value = double.tryParse(text);
-      if (value == null || !value.isFinite) {
-        widget.onError(StateError('请输入有效数值'));
-        break;
+  Future<bool> commit() =>
+      saving ??= _savePending().whenComplete(() => saving = null);
+
+  Future<bool> _savePending() async {
+    while (mounted) {
+      final pending = widget.rows.where((row) {
+        final key = row['key'];
+        return inputs[key]!.text != saved[key];
+      }).firstOrNull;
+      if (pending == null) {
+        if (error != null) setState(() => error = null);
+        return true;
       }
+      final key = pending['key'] as String;
+      final input = inputs[key]!;
+      final text = input.text;
       try {
-        await widget.save(value);
-        saved = text;
+        final value = double.tryParse(text);
+        if (value == null || !value.isFinite) {
+          throw const FormatException('请输入有效数值');
+        }
+        await widget.save(key, value);
       } catch (e) {
-        widget.onError(e);
-        break;
+        if (mounted) setState(() => error = '${pending['label']} · $e');
+        return false;
       }
-    } while (mounted && queued && c.text != saved);
-    if (mounted && c.text == saved) {
-      c.text = displayNumber(saved);
-      saved = c.text;
+      if (!mounted) return false;
+      saved[key] = text;
+      if (input.text == text) {
+        final formatted = displayNumber(text);
+        if (formatted != text) input.text = formatted;
+        saved[key] = formatted;
+      }
     }
-    busy = false;
+    return false;
+  }
+
+  Future<void> close() async {
+    if (closing) return;
+    setState(() => closing = true);
+    final ok = await commit();
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+    } else {
+      setState(() => closing = false);
+    }
+  }
+
+  Widget buildRow(Map row) {
+    final input = inputs[row['key']]!;
+    final original = row['default'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${row['label']} · 原值 ${displayNumber(original)}'),
+          Row(
+            children: [
+              Expanded(
+                child: Focus(
+                  canRequestFocus: false,
+                  onFocusChange: (focused) {
+                    if (!focused && mounted) commit();
+                  },
+                  child: TextField(
+                    controller: input,
+                    readOnly: closing,
+                    onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                    onSubmitted: (_) => commit(),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: closing || original == null
+                    ? null
+                    : () {
+                        input.text = original.toString();
+                        commit();
+                      },
+                child: const Text('恢复'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${widget.row['label']} · 原值 ${displayNumber(widget.row['default'])}',
-        ),
-        Row(
+  Widget build(BuildContext context) => PopScope<void>(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) close();
+    },
+    child: GlassDialog(
+      title: Text('${widget.name} · 被动数值'),
+      content: SizedBox(
+        width: 660,
+        height: 440,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (error case final message?)
+              Text(
+                message,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             Expanded(
-              child: TextField(
-                controller: c,
-                focusNode: focus,
-                onSubmitted: (_) => commit(),
+              child: ListView(
+                children: [for (final row in widget.rows) buildRow(row)],
               ),
             ),
-            TextButton(
-              onPressed: () async {
-                c.text = '${widget.row['default']}';
-                await commit();
-              },
-              child: const Text('恢复'),
-            ),
           ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: closing ? null : close,
+          child: Text(closing ? '正在保存…' : '关闭'),
         ),
       ],
     ),
   );
+
   @override
   void dispose() {
-    focus.dispose();
-    c.dispose();
+    for (final input in inputs.values) {
+      input.dispose();
+    }
     super.dispose();
   }
 }

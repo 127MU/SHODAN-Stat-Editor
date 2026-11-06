@@ -64,6 +64,11 @@ def main():
         assert desktop('armor_item', armor['id'])['available']
         armor_profile = desktop('armor_profile', 999)
         assert isinstance(armor_profile['enabled'], dict)
+        passive_id = desktop('info')['armor'][0]['id']
+        passive_row = desktop('armor_rows', passive_id)[0]
+        passive_value = 123.25 if passive_row['value'] != 123.25 else 124.25
+        desktop('armor_set', passive_id, passive_row['key'], passive_value)
+        assert desktop('armor_rows', passive_id)[0]['value'] == passive_value
         assert desktop('ragdoll_preview')['supported']
         assert desktop('tweaks').keys() == {'reticle', 'bounce', 'foliage', 'vehicles'}
         assert desktop('tweaks', 'vehicles', True)['vehicles']
@@ -100,6 +105,8 @@ def main():
 
     p, call, desktop = start()
     try:
+        assert desktop('armor_rows', passive_id)[0]['value'] == passive_value
+        desktop('armor_set', passive_id, passive_row['key'], passive_row['value'])
         desktop('select', selected['id'])
         changed = desktop('rows_delta', damage['id'])
         assert any(row['id'] == damage['id'] and row['value'] == damage['value'] + 1
