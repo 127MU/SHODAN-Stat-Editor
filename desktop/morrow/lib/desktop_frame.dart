@@ -1,4 +1,3 @@
-import 'glass_theme.dart';
 import 'window_activity.dart';
 // Adapted from Morrow's desktop_frame.dart (AGPL-3.0); see MORROW-LICENSE.
 import 'dart:io';
@@ -25,10 +24,12 @@ class DesktopFrame extends StatefulWidget {
     super.key,
     required this.child,
     required this.onClose,
+    required this.onCloseError,
     this.enabled = true,
   });
   final Widget child;
   final Future<void> Function() onClose;
+  final void Function(Object) onCloseError;
   final bool enabled;
   @override
   State<DesktopFrame> createState() => _DesktopFrameState();
@@ -36,27 +37,42 @@ class DesktopFrame extends StatefulWidget {
 
 class _DesktopFrameState extends State<DesktopFrame> with WindowListener {
   bool closing = false, maximized = false;
+  int maximizeRevision = 0;
   @override
   void initState() {
     super.initState();
     if (widget.enabled && Platform.isWindows) {
       windowManager.addListener(this);
-      windowManager.isMaximized().then((v) {
-        if (mounted) setState(() => maximized = v);
-      });
+      refreshMaximized();
+    }
+  }
+
+  Future<void> refreshMaximized() async {
+    final revision = ++maximizeRevision;
+    final value = await windowManager.isMaximized();
+    if (mounted && revision == maximizeRevision && value != maximized) {
+      setState(() => maximized = value);
     }
   }
 
   @override
   void onWindowMaximize() {
     windowResizing.value = false;
+    maximizeRevision++;
     if (mounted) setState(() => maximized = true);
   }
 
   @override
   void onWindowUnmaximize() {
     windowResizing.value = false;
+    maximizeRevision++;
     if (mounted) setState(() => maximized = false);
+  }
+
+  @override
+  void onWindowRestore() {
+    windowResizing.value = false;
+    refreshMaximized();
   }
 
   @override
@@ -89,19 +105,7 @@ class _DesktopFrameState extends State<DesktopFrame> with WindowListener {
     } catch (e) {
       if (mounted) {
         setState(() => closing = false);
-        showDialog<void>(
-          context: context,
-          builder: (ctx) => GlassDialog(
-            title: const Text('关闭窗口失败'),
-            content: Text('$e'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('返回'),
-              ),
-            ],
-          ),
-        );
+        widget.onCloseError(e);
       }
     }
   }
@@ -109,70 +113,79 @@ class _DesktopFrameState extends State<DesktopFrame> with WindowListener {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled || !Platform.isWindows) return widget.child;
-    return DragToResizeArea(
-      resizeEdgeSize: maximized ? 0 : 7,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(maximized ? 0 : 14),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 44,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: DragToMoveArea(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Image.asset(
-                              'assets/shodan.png',
-                              width: 24,
-                              height: 24,
+    return Overlay.wrap(
+      child: DragToResizeArea(
+        resizeEdgeSize: maximized ? 0 : 7,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(maximized ? 0 : 14),
+          child: Column(
+            children: [
+              Material(
+                color: Theme.of(
+                  context,
+                ).colorScheme.surface.withValues(alpha: .58),
+                child: SizedBox(
+                  height: 44,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: DragToMoveArea(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  'assets/shodan.png',
+                                  width: 24,
+                                  height: 24,
+                                ),
+                                const SizedBox(width: 10),
+                                const Text('SHODAN 数值编辑器'),
+                                if (closing)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 16),
+                                    child: Text('正在退出…'),
+                                  ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            const Text('SHODAN 数值编辑器'),
-                            if (closing)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 16),
-                                child: Text('正在退出…'),
-                              ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
+                      IconButton(
+                        tooltip: '最小化',
+                        onPressed: closing
+                            ? null
+                            : () => windowManager.minimize(),
+                        icon: const Icon(Icons.remove),
+                      ),
+                      IconButton(
+                        tooltip: maximized ? '还原窗口' : '最大化',
+                        onPressed: closing
+                            ? null
+                            : () async {
+                                if (await windowManager.isMaximized()) {
+                                  await windowManager.unmaximize();
+                                } else {
+                                  await windowManager.maximize();
+                                }
+                              },
+                        icon: Icon(
+                          maximized ? Icons.filter_none : Icons.crop_square,
+                          size: 20,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: '关闭',
+                        onPressed: closing ? null : () => windowManager.close(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: '最小化',
-                    onPressed: closing ? null : () => windowManager.minimize(),
-                    icon: const Icon(Icons.remove),
-                  ),
-                  IconButton(
-                    tooltip: maximized ? '还原窗口' : '最大化',
-                    onPressed: closing
-                        ? null
-                        : () async {
-                            if (maximized) {
-                              await windowManager.unmaximize();
-                            } else {
-                              await windowManager.maximize();
-                            }
-                          },
-                    icon: Icon(
-                      maximized ? Icons.filter_none : Icons.crop_square,
-                      size: 20,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: '关闭',
-                    onPressed: closing ? null : () => windowManager.close(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+                ),
               ),
-            ),
-            Expanded(child: widget.child),
-          ],
+              Expanded(child: widget.child),
+            ],
+          ),
         ),
       ),
     );

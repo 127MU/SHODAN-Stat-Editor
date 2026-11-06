@@ -1316,15 +1316,12 @@ class _WorkbenchState extends State<Workbench> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: theme.copyWith(textTheme: theme.textTheme),
+      navigatorKey: navigator,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
         ).copyWith(textScaler: TextScaler.linear(fontSize / 14)),
-        child: child!,
-      ),
-      navigatorKey: navigator,
-      home: Scaffold(
-        body: BackdropGroup(
+        child: BackdropGroup(
           child: DecoratedBox(
             decoration: BoxDecoration(
               image: backgroundPath.isEmpty
@@ -1365,7 +1362,15 @@ class _WorkbenchState extends State<Workbench> {
             child: DesktopFrame(
               enabled: widget.persistAppearance,
               onClose: shutdown,
-              child: SafeArea(
+              onCloseError: showError,
+              child: child!,
+            ),
+          ),
+        ),
+      ),
+      home: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
                 child: Row(
                   children: [
                     SizedBox(
@@ -1669,9 +1674,6 @@ class _WorkbenchState extends State<Workbench> {
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
         ),
       ),
     );
