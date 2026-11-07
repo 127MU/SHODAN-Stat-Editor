@@ -83,20 +83,20 @@ impl Salt {
     fn end(self) -> usize {
         self.offset()
             + match self {
-                Self::Header(_) => 2,
+                Self::Header(_) => 3,
                 Self::Float(_) => 4,
             }
     }
     fn tries(self) -> u32 {
         match self {
-            Self::Header(_) => 65535,
+            Self::Header(_) => 262143,
             Self::Float(_) => 4095,
         }
     }
     fn put(self, data: &mut [u8], original: u32, value: u32) {
         let at = self.offset();
         match self {
-            Self::Header(_) => data[at..at + 2].copy_from_slice(&(value as u16).to_le_bytes()),
+            Self::Header(_) => data[at..at + 3].copy_from_slice(&value.to_le_bytes()[..3]),
             Self::Float(_) => data[at..at + 4].copy_from_slice(&(original ^ value).to_le_bytes()),
         }
     }
@@ -416,6 +416,23 @@ mod tests {
             assert_eq!(backward(end, &bytes, 0, whole), start);
             assert_eq!(unmix(mix(n as u64)), n as u64);
         }
+    }
+    #[test]
+    fn repeated_exports_reuse_reserved_bytes_without_consuming_capacity() {
+        let mut original = block();
+        original.extend(block());
+        let target = murmur64(&original);
+        let mut current = original.clone();
+        for value in 2..7 {
+            current[24..28].copy_from_slice(&(value as f32).to_le_bytes());
+            let result = correct(&current, target, &Options::default(), |_| {}).unwrap();
+            assert_eq!(murmur64(&result.bytes), target);
+            assert_eq!(result.bytes.len(), original.len());
+            assert_eq!(&result.bytes[24..28], &(value as f32).to_le_bytes());
+            current = result.bytes;
+        }
+        let restored = correct(&original, target, &Options::default(), |_| {}).unwrap();
+        assert_eq!(restored.bytes, original);
     }
     #[test]
     fn aligned_correction_only_changes_reserved_bytes() {

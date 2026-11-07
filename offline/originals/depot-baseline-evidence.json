@@ -1,0 +1,66 @@
+{
+  "depot_manifest": "553853_87932884035420122.manifest",
+  "manifest_sha256": "df0a432c33e07bf1107fcbfa89167c8f0cd38e74b49ce1c93d7b2017ce0e4f1c",
+  "files": {
+    "generated_customization_armor_sets.dl_bin": {
+      "sealed_sha1": "dd915b1bea1489d17ab4443c3a90dbe988d09e12",
+      "bytes": 453252,
+      "plain_sha256": "9dab2ea0b40a11e5d3b16eb5bd3d3e7d87fe61f34c0a060313162c82d3fe6274"
+    },
+    "generated_entity_deltas.dl_bin": {
+      "sealed_sha1": "fcf3424fe2d49044d9ea5f37d11bc64829fc73a3",
+      "bytes": 352393,
+      "plain_sha256": "78841155dfe02f567cbc7c21239a16fd5273910a9f0ce9537fc9a9c86b3f9ca7"
+    },
+    "generated_status_effect_settings.dl_bin": {
+      "sealed_sha1": "df6c4130074ece091472c6170425591c9d64545e",
+      "bytes": 14068,
+      "plain_sha256": "19a98ff7151ddad048cbf1b292fd2d4c59d9fcad1b546a57446d7329de487a2e"
+    },
+    "generated_destruction_settings.dl_bin": {
+      "sealed_sha1": "ab01b430d48a05d0d5db2b022453b6de4b190f1a",
+      "bytes": 1643958,
+      "plain_sha256": "de7fd850f68bf0e7f64f61dfc0ddaa2df6769a3a7660bb075ce24f120b3d8c87"
+    },
+    "generated_beam_settings.dl_bin": {
+      "sealed_sha1": "b25b9bc83df546a07b011c17787861005cd3d264",
+      "bytes": 3452,
+      "plain_sha256": "19989b016123c1f0816107e1352fa740e67ff5b134e77129fe04ce72a66b8a30"
+    },
+    "generated_stratagem_settings.dl_bin": {
+      "sealed_sha1": "66cd205c6421befc9ce470f7181a446989ad6f5e",
+      "bytes": 82424,
+      "plain_sha256": "5a5d54a1d0acab62b4e657f3bdb3ab55e4f279d43482f6d1edafe762a4bc7c2d"
+    },
+    "generated_entities.dl_bin": {
+      "sealed_sha1": "1f5630ec3364f05fccf5e98aa0856ac4777cad82",
+      "bytes": 47259444,
+      "plain_sha256": "dc6d52a14900942b2f59f56bf8ab1552259832202dcb0745c3c84a009ff5f98b"
+    },
+    "generated_damage_settings.dl_bin": {
+      "sealed_sha1": "c812a07795f14e854e97669250aecfc6d7d92913",
+      "bytes": 50384,
+      "plain_sha256": "240343e52c73c7d58c2806216171e2ac58e8a7aed8fc1ca25080e03873dd72eb"
+    },
+    "generated_projectile_settings.dl_bin": {
+      "sealed_sha1": "977b9eb87f83c1200fe6258300daa26bf121a09e",
+      "bytes": 96652,
+      "plain_sha256": "18419e3ee058fbd4ef68bca6ab42da7ff2cf59f7e87c24428057d04f21e9f43d"
+    },
+    "generated_arc_settings.dl_bin": {
+      "sealed_sha1": "ee2edf15a428d19911b05df4db79988183e3ee82",
+      "bytes": 1756,
+      "plain_sha256": "b9319245ea9c018376878243f5516f816ed46b27441dde98b762c795035551fc"
+    },
+    "generated_explosion_settings.dl_bin": {
+      "sealed_sha1": "0f06fb17e7814626a0cb22b3389cd5ed53c1f9f2",
+      "bytes": 68204,
+      "plain_sha256": "96d0b30f5ef3e68d882beca7058f16defce345d1631656ed1ee5f8907b3eea79"
+    },
+    "generated_customization_passive_bonuses.dl_bin": {
+      "sealed_sha1": "1c5995c44ddc9cbdc726b9c73b6bd702c65569e3",
+      "bytes": 4064,
+      "plain_sha256": "6ba67061fa05b1aa98cd9cbea19df182a80c6c07c5294440c6da41f3bbb8ad40"
+    }
+  }
+}

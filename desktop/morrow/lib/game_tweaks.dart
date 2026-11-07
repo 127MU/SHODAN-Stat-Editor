@@ -1,7 +1,6 @@
 import 'motion.dart';
 import 'package:flutter/material.dart';
 import 'backend.dart';
-import 'glass_theme.dart';
 
 class GameTweaksPage extends StatefulWidget {
   const GameTweaksPage({
@@ -67,24 +66,7 @@ class _GameTweaksPageState extends State<GameTweaksPage> {
   }
 
   Future<void> patch(bool on) async {
-    final yes = await showMotionDialog<bool>(
-      context: context,
-      builder: (ctx) => GlassDialog(
-        title: Text(on ? '启用布娃娃优化（实验性）' : '恢复布娃娃优化'),
-        content: Text('此操作会立即修改资源补丁，请先完全退出游戏。其他参数仍通过“写入游戏”生效。\n$patchStatus'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('确认'),
-          ),
-        ],
-      ),
-    );
-    if (yes != true || !mounted) return;
+    if (checking) return;
     setState(() => checking = true);
     try {
       final message = await widget.backend.call('ragdoll_apply', [on]);
@@ -111,7 +93,7 @@ class _GameTweaksPageState extends State<GameTweaksPage> {
             '策略球部署限制放宽',
             '解除部分战备只能在导航网格上部署的限制；岩石、高台及碰撞仍可能使策略球弹开，不保证任意表面粘附。',
           ),
-          ('foliage', '射弹交互', '射弹穿过树冠与灌木', ''),
+          ('foliage', '射弹交互', '射弹穿过树冠与灌木', '作用于已识别的武器射弹和战备弹药；切换为忽略植被的碰撞模板。树干、岩石及独立实体碰撞不保证穿过。开启后需写入游戏并重启。'),
           ('vehicles', '载具配装', '允许携带多种同类载具', '放宽同类机甲、快速侦察车和坦克的配装数量限制。'),
         ])
           Padding(

@@ -2,6 +2,81 @@
 use serde_json::{json, Value};
 use std::path::Path;
 
+/// Guidance only; classification never authorizes overwriting a foreign file.
+pub fn installation_advice(error: &str) -> Value {
+    let lower = error.to_ascii_lowercase();
+    let (code, repairability, action) = if error.contains("未完成的安装事务")
+        || error.contains("中断安装")
+    {
+        (
+            "interrupted_transaction",
+            "automatic",
+            "关闭游戏后运行自动修复，按原事务指纹恢复中断写入，再重新预览。",
+        )
+    } else if error.contains("草稿") {
+        (
+            "draft",
+            "conditional",
+            "运行自动修复：损坏草稿会先完整备份；来源已变化的草稿会保留，不会猜测覆盖。",
+        )
+    } else if error.contains("派生") {
+        (
+            "derived_record",
+            "conditional",
+            "运行自动修复，清理与当前文件不一致的旧派生登记，再检查附赠战备。",
+        )
+    } else if error.contains("备份")
+        && (error.contains("缺失") || error.contains("已变化") || error.contains("不匹配"))
+    {
+        ("backup_invalid", "manual", "原始备份缺失、损坏或版本不符时无法凭空恢复。请保留日志与现有文件，从可靠备份或 Steam 校验恢复对应版本后再检查。")
+    } else if lower.contains("disk full")
+        || error.contains("系统错误 112")
+        || error.contains("Windows 错误 112")
+    {
+        ("disk_space", "manual", "释放游戏盘与备份目录所在磁盘的空间，再运行自动修复处理未完成事务。自动修复不会删除其他个人文件以腾出空间。")
+    } else if lower.contains("permission denied")
+        || error.contains("系统错误 5")
+        || error.contains("Windows 错误 5")
+        || error.contains("权限")
+        || error.contains("系统错误 32")
+        || error.contains("Windows 错误 32")
+    {
+        ("access_or_lock", "manual", "完全关闭游戏及其他编辑器，检查报错目标路径的写入权限、只读属性与占用。自动修复不会更改系统权限或强行解锁。")
+    } else if error.contains("游戏正在")
+        || error.contains("先关闭游戏")
+        || error.contains("完全退出游戏")
+        || error.contains("请先完全退出")
+    {
+        (
+            "game_running",
+            "manual",
+            "完全退出游戏进程后重新预览和安装。",
+        )
+    } else if error.contains("版本")
+        || error.contains("没有 package")
+        || lower.contains("has no package")
+    {
+        ("version_or_package", "manual", "核对所选游戏目录、游戏 build 和编辑器参数目录，使用匹配版本；自动修复不能转换未知数据布局或创造不存在的资源包。")
+    } else if error.contains("槽位已满") {
+        ("patch_capacity", "conditional", "先运行自动修复清理本程序完全缺失的补丁登记；真实占用的外部 Mod 槽位不会自动删除，请手动检查补丁冲突。")
+    } else if error.contains("驻留") || error.contains("补丁") || error.contains("伴生文件")
+    {
+        ("resource_patch", "conditional", "运行自动修复检查本程序登记。完全缺失的自有槽位可清理并补齐中间缺号；被替换或部分缺失的补丁需核对来源，修复后重新安装所需驻留资源。")
+    } else if error.contains("其他工具")
+        || error.contains("外部工具")
+        || error.contains("文件已变化")
+    {
+        ("external_change", "conditional", "先运行自动修复。已回到安装前备份的文件可清理旧登记；仍含外部修改的文件会保留，确认后选择强制写入或先恢复对应 Mod。")
+    } else if error.contains("校验") || error.contains("保留") || error.contains("NoSalt") {
+        ("hash_correction", "conditional", "重新生成写入预览，确认允许已提示的浮点校验微调。若仍无法求解，请导出日志；自动修复不能跳过游戏哈希或随意扩展格式保留区。")
+    } else if error.contains("缺少") || error.contains("缺失") {
+        ("missing_file", "conditional", "自动修复可从本程序已校验且版本匹配的安装备份补回缺失数值文件；没有可靠备份时需重新下载程序或校验游戏文件。")
+    } else {
+        ("unclassified", "unknown", "运行只读诊断并导出日志，保留失败阶段、目标文件和系统错误码；原因尚未确认，不能报告为已自动修复。")
+    };
+    json!({"code":code,"repairability":repairability,"action":action})
+}
+
 pub(crate) fn checks(runtime: &Path, game: Option<&Path>) -> Value {
     let mut results = Vec::new();
     for name in ["shodan-native.exe", "catalog.json.gz", "data/app.so"] {
@@ -168,6 +243,42 @@ impl Privacy {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn installation_guidance_distinguishes_repair_from_manual_intervention() {
+        for (message, expected, repair) in [
+            (
+                "发现未完成的安装事务，请先恢复",
+                "interrupted_transaction",
+                "automatic",
+            ),
+            (
+                "generated_entities.dl_bin 已被其他工具修改，已停止写入",
+                "external_change",
+                "conditional",
+            ),
+            (
+                "无法创建事务文件（系统错误 5：拒绝访问）",
+                "access_or_lock",
+                "manual",
+            ),
+            (
+                "generated_entities.dl_bin 的原始备份已变化",
+                "backup_invalid",
+                "manual",
+            ),
+            ("驻留补丁槽位 121 缺失", "resource_patch", "conditional"),
+            (
+                "原生参数目录与当前游戏版本不匹配",
+                "version_or_package",
+                "manual",
+            ),
+            ("unrecognized failure", "unclassified", "unknown"),
+        ] {
+            let advice = installation_advice(message);
+            assert_eq!(advice["code"], expected);
+            assert_eq!(advice["repairability"], repair);
+        }
+    }
     #[test]
     fn exported_nested_errors_remove_other_users_and_credentials() {
         let privacy = Privacy {

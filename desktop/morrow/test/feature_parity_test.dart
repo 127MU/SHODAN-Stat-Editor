@@ -296,7 +296,7 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('游戏参数开关恢复，布娃娃补丁取消后不写入', (tester) async {
+  testWidgets('游戏参数开关保存，布娃娃随写入游戏统一安装', (tester) async {
     final backend = ParityBackend();
     await tester.binding.setSurfaceSize(const Size(1480, 960));
     await tester.pumpWidget(
@@ -313,10 +313,13 @@ void main() {
     expect(backend.tweaks['bounce'], isTrue);
     await tester.tap(find.byType(Switch).last);
     await tester.pumpAndSettle();
-    expect(find.text('启用布娃娃优化（实验性）'), findsOneWidget);
-    await tester.tap(find.text('取消'));
+    expect(find.text('启用布娃娃优化（实验性）'), findsNothing);
+    expect(backend.patchWrites, 1);
+    expect(backend.installs, 0);
+    await tester.tap(find.byType(Switch).last);
     await tester.pumpAndSettle();
-    expect(backend.patchWrites, 0);
+    expect(backend.patchWrites, 2);
+    expect(backend.installs, 0);
     await tester.pumpWidget(const SizedBox());
     await tester.binding.setSurfaceSize(null);
   });

@@ -11,6 +11,15 @@ class InstallerBackend extends Backend {
     : super(diagnostics: AppDiagnostics(directory: dir, persist: false));
   final completion = Completer<Map<String, dynamic>>();
   @override
+  Future<dynamic> nativeCall(
+    String method, [
+    Map<String, dynamic> params = const {},
+  ]) async => {
+    'code': 'access_or_lock',
+    'repairability': 'manual',
+    'action': '关闭游戏并检查文件写入权限',
+  };
+  @override
   Future<dynamic> call(String method, [List<dynamic> args = const []]) =>
       completion.future;
 }
@@ -20,6 +29,15 @@ class SequencingBackend extends Backend {
     : super(diagnostics: AppDiagnostics(directory: dir, persist: false));
   final calls = <List<dynamic>>[];
   final completers = <Completer<dynamic>>[];
+  @override
+  Future<dynamic> nativeCall(
+    String method, [
+    Map<String, dynamic> params = const {},
+  ]) async => {
+    'code': 'external_change',
+    'repairability': 'conditional',
+    'action': '先运行自动修复并保留外部 Mod',
+  };
   @override
   Future<dynamic> call(String method, [List<dynamic> args = const []]) {
     calls.add([method, ...args]);
@@ -65,7 +83,9 @@ void main() {
     backend.completers.last.complete({
       'ok': true,
       'message': '已恢复 1 个数值文件、0 个独立资源',
-      'warnings': ['generated_customization_passive_bonuses.dl_bin 已被其他工具修改，已强制恢复为备份内容'],
+      'warnings': [
+        'generated_customization_passive_bonuses.dl_bin 已被其他工具修改，已强制恢复为备份内容',
+      ],
     });
     await tester.pumpAndSettle();
     expect(find.textContaining('强制恢复为备份内容'), findsOneWidget);
@@ -103,6 +123,13 @@ void main() {
       backend.completion.complete({'ok': ok, 'message': ok ? '安装完成' : '权限不足'});
       await tester.pumpAndSettle();
       expect(find.text(ok ? '安装完成' : '安装未完成'), findsWidgets);
+      if (!ok) {
+        expect(find.textContaining('关闭游戏并检查文件写入权限'), findsOneWidget);
+        expect(
+          backend.diagnostics.workspace['last_install_failure']['code'],
+          'access_or_lock',
+        );
+      }
       expect(find.text('导出日志'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       await tester.pumpWidget(const SizedBox());

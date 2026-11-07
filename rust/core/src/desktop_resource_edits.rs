@@ -227,7 +227,10 @@ fn decode(s: &str) -> Result<[u8; 4], String> {
     let n = u32::from_str_radix(s, 16).map_err(|_| "资源配方十六进制无效")?;
     Ok(n.to_be_bytes())
 }
-pub(crate) fn ragdoll(game: &Game, on: Option<bool>) -> Result<Value, String> {
+pub(crate) fn ragdoll(
+    game: &Game,
+    on: Option<bool>,
+) -> Result<(Value, crate::residency_install::Edits), String> {
     let recipe: Recipe =
         serde_json::from_str(include_str!("ragdoll_recipe.json")).map_err(|_| "布娃娃配方无效")?;
     let held = game.overrides(&recipe.package)?;
@@ -264,19 +267,13 @@ pub(crate) fn ragdoll(game: &Game, on: Option<bool>) -> Result<Value, String> {
             }
         }
     }
-    if let Some(on) = on {
-        if !edits.is_empty() {
-            game.patch_edits(BTreeMap::from([(recipe.package, edits)]))?;
-        }
-        Ok(json!(if on {
-            "布娃娃优化已启用，重启游戏后生效"
+    Ok((
+        json!({"supported":true,"enabled":on.unwrap_or(active==total),"partial":active>0&&active<total,"fields":total,
+        "message":"当前资源版本已核对。配置保存后需点击写入游戏生效。"}),
+        if on.is_some() && !edits.is_empty() {
+            BTreeMap::from([(recipe.package, edits)])
         } else {
-            "布娃娃优化已恢复，重启游戏后生效"
-        }))
-    } else {
-        Ok(
-            json!({"supported":true,"enabled":active==total,"partial":active>0&&active<total,"fields":total,
-            "message":"当前资源版本已核对。受击与布娃娃动作需要进入游戏验证。"}),
-        )
-    }
+            BTreeMap::new()
+        },
+    ))
 }

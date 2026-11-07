@@ -13,6 +13,37 @@ fn locations(
     w: &Workspace,
     name: &str,
 ) -> Result<Vec<(Location, Encoding, f64, f64)>, String> {
+    if name == "foliage" {
+        let mut targets = BTreeSet::new();
+        for owner in catalog.owners.iter().filter(|owner| {
+            matches!(
+                owner.tab.as_str(),
+                "Primary" | "Secondary" | "Support" | "Throwables"
+            )
+        }) {
+            for part in owner.rows.iter().flat_map(|row| &row.parts) {
+                if let Some(binding) = &catalog.bindings[part.field] {
+                    for loc in &binding.locations {
+                        if loc.typ == 0xBD4042C2 {
+                            let mut target = loc.clone();
+                            target.relative = 248;
+                            targets.insert(target);
+                        }
+                    }
+                }
+            }
+        }
+        // Retain the version-pinned ordnance targets as well as player bullets.
+        for edit in catalog.tweaks.get(name).into_iter().flatten() {
+            if let Some(binding) = &catalog.bindings[edit.field] {
+                targets.extend(binding.locations.iter().cloned());
+            }
+        }
+        return Ok(targets
+            .into_iter()
+            .map(|loc| (loc, Encoding::U32, 0.0, 3.0))
+            .collect());
+    }
     if let Some(edits) = catalog.tweaks.get(name).filter(|e| !e.is_empty()) {
         return Ok(edits
             .iter()
@@ -101,18 +132,28 @@ pub(crate) fn call(catalog: &Catalog, w: &mut Workspace, args: &[Value]) -> Resu
         }
         let active = metadata["tweaks"][name].as_array();
         let legacy = active.is_none() && inferred(catalog, w, name);
-        if on != (active.is_some() || legacy) {
+        if on || on != (active.is_some() || legacy) {
             let targets = locations(catalog, w, name)?;
             let mut edits = Vec::new();
             let mut selected = BTreeSet::new();
+            let mut found_saved = BTreeSet::new();
             let saved = active
                 .into_iter()
                 .flatten()
                 .filter_map(Value::as_str)
                 .collect::<BTreeSet<_>>();
+            if on {
+                selected.extend(saved.iter().map(|id| (*id).to_string()));
+            }
             for (loc, codec, before, after) in targets {
                 let current = w.value(&loc, &codec)?.current;
                 let id = identity(&loc, &codec);
+                if saved.contains(id.as_str()) {
+                    found_saved.insert(id.clone());
+                    if current != before && current != after {
+                        return Err("开关与当前参数值冲突，未覆盖".into());
+                    }
+                }
                 if on && current == before {
                     selected.insert(id);
                     edits.push((loc, codec, after));
@@ -125,9 +166,12 @@ pub(crate) fn call(catalog: &Catalog, w: &mut Workspace, args: &[Value]) -> Resu
                 }
             }
             if on && selected.is_empty() {
+                if legacy {
+                    return call(catalog, w, &[]);
+                }
                 return Err("没有适用于当前数据的游戏参数".into());
             }
-            if !on && !legacy && selected.len() != saved.len() {
+            if !legacy && found_saved.len() != saved.len() {
                 return Err("找不到全部已修改的开关参数，未恢复".into());
             }
             if on {

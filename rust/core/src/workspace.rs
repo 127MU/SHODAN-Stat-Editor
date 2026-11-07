@@ -671,6 +671,11 @@ impl Workspace {
             .map(|f| f.document.pending_count())
             .sum()
     }
+    pub(crate) fn file_has_pending(&self, name: &str) -> bool {
+        self.files
+            .get(name)
+            .is_some_and(|file| file.document.pending_count() > 0)
+    }
     pub fn history(&self) -> (usize, usize) {
         (self.undo.len(), self.redo.len())
     }
@@ -1315,6 +1320,23 @@ impl Workspace {
                 float_offsets: offsets.get(name.as_str()).map(Vec::as_slice).unwrap_or(&[]),
                 ..Default::default()
             };
+            for location in allowed_floats
+                .iter()
+                .filter(|loc| loc.file == *name && loc.typ == 0xBD4042C2 && loc.relative == 32)
+            {
+                let at = file.index.offset(location, 4)?.ok_or("初速校验字段缺失")?;
+                if edited[at..at + 4] == file.document.snapshot()[at..at + 4] {
+                    let value = f32::from_le_bytes(edited[at..at + 4].try_into().unwrap());
+                    if !value.is_finite() || value <= 0.0 {
+                        return Err("初速校验字段不适用".into());
+                    }
+                    let next = f32::from_bits(value.to_bits() + 1);
+                    if !next.is_finite() {
+                        return Err("初速校验字段超出范围".into());
+                    }
+                    edited[at..at + 4].copy_from_slice(&next.to_le_bytes());
+                }
+            }
             let prepared = if let Some(rebuilt) = rebuilt {
                 if !options.float_offsets.is_empty() {
                     return Err("重建后的文件不能沿用原浮点字段位置".into());

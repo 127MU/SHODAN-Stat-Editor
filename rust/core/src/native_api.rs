@@ -149,15 +149,20 @@ impl Api {
                     .or_else(|| p["runtime"].as_str().map(PathBuf::from))
                     .ok_or("无法定位程序目录")?;
                 let profile = crate::game_workspace::profile();
-                let root = crate::game_workspace::find_game(
-                    self.last_open.as_ref().map(|(_, root)| root.as_path()),
+                let root = crate::game_workspace::find_game_for_repair(
+                    self.last_open
+                        .as_ref()
+                        .map(|(_, root)| root.as_path())
+                        .or_else(|| p["game"].as_str().map(std::path::Path::new)),
                     &runtime,
                     &profile,
                 )?;
                 let bytes = fs::read(runtime.join("catalog.json.gz"))
                     .map_err(|_| "缺少原生参数目录，请重新下载完整程序包")?;
                 let catalog = crate::catalog::Catalog::from_gzip(&bytes)?;
-                let game = crate::game_workspace::Game::load(&catalog, root, &runtime, &profile)?;
+                let game = crate::game_workspace::Game::load_for_repair(
+                    &catalog, root, &runtime, &profile,
+                )?;
                 self.catalog = Some(catalog);
                 self.game = Some(game);
             }
@@ -698,6 +703,9 @@ impl Api {
         if method == "diagnostic-scrub" {
             return Ok(crate::diagnostics::Privacy::local().scrub(&p["data"]));
         }
+        if method == "diagnostic-install-error" {
+            return Ok(crate::diagnostics::installation_advice(text(p, "error")?));
+        }
         if method == "diagnostic-check" {
             let runtime = std::env::current_exe()
                 .ok()
@@ -957,7 +965,21 @@ impl Api {
                 } else {
                     None
                 };
-                return crate::desktop_resource_edits::ragdoll(game, on);
+                let (mut info, _) = crate::desktop_resource_edits::ragdoll(game, on)?;
+                if let Some(on) = on {
+                    let mut metadata = workspace.metadata().clone();
+                    if metadata.is_null() {
+                        metadata = json!({});
+                    }
+                    metadata["ragdoll"] = json!(on);
+                    workspace.set_batch(&[], Some(metadata))?;
+                    return Ok(json!("布娃娃配置已保存，点击写入游戏后生效"));
+                }
+                if let Some(wanted) = workspace.metadata()["ragdoll"].as_bool() {
+                    info["pending"] = json!(info["enabled"] != wanted);
+                    info["enabled"] = json!(wanted);
+                }
+                return Ok(info);
             }
             "info" => {
                 return Ok(json!({"game":self.game.as_ref().map(|g|&g.root),
@@ -970,8 +992,10 @@ impl Api {
                 )?));
             }
             "status" => {
-                return Ok(json!({"phase":"ready","dirty":workspace.pending_count()!=0,
-                "problems":workspace.problems()}))
+                return Ok(
+                    json!({"phase":"ready","dirty":workspace.pending_count()!=0 || workspace.metadata()!=workspace.loaded_metadata(),
+                "problems":workspace.problems()}),
+                )
             }
             "editor_mode" => {
                 if let Some(enemy) = arg(0).as_bool() {
@@ -1024,6 +1048,15 @@ impl Api {
                 let mut entries = desktop::pending(catalog, workspace);
                 if let Some(array) = entries.as_array_mut() {
                     array.extend(crate::desktop_armor::preview(workspace)?);
+                    if workspace.metadata()["ragdoll"] != workspace.loaded_metadata()["ragdoll"] {
+                        if let Some(game) = &self.game {
+                            crate::desktop_resource_edits::ragdoll(
+                                game,
+                                workspace.metadata()["ragdoll"].as_bool(),
+                            )?;
+                        }
+                        array.push(json!({"equipment":"游戏参数","parameter":"受击与布娃娃","before":workspace.loaded_metadata()["ragdoll"],"after":workspace.metadata()["ragdoll"]}));
+                    }
                 }
                 if method == "pending_preview" {
                     return Ok(entries);
@@ -1037,7 +1070,7 @@ impl Api {
                     !crate::game_workspace::changed_floats(catalog, workspace).is_empty();
                 if allow_float_adjustment {
                     warnings.push(
-                        "部分文件的校验空间不足时，需要明确允许微调本次已修改的浮点数值。".into(),
+                        "部分文件校验空间不足时将微调本次修改的浮点字段；仅修改射弹整数参数时，可能借用同文件的一个初速字段作微小校验修正。确认写入即允许此修正，结果会列出实际数值。".into(),
                     );
                 }
                 let mut problems = workspace.data_problems();

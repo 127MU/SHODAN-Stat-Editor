@@ -22,11 +22,18 @@ pub struct Progress {
     pub done: usize,
     pub total: usize,
 }
+fn io_failure(action: &str, path: &Path, error: std::io::Error) -> String {
+    format!(
+        "{action}：{}（系统错误 {}：{error}）",
+        path.display(),
+        error.raw_os_error().unwrap_or(0)
+    )
+}
 pub(crate) fn read(path: &Path) -> Result<Option<Vec<u8>>, String> {
     match fs::read(path) {
         Ok(bytes) => Ok(Some(bytes)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(_) => Err("无法读取待安装文件".into()),
+        Err(error) => Err(io_failure("无法读取待安装文件", path, error)),
     }
 }
 fn create(path: &Path, bytes: &[u8]) -> Result<(), String> {
@@ -34,10 +41,10 @@ fn create(path: &Path, bytes: &[u8]) -> Result<(), String> {
         .write(true)
         .create_new(true)
         .open(path)
-        .map_err(|_| "无法创建事务文件")?;
+        .map_err(|error| io_failure("无法创建事务文件", path, error))?;
     file.write_all(bytes)
         .and_then(|_| file.sync_all())
-        .map_err(|_| "无法完整写入事务文件")?;
+        .map_err(|error| io_failure("无法完整写入事务文件", path, error))?;
     if fs::read(path).map_err(|_| "无法回读事务文件")? != bytes {
         return Err("事务文件回读不一致".into());
     }
@@ -54,7 +61,8 @@ fn replace(source: &Path, target: &Path) -> Result<(), String> {
     let to: Vec<_> = target.as_os_str().encode_wide().chain(Some(0)).collect();
     if unsafe { MoveFileExW(from.as_ptr(), to.as_ptr(), 1 | 8) } == 0 {
         return Err(format!(
-            "无法替换目标文件（Windows 错误 {}）",
+            "无法替换目标文件 {}（Windows 错误 {}）",
+            target.display(),
             std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
         ));
     }
@@ -70,7 +78,7 @@ fn stage_path(path: &Path, tag: &str, index: usize) -> Result<PathBuf, String> {
 }
 pub(crate) fn save_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let folder = path.parent().ok_or("缺少配置目录")?;
-    fs::create_dir_all(folder).map_err(|_| "无法创建配置目录")?;
+    fs::create_dir_all(folder).map_err(|error| io_failure("无法创建配置目录", folder, error))?;
     if fs::symlink_metadata(path).is_ok_and(|m| !m.is_file()) {
         return Err("配置目标必须是普通文件".into());
     }
@@ -134,8 +142,9 @@ pub fn apply(
     let mut unique = BTreeSet::new();
     let mut changes = changes;
     for change in &mut changes {
-        let parent = fs::canonicalize(change.path.parent().ok_or("目标缺少父目录")?)
-            .map_err(|_| "目标目录不存在或不可读")?;
+        let directory = change.path.parent().ok_or("目标缺少父目录")?;
+        let parent = fs::canonicalize(directory)
+            .map_err(|error| io_failure("目标目录不存在或不可读", directory, error))?;
         let filename = change.path.file_name().ok_or("目标不是文件")?;
         change.path = parent.join(filename);
         if fs::symlink_metadata(&change.path)
@@ -160,7 +169,7 @@ pub fn apply(
             backup: backup.to_path_buf(),
         });
     }
-    fs::create_dir(backup).map_err(|_| "无法创建全新的备份目录")?;
+    fs::create_dir(backup).map_err(|error| io_failure("无法创建全新的备份目录", backup, error))?;
     let _lock = lock_transaction(backup)?;
     let tag = format!(
         "{}-{}",

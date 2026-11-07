@@ -123,7 +123,7 @@ class _DesktopFrameState extends State<DesktopFrame> with WindowListener {
               Material(
                 color: Theme.of(
                   context,
-                ).colorScheme.surface.withValues(alpha: .58),
+                ).colorScheme.surface,
                 child: SizedBox(
                   height: 44,
                   child: Row(

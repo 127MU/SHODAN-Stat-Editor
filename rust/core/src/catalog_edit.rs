@@ -352,7 +352,7 @@ impl<'a> Builder<'a> {
             Some("slot") => Some(&[1.0, 3.0][..]),
             Some("faction") => Some(&[1.0, 2.0, 4.0, 8.0][..]),
             Some("apex_fire") => Some(&[2677.0, 2719.0][..]),
-            Some("crosshair") => Some(&[1.0, 2.0][..]),
+            Some("crosshair") => Some(&[0.0, 3.0, 4.0, 16.0][..]),
             Some("firemode") => Some(&[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0][..]),
             Some("fntype") => Some(&[0.0, 2.0, 3.0, 4.0, 8.0, 11.0][..]),
             _ => None,

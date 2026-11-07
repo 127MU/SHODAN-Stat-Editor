@@ -32,6 +32,14 @@ def main():
                   'generated_weapon_customization_settings.dl_bin'})
     for name in names:
         shutil.copy2(source / name, game / name)
+    # The user's live projectiles may already have the global foliage switch
+    # enabled. This regression needs a known 0 -> 3 template transition, so seed
+    # ONLY the isolated projectile fixture from the pinned packaged original.
+    seeded_projectiles = root / 'seeded-projectiles.dl_bin'
+    subprocess.run([str(options.exe.resolve()), 'seal-copy',
+                    str(runtime / 'originals/generated_projectile_settings.dl_plain'),
+                    str(seeded_projectiles)], check=True, capture_output=True)
+    os.replace(seeded_projectiles, game / 'generated_projectile_settings.dl_bin')
     # Resource bundles are read-only sources. Every writable target (numeric
     # files, .patch_N files and profiles) is isolated from the Steam tree.
     for bundle in source.parent.glob('bundles*.nxa'):
@@ -60,7 +68,8 @@ def main():
             try:
                 call('game-open', runtime=str(runtime), game=str(game))
             except AssertionError as error:
-                assert '草稿' in str(error), error
+                expected = '草稿' if expect_open_error is True else expect_open_error
+                assert expected in str(error), error
             else:
                 raise AssertionError('Expected invalid draft to prevent normal startup')
         else:
@@ -75,6 +84,19 @@ def main():
         assert len(attachments) == 252, len(attachments)
         assert any(item['hex'] == '0xE790FA4F' and item['slots'] == ['瞄具'] for item in attachments)
         assert not desktop('baseline_check')['problems']
+        # Defaults must survive a modded live file: use depot-matched shipped
+        # stratagem originals and stable delta-record identities, not disk values.
+        desktop('select', sentry['id'])
+        cooldown = next(row for row in desktop('rows_fast') if row['id'] == 'cooldown')
+        assert cooldown['original'] is not None, cooldown
+        desktop('set', 'cooldown', cooldown['original'] + 1)
+        desktop('reset', 'cooldown')
+        assert next(row for row in desktop('rows_fast') if row['id'] == 'cooldown')['value'] == cooldown['original']
+        liberator = next(owner for owner in catalog['owners'] if owner['name'] == 'AR-23 解放者')
+        desktop('select', liberator['id'])
+        magazine = next(row for row in desktop('rows_fast') if row['label'] == '弹匣容量')
+        assert magazine['original'] is not None, magazine
+        desktop('select', selected['id'])
         terminids = desktop('items', 'Terminids', '')
         assert terminids and not any(item['changed'] for item in terminids), terminids
         for owner, key, choice in [
@@ -118,6 +140,10 @@ def main():
         assert desktop('tweaks').keys() == {'reticle', 'bounce', 'foliage', 'vehicles'}
         assert desktop('tweaks', 'vehicles', True)['vehicles']
         assert not desktop('tweaks', 'vehicles', False)['vehicles']
+        for key in ('bounce', 'vehicles'):
+            assert desktop('tweaks', key, True)[key]
+            assert desktop('tweaks', key, True)[key], 'Repeated activation must be idempotent'
+            assert not desktop('tweaks', key, False)[key]
 
         rows = desktop('rows_fast')
         damage = next(row for row in rows if row['id'] == 'damage')
@@ -211,6 +237,17 @@ def main():
 
         desktop('ragdoll_apply', True)
         assert desktop('ragdoll_preview')['enabled']
+        assert not list(data.glob('*.patch_*')), 'Switching ragdoll must only stage edits'
+        assert any(row.get('parameter') == '受击与布娃娃' for row in desktop('install_preview')['entries'])
+        call('game-install', allow_float_adjustment=True)
+        assert list(data.glob('*.patch_*'))
+        # Simulate an external cleanup after installation, then restore the
+        # chosen resource setting through normal installation after repair.
+        for path in data.glob('*.patch_*'):
+            path.unlink()
+        assert call('game-repair')['ok']
+        call('game-install', allow_float_adjustment=True)
+        assert list(data.glob('*.patch_*')), 'Repair must not silently disable desired ragdoll resources'
         desktop('select', selected['id'])
         packages = desktop('choices', 'res_package')
         donor = next(p for p in packages if 'A/M-23' in p.get('name', p.get('label', '')))
@@ -222,6 +259,8 @@ def main():
         assert desktop('ragdoll_preview')['enabled']
         desktop('ragdoll_apply', False)
         assert not desktop('ragdoll_preview')['enabled']
+        assert list(data.glob('*.patch_*')), 'Disabling must not remove installed patches before write'
+        call('game-install', allow_float_adjustment=True)
         assert not list(data.glob('*.patch_*'))
     finally:
         p.stdin.close()
@@ -402,7 +441,89 @@ def main():
     finally:
         p.stdin.close()
         p.wait(timeout=30)
-    print('Native desktop, automatic repair, safe draft recovery and external-mod coexistence passed.')
+    # Startup can fail before a workspace exists if an owned entities file was
+    # deleted. Repair must use the explicitly selected copy, not discover Steam.
+    p, call, desktop = start()
+    try:
+        desktop('select', selected['id'])
+        mode = next(r for r in desktop('rows_fast') if r['id'] == 'crosshair_mode')['value']
+        desktop('choose', 'crosshair_mode', 0 if mode != 0 else 4)
+        assert call('game-install', allow_float_adjustment=True)['ok']
+        (game / 'generated_entities.dl_bin').unlink()
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    p, call, desktop = start(expect_open_error='所选目录')
+    try:
+        repaired = call('game-repair', runtime=str(runtime), game=str(game))
+        assert repaired['ok'], repaired
+        assert any('缺失数值文件' in action for action in repaired['actions']), repaired
+        assert {name: digest(game / name) for name in names} == targets
+        desktop('select', selected['id'])
+        damage = next(row for row in desktop('rows_fast') if row['id'] == 'damage')
+        desktop('set', damage['id'], damage['value'] + 1)
+        assert call('game-install', allow_float_adjustment=True)['ok']
+        damage_file = catalog['fields'][next(row for row in selected['rows'] if row['key'] == 'damage')['parts'][0]['field']]['bindings'][0]['file']
+        # Restore the exact pre-install ciphertext from the latest transaction,
+        # reproducing an external restore without changing its old ledger.
+        managed = json.loads((state.parent / 'managed.json').read_text(encoding='utf8'))
+        owned_damage = managed[damage_file]
+        saved_damage = state.parent / 'transactions' / owned_damage['transaction'] / f"{owned_damage['index']}.original"
+        (game / damage_file).write_bytes(saved_damage.read_bytes())
+        repaired = call('game-repair')
+        assert repaired['ok'], repaired
+        assert any('过期登记' in action for action in repaired['actions']), repaired
+        desktop('select', selected['id'])
+        damage = next(row for row in desktop('rows_fast') if row['id'] == 'damage')
+        desktop('set', damage['id'], damage['value'] + 1)
+        assert call('game-install', allow_float_adjustment=True)['ok']
+        assert call('game-restore')['ok']
+        assert {name: digest(game / name) for name in names} == targets
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    p, call, desktop = start()
+    try:
+        desktop('select', selected['id'])
+        crosshair = next(r for r in desktop('rows_fast') if r['id'] == 'crosshair_mode')
+        choices = {c['id'] for c in desktop('choices', 'crosshair_mode')}
+        assert {0, 3, 4, 16}.issubset(choices), choices
+        projectile_binding = next(binding for row in selected['rows'] for part in row['parts']
+                                  for binding in catalog['fields'][part['field']].get('bindings', [])
+                                  if binding.get('type') == 'BD4042C2' and binding.get('relative') == 32)
+        foliage_probe = dict(projectile_binding, relative=248, encoding='u32')
+        assert call('workspace-get', **foliage_probe)['value'] == 0
+        desktop('choose', 'crosshair_mode', 0)
+        assert next(r for r in desktop('rows_fast') if r['id'] == 'crosshair_mode')['value'] == 0
+        for cycle in range(2):
+            desktop('tweaks', 'foliage', True)
+            assert call('workspace-get', **foliage_probe)['value'] == 3
+            if cycle == 0:
+                # Re-enabling must not claim success over a conflicting manual
+                # edit to a field already owned by the switch.
+                call('workspace-apply', values=[dict(field=foliage_probe, value=2)])
+                try:
+                    desktop('tweaks', 'foliage', True)
+                except AssertionError as error:
+                    assert '冲突' in str(error), error
+                else:
+                    raise AssertionError('Conflicting switch state was silently accepted')
+                assert call('workspace-get', **foliage_probe)['value'] == 2
+                call('workspace-apply', values=[dict(field=foliage_probe, value=3)])
+            assert call('game-install', allow_float_adjustment=True)['ok']
+            assert call('workspace-get', **foliage_probe)['loaded'] == 3
+            desktop('select', selected['id'])
+            assert next(r for r in desktop('rows_fast') if r['id'] == 'crosshair_mode')['value'] == 0
+            desktop('tweaks', 'foliage', False)
+            desktop('reset', 'crosshair_mode')
+            assert call('game-restore')['ok']
+            assert {name: digest(game / name) for name in names} == targets
+            desktop('select', selected['id'])
+            desktop('choose', 'crosshair_mode', 0)
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    print('Native desktop, automatic repair, crosshair choices and repeated foliage install/restore passed.')
 
 
 if __name__ == '__main__':

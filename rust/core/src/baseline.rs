@@ -17,6 +17,24 @@ impl Baseline {
         // The 26251122 damage and projectile tables were decrypted from copies
         // matching the published vanilla file fingerprints for that build.
         let digest = match file {
+            // Build 26251122: independently matched to Steam depot 553853,
+            // manifest 87932884035420122 (exact sealed-file SHA-1 + size).
+            // See offline/originals/depot-baseline-evidence.json.
+            "generated_customization_armor_sets.dl_plain" => {
+                "9dab2ea0b40a11e5d3b16eb5bd3d3e7d87fe61f34c0a060313162c82d3fe6274"
+            }
+            "generated_entity_deltas.dl_plain" => {
+                "78841155dfe02f567cbc7c21239a16fd5273910a9f0ce9537fc9a9c86b3f9ca7"
+            }
+            "generated_status_effect_settings.dl_plain" => {
+                "19a98ff7151ddad048cbf1b292fd2d4c59d9fcad1b546a57446d7329de487a2e"
+            }
+            "generated_destruction_settings.dl_plain" => {
+                "de7fd850f68bf0e7f64f61dfc0ddaa2df6769a3a7660bb075ce24f120b3d8c87"
+            }
+            "generated_beam_settings.dl_plain" => {
+                "19989b016123c1f0816107e1352fa740e67ff5b134e77129fe04ce72a66b8a30"
+            }
             "generated_customization_passive_bonuses.dl_plain" => {
                 "6ba67061fa05b1aa98cd9cbea19df182a80c6c07c5294440c6da41f3bbb8ad40"
             }
@@ -36,7 +54,7 @@ impl Baseline {
                 "18419e3ee058fbd4ef68bca6ab42da7ff2cf59f7e87c24428057d04f21e9f43d"
             }
             "generated_stratagem_settings.dl_plain" => {
-                "925fc5da32a1e3a822807ea7571fd0979c571e5e4ea16142ee6a4968d40ca078"
+                "5a5d54a1d0acab62b4e657f3bdb3ab55e4f279d43482f6d1edafe762a4bc7c2d"
             }
             _ => return Err("没有该文件的可信原值清单".into()),
         };
@@ -108,6 +126,26 @@ impl Baseline {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn depot_matched_baselines_are_pinned_and_reject_modified_bytes() {
+        let folder =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../offline/originals");
+        for stem in [
+            "customization_armor_sets",
+            "entity_deltas",
+            "status_effect_settings",
+            "destruction_settings",
+            "beam_settings",
+            "stratagem_settings",
+        ] {
+            let name = format!("generated_{stem}.dl_plain");
+            let bytes = std::fs::read(folder.join(&name)).unwrap();
+            assert!(Baseline::shipped(&name, bytes.clone()).is_ok(), "{name}");
+            let mut modified = bytes;
+            *modified.last_mut().unwrap() ^= 1;
+            assert!(Baseline::shipped(&name, modified).is_err(), "{name}");
+        }
+    }
     fn fixture(rows: &[(u32, f32)]) -> Vec<u8> {
         let mut data = b"LDLD\x01\0\0\0".to_vec();
         data.extend(1u32.to_le_bytes());

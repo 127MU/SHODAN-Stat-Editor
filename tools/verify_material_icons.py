@@ -3,8 +3,16 @@ from pathlib import Path
 import re
 
 def verify_material_icons(root: Path, release: Path):
-    from fontTools.ttLib import TTFont
-    from fontTools import subset
+    try:
+        from fontTools.ttLib import TTFont
+        from fontTools import subset
+    except ModuleNotFoundError as error:
+        if error.name != 'fontTools' and not (error.name or '').startswith('fontTools.'):
+            raise
+        from repair_material_icons import repair
+        if repair(font=release/'data/flutter_assets/fonts/MaterialIcons-Regular.otf'):
+            raise ValueError('MaterialIcons repair failed')
+        return
     config = (root/'desktop/morrow/windows/flutter/ephemeral/generated_config.cmake').read_text(encoding='utf8')
     match = re.search(r'set\(FLUTTER_ROOT "([^"]+)"', config) or re.search(r'file\(TO_CMAKE_PATH "([^"]+)" FLUTTER_ROOT\)', config)
     if not match:

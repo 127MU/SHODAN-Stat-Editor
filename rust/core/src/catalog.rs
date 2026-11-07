@@ -224,6 +224,20 @@ impl Catalog {
             return Err("参数目录数量过大".into());
         }
         supplement::extend(&mut data);
+        // These controls describe editor-owned patch operations, not numeric
+        // game fields. Their vanilla/default state is explicitly uninstalled.
+        // A missing default here used to mark every owning item "unknown".
+        for row in data.owners.iter().flat_map(|owner| &owner.rows) {
+            if row.choice == "resomode" || row.choice == "smmode" {
+                for part in &row.parts {
+                    if let Some(field) = data.fields.get_mut(part.field) {
+                        if field.storage == "virtual" && field.virtual_default.is_none() {
+                            field.virtual_default = Some(0.0);
+                        }
+                    }
+                }
+            }
+        }
         let mut by_owner = BTreeMap::new();
         let mut users = vec![BTreeSet::new(); data.fields.len()];
         for (index, owner) in data.owners.iter().enumerate() {

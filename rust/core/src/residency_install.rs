@@ -243,6 +243,9 @@ pub(crate) fn installed(root: &Path, ledger: &Path, group: &str) -> Result<bool,
     let slots = residency::slots(root, CARRIER)?;
     for name in &group.packages {
         let slot = &ledger.slots[name];
+        if checked(root, slot).is_err() {
+            return Ok(false);
+        }
         if slots.toc.range(..=slot.index).count() as u64 != u64::from(slot.index) + 1 {
             return Ok(false);
         }
@@ -754,6 +757,11 @@ mod tests {
         .unwrap();
         install::apply(changes, &root.join("tx1"), |_| {}).unwrap();
         assert_eq!(read(), [2]);
+        assert!(installed(root, &ledger, "owner").unwrap());
+        let installed_toc = fs::read(path(root, 0, "")).unwrap();
+        fs::write(path(root, 0, ""), b"foreign-mod").unwrap();
+        assert!(!installed(root, &ledger, "owner").unwrap());
+        fs::write(path(root, 0, ""), installed_toc).unwrap();
         let changes = prepare_edits(
             root,
             &ledger,

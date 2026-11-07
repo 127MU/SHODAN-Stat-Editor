@@ -99,11 +99,11 @@ def release_font() -> Path:
     )
 
 
-def repair(check_only: bool = False) -> int:
+def repair(check_only: bool = False, font: Path | None = None) -> int:
     root = flutter_root()
     codes = icon_definitions(root)
     used = used_icons()
-    font = release_font()
+    font = font if font is not None else release_font()
     if not font.is_file():
         raise SystemExit(f"release font missing: {font}")
     present = cmap_codepoints(font)

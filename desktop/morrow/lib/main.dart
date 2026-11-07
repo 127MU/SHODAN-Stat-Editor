@@ -1722,7 +1722,11 @@ class _WorkbenchState extends State<Workbench> {
         data: MediaQuery.of(
           context,
         ).copyWith(textScaler: TextScaler.linear(fontSize / 14)),
-        child: Stack(
+        child: DesktopFrame(
+          enabled: widget.persistAppearance,
+          onClose: shutdown,
+          onCloseError: showError,
+          child: Stack(
           fit: StackFit.expand,
           children: [
             RepaintBoundary(
@@ -1771,12 +1775,7 @@ class _WorkbenchState extends State<Workbench> {
                   ),
                 ),
               ),
-              DesktopFrame(
-                enabled: widget.persistAppearance,
-                onClose: shutdown,
-                onCloseError: showError,
-                child: child!,
-              ),
+              child!,
             ],
           ),
               ),
@@ -1795,6 +1794,7 @@ class _WorkbenchState extends State<Workbench> {
               ),
           ],
         ),
+      ),
       ),
       home: Scaffold(
         backgroundColor: Colors.transparent,

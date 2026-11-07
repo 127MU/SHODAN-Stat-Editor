@@ -29,7 +29,7 @@ pub(crate) fn profile() -> PathBuf {
         })
 }
 
-fn game_at(root: &Path) -> Option<PathBuf> {
+fn game_at(root: &Path, allow_missing_entities: bool) -> Option<PathBuf> {
     [
         root.to_path_buf(),
         root.join("data/game"),
@@ -37,9 +37,10 @@ fn game_at(root: &Path) -> Option<PathBuf> {
     ]
     .into_iter()
     .find_map(|p| {
-        (p.join(DLL).is_file() && p.join("generated_entities.dl_bin").is_file())
-            .then(|| fs::canonicalize(p).ok())
-            .flatten()
+        (p.join(DLL).is_file()
+            && (allow_missing_entities || p.join("generated_entities.dl_bin").is_file()))
+        .then(|| fs::canonicalize(p).ok())
+        .flatten()
     })
 }
 
@@ -93,8 +94,26 @@ pub(crate) fn find_game(
     runtime: &Path,
     profile: &Path,
 ) -> Result<PathBuf, String> {
+    find_game_checked(explicit, runtime, profile, false)
+}
+
+pub(crate) fn find_game_for_repair(
+    explicit: Option<&Path>,
+    runtime: &Path,
+    profile: &Path,
+) -> Result<PathBuf, String> {
+    find_game_checked(explicit, runtime, profile, true)
+}
+
+fn find_game_checked(
+    explicit: Option<&Path>,
+    runtime: &Path,
+    profile: &Path,
+    allow_missing: bool,
+) -> Result<PathBuf, String> {
     if let Some(path) = explicit {
-        return game_at(path).ok_or_else(|| "所选目录不含有效的 Helldivers 2 数据".into());
+        return game_at(path, allow_missing)
+            .ok_or_else(|| "所选目录不含有效的 Helldivers 2 数据".into());
     }
     let launch_dir = env::var_os("SHODAN_LAUNCH_DIR").map(PathBuf::from);
     for dir in [Some(profile), launch_dir.as_deref(), Some(runtime)]
@@ -102,7 +121,10 @@ pub(crate) fn find_game(
         .flatten()
     {
         if let Ok(text) = fs::read_to_string(dir.join("game folder.txt")) {
-            if let Some(path) = game_at(Path::new(text.trim_start_matches('\u{feff}').trim())) {
+            if let Some(path) = game_at(
+                Path::new(text.trim_start_matches('\u{feff}').trim()),
+                allow_missing,
+            ) {
                 return Ok(path);
             }
         }
@@ -119,7 +141,7 @@ pub(crate) fn find_game(
     }
     roots
         .into_iter()
-        .find_map(|p| game_at(&p))
+        .find_map(|p| game_at(&p, allow_missing))
         .ok_or_else(|| "没有找到游戏。请将安装目录写入程序旁的 game folder.txt 后重启。".into())
 }
 
@@ -253,6 +275,25 @@ impl Game {
         runtime: &Path,
         profile: &Path,
     ) -> Result<Self, String> {
+        Self::load_checked(catalog, root, runtime, profile, false)
+    }
+
+    pub(crate) fn load_for_repair(
+        catalog: &Catalog,
+        root: PathBuf,
+        runtime: &Path,
+        profile: &Path,
+    ) -> Result<Self, String> {
+        Self::load_checked(catalog, root, runtime, profile, true)
+    }
+
+    fn load_checked(
+        catalog: &Catalog,
+        root: PathBuf,
+        runtime: &Path,
+        profile: &Path,
+        allow_missing: bool,
+    ) -> Result<Self, String> {
         let dll = fs::read(root.join(DLL)).map_err(|_| "无法读取游戏版本")?;
         let build = hash::sha256_hex(&dll);
         if catalog.game_build.as_deref() != Some(build.as_str()) {
@@ -271,7 +312,11 @@ impl Game {
         let mut files = Vec::new();
         for name in names {
             let path = root.join(name);
-            if !path.is_file() {
+            if !path.is_file()
+                && !(allow_missing
+                    && fs::symlink_metadata(&path)
+                        .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound))
+            {
                 return Err(format!("游戏目录缺少 {name}"));
             }
             let stem = name.strip_suffix(".dl_bin").unwrap_or(name);
@@ -420,7 +465,7 @@ impl Game {
     }
 
     pub(crate) fn baseline_check(&self, workspace: &Workspace) -> Value {
-        self.check(workspace, true)
+        self.check(workspace, true, true)
     }
 
     /// Repair only state owned by this editor. Transaction recovery verifies
@@ -438,6 +483,11 @@ impl Game {
             total: 3,
         });
         let recovery = self.recover(&mut progress);
+        let numeric_repair = if recovery.is_ok() {
+            self.repair_numeric_records(&self.game_dll()?)
+        } else {
+            Err("安装事务尚未恢复，未变更数值安装登记".into())
+        };
         let invalid_draft = self.repair_invalid_draft()?;
         let residency_repair = (|| {
             let (_lock, _, backup) = self.begin()?;
@@ -455,7 +505,13 @@ impl Game {
         });
         *self.resources.borrow_mut() = None;
         *self.text_originals.borrow_mut() = None;
-        let mut workspace = self.reopen()?;
+        let mut workspace = self.reopen().map_err(|error| match &numeric_repair {
+            Ok((_, _, problems)) if !problems.is_empty() => {
+                format!("{error}；数值修复未完成：{}", problems.join("；"))
+            }
+            Err(problem) => format!("{error}；{problem}"),
+            _ => error,
+        })?;
         let saved_warnings = workspace.draft_conflicts().cloned().collect::<Vec<_>>();
         let reconciled = self.repair_derived(&workspace);
         if reconciled.as_ref().is_ok_and(|count| *count > 0) {
@@ -483,6 +539,22 @@ impl Game {
             "已重新读取游戏数据并重建参数索引".to_string(),
             "已刷新资源查询缓存，保留现有数值、预设和外观设置".to_string(),
         ];
+        match numeric_repair {
+            Ok((restored, detached, remaining)) => {
+                if restored > 0 {
+                    actions.push(format!(
+                        "已从当前版本的已校验安装备份恢复 {restored} 个缺失数值文件"
+                    ));
+                }
+                if detached > 0 {
+                    actions.push(format!(
+                        "已备份并清理 {detached} 项已恢复到安装前状态的过期登记"
+                    ));
+                }
+                problems.extend(remaining);
+            }
+            Err(error) => problems.push(format!("数值安装登记修复未完成：{error}")),
+        }
         if invalid_draft {
             actions.push("已完整备份损坏的编辑草稿并解除其启动阻塞".into());
         }
@@ -521,6 +593,14 @@ impl Game {
         problems.dedup();
         let ok = problems.is_empty();
         report["problems"] = json!(problems);
+        report["issues"] = json!(problems
+            .iter()
+            .map(|problem| {
+                let mut entry = crate::diagnostics::installation_advice(problem);
+                entry["problem"] = json!(problem);
+                entry
+            })
+            .collect::<Vec<_>>());
         report["actions"] = json!(actions);
         report["ok"] = json!(ok);
         report["message"] = json!(if ok {
@@ -534,6 +614,71 @@ impl Game {
             total: 3,
         });
         Ok((workspace, report))
+    }
+
+    fn repair_numeric_records(&self, dll: &[u8]) -> Result<(usize, usize, Vec<String>), String> {
+        let (_lock, _, backup) = self.begin()?;
+        let (disk, mut owned) = self.owned()?;
+        let mut changes = Vec::new();
+        let mut retired = Vec::new();
+        let mut problems = Vec::new();
+        let mut restored = 0;
+        for (name, item) in &owned {
+            if !valid_file(name) {
+                return Err("安装记录含无效文件名".into());
+            }
+            let current = match install::read(&self.root.join(name)) {
+                Ok(value) => value,
+                Err(error) => {
+                    problems.push(format!("{name}：{error}"));
+                    continue;
+                }
+            };
+            if current.as_deref().map(hash::sha256_hex).as_deref() == Some(item.installed.as_str())
+            {
+                continue;
+            }
+            let (_, saved) = match self.verified_backup(name, item, true) {
+                Ok(value) => value,
+                Err(error) => {
+                    problems.push(error);
+                    continue;
+                }
+            };
+            if current.as_ref() == Some(&saved) {
+                // An external restore already put back our exact pre-install
+                // bytes. Retiring only the stale ledger cannot erase a Mod.
+                retired.push(name.clone());
+            } else if current.is_none() {
+                if !crate::sealed::open_data(&saved)
+                    .is_ok_and(|plain| hash::expected_by_game(&plain, dll))
+                {
+                    problems.push(format!("{name} 缺失，且备份与当前游戏版本不匹配，未恢复"));
+                    continue;
+                }
+                changes.push(Change {
+                    path: self.root.join(name),
+                    before: None,
+                    after: Some(saved),
+                });
+                restored += 1;
+                retired.push(name.clone());
+            } else {
+                problems.push(format!("{name} 已被外部工具修改，自动修复保留该文件；请确认冲突后强制写入或先还原对应 Mod"));
+            }
+        }
+        if !retired.is_empty() {
+            for name in &retired {
+                owned.remove(name);
+            }
+            changes.push(Change {
+                path: self.state.join("managed.json"),
+                before: disk,
+                after: Some(serde_json::to_vec(&owned).map_err(|_| "无法保存修复后的安装登记")?),
+            });
+            install::apply(changes, &backup, |_| {})?;
+        }
+        Ok((restored, retired.len(), problems))
     }
 
     fn repair_invalid_draft(&self) -> Result<bool, String> {
@@ -607,15 +752,16 @@ impl Game {
 
     pub(crate) fn needs_resource_changes(workspace: &Workspace) -> bool {
         !workspace.changed_resources().is_empty()
+            || workspace.metadata()["ragdoll"] != workspace.loaded_metadata()["ragdoll"]
             || workspace.metadata()[crate::desktop_text::STATE]
                 != workspace.loaded_metadata()[crate::desktop_text::STATE]
     }
 
     pub(crate) fn install_check(&self, workspace: &Workspace) -> Value {
-        self.check(workspace, Self::needs_resource_changes(workspace))
+        self.check(workspace, Self::needs_resource_changes(workspace), false)
     }
 
-    fn check(&self, workspace: &Workspace, resources: bool) -> Value {
+    fn check(&self, workspace: &Workspace, resources: bool, all_owned: bool) -> Value {
         let mut problems: BTreeSet<_> = if resources {
             workspace.resource_conflicts().cloned().collect()
         } else {
@@ -626,6 +772,31 @@ impl Game {
             warnings.extend(workspace.resource_conflicts().cloned());
         }
         let mut entries = Vec::new();
+        match self.owned() {
+            Ok((_, owned)) => {
+                for (name, item) in owned {
+                    if all_owned
+                        || workspace.file_has_pending(&name)
+                        || ([crate::desktop_armor::PASSIVE, crate::desktop_armor::KITS]
+                            .contains(&name.as_str())
+                            && workspace.metadata()["armor"]
+                                != workspace.loaded_metadata()["armor"])
+                    {
+                        if let Err(error) = self.verified_backup(&name, &item, false) {
+                            if all_owned {
+                                problems.insert(error);
+                            } else {
+                                warnings
+                                    .push(format!("数值安装登记检查：{error}；建议先运行自动修复"));
+                            }
+                        }
+                    }
+                }
+            }
+            Err(error) => {
+                problems.insert(error);
+            }
+        }
         match self.game_dll() {
             Ok(_) => entries.push(
                 json!({"equipment":"游戏版本","parameter":"game.dll","after":"与当前参数目录一致"}),
@@ -696,7 +867,7 @@ impl Game {
         name: &str,
         item: &Owned,
         allow_current_change: bool,
-    ) -> Result<(Vec<u8>, Vec<u8>), String> {
+    ) -> Result<(Option<Vec<u8>>, Vec<u8>), String> {
         if !valid_file(name)
             || item.transaction.is_empty()
             || !item
@@ -718,13 +889,10 @@ impl Game {
         if hash::sha256_hex(&saved) != item.original {
             return Err(format!("{name} 的原始备份已变化，无法确认恢复内容"));
         }
-        let current = match fs::read(self.root.join(name)) {
-            Ok(bytes) => bytes,
-            // A forced restore may recreate a file that another tool removed.
-            Err(_) if allow_current_change => Vec::new(),
-            Err(_) => return Err("无法核对已安装文件".into()),
-        };
-        if hash::sha256_hex(&current) != item.installed && !allow_current_change {
+        let current = install::read(&self.root.join(name))?;
+        if current.as_deref().map(hash::sha256_hex).as_deref() != Some(item.installed.as_str())
+            && !allow_current_change
+        {
             return Err(format!("{name} 的文件已变化"));
         }
         Ok((current, saved))
@@ -1036,6 +1204,14 @@ impl Game {
             }
             let before_digest = crate::hash::sha256_hex(&before);
             let after_digest = crate::hash::sha256_hex(&prepared.ciphertext);
+            if let Some(item) = owned
+                .get(&name)
+                .filter(|item| item.installed == before_digest)
+            {
+                // Do not continue overwriting an owned file whose restore
+                // source has been removed or tampered with.
+                self.verified_backup(&name, item, false)?;
+            }
             if let Some(item) = owned.get_mut(&name) {
                 if item.installed != before_digest {
                     if !force {
@@ -1078,6 +1254,15 @@ impl Game {
             &workspace.metadata()[crate::desktop_text::STATE],
             &workspace.loaded_metadata()[crate::desktop_text::STATE],
         )?;
+        if workspace.metadata()["ragdoll"].as_bool().is_some() {
+            let (_, pending) = crate::desktop_resource_edits::ragdoll(
+                self,
+                workspace.metadata()["ragdoll"].as_bool(),
+            )?;
+            for (package, resources) in pending {
+                edits.entry(package).or_default().extend(resources);
+            }
+        }
         for name in workspace.changed_resources() {
             let source = self.archive.get(name).ok_or("缺少独立资源的来源包")?;
             let key = archive_identity(name)?;
@@ -1163,10 +1348,11 @@ impl Game {
         let mut warnings = Vec::new();
         for (name, item) in &owned {
             let (current, saved) = self.verified_backup(name, item, force)?;
-            if force && hash::sha256_hex(&current) != item.installed {
-                warnings.push(format!(
-                    "{name} 已被其他工具修改，已强制恢复为备份内容"
-                ));
+            if force
+                && current.as_deref().map(hash::sha256_hex).as_deref()
+                    != Some(item.installed.as_str())
+            {
+                warnings.push(format!("{name} 已被其他工具修改，已强制恢复为备份内容"));
             }
             restored.insert(
                 name.clone(),
@@ -1177,7 +1363,7 @@ impl Game {
             );
             changes.push(Change {
                 path: self.root.join(name),
-                before: Some(current),
+                before: current,
                 after: Some(saved),
             });
         }
@@ -1190,6 +1376,12 @@ impl Game {
             &configuration[crate::desktop_text::STATE],
         )?;
         let mut packages = BTreeMap::new();
+        if configuration["ragdoll"].as_bool().is_some() {
+            let (_, pending) = crate::desktop_resource_edits::ragdoll(self, Some(false))?;
+            for (package, resources) in pending {
+                edits.entry(package).or_default().extend(resources);
+            }
+        }
         for (name, source) in &self.archive {
             if !packages.contains_key(&source.package) {
                 packages.insert(source.package.clone(), self.overrides(&source.package)?);
@@ -1239,9 +1431,11 @@ impl Game {
             require_closed()?;
             install::apply(changes, &backup, progress)?;
         }
-        Ok(json!({"ok":true,"files":count,"resources":resources,"warnings":warnings,
+        Ok(
+            json!({"ok":true,"files":count,"resources":resources,"warnings":warnings,
             "forced":force && !warnings.is_empty(),
-            "message":format!("已恢复 {count} 个数值文件、{resources} 个独立资源")}))
+            "message":format!("已恢复 {count} 个数值文件、{resources} 个独立资源")}),
+        )
     }
 }
 
@@ -1299,7 +1493,10 @@ mod tests {
             format!("{NAME} 的文件已变化")
         );
         let (current, backup) = game.verified_backup(NAME, &item, true).unwrap();
-        assert_eq!(current, b"changed-by-another-tool");
+        assert_eq!(
+            current.as_deref(),
+            Some(b"changed-by-another-tool".as_slice())
+        );
         assert_eq!(backup, saved);
         let _ = fs::remove_dir_all(root);
     }
@@ -1324,6 +1521,51 @@ mod tests {
     }
 
     #[test]
+    fn numeric_repair_restores_only_verified_missing_files_and_retires_restored_records() {
+        let root = scratch("repair-numeric");
+        let plain = include_bytes!("../data/armor-baseline.bin");
+        let saved = crate::sealed::seal(plain).unwrap();
+        let item = owned(&root, &saved, b"installed");
+        let game = game_at(&root);
+        let ledger = BTreeMap::from([(NAME.to_owned(), item.clone())]);
+        let store = || {
+            fs::write(
+                game.state.join("managed.json"),
+                serde_json::to_vec(&ledger).unwrap(),
+            )
+            .unwrap()
+        };
+        store();
+        let dll = hash::murmur64(plain).to_le_bytes();
+        let (restored, detached, problems) = game.repair_numeric_records(&dll).unwrap();
+        assert_eq!((restored, detached), (1, 1));
+        assert!(problems.is_empty());
+        assert_eq!(fs::read(root.join(NAME)).unwrap(), saved);
+        assert!(game.owned().unwrap().1.is_empty());
+        store();
+        let (restored, detached, problems) = game.repair_numeric_records(&dll).unwrap();
+        assert_eq!((restored, detached), (0, 1));
+        assert!(problems.is_empty());
+        store();
+        fs::write(root.join(NAME), b"foreign-mod").unwrap();
+        let (restored, detached, problems) = game.repair_numeric_records(&dll).unwrap();
+        assert_eq!((restored, detached), (0, 0));
+        assert_eq!(problems.len(), 1);
+        assert_eq!(fs::read(root.join(NAME)).unwrap(), b"foreign-mod");
+        assert_eq!(game.owned().unwrap().1.len(), 1);
+        fs::remove_file(root.join(NAME)).unwrap();
+        let (restored, detached, problems) = game.repair_numeric_records(b"wrong-version").unwrap();
+        assert_eq!((restored, detached), (0, 0));
+        assert!(problems[0].contains("版本"));
+        assert!(!root.join(NAME).exists());
+        fs::write(root.join("state/transactions/0-1/0.original"), b"damaged").unwrap();
+        let (_, _, problems) = game.repair_numeric_records(&dll).unwrap();
+        assert!(problems[0].contains("备份"));
+        assert!(!root.join(NAME).exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn forced_restore_recreates_a_missing_game_file() {
         let root = scratch("force-missing");
         let saved = b"saved-backup".to_vec();
@@ -1331,8 +1573,25 @@ mod tests {
         let game = game_at(&root);
         assert!(game.verified_backup(NAME, &item, false).is_err());
         let (current, backup) = game.verified_backup(NAME, &item, true).unwrap();
-        assert!(current.is_empty());
+        assert!(current.is_none());
         assert_eq!(backup, saved);
+        install::apply(
+            vec![Change {
+                path: root.join(NAME),
+                before: current,
+                after: Some(backup),
+            }],
+            &root.join("recreate-transaction"),
+            |_| {},
+        )
+        .unwrap();
+        assert_eq!(fs::read(root.join(NAME)).unwrap(), saved);
+        fs::remove_file(root.join(NAME)).unwrap();
+        fs::create_dir(root.join(NAME)).unwrap();
+        assert!(
+            game.verified_backup(NAME, &item, true).is_err(),
+            "不可读取的目标不能作为缺失文件强制覆盖"
+        );
         let _ = fs::remove_dir_all(root);
     }
 }
@@ -1360,6 +1619,33 @@ pub(crate) fn changed_floats(catalog: &Catalog, workspace: &Workspace) -> Vec<Lo
                     .is_ok_and(|v| v.current != v.loaded)
             {
                 fields.push(location.clone());
+            }
+        }
+    }
+    let edited_files = fields
+        .iter()
+        .map(|loc| loc.file.clone())
+        .collect::<BTreeSet<_>>();
+    for binding in catalog
+        .bindings
+        .iter()
+        .flatten()
+        .filter(|b| matches!(b.encoding, Encoding::F32))
+    {
+        for loc in &binding.locations {
+            if loc.typ == 0xBD4042C2
+                && loc.relative == 32
+                && !edited_files.contains(&loc.file)
+                && !fields.iter().any(|entry| entry.file == loc.file)
+                && workspace.file_has_pending(&loc.file)
+                && workspace.snapshot(&loc.file).is_ok_and(|bytes| {
+                    crate::dlbin::index(bytes).is_ok_and(|blocks| blocks.len() == 1)
+                })
+                && workspace.value(loc, &Encoding::F32).is_ok_and(|v| {
+                    v.current.is_finite() && v.current > 0.0 && v.current < f32::MAX as f64
+                })
+            {
+                fields.push(loc.clone());
             }
         }
     }

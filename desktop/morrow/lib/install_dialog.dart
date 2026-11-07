@@ -54,16 +54,24 @@ class _InstallDialogState extends State<InstallDialog> {
   }
 
   Future<void> run({bool force = false}) async {
-    widget.backend.diagnostics.record(widget.repair ? '开始自动修复流程' : widget.preview ? '开始安装预览' : '开始写入游戏');
+    widget.backend.diagnostics.record(
+      widget.repair
+          ? '开始自动修复流程'
+          : widget.preview
+          ? '开始安装预览'
+          : '开始写入游戏',
+    );
     try {
-      result = widget.repair ? await widget.backend.repair() : await widget.backend.call(
-        widget.preview
-            ? 'install_preview'
-            : widget.restore
-            ? 'restore_task'
-            : 'install_task',
-        [widget.allowFloatAdjustment, force],
-      );
+      result = widget.repair
+          ? await widget.backend.repair()
+          : await widget.backend.call(
+              widget.preview
+                  ? 'install_preview'
+                  : widget.restore
+                  ? 'restore_task'
+                  : 'install_task',
+              [widget.allowFloatAdjustment, force],
+            );
       if (!mounted) return;
       success = widget.preview || result is Map && result['ok'] == true;
       if (widget.preview) {
@@ -78,9 +86,17 @@ class _InstallDialogState extends State<InstallDialog> {
           for (final entry in result['warnings'] as List? ?? []) '提示：$entry',
           if ((result['problems'] as List? ?? []).isNotEmpty) '仍需处理：',
           for (final entry in result['problems'] as List? ?? []) '• $entry',
+          for (final action in {
+            for (final issue in result['issues'] as List? ?? [])
+              if (issue is Map && issue['action'] is String)
+                issue['action'] as String,
+          })
+            '处理建议：$action',
         ].join('\n\n');
       }
-      if (result is Map && (result['warnings'] as List? ?? []).isNotEmpty) {
+      if (!widget.repair &&
+          result is Map &&
+          (result['warnings'] as List? ?? []).isNotEmpty) {
         message = [
           message,
           for (final entry in result['warnings'] as List) '提示：$entry',
@@ -92,13 +108,21 @@ class _InstallDialogState extends State<InstallDialog> {
         ),
         '已写入游戏文件，启动游戏后生效。',
       );
+      if (!success && !widget.repair) await explainFailure(message);
       widget.backend.diagnostics.record(
-        '${widget.repair ? '自动修复结束' : success ? '安装完成' : '安装失败'}：$message',
+        '${widget.repair
+            ? '自动修复结束'
+            : success
+            ? '安装完成'
+            : '安装失败'}：$message',
       );
     } catch (e) {
       message = '$e';
       success = false;
-      widget.backend.diagnostics.record('${widget.repair ? '自动修复' : '安装'}异常：$e');
+      widget.backend.diagnostics.record(
+        '${widget.repair ? '自动修复' : '安装'}异常：$e',
+      );
+      await explainFailure('$e');
     }
     if (mounted)
       setState(() {
@@ -109,6 +133,23 @@ class _InstallDialogState extends State<InstallDialog> {
             ? (success ? '恢复完成' : '恢复未完成')
             : (success ? '安装完成' : '安装未完成');
       });
+  }
+
+  Future<void> explainFailure(String reason) async {
+    try {
+      final advice = await widget.backend
+          .nativeCall('diagnostic-install-error', {'error': reason})
+          .timeout(const Duration(seconds: 3));
+      if (advice is Map && advice['action'] is String) {
+        message += '\n\n处理建议：${advice['action']}';
+        widget.backend.diagnostics.workspace['last_install_failure'] = widget
+            .backend
+            .diagnostics
+            .scrub({'error': reason, ...advice});
+      }
+    } catch (_) {
+      // Keep the original failure visible if the engine itself is unavailable.
+    }
   }
 
   Future<void> forceWrite() async {
@@ -123,7 +164,10 @@ class _InstallDialogState extends State<InstallDialog> {
               : '按当前打开的数据写入，并接管冲突的旧数值安装记录。当前文件会先备份；之后“恢复原版”将恢复到本次写入前的文件，可能仍含其他 Mod 的修改。游戏版本、磁盘快照和资源补丁校验仍须通过。',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(restore ? '备份并强制恢复' : '备份并强制写入'),
@@ -241,7 +285,9 @@ class _InstallDialogState extends State<InstallDialog> {
             if (!finished && total > 0) Text('当前阶段：$done / $total'),
             if (message.isNotEmpty)
               ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .35),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * .35,
+                ),
                 child: SingleChildScrollView(child: SelectableText(message)),
               ),
             TextButton(
@@ -253,7 +299,9 @@ class _InstallDialogState extends State<InstallDialog> {
                 height: 140,
                 child: SingleChildScrollView(
                   child: SelectableText(
-                    events.isEmpty ? (finished ? '没有额外阶段信息。' : '正在等待阶段信息…') : events.join('\n'),
+                    events.isEmpty
+                        ? (finished ? '没有额外阶段信息。' : '正在等待阶段信息…')
+                        : events.join('\n'),
                   ),
                 ),
               ),
