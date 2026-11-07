@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import shutil
+import struct
 import subprocess
 
 
@@ -229,7 +230,12 @@ def main():
     try:
         assert desktop('items', 'Primary', selected['name'])
         assert any('.patch_121' in issue for issue in desktop('baseline_check')['problems'])
-        assert desktop('install_preview')['problems']
+        assert not desktop('install_preview')['problems']
+        desktop('select', selected['id'])
+        damage = next(row for row in desktop('rows_fast') if row['id'] == 'damage')
+        desktop('set', damage['id'], damage['value'] + 1)
+        assert call('game-install', allow_float_adjustment=True)['files'] > 0
+        assert ledger.is_file() and not list(data.glob('*.patch_*'))
     finally:
         p.stdin.close()
         p.wait(timeout=30)
@@ -249,7 +255,79 @@ def main():
     finally:
         p.stdin.close()
         p.wait(timeout=30)
-    print('Native desktop edits, presets, diagnosis, armor, resource residency and restore passed.')
+    # A changed-source draft must be isolated once, without blocking fresh edits.
+    draft_path = state.with_name('draft.json')
+    stale = json.dumps({
+        'version': 1, 'metadata': None,
+        'files': {name: {'source': 'outdated-source', 'bytes': {'24': 1}}
+                  for name in ('generated_arc_settings.dl_bin',
+                               'generated_damage_settings.dl_bin',
+                               'generated_entity_deltas.dl_bin',
+                               'generated_projectile_settings.dl_bin')},
+    }).encode()
+    draft_path.write_bytes(stale)
+    p, call, desktop = start(expect_conflict=True)
+    try:
+        preview = desktop('install_preview')
+        assert not preview['problems'], preview
+        assert any('草稿' in warning for warning in preview['warnings']), preview
+        recovery = draft_path.with_name('draft-recovery-' + hashlib.sha256(stale).hexdigest() + '.json')
+        assert recovery.read_bytes() == stale
+        assert not json.loads(draft_path.read_bytes())['files']
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    p, call, desktop = start()
+    try:
+        desktop('select', selected['id'])
+        row = next(row for row in desktop('rows_fast') if row['id'] == 'damage')
+        desktop('set', row['id'], row['value'] + 1)
+        assert recovery.read_bytes() == stale
+        assert not desktop('install_preview')['problems']
+        assert call('game-install', allow_float_adjustment=True)['files'] > 0
+        assert recovery.read_bytes() == stale
+        call('game-restore')
+        assert {name: digest(game / name) for name in names} == targets
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    # Pre-existing edits without our install ledger still differ from verified originals.
+    field = catalog['fields'][next(row for row in selected['rows']
+                                   if row['key'] == 'damage')['parts'][0]['field']]
+    binding, = field['bindings']
+    target = game / binding['file']
+    saved = target.read_bytes()
+    plain = root / 'damage-before.bin'
+    subprocess.run([options.exe, 'unseal-copy', target, plain], check=True, capture_output=True)
+    tables = json.loads(subprocess.run([options.exe, 'tables', plain], check=True,
+                                      capture_output=True, text=True).stdout)['tables']
+    table = next(t for t in tables if t['type'] == binding['type'])
+    record = next(r for r in table['rows'] if r['key'] == binding['record'])
+    offset = record['offset'] + binding['relative']
+    edited = bytearray(plain.read_bytes())
+    value = struct.unpack_from('<I', edited, offset)[0] + 17
+    struct.pack_into('<I', edited, offset, value)
+    changed = root / 'damage-after.bin'
+    changed.write_bytes(edited)
+    sealed = root / 'damage-edited.dl_bin'
+    subprocess.run([options.exe, 'prepare-copy', plain, changed, sealed],
+                   check=True, capture_output=True)
+    target.write_bytes(sealed.read_bytes())
+    p, call, desktop = start(expect_conflict=True)
+    try:
+        assert not desktop('install_preview')['problems']
+        desktop('select', selected['id'])
+        row = next(r for r in desktop('rows_fast') if r['id'] == 'damage')
+        assert row['value'] == value and not row['changed'], row
+        assert row['baseline_state'] == 'different', row
+        item = next(i for i in desktop('items', 'Primary', '') if i['id'] == selected['id'])
+        assert item['baseline_state'] == 'different', item
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+        target.write_bytes(saved)
+    assert {name: digest(game / name) for name in names} == targets
+    print('Native desktop edits, presets, diagnosis, armor, residency, restore, draft recovery and existing-value comparison passed.')
 
 
 if __name__ == '__main__':

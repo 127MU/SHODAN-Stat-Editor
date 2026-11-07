@@ -305,12 +305,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('navigation-Tweaks')));
     await tester.pumpAndSettle();
-    expect(find.text('狙击步枪第三人称准星'), findsOneWidget);
+    expect(find.text('狙击步枪第三人称准星'), findsNothing);
     expect(find.text('策略球部署限制放宽'), findsOneWidget);
     expect(find.text('射弹穿过树冠与灌木'), findsOneWidget);
     await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
-    expect(backend.tweaks['reticle'], isTrue);
+    expect(backend.tweaks['bounce'], isTrue);
     await tester.tap(find.byType(Switch).last);
     await tester.pumpAndSettle();
     expect(find.text('启用布娃娃优化（实验性）'), findsOneWidget);

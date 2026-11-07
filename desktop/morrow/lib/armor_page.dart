@@ -239,7 +239,6 @@ class _ArmorPageState extends State<ArmorPage> {
                             entrance,
                             i,
                             columns: columns,
-                            count: visible.length,
                             key: ValueKey('passive:${p['id']}'),
                             AnimatedContainer(
                               duration: WorkbenchMotion.duration(

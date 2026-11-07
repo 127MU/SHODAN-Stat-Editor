@@ -330,7 +330,7 @@ class _WorkbenchState extends State<Workbench> {
           current = null;
           activeSection = null;
           status =
-              '${items.where((item) => item['changed'] == true).length} 项已修改 / 共 ${items.length} 项';
+              '${items.where((item) => catalogItemChanged(item)).length} 项已修改 / 共 ${items.length} 项';
         });
     } catch (e) {
       showError(e);
@@ -1387,7 +1387,10 @@ class _WorkbenchState extends State<Workbench> {
         ),
         if ((row['inline_note'] ?? '').toString().isNotEmpty)
           Text(row['inline_note']),
-        if (row['changed'] == true) const Text('已修改'),
+        if (row['changed'] == true)
+          const Text('已修改')
+        else if (row['baseline_state'] == 'different')
+          const Text('与原值不同'),
         if (row['shared_pending'] == true ||
             (row['shared'] is List && (row['shared'] as List).isNotEmpty))
           TextButton(
@@ -1502,7 +1505,6 @@ class _WorkbenchState extends State<Workbench> {
                 entrance,
                 index,
                 columns: 4,
-                count: categories.length,
                 surface(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1538,7 +1540,7 @@ class _WorkbenchState extends State<Workbench> {
   }
 
   bool matchesParameter(dynamic row) =>
-      (!onlyChanged || row['changed'] == true || row['patch_pending'] == true) &&
+      (!onlyChanged || catalogItemChanged(row) || row['patch_pending'] == true) &&
       (parameterQuery.isEmpty ||
           row.toString().toLowerCase().contains(parameterQuery));
 
@@ -1971,7 +1973,6 @@ class _WorkbenchState extends State<Workbench> {
                                                   entrance,
                                                   i,
                                                   columns: columns,
-                                                  count: visible.length,
                                                   surface(
                                                   Column(
                                                     crossAxisAlignment:
@@ -1991,10 +1992,8 @@ class _WorkbenchState extends State<Workbench> {
                                                       ),
                                                       Text(
                                                         group.entries.length > 1
-                                                            ? '${group.entries.length} 个关联条目${group.changed ? ' · 含修改' : ''}'
-                                                            : group.changed
-                                                            ? '已修改'
-                                                            : '未修改',
+                                                            ? '${group.entries.length} 个关联条目 · ${group.statusLabel}'
+                                                            : group.statusLabel,
                                                       ),
                                                       const Spacer(),
                                                       Align(
