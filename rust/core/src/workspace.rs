@@ -757,6 +757,11 @@ impl Workspace {
         }
         Ok(())
     }
+    pub(crate) fn valid_draft(bytes: &[u8]) -> bool {
+        serde_json::from_slice::<Draft>(bytes).is_ok_and(|draft| {
+            draft.version == 1 && (draft.metadata.is_null() || draft.metadata.is_object())
+        })
+    }
     pub(crate) fn draft_recovery(&self) -> Result<Option<crate::install::Change>, String> {
         let Some(bytes) = &self.suspended_source else {
             return Ok(None);
@@ -824,6 +829,34 @@ impl Workspace {
             before: disk.clone(),
             after: None,
         })
+    }
+    pub(crate) fn draft_metadata_change(
+        &self,
+        key: &str,
+        replacement: &serde_json::Value,
+    ) -> Result<Option<crate::install::Change>, String> {
+        let Some((path, Some(disk))) = &self.draft else {
+            return Ok(None);
+        };
+        let mut draft: Draft = serde_json::from_slice(disk).map_err(|_| "编辑草稿无效")?;
+        if draft.metadata.is_null() {
+            draft.metadata = serde_json::json!({});
+        }
+        if replacement.is_null() {
+            draft
+                .metadata
+                .as_object_mut()
+                .ok_or("编辑草稿配置无效")?
+                .remove(key);
+        } else {
+            draft.metadata[key] = replacement.clone();
+        }
+        let bytes = serde_json::to_vec(&draft).map_err(|_| "无法编码修复后的草稿")?;
+        Ok(Some(crate::install::Change {
+            path: path.clone(),
+            before: Some(disk.clone()),
+            after: Some(bytes),
+        }))
     }
     pub(crate) fn migrate_draft(
         &mut self,

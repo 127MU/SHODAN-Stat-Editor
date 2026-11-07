@@ -21,6 +21,7 @@ pub struct Api {
     workspace: Option<crate::workspace::Workspace>,
     catalog: Option<crate::catalog::Catalog>,
     game: Option<crate::game_workspace::Game>,
+    last_open: Option<(PathBuf, PathBuf)>,
     desktop: crate::desktop::Desktop,
     update_job: Option<std::thread::JoinHandle<Result<Value, String>>>,
     resolver: Option<(
@@ -125,6 +126,7 @@ impl Api {
             let bytes =
                 fs::read(runtime.join("catalog.json.gz")).map_err(|_| "缺少原生参数目录")?;
             let catalog = crate::catalog::Catalog::from_gzip(&bytes)?;
+            self.last_open = Some((runtime.clone(), root.clone()));
             let (game, workspace) =
                 crate::game_workspace::Game::open(&catalog, root, &runtime, &profile)?;
             let info = json!({"game":game.root,"problems":workspace.problems(),
@@ -134,6 +136,53 @@ impl Api {
             self.game = Some(game);
             self.desktop = Default::default();
             return Ok(info);
+        }
+        if method == "game-repair" {
+            if !game_writes {
+                return Err("请从桌面设置启动自动修复".into());
+            }
+            if self.game.is_none() {
+                let runtime = self
+                    .last_open
+                    .as_ref()
+                    .map(|(runtime, _)| runtime.clone())
+                    .or_else(|| p["runtime"].as_str().map(PathBuf::from))
+                    .ok_or("无法定位程序目录")?;
+                let profile = crate::game_workspace::profile();
+                let root = crate::game_workspace::find_game(
+                    self.last_open.as_ref().map(|(_, root)| root.as_path()),
+                    &runtime,
+                    &profile,
+                )?;
+                let bytes = fs::read(runtime.join("catalog.json.gz"))
+                    .map_err(|_| "缺少原生参数目录，请重新下载完整程序包")?;
+                let catalog = crate::catalog::Catalog::from_gzip(&bytes)?;
+                let game = crate::game_workspace::Game::load(&catalog, root, &runtime, &profile)?;
+                self.catalog = Some(catalog);
+                self.game = Some(game);
+            }
+            let game = self.game.as_ref().unwrap();
+            let catalog = self.catalog.as_ref().ok_or("原生参数目录未载入")?;
+            let (workspace, report) = game.repair(catalog, |event| {
+                let stage = match event.stage {
+                    "repair_recover" => "正在检查并恢复中断安装",
+                    "repair_reload" => "正在重新读取游戏数据和草稿",
+                    "repair_check" => "正在复查资源补丁和参数索引",
+                    "repair_done" => "自动修复检查完成",
+                    "backup" => "正在备份恢复前的文件",
+                    "commit" => "正在恢复中断安装的文件",
+                    "rollback" => "正在回滚恢复操作",
+                    _ => "正在处理恢复事务",
+                };
+                eprintln!(
+                    "@shodan-progress {}",
+                    json!({"stage":stage,"done":event.done,"total":event.total})
+                );
+            })?;
+            self.workspace = Some(workspace);
+            self.desktop = Default::default();
+            self.resolver = None;
+            return Ok(report);
         }
         if matches!(method, "game-install" | "game-restore" | "game-recover") {
             let game = self.game.as_ref().ok_or("请先打开游戏工作区")?;
@@ -160,13 +209,24 @@ impl Api {
                         Vec::new()
                     };
                     let (codes, _) = catalog.code_overrides(workspace, workspace.metadata())?;
-                    game.install(catalog, workspace, &allowed, &codes, progress)?
+                    let force = p["force"] == true;
+                    if force && !game_writes {
+                        return Err("强制写入需要在桌面确认".into());
+                    }
+                    game.install(catalog, workspace, &allowed, &codes, force, progress)?
                 }
-                "game-restore" => game.restore(
-                    self.catalog.as_ref().ok_or("原生参数目录未载入")?,
-                    self.workspace.as_ref().ok_or("请先打开游戏工作区")?,
-                    progress,
-                )?,
+                "game-restore" => {
+                    let force = p["force"] == true;
+                    if force && !game_writes {
+                        return Err("强制恢复需要在桌面确认".into());
+                    }
+                    game.restore(
+                        self.catalog.as_ref().ok_or("原生参数目录未载入")?,
+                        self.workspace.as_ref().ok_or("请先打开游戏工作区")?,
+                        force,
+                        progress,
+                    )?
+                }
                 _ => {
                     let files = game.recover(progress)?;
                     json!({"ok":true,"files":files,"message":"中断事务已恢复"})
@@ -868,7 +928,7 @@ impl Api {
             }
             return self.invoke(
                 &json!({"method":if method=="install_task" {"game-install"} else {"game-restore"},
-                "params":{"allow_float_adjustment":arg(0)==&Value::Bool(true)}}),
+                "params":{"allow_float_adjustment":arg(0)==&Value::Bool(true),"force":arg(1)==&Value::Bool(true)}}),
             );
         }
         let catalog = self.catalog.as_ref().ok_or("请先打开游戏工作区")?;
@@ -1313,6 +1373,14 @@ pub fn serve(mut input: impl BufRead, mut output: impl Write) -> Result<(), Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn automatic_repair_requires_desktop_authorization() {
+        let mut api = Api::default();
+        let error = api
+            .invoke_mcp(&json!({"method":"game-repair","params":{}}))
+            .unwrap_err();
+        assert!(error.contains("桌面设置"));
+    }
     #[test]
     fn oversized_lines_are_drained_and_following_requests_remain_readable() {
         let mut input = std::io::BufReader::with_capacity(3, &b"123456789\n{}\n"[..]);

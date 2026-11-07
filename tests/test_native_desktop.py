@@ -43,7 +43,7 @@ def main():
     selected = next(owner for owner in catalog['owners'] if owner['name'].startswith('AR-11 '))
     sentry = next(owner for owner in catalog['owners'] if owner['name'].startswith('A/G-16 '))
     armor = next(owner for owner in catalog['owners'] if 'armor' in owner)
-    def start(profile=None, expect_conflict=False):
+    def start(profile=None, expect_conflict=False, expect_open_error=False):
         p = subprocess.Popen([options.exe.resolve(), '--stdio'], stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, text=True, encoding='utf8',
                              env=env if profile is None else env | {'SHODAN_PROFILE': str(profile)})
@@ -56,8 +56,16 @@ def main():
             return reply['result']
         def desktop(name, *args):
             return call('desktop-call', name=name, args=args)
-        opened = call('game-open', runtime=str(runtime), game=str(game))
-        assert bool(opened['problems']) == expect_conflict, opened['problems']
+        if expect_open_error:
+            try:
+                call('game-open', runtime=str(runtime), game=str(game))
+            except AssertionError as error:
+                assert '草稿' in str(error), error
+            else:
+                raise AssertionError('Expected invalid draft to prevent normal startup')
+        else:
+            opened = call('game-open', runtime=str(runtime), game=str(game))
+            assert bool(opened['problems']) == expect_conflict, opened['problems']
         return p, call, desktop
 
     p, call, desktop = start()
@@ -327,7 +335,74 @@ def main():
         p.wait(timeout=30)
         target.write_bytes(saved)
     assert {name: digest(game / name) for name in names} == targets
-    print('Native desktop edits, presets, diagnosis, armor, residency, restore, draft recovery and existing-value comparison passed.')
+    # Automatic repair detaches stale generated-word bookkeeping without editing
+    # game data or discarding matching undo entries, presets or pending edits.
+    stratagem = game / 'generated_stratagem_settings.dl_bin'
+    stratagem_plain = root / 'repair-stratagem.bin'
+    subprocess.run([options.exe, 'unseal-copy', stratagem, stratagem_plain], check=True, capture_output=True)
+    tables = json.loads(subprocess.run([options.exe, 'tables', stratagem_plain], check=True,
+                                      capture_output=True, text=True).stdout)['tables']
+    table = next(t for t in tables if t['type'].upper() == '30EB6399')
+    record = table['rows'][0]
+    record_id = record['key'].split(':')[1]
+    plain = stratagem_plain.read_bytes()
+    loaded_extra = struct.unpack_from('<I', plain, record['offset'] + 200)[0]
+    loaded_package = struct.unpack_from('<I', plain, record['offset'] + 168)[0]
+    previous = state.read_bytes() if state.exists() else None
+    metadata = json.loads(previous) if previous else {}
+    metadata['repair_sentinel'] = {'preserve': True}
+    metadata['derived_stratagem_words'] = {record_id: {
+        '200': {'before': loaded_extra, 'after': loaded_extra ^ 1},
+        '168': {'before': loaded_package, 'after': loaded_package},
+    }}
+    stale_config = json.dumps(metadata).encode()
+    state.write_bytes(stale_config)
+    draft_path.unlink(missing_ok=True)
+    p, call, desktop = start()
+    try:
+        desktop('select', selected['id'])
+        desktop('set', 'damage', damage['value'] + 2)
+        try:
+            desktop('install_preview')
+        except AssertionError as error:
+            assert '派生战备' in str(error), error
+        else:
+            raise AssertionError('Stale generated-word ledger must be detected before repair')
+        repaired = call('game-repair')
+        assert repaired['ok'], repaired
+        assert any('1 项失效派生记录' in action for action in repaired['actions']), repaired
+        fixed = json.loads(state.read_bytes())
+        assert fixed['repair_sentinel'] == {'preserve': True}
+        assert '200' not in fixed['derived_stratagem_words'][record_id]
+        assert '168' in fixed['derived_stratagem_words'][record_id]
+        assert any(path.read_bytes() == stale_config for path in state.parent.glob('transactions/*/*.original'))
+        desktop('select', selected['id'])
+        assert next(r for r in desktop('rows_fast') if r['id'] == 'damage')['value'] == damage['value'] + 2
+        assert not desktop('install_preview')['problems']
+        assert {name: digest(game / name) for name in names} == targets
+        assert call('game-repair')['ok'], 'Repeated repair must be harmless'
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    if previous is None:
+        state.unlink(missing_ok=True)
+    else:
+        state.write_bytes(previous)
+    broken_draft = b'{"version":1,"files":'
+    draft_path.write_bytes(broken_draft)
+    p, call, desktop = start(expect_open_error=True)
+    try:
+        repaired = call('game-repair')
+        assert repaired['ok'], repaired
+        recovery = draft_path.with_name('draft-recovery-' + hashlib.sha256(broken_draft).hexdigest() + '.json')
+        assert recovery.read_bytes() == broken_draft
+        assert desktop('items', 'Primary', '')
+        assert not desktop('install_preview')['problems']
+        assert {name: digest(game / name) for name in names} == targets
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    print('Native desktop, automatic repair, safe draft recovery and external-mod coexistence passed.')
 
 
 if __name__ == '__main__':

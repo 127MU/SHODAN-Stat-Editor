@@ -45,6 +45,7 @@ class Workbench extends StatefulWidget {
 class _WorkbenchState extends State<Workbench> {
   late final Backend backend = widget.backend ?? Backend();
   bool ready = false, busy = false, dark = true;
+  bool startupFailed = false;
   bool diagnosing = false;
   bool checkingUpdates = false;
   bool mcpEnabled = false, mcpBusy = false;
@@ -169,7 +170,11 @@ class _WorkbenchState extends State<Workbench> {
       if (mounted && widget.backend == null)
         unawaited(checkUpdates(automatic: true));
     } catch (e) {
-      if (mounted) setState(() => status = '启动失败：$e');
+      if (mounted) setState(() {
+        status = '启动失败：$e';
+        tab = 'Settings';
+        startupFailed = true;
+      });
     }
   }
 
@@ -229,6 +234,20 @@ class _WorkbenchState extends State<Workbench> {
   }
 
   Future<void> load(String key) async {
+    if (!ready) {
+      setState(() {
+        tab = key;
+        current = null;
+        activeSection = null;
+        items = [];
+        rows = [];
+        catalogSearch.clear();
+        parameterSearch.clear();
+        catalogQuery = '';
+        parameterQuery = '';
+      });
+      return;
+    }
     final ticket = ++epoch;
     setState(() => busy = true);
     void showTab(List<dynamic> entries) {
@@ -496,6 +515,32 @@ class _WorkbenchState extends State<Workbench> {
         barrierDismissible: false,
         builder: (_) => InstallDialog(backend: backend, restore: true),
       );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> repairWorkspace() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      final result = await showMotionDialog<dynamic>(
+        context: navigator.currentContext!,
+        barrierDismissible: false,
+        builder: (_) => InstallDialog(backend: backend, repair: true),
+      );
+      if (mounted && result is Map) {
+        setState(() {
+          ready = true;
+          startupFailed = false;
+          current = null;
+          activeSection = null;
+          rows = [];
+          items = [];
+          catalogViewKey = null;
+          status = '${result['message'] ?? '自动修复结束'}';
+        });
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -1015,6 +1060,31 @@ class _WorkbenchState extends State<Workbench> {
                 onPressed: ready && !busy ? () => inspectCatalog(attachments: false) : null,
                 child: const Text('检查'),
               ),
+            ),
+          ),
+        ),
+      if (backend.usesNativeDesktop)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: surface(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.build_circle_outlined),
+                  title: Text('自动修复'),
+                  subtitle: Text('恢复本程序中断的安装，备份并隔离失效草稿、解除失效派生战备记录，再重新读取游戏数据。'),
+                ),
+                const Text('请先完全退出游戏。修复会保留预设、外观和当前数值；其他 Mod 改写的资源补丁会保留并提示，不会强行覆盖。'),
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  key: const ValueKey('auto-repair'),
+                  onPressed: !busy && !diagnosing ? repairWorkspace : null,
+                  icon: const Icon(Icons.auto_fix_high_outlined),
+                  label: const Text('开始自动修复'),
+                ),
+              ],
             ),
           ),
         ),
@@ -1776,7 +1846,7 @@ class _WorkbenchState extends State<Workbench> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        onTap: ready && !busy
+                                        onTap: (ready || startupFailed) && !busy
                                             ? () => load(entry.key)
                                             : null,
                                       ),
@@ -1933,6 +2003,27 @@ class _WorkbenchState extends State<Workbench> {
                                       ),
                                   child: tab == 'Settings'
                                       ? settingsPage()
+                                      : !ready && startupFailed
+                                      ? Align(
+                                          alignment: Alignment.topCenter,
+                                          child: surface(
+                                            Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text('工作区尚未打开', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+                                                const SizedBox(height: 12),
+                                                const Text('启动检查未完成，暂时无法读取本页参数。可前往设置运行自动修复，或导出诊断日志。'),
+                                                const SizedBox(height: 12),
+                                                FilledButton.icon(
+                                                  onPressed: () => load('Settings'),
+                                                  icon: const Icon(Icons.build_circle_outlined),
+                                                  label: const Text('前往设置修复'),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
                                       : tab == 'Tweaks'
                                       ? GameTweaksPage(
                                           backend: backend,
