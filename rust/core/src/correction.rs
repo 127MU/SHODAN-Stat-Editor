@@ -252,9 +252,8 @@ pub fn correct(
         .map(|b| Salt::Header(b.header_offset + 17))
         .collect();
     for &at in options.float_offsets {
-        if at % 4 != 0
-            || !blocks.iter().any(|b| b.contains(at, 4))
-            || at / 8 * 8 + 8 > whole
+        if !blocks.iter().any(|b| b.contains(at, 4))
+            || at.checked_add(4).is_none_or(|end| end > whole)
             || !f32::from_le_bytes(
                 data.get(at..at.saturating_add(4))
                     .ok_or(Error::InvalidFloat(at))?
@@ -454,6 +453,53 @@ mod tests {
         assert_eq!(murmur64(&result.bytes), target);
         assert_eq!(&result.bytes[60..], &input[60..]);
         assert_eq!(dlbin::index(&result.bytes).unwrap()[1].payload.len(), 8);
+    }
+
+    #[test]
+    fn unaligned_float_can_be_used_as_correction_salt() {
+        let mut original = block();
+        original[12..16].copy_from_slice(&24u32.to_le_bytes());
+        original.resize(48, 0);
+        for at in [25, 26, 27, 29, 30, 31] {
+            let mut edited = original.clone();
+            edited[at..at + 4].copy_from_slice(&32.0f32.to_le_bytes());
+            let result = correct(
+                &edited,
+                murmur64(&original),
+                &Options {
+                    float_offsets: &[at],
+                    workers: 2,
+                    ..Options::default()
+                },
+                |_| {},
+            )
+            .unwrap();
+            assert_eq!(murmur64(&result.bytes), murmur64(&original));
+            assert_eq!(result.report.adjusted_float.map(|item| item.0), Some(at));
+        }
+    }
+
+    #[test]
+    fn float_crossing_into_partial_tail_is_rejected_without_changing_input() {
+        let mut original = block();
+        original[12..16].copy_from_slice(&12u32.to_le_bytes());
+        original.resize(36, 0);
+        let mut edited = original.clone();
+        edited[29..33].copy_from_slice(&32.0f32.to_le_bytes());
+        let before = edited.clone();
+        assert!(matches!(
+            correct(
+                &edited,
+                murmur64(&original),
+                &Options {
+                    float_offsets: &[29],
+                    ..Options::default()
+                },
+                |_| {}
+            ),
+            Err(Error::InvalidFloat(29))
+        ));
+        assert_eq!(edited, before);
     }
     #[test]
     fn single_block_never_silently_adjusts_payload() {
