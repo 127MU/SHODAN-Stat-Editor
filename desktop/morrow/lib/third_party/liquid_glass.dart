@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../motion.dart';
 
 /// Interpolated optical values; content is deliberately outside this state.
 @immutable
@@ -88,9 +89,15 @@ class LiquidGlassSurface extends StatefulWidget {
     this.transparentCanvas = true,
     this.material,
     this.liveResize = false,
+    this.grouped = false,
+    this.inTransition = false,
   });
   final GlassMaterial? material;
   final bool liveResize;
+
+  /// Dense panels share a stable blur and keep their liquid rim static.
+  final bool grouped;
+  final bool inTransition;
   final Widget child;
   final Color tint;
   final bool dark, canvas, readable;
@@ -109,9 +116,14 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
   bool _loadingShader = false;
   late final AnimationController _press;
   final ValueNotifier<Offset> _light = ValueNotifier(const Offset(-.65, -.8));
+  final ValueNotifier<double> _edge = ValueNotifier(0);
+  bool _pointerInside = false;
   late final Listenable _optics = Listenable.merge([_light, _press]);
   bool get _filterEnabled => !widget.canvas || !widget.transparentCanvas;
-  bool get _needsRefraction => (widget.material?.liquid ?? 1) > .001;
+  bool get _needsRefraction =>
+      !widget.grouped &&
+      !widget.inTransition &&
+      (widget.material?.liquid ?? 1) > .001;
 
   @override
   void initState() {
@@ -119,8 +131,8 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
     _press =
         AnimationController(
           vsync: this,
-          duration: const Duration(milliseconds: 180),
-          reverseDuration: const Duration(milliseconds: 320),
+          duration: WorkbenchMotion.feedback,
+          reverseDuration: WorkbenchMotion.settle,
         )..addStatusListener((status) {
           if (status == AnimationStatus.completed) _press.reverse();
         });
@@ -152,6 +164,7 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
 
   bool get _motionEnabled =>
       !widget.liveResize &&
+      !widget.inTransition &&
       !MediaQuery.disableAnimationsOf(context) &&
       TickerMode.valuesOf(context).enabled;
 
@@ -183,28 +196,25 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
   void dispose() {
     _press.dispose();
     _light.dispose();
+    _edge.dispose();
     _shader?.dispose();
     super.dispose();
   }
 
   ui.ImageFilter _filter(Size size, GlassMaterial material) {
-    if (material.liquid <= .001) {
+    if (!_needsRefraction) {
       return ui.ImageFilter.blur(sigmaX: material.blur, sigmaY: material.blur);
     }
     final ui.ImageFilter refraction;
     if (_shader case final shader?) {
       shader.setFloat(2, widget.borderRadius.topLeft.x);
       shader.setFloat(3, (widget.canvas ? 4 : 9) * material.liquid);
-      shader.setFloat(4, _light.value.dx);
-      shader.setFloat(5, _light.value.dy);
-      shader.setFloat(6, _press.value);
+      shader.setFloat(4, -.65);
+      shader.setFloat(5, -.8);
+      shader.setFloat(6, 0);
       refraction = ui.ImageFilter.shader(shader);
     } else {
-      final zoom =
-          1 +
-          (widget.canvas ? .004 : .014) *
-              material.liquid *
-              (1 + .3 * _press.value);
+      final zoom = 1 + (widget.canvas ? .004 : .014) * material.liquid;
       final transform = Matrix4.identity()
         ..setEntry(0, 0, zoom)
         ..setEntry(1, 1, zoom)
@@ -217,6 +227,48 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
       inner: refraction,
     );
   }
+
+  Widget _backdrop(GlassMaterial material) {
+    if (widget.liveResize) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: widget.tint.withValues(alpha: .94),
+          borderRadius: widget.borderRadius,
+          border: Border.all(
+            color: widget.dark ? Colors.white24 : Colors.white70,
+          ),
+        ),
+      );
+    }
+    final tint = DecoratedBox(
+      decoration: material.decoration.copyWith(boxShadow: const []),
+    );
+    if (widget.inTransition) return tint;
+    if (!_needsRefraction) {
+      if (material.blur <= 0) return tint;
+      final filter = _filter(Size.zero, material);
+      return widget.grouped
+          ? BackdropFilter.grouped(filter: filter, child: tint)
+          : BackdropFilter(filter: filter, child: tint);
+    }
+    return LayoutBuilder(
+      builder: (_, constraints) => BackdropFilter(
+        filter: _filter(constraints.biggest, material),
+        child: tint,
+      ),
+    );
+  }
+
+  Widget _rim(GlassMaterial material) => CustomPaint(
+    painter: LiquidRimPainter(
+      radius: widget.borderRadius.topLeft.x,
+      light: _light.value,
+      dark: widget.dark,
+      canvas: widget.canvas,
+      intensity: widget.liveResize ? 0 : material.liquid,
+      press: _press.value,
+    ),
+  );
 
   void _updateLight(PointerEvent event) {
     final box = context.findRenderObject() as RenderBox?;
@@ -250,78 +302,92 @@ class _LiquidGlassSurfaceState extends State<LiquidGlassSurface>
           readable: MediaQuery.highContrastOf(context) || widget.readable,
           borderRadius: widget.borderRadius,
         );
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: _pressAt,
-      onPointerCancel: (_) => _resetInteraction(),
-      child: MouseRegion(
-        onHover: !motionEnabled || !_needsRefraction ? null : _updateLight,
-        onExit: !motionEnabled || !_needsRefraction
-            ? null
-            : (_) => _light.value = const Offset(-.65, -.8),
-        child: CustomPaint(
-          painter: widget.canvas || widget.liveResize
-              ? null
-              : _OuterGlassShadowPainter(
-                  borderRadius: widget.borderRadius,
-                  shadows: material.decoration.boxShadow ?? const [],
-                ),
-          child: ClipRRect(
-            borderRadius: widget.borderRadius,
-            child: Stack(
-              children: [
-                // The transparent canvas cannot sample the OS desktop through a
-                // Flutter backdrop. Leave its interior unpainted; retain the rim.
-                if (_filterEnabled)
-                  Positioned.fill(
-                    child: AnimatedBuilder(
-                      animation: _optics,
-                      builder: (_, _) => LayoutBuilder(
-                        builder: (_, constraints) => widget.liveResize
-                            ? DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: widget.tint.withValues(alpha: .94),
-                                  borderRadius: widget.borderRadius,
-                                  border: Border.all(
-                                    color: widget.dark
-                                        ? Colors.white24
-                                        : Colors.white70,
-                                  ),
-                                ),
-                              )
-                            : BackdropFilter.grouped(
-                                filter: _filter(constraints.biggest, material),
-                                child: DecoratedBox(
-                                  decoration: material.decoration.copyWith(
-                                    boxShadow: const [],
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                widget.child,
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: AnimatedBuilder(
-                      animation: _optics,
-                      builder: (_, _) => CustomPaint(
-                        painter: LiquidRimPainter(
-                          radius: widget.borderRadius.topLeft.x,
-                          light: _light.value,
-                          dark: widget.dark,
-                          canvas: widget.canvas,
-                          intensity: widget.liveResize ? 0 : material.liquid,
-                          press: _press.value,
+    final animateOptics = motionEnabled && _needsRefraction;
+    final animateHover = motionEnabled && widget.grouped && material.liquid > 0;
+    final panel = CustomPaint(
+      painter:
+          widget.canvas ||
+              widget.liveResize ||
+              widget.inTransition ||
+              widget.grouped
+          ? null
+          : _OuterGlassShadowPainter(
+              borderRadius: widget.borderRadius,
+              shadows: material.decoration.boxShadow ?? const [],
+            ),
+      child: ClipRRect(
+        borderRadius: widget.borderRadius,
+        child: Stack(
+          children: [
+            // The transparent canvas cannot sample the OS desktop through a
+            // Flutter backdrop. Leave its interior unpainted; retain the rim.
+            if (_filterEnabled) Positioned.fill(child: _backdrop(material)),
+            widget.child,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: animateOptics
+                    ? RepaintBoundary(
+                        child: AnimatedBuilder(
+                          animation: _optics,
+                          builder: (_, _) => _rim(material),
+                        ),
+                      )
+                    : _rim(material),
+              ),
+            ),
+            if (animateHover)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _edge,
+                    builder: (_, intensity, _) => AnimatedContainer(
+                      duration: intensity == 0
+                          ? WorkbenchMotion.feedback
+                          : WorkbenchMotion.hover,
+                      curve: WorkbenchMotion.standard,
+                      decoration: BoxDecoration(
+                        borderRadius: widget.borderRadius,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: intensity),
+                          width: 2,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
+      ),
+    );
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: animateOptics
+          ? _pressAt
+          : animateHover
+          ? (event) {
+              if (event.buttons & kPrimaryButton != 0) _edge.value = .82;
+            }
+          : null,
+      onPointerUp: animateHover
+          ? (_) => _edge.value = _pointerInside ? .48 : 0
+          : null,
+      onPointerCancel: (_) {
+        if (animateOptics) _resetInteraction();
+        if (animateHover) _edge.value = _pointerInside ? .48 : 0;
+      },
+      child: MouseRegion(
+        onEnter: (_) {
+          _pointerInside = true;
+          if (animateHover) _edge.value = .48;
+        },
+        onHover: animateOptics ? _updateLight : null,
+        onExit: (_) {
+          if (animateOptics) _light.value = const Offset(-.65, -.8);
+          _pointerInside = false;
+          if (_edge.value != 0) _edge.value = 0;
+        },
+        child: panel,
       ),
     );
   }

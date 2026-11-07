@@ -1,3 +1,4 @@
+import 'motion.dart';
 import 'glass_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -48,34 +49,36 @@ class _PresetPageState extends State<PresetPage> {
 
   Future<String?> input(String title, [String initial = '']) async {
     final c = TextEditingController(text: initial);
-    try {
-      return await showDialog<String>(
-        context: context,
-        builder: (ctx) => GlassDialog(
-          title: Text(title),
-          content: SizedBox(
-            width: 550,
-            child: TextField(
-              controller: c,
-              autofocus: true,
-              minLines: 1,
-              maxLines: 8,
-              onSubmitted: (v) => Navigator.pop(ctx, v),
-            ),
+    final route = MotionDialogRoute<String>(
+      context: context,
+      builder: (ctx) => GlassDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: 550,
+          child: TextField(
+            controller: c,
+            autofocus: true,
+            minLines: 1,
+            maxLines: 8,
+            onSubmitted: (v) => Navigator.pop(ctx, v),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, c.text),
-              child: const Text('确认'),
-            ),
-          ],
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, c.text),
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+    try {
+      return await Navigator.of(context, rootNavigator: true).push(route);
     } finally {
+      await route.completed;
       c.dispose();
     }
   }
@@ -101,7 +104,7 @@ class _PresetPageState extends State<PresetPage> {
         p['id'],
       ]);
       if (!mounted) return;
-      final yes = await showDialog<bool>(
+      final yes = await showMotionDialog<bool>(
         context: context,
         builder: (ctx) => GlassDialog(
           title: Text('读取 ${p['name']}'),
@@ -183,164 +186,181 @@ class _PresetPageState extends State<PresetPage> {
       if (busy) const LinearProgressIndicator(),
       const SizedBox(height: 16),
       Expanded(
-        child: ListView.separated(
-          itemCount: presets.length,
-          separatorBuilder: (_, i) => const SizedBox(height: 12),
-          itemBuilder: (context, i) {
-            final p = presets[i] as Map;
-            return GlassPanel(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      p['name'],
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    Text('${p['count']} 项参数'),
-                    if (p['description'] is String)
-                      Text(p['description'] as String),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
+        child: CatalogEntrance(
+          key: ValueKey((enemy, presets.isNotEmpty)),
+          builder: (context, entrance) => ListView.separated(
+            itemCount: presets.length,
+            separatorBuilder: (_, i) => const SizedBox(height: 12),
+            itemBuilder: (context, i) {
+              final p = presets[i] as Map;
+              return CatalogEntrance.card(
+                entrance,
+                i,
+                GlassPanel(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FilledButton.tonal(
-                          onPressed: busy ? null : () => load(p),
-                          child: const Text('读取'),
+                        Text(
+                          p['name'],
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () => action('full_preset', ['save', p['id']]),
-                          child: const Text('覆盖保存'),
-                        ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  final name = await input('修改预设名称', p['name']);
-                                  if (name != null && name.trim().isNotEmpty)
-                                    await action('preset_rename', [
-                                      'full',
+                        Text('${p['count']} 项参数'),
+                        if (p['description'] is String)
+                          Text(p['description'] as String),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            FilledButton.tonal(
+                              onPressed: busy ? null : () => load(p),
+                              child: const Text('读取'),
+                            ),
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () => action('full_preset', [
+                                      'save',
                                       p['id'],
-                                      name,
-                                    ]);
-                                },
-                          child: const Text('重命名'),
-                        ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  final text = await input(
-                                    '预设说明',
-                                    p['description'] as String? ?? '',
-                                  );
-                                  if (text != null)
-                                    await action('preset_description', [
-                                      'full',
-                                      p['id'],
-                                      text,
-                                    ]);
-                                },
-                          child: const Text('编辑说明'),
-                        ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  final text = await input(
-                                    '副本名称',
-                                    '${p['name']} 副本',
-                                  );
-                                  if (text != null && text.trim().isNotEmpty) {
-                                    await action('preset_duplicate', [
-                                      'full',
-                                      p['id'],
-                                      text,
-                                    ]);
-                                  }
-                                },
-                          child: const Text('创建副本'),
-                        ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  try {
-                                    final code = await widget.backend.call(
-                                      'preset_code',
-                                      [p['id']],
-                                    );
-                                    await Clipboard.setData(
-                                      ClipboardData(text: code as String),
-                                    );
-                                    if (mounted)
-                                      setState(() => result = '分享码已复制');
-                                  } catch (e) {
-                                    widget.onError(e);
-                                  }
-                                },
-                          child: const Text('复制分享码'),
-                        ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  try {
-                                    final text = await widget.backend.call(
-                                      'preset_export',
-                                      ['full', p['id']],
-                                    );
-                                    await Clipboard.setData(
-                                      ClipboardData(text: text as String),
-                                    );
-                                    if (mounted)
-                                      setState(() => result = '预设已复制，可发给他人导入');
-                                  } catch (e) {
-                                    widget.onError(e);
-                                  }
-                                },
-                          child: const Text('复制导出'),
-                        ),
-                        TextButton(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  final yes = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => GlassDialog(
-                                      title: Text('删除 ${p['name']}？'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, false),
-                                          child: const Text('取消'),
+                                    ]),
+                              child: const Text('覆盖保存'),
+                            ),
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      final name = await input(
+                                        '修改预设名称',
+                                        p['name'],
+                                      );
+                                      if (name != null &&
+                                          name.trim().isNotEmpty)
+                                        await action('preset_rename', [
+                                          'full',
+                                          p['id'],
+                                          name,
+                                        ]);
+                                    },
+                              child: const Text('重命名'),
+                            ),
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      final text = await input(
+                                        '预设说明',
+                                        p['description'] as String? ?? '',
+                                      );
+                                      if (text != null)
+                                        await action('preset_description', [
+                                          'full',
+                                          p['id'],
+                                          text,
+                                        ]);
+                                    },
+                              child: const Text('编辑说明'),
+                            ),
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      final text = await input(
+                                        '副本名称',
+                                        '${p['name']} 副本',
+                                      );
+                                      if (text != null &&
+                                          text.trim().isNotEmpty) {
+                                        await action('preset_duplicate', [
+                                          'full',
+                                          p['id'],
+                                          text,
+                                        ]);
+                                      }
+                                    },
+                              child: const Text('创建副本'),
+                            ),
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      try {
+                                        final code = await widget.backend.call(
+                                          'preset_code',
+                                          [p['id']],
+                                        );
+                                        await Clipboard.setData(
+                                          ClipboardData(text: code as String),
+                                        );
+                                        if (mounted)
+                                          setState(() => result = '分享码已复制');
+                                      } catch (e) {
+                                        widget.onError(e);
+                                      }
+                                    },
+                              child: const Text('复制分享码'),
+                            ),
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      try {
+                                        final text = await widget.backend.call(
+                                          'preset_export',
+                                          ['full', p['id']],
+                                        );
+                                        await Clipboard.setData(
+                                          ClipboardData(text: text as String),
+                                        );
+                                        if (mounted)
+                                          setState(
+                                            () => result = '预设已复制，可发给他人导入',
+                                          );
+                                      } catch (e) {
+                                        widget.onError(e);
+                                      }
+                                    },
+                              child: const Text('复制导出'),
+                            ),
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      final yes = await showMotionDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => GlassDialog(
+                                          title: Text('删除 ${p['name']}？'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, false),
+                                              child: const Text('取消'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, true),
+                                              child: const Text('删除'),
+                                            ),
+                                          ],
                                         ),
-                                        FilledButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, true),
-                                          child: const Text('删除'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (yes == true)
-                                    await action('full_preset', [
-                                      'delete',
-                                      p['id'],
-                                    ]);
-                                },
-                          child: const Text('删除'),
+                                      );
+                                      if (yes == true)
+                                        await action('full_preset', [
+                                          'delete',
+                                          p['id'],
+                                        ]);
+                                    },
+                              child: const Text('删除'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
       Text(result),

@@ -113,6 +113,9 @@ def main():
         rows = desktop('rows_fast')
         damage = next(row for row in rows if row['id'] == 'damage')
         desktop('set', damage['id'], damage['value'] + 1)
+        history = desktop('history')
+        assert desktop('history_status') == {key: history[key] for key in ('undo', 'redo')}
+        assert history['entries']
         assert desktop('undo')
         assert desktop('redo')
         desktop('full_preset', 'new', None, '隔离测试')

@@ -1,3 +1,4 @@
+import 'motion.dart';
 import 'glass_theme.dart';
 import 'package:flutter/material.dart';
 import 'backend.dart';
@@ -28,11 +29,12 @@ class _GameTextPanelState extends State<GameTextPanel> {
       final data = <String, dynamic>{};
       for (final field in ['name', 'code', 'desc']) {
         final result = await widget.backend.call('game_text', [field]);
+        if (!mounted) return;
         if (result is Map && result['available'] == true) data[field] = result;
       }
       if (mounted) setState(() => fields = data);
     } catch (e) {
-      widget.onError(e);
+      if (mounted) widget.onError(e);
     }
   }
 
@@ -41,7 +43,7 @@ class _GameTextPanelState extends State<GameTextPanel> {
     final c = TextEditingController(
       text: '${value['value']}'.replaceAll('|', '\n'),
     );
-    final result = await showDialog<String>(
+    final route = MotionDialogRoute<String>(
       context: context,
       builder: (ctx) => GlassDialog(
         title: Text({'name': '游戏内名称', 'code': '型号', 'desc': '游戏内说明'}[field]!),
@@ -70,8 +72,10 @@ class _GameTextPanelState extends State<GameTextPanel> {
         ],
       ),
     );
+    final result = await Navigator.of(context, rootNavigator: true).push(route);
+    await route.completed;
     c.dispose();
-    if (result == null) return;
+    if (!mounted || result == null) return;
     setState(() => busy = true);
     try {
       await widget.backend.call('game_text', [

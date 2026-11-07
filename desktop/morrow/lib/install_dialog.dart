@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'backend.dart';
 import 'glass_theme.dart';
+import 'motion.dart';
 import 'diagnostics_ui.dart';
 
 class InstallDialog extends StatefulWidget {
@@ -108,7 +109,19 @@ class _InstallDialogState extends State<InstallDialog> {
           children: [
             Center(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 260),
+                duration: WorkbenchMotion.duration(
+                  context,
+                  WorkbenchMotion.settle,
+                ),
+                switchInCurve: WorkbenchMotion.enter,
+                switchOutCurve: WorkbenchMotion.exit,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: animation.drive(Tween(begin: .90, end: 1.0)),
+                    child: child,
+                  ),
+                ),
                 child: finished
                     ? Icon(
                         success
@@ -120,6 +133,12 @@ class _InstallDialogState extends State<InstallDialog> {
                             ? Colors.green
                             : Theme.of(context).colorScheme.error,
                       )
+                    : MediaQuery.disableAnimationsOf(context)
+                    ? const Icon(
+                        Icons.hourglass_empty,
+                        key: ValueKey('busy'),
+                        size: 48,
+                      )
                     : const SizedBox(
                         key: ValueKey('busy'),
                         width: 48,
@@ -130,13 +149,32 @@ class _InstallDialogState extends State<InstallDialog> {
             ),
             const SizedBox(height: 20),
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
+              duration: WorkbenchMotion.duration(
+                context,
+                WorkbenchMotion.feedback,
+              ),
+              switchInCurve: WorkbenchMotion.enter,
+              switchOutCurve: WorkbenchMotion.exit,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: animation.drive(
+                    Tween(begin: const Offset(0, .14), end: Offset.zero),
+                  ),
+                  child: child,
+                ),
+              ),
               child: Text(stage, key: ValueKey(stage)),
             ),
             const SizedBox(height: 16),
-            if (!finished)
+            if (!finished &&
+                (total > 0 || !MediaQuery.disableAnimationsOf(context)))
               TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 250),
+                duration: WorkbenchMotion.duration(
+                  context,
+                  WorkbenchMotion.settle,
+                ),
+                curve: WorkbenchMotion.standard,
                 tween: Tween(
                   end: total > 0 ? (done / total).clamp(0, 1).toDouble() : 0,
                 ),
