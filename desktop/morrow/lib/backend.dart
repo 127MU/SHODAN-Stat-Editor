@@ -31,6 +31,7 @@ class Backend {
   Future<void> start() async {
     diagnostics.record('数据引擎启动');
     startupProblem = null;
+    usesNativeDesktop = true;
     final opened = await native.call('game-open', {'runtime': root});
     if (opened is Map &&
         opened['problems'] is List &&
@@ -80,6 +81,16 @@ class Backend {
         : '发现 $failed 项异常，详情可导出日志查看。未修改游戏文件。';
     diagnostics.record(result);
     return result;
+  }
+
+  Future<Map> repair() async {
+    diagnostics.record('开始自动修复');
+    final report = await nativeCall('game-repair', {'runtime': root});
+    if (report is! Map) throw StateError('自动修复未返回有效结果');
+    final problems = report['problems'] is List ? report['problems'] as List : [];
+    startupProblem = problems.isEmpty ? null : problems.first.toString();
+    diagnostics.record('${report['message'] ?? '自动修复结束'}');
+    return report;
   }
 
   Future<void>? _closing;

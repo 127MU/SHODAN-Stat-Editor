@@ -46,6 +46,35 @@ fn ledger(workspace: &Workspace) -> Result<Ledger, String> {
     Ok(data)
 }
 
+/// Explicit repair detaches stale bookkeeping, never rewrites a game word.
+/// Still-matching words retain their original undo information.
+pub(crate) fn reconcile(workspace: &Workspace) -> Result<(Value, usize), String> {
+    let mut saved = ledger(workspace)?;
+    let mut removed = 0;
+    for (&record, words) in &mut saved {
+        let mut stale = Vec::new();
+        for (&offset, word) in words.iter() {
+            let location = workspace.table_location(TYPE, record, offset)?;
+            if id(workspace.value(&location, &Encoding::U32)?.loaded)? != word.after {
+                stale.push(offset);
+            }
+        }
+        for offset in stale {
+            words.remove(&offset);
+            removed += 1;
+        }
+    }
+    saved.retain(|_, words| !words.is_empty());
+    Ok((
+        if saved.is_empty() {
+            Value::Null
+        } else {
+            json!(saved)
+        },
+        removed,
+    ))
+}
+
 fn logical(
     workspace: &Workspace,
     saved: &Ledger,
@@ -58,7 +87,9 @@ fn logical(
         return id(raw.current);
     };
     if id(raw.loaded)? != word.after {
-        return Err("派生战备已被外部修改，请先恢复对应补丁".into());
+        return Err(format!(
+            "派生战备记录 #{record}（+{offset}）与当前文件不符，请到设置运行自动修复"
+        ));
     }
     if raw.current == raw.loaded {
         Ok(word.before)

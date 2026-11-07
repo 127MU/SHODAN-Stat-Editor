@@ -164,6 +164,65 @@ fn put(
     Slot { index, hashes }
 }
 
+/// Detach only registrations whose three files are all absent. If a hole is
+/// below a later patch, reserve it with an empty TOC so the loader can continue.
+/// This restores the patch chain, not lost user-authored resource contents.
+pub(crate) fn repair_missing(
+    root: &Path,
+    ledger_path: &Path,
+) -> Result<(Vec<Change>, usize), String> {
+    let (before, mut ledger) = load(ledger_path)?;
+    let slots = residency::slots(root, CARRIER)?;
+    let mut missing = BTreeSet::new();
+    for slot in ledger.slots.values().chain(ledger.vacant.values()) {
+        let mut absent = true;
+        for suffix in SUFFIXES {
+            match std::fs::symlink_metadata(path(root, slot.index, suffix)) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(_) => return Err("补丁文件不可访问，未清理登记".into()),
+                Ok(_) => absent = false,
+            }
+        }
+        if absent {
+            missing.insert(slot.index);
+        }
+    }
+    if missing.is_empty() {
+        return Ok((vec![], 0));
+    }
+    let lost = ledger
+        .slots
+        .iter()
+        .filter(|(_, s)| missing.contains(&s.index))
+        .map(|(name, _)| name.clone())
+        .collect::<BTreeSet<_>>();
+    ledger
+        .groups
+        .retain(|_, group| group.packages.is_disjoint(&lost));
+    ledger.overrides.retain(|name, _| !lost.contains(name));
+    ledger.slots.retain(|name, _| !lost.contains(name));
+    ledger.vacant.retain(|index, _| !missing.contains(index));
+    let mut changes = Vec::new();
+    for &index in &missing {
+        if slots.used.last().is_some_and(|highest| index < *highest) {
+            let slot = put(
+                root,
+                index,
+                [None, None, None],
+                [Some(empty_patch()?), None, None],
+                &mut changes,
+            );
+            ledger.vacant.insert(index, slot);
+        }
+    }
+    changes.push(Change {
+        path: ledger_path.to_path_buf(),
+        before,
+        after: Some(serde_json::to_vec(&ledger).map_err(|_| "无法保存修复后的驻留记录")?),
+    });
+    Ok((changes, missing.len()))
+}
+
 fn empty_patch() -> Result<Vec<u8>, String> {
     let mut header = [0; 72];
     header[..4].copy_from_slice(&MAGIC.to_le_bytes());

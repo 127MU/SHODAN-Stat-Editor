@@ -232,6 +232,27 @@ impl Game {
         runtime: &Path,
         profile: &Path,
     ) -> Result<(Self, Workspace), String> {
+        let mut game = Self::load(catalog, root, runtime, profile)?;
+        let mut workspace = game.reopen()?;
+        if !game.state.join("configuration.json").exists()
+            && !game.state.join("draft.json").exists()
+        {
+            match crate::desktop_presets::migrate_profile(catalog, &mut workspace, profile) {
+                Ok(notes) => game.migration_notes.extend(notes),
+                Err(error) => game
+                    .migration_notes
+                    .push(format!("旧配置导入未完成 · {error}")),
+            }
+        }
+        Ok((game, workspace))
+    }
+
+    pub(crate) fn load(
+        catalog: &Catalog,
+        root: PathBuf,
+        runtime: &Path,
+        profile: &Path,
+    ) -> Result<Self, String> {
         let dll = fs::read(root.join(DLL)).map_err(|_| "无法读取游戏版本")?;
         let build = hash::sha256_hex(&dll);
         if catalog.game_build.as_deref() != Some(build.as_str()) {
@@ -297,18 +318,7 @@ impl Game {
                     .push(format!("旧资源补丁记录未接管 · {error}")),
             }
         }
-        let mut workspace = game.reopen()?;
-        if !game.state.join("configuration.json").exists()
-            && !game.state.join("draft.json").exists()
-        {
-            match crate::desktop_presets::migrate_profile(catalog, &mut workspace, profile) {
-                Ok(notes) => game.migration_notes.extend(notes),
-                Err(error) => game
-                    .migration_notes
-                    .push(format!("旧配置导入未完成 · {error}")),
-            }
-        }
-        Ok((game, workspace))
+        Ok(game)
     }
 
     fn migrate_residency(&self, profile: &Path) -> Result<Vec<String>, String> {
@@ -382,7 +392,7 @@ impl Game {
                 .filter(|(name, _)| workspace.contains(name))
                 .collect::<Vec<_>>()
             {
-                if let Ok((_, bytes)) = self.verified_backup(name, item) {
+                if let Ok((_, bytes)) = self.verified_backup(name, item, false) {
                     if let Ok(original) = crate::sealed::open_data(&bytes) {
                         let _ = workspace.remember_install_source(name, original);
                     }
@@ -411,6 +421,188 @@ impl Game {
 
     pub(crate) fn baseline_check(&self, workspace: &Workspace) -> Value {
         self.check(workspace, true)
+    }
+
+    /// Repair only state owned by this editor. Transaction recovery verifies
+    /// both fingerprints before touching a target; foreign patches stay intact.
+    pub(crate) fn repair(
+        &self,
+        catalog: &Catalog,
+        mut progress: impl FnMut(Progress),
+    ) -> Result<(Workspace, Value), String> {
+        require_closed()?;
+        self.game_dll()?;
+        progress(Progress {
+            stage: "repair_recover",
+            done: 0,
+            total: 3,
+        });
+        let recovery = self.recover(&mut progress);
+        let invalid_draft = self.repair_invalid_draft()?;
+        let residency_repair = (|| {
+            let (_lock, _, backup) = self.begin()?;
+            let (changes, count) = crate::residency_install::repair_missing(
+                self.data()?,
+                &self.state.join("residency.json"),
+            )?;
+            install::apply(changes, &backup, &mut progress)?;
+            Ok::<_, String>(count)
+        })();
+        progress(Progress {
+            stage: "repair_reload",
+            done: 1,
+            total: 3,
+        });
+        *self.resources.borrow_mut() = None;
+        *self.text_originals.borrow_mut() = None;
+        let mut workspace = self.reopen()?;
+        let saved_warnings = workspace.draft_conflicts().cloned().collect::<Vec<_>>();
+        let reconciled = self.repair_derived(&workspace);
+        if reconciled.as_ref().is_ok_and(|count| *count > 0) {
+            workspace = self.reopen()?;
+        }
+        progress(Progress {
+            stage: "repair_check",
+            done: 2,
+            total: 3,
+        });
+        let mut report = self.baseline_check(&workspace);
+        let mut problems = workspace.blocking_problems();
+        problems.extend(
+            report["problems"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_owned),
+        );
+        if let Err(error) = crate::extra_stratagem::derive(catalog, &workspace) {
+            problems.push(error);
+        }
+        let mut actions = vec![
+            "已重新读取游戏数据并重建参数索引".to_string(),
+            "已刷新资源查询缓存，保留现有数值、预设和外观设置".to_string(),
+        ];
+        if invalid_draft {
+            actions.push("已完整备份损坏的编辑草稿并解除其启动阻塞".into());
+        }
+        match recovery {
+            Ok(0) => actions.push("未发现需要回滚的安装文件".into()),
+            Ok(count) => actions.push(format!(
+                "已恢复中断安装中的 {count} 个文件，恢复前内容已备份"
+            )),
+            Err(error) => problems.push(format!("安装事务恢复未完成：{error}")),
+        }
+        match reconciled {
+            Ok(0) => actions.push("派生战备记录与当前文件一致".into()),
+            Ok(count) => actions.push(format!(
+                "已备份并解除 {count} 项失效派生记录，保留当前游戏文件"
+            )),
+            Err(error) => problems.push(format!("派生战备记录修复未完成：{error}")),
+        }
+        let warnings = report["warnings"].as_array_mut().unwrap();
+        match residency_repair {
+            Ok(0) => {}
+            Ok(count) => {
+                actions.push(format!(
+                    "已备份并清理 {count} 个完全缺失的驻留槽位登记，必要的中间缺号已补齐"
+                ));
+                warnings.push(json!("缺失补丁原有的模型、特效或音效未恢复；需要这些资源时，请重新安装对应资源驻留。"));
+            }
+            Err(error) => problems.push(format!("驻留记录修复未完成：{error}")),
+        }
+        for warning in saved_warnings {
+            let value = json!(warning);
+            if !warnings.contains(&value) {
+                warnings.push(value);
+            }
+        }
+        problems.sort();
+        problems.dedup();
+        let ok = problems.is_empty();
+        report["problems"] = json!(problems);
+        report["actions"] = json!(actions);
+        report["ok"] = json!(ok);
+        report["message"] = json!(if ok {
+            "自动修复完成"
+        } else {
+            "可自动处理的步骤已完成，仍有项目需要手动处理"
+        });
+        progress(Progress {
+            stage: "repair_done",
+            done: 3,
+            total: 3,
+        });
+        Ok((workspace, report))
+    }
+
+    fn repair_invalid_draft(&self) -> Result<bool, String> {
+        let path = self.state.join("draft.json");
+        let Some(bytes) = install::read(&path)? else {
+            return Ok(false);
+        };
+        if bytes.len() > 8 * 1024 * 1024 {
+            return Err("编辑草稿过大，请导出诊断后手动检查".into());
+        }
+        if Workspace::valid_draft(&bytes) {
+            return Ok(false);
+        }
+        let (_lock, _, backup) = self.begin()?;
+        let recovery = self
+            .state
+            .join(format!("draft-recovery-{}.json", hash::sha256_hex(&bytes)));
+        let saved = install::read(&recovery)?;
+        if saved.as_ref().is_some_and(|saved| saved != &bytes) {
+            return Err("旧草稿恢复副本与原内容不一致，未覆盖".into());
+        }
+        let mut changes = vec![Change {
+            path,
+            before: Some(bytes.clone()),
+            after: None,
+        }];
+        if saved.is_none() {
+            changes.push(Change {
+                path: recovery,
+                before: None,
+                after: Some(bytes),
+            });
+        }
+        install::apply(changes, &backup, |_| {})?;
+        Ok(true)
+    }
+
+    fn repair_derived(&self, workspace: &Workspace) -> Result<usize, String> {
+        let (replacement, count) = crate::extra_stratagem::reconcile(workspace)?;
+        if count == 0 {
+            return Ok(0);
+        }
+        let (_lock, _, backup) = self.begin()?;
+        let path = self.state.join("configuration.json");
+        let before = install::read(&path)?.ok_or("派生记录来源配置缺失")?;
+        let mut metadata: Value =
+            serde_json::from_slice(&before).map_err(|_| "派生记录来源配置无效")?;
+        let key = crate::extra_stratagem::GENERATED;
+        if metadata[key] != workspace.loaded_metadata()[key] {
+            return Err("其他编辑器已更改派生记录，请重新修复".into());
+        }
+        if replacement.is_null() {
+            metadata
+                .as_object_mut()
+                .ok_or("派生记录来源配置无效")?
+                .remove(key);
+        } else {
+            metadata[key] = replacement.clone();
+        }
+        let mut changes = vec![Change {
+            path,
+            before: Some(before),
+            after: Some(serde_json::to_vec(&metadata).map_err(|_| "无法保存派生记录")?),
+        }];
+        if let Some(change) = workspace.draft_metadata_change(key, &replacement)? {
+            changes.push(change);
+        }
+        install::apply(changes, &backup, |_| {})?;
+        Ok(count)
     }
 
     pub(crate) fn needs_resource_changes(workspace: &Workspace) -> bool {
@@ -492,7 +684,19 @@ impl Game {
         Ok((disk, owned))
     }
 
-    fn verified_backup(&self, name: &str, item: &Owned) -> Result<(Vec<u8>, Vec<u8>), String> {
+    /// Returns the current disk bytes and the original backup for an owned file.
+    ///
+    /// `allow_current_change` is the forced path: the game file may have been
+    /// replaced by another tool, so its bytes no longer match the install
+    /// record and the backup is used to overwrite it. The backup itself is
+    /// always verified against the record: without a trustworthy source a
+    /// forced restore would write unknown data into the game.
+    fn verified_backup(
+        &self,
+        name: &str,
+        item: &Owned,
+        allow_current_change: bool,
+    ) -> Result<(Vec<u8>, Vec<u8>), String> {
         if !valid_file(name)
             || item.transaction.is_empty()
             || !item
@@ -511,10 +715,17 @@ impl Game {
             return Err(format!("{name} 的原始备份缺失"));
         }
         let saved = fs::read(source).map_err(|_| "无法读取安装备份")?;
-        let current = fs::read(self.root.join(name)).map_err(|_| "无法核对已安装文件")?;
-        if hash::sha256_hex(&current) != item.installed || hash::sha256_hex(&saved) != item.original
-        {
-            return Err(format!("{name} 的文件或备份已变化"));
+        if hash::sha256_hex(&saved) != item.original {
+            return Err(format!("{name} 的原始备份已变化，无法确认恢复内容"));
+        }
+        let current = match fs::read(self.root.join(name)) {
+            Ok(bytes) => bytes,
+            // A forced restore may recreate a file that another tool removed.
+            Err(_) if allow_current_change => Vec::new(),
+            Err(_) => return Err("无法核对已安装文件".into()),
+        };
+        if hash::sha256_hex(&current) != item.installed && !allow_current_change {
+            return Err(format!("{name} 的文件已变化"));
         }
         Ok((current, saved))
     }
@@ -779,6 +990,7 @@ impl Game {
         workspace: &Workspace,
         allowed: &[Location],
         codes: &BTreeMap<u32, u32>,
+        force: bool,
         mut progress: impl FnMut(Progress),
     ) -> Result<Value, String> {
         require_closed()?;
@@ -799,7 +1011,7 @@ impl Game {
             owned
                 .get(name)
                 .map(|record| {
-                    let (_, saved) = self.verified_backup(name, record)?;
+                    let (_, saved) = self.verified_backup(name, record, force)?;
                     crate::sealed::open_data(&saved).map_err(|e| e.to_string())
                 })
                 .transpose()
@@ -826,7 +1038,17 @@ impl Game {
             let after_digest = crate::hash::sha256_hex(&prepared.ciphertext);
             if let Some(item) = owned.get_mut(&name) {
                 if item.installed != before_digest {
-                    return Err(format!("{name} 已被其他工具修改，已停止写入"));
+                    if !force {
+                        return Err(format!("{name} 已被其他工具修改，已停止写入"));
+                    }
+                    // The transaction backs up the actual disk bytes. Restore
+                    // after a forced takeover must return to that external state.
+                    item.transaction = transaction.clone();
+                    item.index = changes.len();
+                    item.original = before_digest;
+                    warnings.push(format!(
+                        "{name} 已强制接管旧安装记录；恢复将回到本次写入前的文件"
+                    ));
                 }
                 item.installed = after_digest;
             } else {
@@ -926,6 +1148,7 @@ impl Game {
         &self,
         catalog: &Catalog,
         workspace: &Workspace,
+        force: bool,
         progress: impl FnMut(Progress),
     ) -> Result<Value, String> {
         require_closed()?;
@@ -937,8 +1160,14 @@ impl Game {
         let (disk, owned) = self.owned()?;
         let mut changes = Vec::new();
         let mut restored = BTreeMap::new();
+        let mut warnings = Vec::new();
         for (name, item) in &owned {
-            let (current, saved) = self.verified_backup(name, item)?;
+            let (current, saved) = self.verified_backup(name, item, force)?;
+            if force && hash::sha256_hex(&current) != item.installed {
+                warnings.push(format!(
+                    "{name} 已被其他工具修改，已强制恢复为备份内容"
+                ));
+            }
             restored.insert(
                 name.clone(),
                 crate::workspace::RestoredFile {
@@ -1010,8 +1239,101 @@ impl Game {
             require_closed()?;
             install::apply(changes, &backup, progress)?;
         }
-        Ok(json!({"ok":true,"files":count,"resources":resources,
+        Ok(json!({"ok":true,"files":count,"resources":resources,"warnings":warnings,
+            "forced":force && !warnings.is_empty(),
             "message":format!("已恢复 {count} 个数值文件、{resources} 个独立资源")}))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const NAME: &str = "generated_test_settings.dl_bin";
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "shodan-game-workspace-{}-{name}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("state")).unwrap();
+        dir
+    }
+
+    fn game_at(root: &Path) -> Game {
+        Game {
+            root: root.to_path_buf(),
+            state: root.join("state"),
+            inputs: json!({}),
+            build: String::new(),
+            resources: Default::default(),
+            archive: BTreeMap::new(),
+            text_originals: Default::default(),
+            migration_notes: Vec::new(),
+        }
+    }
+
+    fn owned(root: &Path, saved: &[u8], installed: &[u8]) -> Owned {
+        let transaction = "0-1".to_string();
+        let dir = root.join("state/transactions").join(&transaction);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("0.original"), saved).unwrap();
+        Owned {
+            transaction,
+            index: 0,
+            original: hash::sha256_hex(saved),
+            installed: hash::sha256_hex(installed),
+        }
+    }
+
+    #[test]
+    fn changed_game_file_needs_forced_restore() {
+        let root = scratch("force-file");
+        let saved = b"saved-backup".to_vec();
+        let item = owned(&root, &saved, b"installed-bytes");
+        fs::write(root.join(NAME), b"changed-by-another-tool").unwrap();
+        let game = game_at(&root);
+        assert_eq!(
+            game.verified_backup(NAME, &item, false).unwrap_err(),
+            format!("{NAME} 的文件已变化")
+        );
+        let (current, backup) = game.verified_backup(NAME, &item, true).unwrap();
+        assert_eq!(current, b"changed-by-another-tool");
+        assert_eq!(backup, saved);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn changed_backup_is_never_forced() {
+        let root = scratch("force-backup");
+        let saved = b"saved-backup".to_vec();
+        let item = owned(&root, &saved, b"installed-bytes");
+        fs::write(root.join(NAME), b"installed-bytes").unwrap();
+        fs::write(
+            root.join("state/transactions/0-1/0.original"),
+            b"tampered-backup",
+        )
+        .unwrap();
+        let game = game_at(&root);
+        assert_eq!(
+            game.verified_backup(NAME, &item, true).unwrap_err(),
+            format!("{NAME} 的原始备份已变化，无法确认恢复内容")
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn forced_restore_recreates_a_missing_game_file() {
+        let root = scratch("force-missing");
+        let saved = b"saved-backup".to_vec();
+        let item = owned(&root, &saved, b"installed-bytes");
+        let game = game_at(&root);
+        assert!(game.verified_backup(NAME, &item, false).is_err());
+        let (current, backup) = game.verified_backup(NAME, &item, true).unwrap();
+        assert!(current.is_empty());
+        assert_eq!(backup, saved);
+        let _ = fs::remove_dir_all(root);
     }
 }
 
