@@ -60,6 +60,7 @@ class _RevealCard extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderRevealCard(
     animation: animation,
+    settle: _CardSettleScope.of(context),
     scroll: Scrollable.maybeOf(context)?.position,
     index: index,
     columns: columns,
@@ -74,6 +75,7 @@ class _RevealCard extends SingleChildRenderObjectWidget {
   ) {
     renderObject.update(
       animation: animation,
+      settle: _CardSettleScope.of(context),
       scroll: Scrollable.maybeOf(context)?.position,
       index: index,
       columns: columns,
@@ -83,15 +85,28 @@ class _RevealCard extends SingleChildRenderObjectWidget {
   }
 }
 
+class _CardSettleScope extends InheritedWidget {
+  const _CardSettleScope({required this.animation, required super.child});
+  final Animation<double> animation;
+  static Animation<double> of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_CardSettleScope>()!.animation;
+
+  @override
+  bool updateShouldNotify(_CardSettleScope oldWidget) =>
+      animation != oldWidget.animation;
+}
+
 class _RenderRevealCard extends RenderProxyBox {
   _RenderRevealCard({
     required Animation<double> animation,
+    required Animation<double> settle,
     required ScrollPosition? scroll,
     required int index,
     required int columns,
     required double windowWidth,
     required bool reduced,
   }) : _animation = animation,
+       _settle = settle,
        _scroll = scroll,
        _index = index,
        _columns = columns,
@@ -99,14 +114,17 @@ class _RenderRevealCard extends RenderProxyBox {
        _reduced = reduced;
 
   Animation<double> _animation;
+  Animation<double> _settle;
   ScrollPosition? _scroll;
   int _index, _columns;
   double _windowWidth;
   bool _reduced;
+  bool _landed = false;
   Offset _offset = Offset.zero;
 
   void update({
     required Animation<double> animation,
+    required Animation<double> settle,
     required ScrollPosition? scroll,
     required int index,
     required int columns,
@@ -115,6 +133,7 @@ class _RenderRevealCard extends RenderProxyBox {
   }) {
     if (attached) _listen(false);
     _animation = animation;
+    _settle = settle;
     _scroll = scroll;
     _index = index;
     _columns = columns;
@@ -127,9 +146,11 @@ class _RenderRevealCard extends RenderProxyBox {
   void _listen(bool add) {
     if (add) {
       _animation.addListener(markNeedsPaint);
+      _settle.addListener(markNeedsPaint);
       _scroll?.addListener(markNeedsPaint);
     } else {
       _animation.removeListener(markNeedsPaint);
+      _settle.removeListener(markNeedsPaint);
       _scroll?.removeListener(markNeedsPaint);
     }
   }
@@ -168,15 +189,21 @@ class _RenderRevealCard extends RenderProxyBox {
     final scrollDelay = order * .06;
     final opening = ((_animation.value - openingDelay) / (1 - openingDelay))
         .clamp(0.0, 1.0);
-    final scrolled = _reduced
-        ? 1.0
-        : ((_scrollProgress() - scrollDelay) / (1 - scrollDelay)).clamp(
-            0.0,
-            1.0,
-          );
-    final eased = WorkbenchMotion.enter.transform(
-      _reduced ? 1 : math.min(opening, scrolled),
+    final exposure = _reduced ? 1.0 : _scrollProgress();
+    final fromScroll = ((exposure - scrollDelay) / (1 - scrollDelay)).clamp(
+      0.0,
+      1.0,
     );
+    // Once a visible card lands, subsequent scrolling must not pull it back out.
+    // The shared idle clock finishes even a tiny reveal after scrolling stops.
+    final scrolled = _landed
+        ? 1.0
+        : exposure > 0
+        ? math.max(fromScroll, _settle.value)
+        : 0.0;
+    final progress = _reduced ? 1.0 : math.min(opening, scrolled);
+    if (progress == 1 && exposure > 0) _landed = true;
+    final eased = WorkbenchMotion.enter.transform(progress);
     _offset = Offset(_windowWidth * (1 - eased), 0);
     super.paint(context, offset + _offset);
   }
@@ -198,10 +225,15 @@ class _RenderRevealCard extends RenderProxyBox {
 }
 
 class _CatalogEntranceState extends State<CatalogEntrance>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _progress = AnimationController(
     vsync: this,
     duration: WorkbenchMotion.catalogEntrance,
+  );
+  late final AnimationController _settle = AnimationController(
+    vsync: this,
+    value: 1,
+    duration: WorkbenchMotion.settle,
   );
 
   @override
@@ -216,12 +248,28 @@ class _CatalogEntranceState extends State<CatalogEntrance>
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => widget.builder(context, _progress),
+    builder: (context, constraints) => NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.depth != 0) return false;
+        if (notification is ScrollStartNotification) {
+          _settle.stop();
+          _settle.value = 0;
+        } else if (notification is ScrollEndNotification) {
+          _settle.forward();
+        }
+        return false;
+      },
+      child: _CardSettleScope(
+        animation: _settle,
+        child: widget.builder(context, _progress),
+      ),
+    ),
   );
 
   @override
   void dispose() {
     _progress.dispose();
+    _settle.dispose();
     super.dispose();
   }
 }

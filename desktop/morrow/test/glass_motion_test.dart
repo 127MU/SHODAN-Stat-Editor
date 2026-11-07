@@ -111,6 +111,9 @@ void main() {
     final near = tester.getTopLeft(find.text('卡3')).dx;
     expect(near, lessThan(far));
     expect(cardBuilds, buildsBeforeScroll);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('卡3')).dx, lessThan(40));
+    expect(cardBuilds, buildsBeforeScroll);
     await tester.tap(find.text('卡3'));
     expect(clicks, 1);
     controller.jumpTo(300);
@@ -125,10 +128,15 @@ void main() {
     expect(tester.getTopLeft(find.text('卡9')).dx, lessThan(later));
     controller.jumpTo(1300);
     await tester.pump();
-    expect(tester.getTopLeft(find.text('卡9')).dx, closeTo(later, .01));
+    expect(tester.getTopLeft(find.text('卡9')).dx, lessThan(40));
+    controller.jumpTo(1700);
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('卡11')).dx, greaterThan(40));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('卡11')).dx, lessThan(40));
     await tester.binding.setSurfaceSize(const Size(800, 800));
     await tester.pump();
-    expect(tester.getTopLeft(find.text('卡9')).dx, lessThan(later));
+    expect(tester.getTopLeft(find.text('卡11')).dx, lessThan(40));
     expect(tester.takeException(), isNull);
   });
 
