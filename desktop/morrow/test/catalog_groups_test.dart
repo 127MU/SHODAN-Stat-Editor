@@ -27,6 +27,29 @@ class GroupBackend extends FakeBackend {
 }
 
 void main() {
+  test('旧值与原值不同仍可筛选，缺少原值不显示未修改', () {
+    final items = [
+      {
+        'id': 'old',
+        'name': '旧修改',
+        'changed': false,
+        'baseline_state': 'different',
+      },
+      {
+        'id': 'unknown',
+        'name': '未知原值',
+        'changed': false,
+        'baseline_state': 'unknown',
+      },
+      {'id': 'same', 'name': '原始值', 'changed': false, 'baseline_state': 'same'},
+    ];
+    final groups = buildCatalogGroups(items, 'Primary');
+    expect(groups[0].statusLabel, '与原值不同');
+    expect(groups[1].statusLabel, '原值待核对');
+    expect(groups[2].statusLabel, '未修改');
+    final changed = buildCatalogGroups(items, 'Primary', onlyChanged: true);
+    expect(changed.single.id, 'old');
+  });
   test('显式父子分组保留所有部件，搜索和修改筛选匹配子条目', () {
     final groups = buildCatalogGroups(family, 'Mechas');
     expect(groups.length, 1);

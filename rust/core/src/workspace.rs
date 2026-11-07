@@ -345,6 +345,7 @@ pub struct Workspace {
     files: BTreeMap<String, File>,
     blocked_files: BTreeMap<String, String>,
     suspended_draft: BTreeMap<String, DraftFile>,
+    suspended_source: Option<Vec<u8>>,
     draft_problems: Vec<String>,
     installed_from: BTreeMap<String, Option<(Vec<u8>, Index)>>,
     metadata: serde_json::Value,
@@ -732,9 +733,50 @@ impl Workspace {
             }
             snapshot.metadata = draft.metadata;
             self.resume(snapshot);
+            if !self.suspended_draft.is_empty() {
+                self.suspended_source = Some(bytes.clone());
+            }
         }
         self.draft = Some((path, disk));
+        if !self.suspended_draft.is_empty() {
+            let suspended = std::mem::take(&mut self.suspended_draft);
+            match self.persist(&self.checkpoint()) {
+                Ok(()) => {
+                    self.suspended_source = None;
+                    self.draft_problems.push(
+                        "冲突草稿已完整转存为同目录的 draft-recovery 恢复副本，当前游戏数据可继续编辑。"
+                            .into(),
+                    );
+                }
+                Err(error) => {
+                    self.suspended_draft = suspended;
+                    self.draft_problems
+                        .push(format!("旧草稿仍保留在原文件，恢复副本尚未保存：{error}"));
+                }
+            }
+        }
         Ok(())
+    }
+    pub(crate) fn draft_recovery(&self) -> Result<Option<crate::install::Change>, String> {
+        let Some(bytes) = &self.suspended_source else {
+            return Ok(None);
+        };
+        let Some((path, _)) = &self.draft else {
+            return Ok(None);
+        };
+        let path = path.with_file_name(format!(
+            "draft-recovery-{}.json",
+            crate::hash::sha256_hex(bytes)
+        ));
+        match crate::install::read(&path)? {
+            Some(saved) if saved == *bytes => Ok(None),
+            Some(_) => Err("旧草稿恢复副本与原内容不一致，未覆盖".into()),
+            None => Ok(Some(crate::install::Change {
+                path,
+                before: None,
+                after: Some(bytes.clone()),
+            })),
+        }
     }
     fn persist(&mut self, next: &Checkpoint) -> Result<(), String> {
         let Some((path, disk)) = &self.draft else {
@@ -766,6 +808,9 @@ impl Workspace {
         let _lock = crate::install::lock_transaction(folder)?;
         if crate::install::read(path)? != *disk {
             return Err("其他编辑器实例已更改草稿，请重新打开".into());
+        }
+        if let Some(recovery) = self.draft_recovery()? {
+            crate::install::save_atomic(&recovery.path, recovery.after.as_ref().unwrap())?;
         }
         crate::install::save_atomic(path, &encoded)?;
         self.draft.as_mut().unwrap().1 = Some(encoded);
@@ -1113,6 +1158,16 @@ impl Workspace {
         self.set_batch(&[(location, encoding, value)], None)
     }
     pub fn problems(&self) -> Vec<String> {
+        let mut problems = self.blocking_problems();
+        problems.extend(self.draft_problems.iter().cloned());
+        problems
+    }
+    pub(crate) fn blocking_problems(&self) -> Vec<String> {
+        let mut problems = self.data_problems();
+        problems.extend(self.blocked_files.values().cloned());
+        problems
+    }
+    pub(crate) fn data_problems(&self) -> Vec<String> {
         self.files
             .iter()
             .flat_map(|(name, file)| {
@@ -1121,8 +1176,6 @@ impl Workspace {
                     .iter()
                     .map(move |why| format!("{name}: {why}"))
             })
-            .chain(self.blocked_files.values().cloned())
-            .chain(self.draft_problems.iter().cloned())
             .collect()
     }
     pub fn snapshots(&self) -> impl Iterator<Item = (&str, &[u8])> {
@@ -1464,16 +1517,38 @@ mod tests {
     }
     #[test]
     fn conflicting_draft_is_kept_aside_instead_of_blocking_startup() {
-        let (path, encoded, pending) = draft_with("stale-source", "draft-conflict");
+        let (path, encoded, _) = draft_with("stale-source", "draft-conflict");
         let w = reopen_with_draft(&path);
         assert_eq!(w.pending_count(), 0);
         assert_eq!(w.value(&loc("a", 1), &Encoding::U32).unwrap().current, 50.0);
-        assert_eq!(w.suspended_draft["a"].bytes, pending);
+        assert!(w.suspended_draft.is_empty());
+        assert!(w.blocking_problems().is_empty());
         assert!(w
             .problems()
             .iter()
             .any(|problem| problem.contains("已由其他工具或游戏更新改变")));
-        assert_eq!(fs::read(&path).unwrap(), encoded, "草稿必须原样保留");
+        let recovery = path.with_file_name(format!(
+            "draft-recovery-{}.json",
+            crate::hash::sha256_hex(&encoded)
+        ));
+        assert_eq!(
+            fs::read(&recovery).unwrap(),
+            encoded,
+            "恢复副本必须逐字节一致"
+        );
+        let active: Draft = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert!(active.files.is_empty());
+        let mut reopened = reopen_with_draft(&path);
+        assert!(reopened.problems().is_empty());
+        reopened
+            .set_batch(&[(loc("a", 1), Encoding::U32, 125.0)], None)
+            .unwrap();
+        let edited = reopen_with_draft(&path);
+        assert_eq!(
+            edited.value(&loc("a", 1), &Encoding::U32).unwrap().current,
+            125.0
+        );
+        assert_eq!(fs::read(&recovery).unwrap(), encoded);
         let _ = fs::remove_dir_all(path.parent().unwrap());
     }
     #[test]
@@ -1494,6 +1569,72 @@ mod tests {
             100.0
         );
         assert!(w.problems().is_empty());
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn invalid_draft_locations_are_archived_once_and_do_not_block_fresh_edits() {
+        for missing in [false, true] {
+            let (path, _, _) = draft_with(
+                "temporary",
+                if missing {
+                    "draft-missing"
+                } else {
+                    "draft-range"
+                },
+            );
+            let mut reference = Workspace::default();
+            reference
+                .add(
+                    "a".into(),
+                    File::new("a".into(), bytes(1, 50), None).unwrap(),
+                )
+                .unwrap();
+            let draft = Draft {
+                version: 1,
+                metadata: serde_json::Value::Null,
+                files: BTreeMap::from([(
+                    if missing { "absent".into() } else { "a".into() },
+                    DraftFile {
+                        source: reference.fingerprint("a"),
+                        bytes: BTreeMap::from([(usize::MAX, 1)]),
+                    },
+                )]),
+            };
+            let encoded = serde_json::to_vec(&draft).unwrap();
+            fs::write(&path, &encoded).unwrap();
+            let w = reopen_with_draft(&path);
+            assert!(w.blocking_problems().is_empty());
+            assert!(!w.problems().is_empty());
+            assert_eq!(w.pending_count(), 0);
+            assert!(reopen_with_draft(&path).problems().is_empty());
+            let recovery = path.with_file_name(format!(
+                "draft-recovery-{}.json",
+                crate::hash::sha256_hex(&encoded)
+            ));
+            assert_eq!(fs::read(recovery).unwrap(), encoded);
+            let _ = fs::remove_dir_all(path.parent().unwrap());
+        }
+    }
+
+    #[test]
+    fn failed_draft_archival_preserves_source_and_allows_read_only_startup() {
+        let (path, encoded, _) = draft_with("stale-source", "draft-recovery-conflict");
+        let recovery = path.with_file_name(format!(
+            "draft-recovery-{}.json",
+            crate::hash::sha256_hex(&encoded)
+        ));
+        fs::write(&recovery, b"other contents").unwrap();
+        let mut w = reopen_with_draft(&path);
+        assert_eq!(w.pending_count(), 0);
+        assert!(w.problems().iter().any(|p| p.contains("恢复副本尚未保存")));
+        assert_eq!(fs::read(&path).unwrap(), encoded);
+        assert!(w
+            .set_batch(&[(loc("a", 1), Encoding::U32, 125.0)], None)
+            .is_err());
+        assert_eq!(w.pending_count(), 0);
+        assert_eq!(fs::read(&path).unwrap(), encoded);
+        assert_eq!(fs::read(&recovery).unwrap(), b"other contents");
         let _ = fs::remove_dir_all(path.parent().unwrap());
     }
 }

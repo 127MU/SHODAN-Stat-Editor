@@ -1,3 +1,6 @@
+bool catalogItemChanged(Map item) =>
+    item['changed'] == true || item['baseline_state'] == 'different';
+
 /// Group only explicit parent relationships (or an exact colon-prefix parent).
 /// Do not infer families from similar names: M-10 and M-100 must remain separate.
 class CatalogGroup {
@@ -5,7 +8,17 @@ class CatalogGroup {
   final String id, name;
   final entries = <Map>[];
   final matches = <Map>[];
-  bool get changed => entries.any((item) => item['changed'] == true);
+  bool get changed => entries.any(catalogItemChanged);
+  String get statusLabel {
+    if (entries.any((item) => item['changed'] == true)) return '已修改';
+    if (entries.any((item) => item['baseline_state'] == 'different')) {
+      return '与原值不同';
+    }
+    if (entries.any((item) => item['baseline_state'] == 'unknown')) {
+      return '原值待核对';
+    }
+    return '未修改';
+  }
 }
 
 List<CatalogGroup> buildCatalogGroups(
@@ -40,7 +53,7 @@ List<CatalogGroup> buildCatalogGroups(
       ];
     }
     final matched =
-        (!onlyChanged || item['changed'] == true) &&
+        (!onlyChanged || catalogItemChanged(item)) &&
         (search.isEmpty || item.toString().toLowerCase().contains(search));
     for (final rawParent in parents) {
       if (rawParent is! Map || rawParent['id'] == null) continue;

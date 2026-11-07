@@ -105,7 +105,6 @@ class _GameTweaksPageState extends State<GameTweaksPage> {
     builder: (context, entrance) {
       final cards = <Widget>[
         for (final entry in const [
-          ('reticle', '瞄准显示', '狙击步枪第三人称准星', ''),
           (
             'bounce',
             '投掷行为',

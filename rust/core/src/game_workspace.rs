@@ -410,12 +410,29 @@ impl Game {
     }
 
     pub(crate) fn baseline_check(&self, workspace: &Workspace) -> Value {
-        let mut problems: BTreeSet<_> = workspace
-            .resource_conflicts()
-            .chain(workspace.draft_conflicts())
-            .cloned()
-            .collect();
-        let mut warnings = Vec::new();
+        self.check(workspace, true)
+    }
+
+    pub(crate) fn needs_resource_changes(workspace: &Workspace) -> bool {
+        !workspace.changed_resources().is_empty()
+            || workspace.metadata()[crate::desktop_text::STATE]
+                != workspace.loaded_metadata()[crate::desktop_text::STATE]
+    }
+
+    pub(crate) fn install_check(&self, workspace: &Workspace) -> Value {
+        self.check(workspace, Self::needs_resource_changes(workspace))
+    }
+
+    fn check(&self, workspace: &Workspace, resources: bool) -> Value {
+        let mut problems: BTreeSet<_> = if resources {
+            workspace.resource_conflicts().cloned().collect()
+        } else {
+            BTreeSet::new()
+        };
+        let mut warnings: Vec<String> = workspace.draft_conflicts().cloned().collect();
+        if !resources {
+            warnings.extend(workspace.resource_conflicts().cloned());
+        }
         let mut entries = Vec::new();
         match self.game_dll() {
             Ok(_) => entries.push(
@@ -435,12 +452,14 @@ impl Game {
                 }
             }
         }
-        match self.data().and_then(|root| {
-            crate::residency_install::audit(root, &self.state.join("residency.json"))
-        }) {
-            Ok(result) => problems.extend(result),
-            Err(error) => {
-                problems.insert(error);
+        if resources {
+            match self.data().and_then(|root| {
+                crate::residency_install::audit(root, &self.state.join("residency.json"))
+            }) {
+                Ok(result) => problems.extend(result),
+                Err(error) => {
+                    problems.insert(error);
+                }
             }
         }
         match self.interrupted() {
@@ -453,7 +472,7 @@ impl Game {
             _ => {}
         }
         if !problems.is_empty() {
-            warnings.push("请核对游戏更新、其他工具和已登记补丁。检查未写入任何文件。");
+            warnings.push("请核对游戏更新、其他工具和已登记补丁。检查未写入任何文件。".into());
         }
         json!({"entries":entries,"problems":problems,"warnings":warnings})
     }
@@ -763,8 +782,10 @@ impl Game {
         mut progress: impl FnMut(Progress),
     ) -> Result<Value, String> {
         require_closed()?;
-        if let Some(error) = workspace.resource_conflicts().next() {
-            return Err(error.clone());
+        if Self::needs_resource_changes(workspace) {
+            if let Some(error) = workspace.resource_conflicts().next() {
+                return Err(error.clone());
+            }
         }
         let (_lock, transaction, backup) = self.begin()?;
         let dll = self.game_dll()?;
@@ -881,6 +902,9 @@ impl Game {
             });
         }
         if count > 0 || resource_count > 0 || changed_configuration {
+            if let Some(recovery) = workspace.draft_recovery()? {
+                changes.push(recovery);
+            }
             if let Some(draft) = workspace.finish_draft() {
                 changes.push(draft);
             }
@@ -961,6 +985,9 @@ impl Game {
         }
         let resources = edits.values().map(BTreeMap::len).sum::<usize>();
         if count > 0 || resources > 0 || !configuration.is_null() {
+            if let Some(recovery) = workspace.draft_recovery()? {
+                changes.push(recovery);
+            }
             if let Some(draft) =
                 workspace.restored_draft(catalog, &restored, workspace.metadata().clone())?
             {

@@ -980,9 +980,9 @@ impl Api {
                         "部分文件的校验空间不足时，需要明确允许微调本次已修改的浮点数值。".into(),
                     );
                 }
-                let mut problems = workspace.problems();
+                let mut problems = workspace.data_problems();
                 if let Some(game) = &self.game {
-                    let report = game.baseline_check(workspace);
+                    let report = game.install_check(workspace);
                     problems.extend(
                         report["problems"]
                             .as_array()

@@ -57,7 +57,7 @@ fn open_browser(url: &str) -> Result<(), String> {
     }
     Ok(())
 }
-fn version(text: &str) -> Result<[u32; 4], String> {
+fn version(text: &str) -> Result<[u32; 5], String> {
     let text = text.strip_prefix('v').unwrap_or(text);
     let (base, revision) = text.split_once("-r").unwrap_or((text, "0"));
     let parts = base
@@ -65,14 +65,25 @@ fn version(text: &str) -> Result<[u32; 4], String> {
         .map(str::parse::<u32>)
         .collect::<Result<Vec<_>, _>>()
         .map_err(|_| "版本号无效")?;
-    if parts.len() != 3 || revision.is_empty() || !revision.bytes().all(|b| b.is_ascii_digit()) {
+    let revisions = revision.split('.').collect::<Vec<_>>();
+    if parts.len() != 3
+        || revisions.len() > 2
+        || revisions
+            .iter()
+            .any(|part| part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()))
+    {
         return Err("版本号无效".into());
     }
     Ok([
         parts[0],
         parts[1],
         parts[2],
-        revision.parse().map_err(|_| "版本修订号无效")?,
+        revisions[0].parse().map_err(|_| "版本修订号无效")?,
+        revisions
+            .get(1)
+            .unwrap_or(&"0")
+            .parse()
+            .map_err(|_| "版本修订号无效")?,
     ])
 }
 pub fn parse(body: &str, current: &str) -> Result<Value, String> {
@@ -329,6 +340,10 @@ mod tests {
         data["html_url"] = json!("https://example.com");
         assert!(parse(&data.to_string(), "4.6.0").is_err());
         assert!(version("v4.6.0<script>").is_err());
+        assert!(version("4.6.0-r4.1").unwrap() > version("4.6.0-r4").unwrap());
+        assert!(version("4.6.0-r4.1").unwrap() < version("4.6.0-r5").unwrap());
+        assert!(version("4.6.0-r4.1.2").is_err());
+        assert!(version("4.6.0-r4..1").is_err());
     }
     #[test]
     fn foreign_or_malformed_links_never_reach_the_browser() {

@@ -15,7 +15,7 @@ class ReviewBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${entries.length} 项变化 · 原值 → 待写入值',
+          '${entries.length} 项待写入 · 启动时数值 → 待写入值',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         Expanded(

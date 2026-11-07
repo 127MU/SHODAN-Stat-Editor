@@ -164,6 +164,14 @@ fn format_value(row: &Row, value: Option<f64>) -> String {
     }
 }
 
+fn baseline_state(current: Option<f64>, original: Option<f64>) -> &'static str {
+    match current.zip(original) {
+        Some((current, original)) if current == original => "same",
+        Some(_) => "different",
+        None => "unknown",
+    }
+}
+
 pub(crate) fn rows(
     catalog: &Catalog,
     workspace: &Workspace,
@@ -194,6 +202,7 @@ pub(crate) fn rows(
                 "note":row.note,"inline_note":row.inline_note,"help":row.help,"shared_pending":row.parts.iter().any(|p|catalog.users[p.field].len()>1),
                 "reference":reference,"projectile_source":row.choice==true,
                 "changed":row.parts.iter().any(|p| catalog.field_edited(p.field, workspace)),
+                "baseline_state":baseline_state(value,original),
                 "error":current.err(),"patch_pending":matches!(kind,"resomode"|"smmode")})
         }).collect::<Vec<_>>())
 }
@@ -234,6 +243,7 @@ pub(crate) fn pending(catalog: &Catalog, workspace: &Workspace) -> Value {
 pub(crate) fn items(catalog: &Catalog, workspace: &Workspace, tab: &str, query: &str) -> Value {
     let query = query.trim().to_lowercase();
     let mut changes = vec![None; catalog.fields.len()];
+    let mut comparisons = vec![None; catalog.fields.len()];
     json!(catalog
         .owners
         .iter()
@@ -256,8 +266,30 @@ pub(crate) fn items(catalog: &Catalog, workspace: &Workspace, tab: &str, query: 
                         .get_or_insert_with(|| catalog.field_edited(p.field, workspace))
                 })
             });
+            let mut comparison = "same";
+            for part in owner.rows.iter().flat_map(|row| &row.parts) {
+                let state = *comparisons[part.field].get_or_insert_with(|| {
+                    baseline_state(
+                        catalog
+                            .field_value(part.field, workspace, Mode::Current)
+                            .ok()
+                            .flatten(),
+                        catalog
+                            .field_value(part.field, workspace, Mode::Original)
+                            .ok()
+                            .flatten(),
+                    )
+                });
+                if state == "different" {
+                    comparison = state;
+                    break;
+                }
+                if state == "unknown" {
+                    comparison = state;
+                }
+            }
             json!({"id":owner.id,"name":owner.name,"english":owner.english,"groups":owner.groups,
-            "note":owner.note,"changed":changed})
+            "note":owner.note,"changed":changed,"baseline_state":comparison})
         })
         .collect::<Vec<_>>())
 }
