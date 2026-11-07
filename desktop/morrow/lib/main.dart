@@ -1502,7 +1502,6 @@ class _WorkbenchState extends State<Workbench> {
                 entrance,
                 index,
                 columns: 4,
-                count: categories.length,
                 surface(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1971,7 +1970,6 @@ class _WorkbenchState extends State<Workbench> {
                                                   entrance,
                                                   i,
                                                   columns: columns,
-                                                  count: visible.length,
                                                   surface(
                                                   Column(
                                                     crossAxisAlignment:

@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 abstract final class WorkbenchMotion {
   static const hover = Duration(milliseconds: 90);
@@ -7,13 +9,7 @@ abstract final class WorkbenchMotion {
   static const page = Duration(milliseconds: 320);
   static const dialog = Duration(milliseconds: 300);
   static const reveal = Duration(milliseconds: 420);
-  static const _catalogCardCount = 8;
-  static const _catalogCardDelay = 40;
-  static const _catalogCardTravel = 210;
-  static const catalogEntrance = Duration(
-    milliseconds:
-        (_catalogCardCount - 1) * _catalogCardDelay + _catalogCardTravel,
-  );
+  static const catalogEntrance = Duration(milliseconds: 490);
   static const standard = Cubic(.2, 0, 0, 1);
   static const enter = Cubic(.22, .72, .23, 1);
   static const exit = Cubic(.3, 0, 1, 1);
@@ -22,7 +18,11 @@ abstract final class WorkbenchMotion {
       MediaQuery.disableAnimationsOf(context) ? Duration.zero : value;
 }
 
-/// Shares a single clock across the opening cards in a catalog.
+/// Shares one clock across the cards already on screen when a catalog opens.
+///
+/// Every card also follows its own position inside the scroll viewport, so a
+/// card that scrolls into view slides in from the window edge in real time
+/// instead of staying put after the opening animation finished.
 class CatalogEntrance extends StatefulWidget {
   const CatalogEntrance({super.key, required this.builder});
   final Widget Function(BuildContext, Animation<double>) builder;
@@ -32,40 +32,169 @@ class CatalogEntrance extends StatefulWidget {
     int index,
     Widget child, {
     int columns = 1,
-    int? count,
     Key? key,
-  }) {
-    final rowStart = index - index % columns;
-    final remaining = (count ?? rowStart + columns) - rowStart;
-    final rowSize = remaining < columns ? remaining : columns;
-    final order = rowStart + rowSize - 1 - index % columns;
-    if (order >= WorkbenchMotion._catalogCardCount) {
-      return key == null ? child : KeyedSubtree(key: key, child: child);
-    }
-    final total = WorkbenchMotion.catalogEntrance.inMilliseconds;
-    final start = order * WorkbenchMotion._catalogCardDelay;
-    final curve = Interval(
-      start / total,
-      (start + WorkbenchMotion._catalogCardTravel) / total,
-      curve: WorkbenchMotion.enter,
-    );
-    return AnimatedBuilder(
-      key: key,
-      animation: animation,
-      child: child,
-      builder: (context, child) => Transform.translate(
-        offset: Offset(
-          MediaQuery.sizeOf(context).width *
-              (1 - curve.transform(animation.value)),
-          0,
-        ),
-        child: child,
-      ),
-    );
-  }
+  }) => _RevealCard(
+    key: key,
+    animation: animation,
+    index: index,
+    columns: columns,
+    child: child,
+  );
 
   @override
   State<CatalogEntrance> createState() => _CatalogEntranceState();
+}
+
+class _RevealCard extends SingleChildRenderObjectWidget {
+  const _RevealCard({
+    super.key,
+    required this.animation,
+    required this.index,
+    required this.columns,
+    required super.child,
+  });
+
+  final Animation<double> animation;
+  final int index;
+  final int columns;
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderRevealCard(
+    animation: animation,
+    scroll: Scrollable.maybeOf(context)?.position,
+    index: index,
+    columns: columns,
+    windowWidth: MediaQuery.sizeOf(context).width,
+    reduced: MediaQuery.disableAnimationsOf(context),
+  );
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderRevealCard renderObject,
+  ) {
+    renderObject.update(
+      animation: animation,
+      scroll: Scrollable.maybeOf(context)?.position,
+      index: index,
+      columns: columns,
+      windowWidth: MediaQuery.sizeOf(context).width,
+      reduced: MediaQuery.disableAnimationsOf(context),
+    );
+  }
+}
+
+class _RenderRevealCard extends RenderProxyBox {
+  _RenderRevealCard({
+    required Animation<double> animation,
+    required ScrollPosition? scroll,
+    required int index,
+    required int columns,
+    required double windowWidth,
+    required bool reduced,
+  }) : _animation = animation,
+       _scroll = scroll,
+       _index = index,
+       _columns = columns,
+       _windowWidth = windowWidth,
+       _reduced = reduced;
+
+  Animation<double> _animation;
+  ScrollPosition? _scroll;
+  int _index, _columns;
+  double _windowWidth;
+  bool _reduced;
+  Offset _offset = Offset.zero;
+
+  void update({
+    required Animation<double> animation,
+    required ScrollPosition? scroll,
+    required int index,
+    required int columns,
+    required double windowWidth,
+    required bool reduced,
+  }) {
+    if (attached) _listen(false);
+    _animation = animation;
+    _scroll = scroll;
+    _index = index;
+    _columns = columns;
+    _windowWidth = windowWidth;
+    _reduced = reduced;
+    if (attached) _listen(true);
+    markNeedsPaint();
+  }
+
+  void _listen(bool add) {
+    if (add) {
+      _animation.addListener(markNeedsPaint);
+      _scroll?.addListener(markNeedsPaint);
+    } else {
+      _animation.removeListener(markNeedsPaint);
+      _scroll?.removeListener(markNeedsPaint);
+    }
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _listen(true);
+  }
+
+  @override
+  void detach() {
+    _listen(false);
+    super.detach();
+  }
+
+  double _scrollProgress() {
+    final viewport = RenderAbstractViewport.maybeOf(this);
+    final area = viewport is RenderBox ? viewport as RenderBox : null;
+    if (area == null || !area.hasSize) return 1;
+    final origin = localToGlobal(Offset.zero, ancestor: area);
+    final span = math.min(size.height, area.size.height * .6);
+    if (span <= 0) return 1;
+    return ((area.size.height - origin.dy) / span).clamp(0.0, 1.0);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    // Measure after viewport layout. The proxy's position excludes the child's
+    // horizontal translation, and scrolling only schedules paint, never build.
+    final order = _columns <= 1 ? 0 : _columns - 1 - _index % _columns;
+    final openingDelay = math.min(
+      (_index ~/ _columns * _columns + order) * .06,
+      .6,
+    );
+    final scrollDelay = order * .06;
+    final opening = ((_animation.value - openingDelay) / (1 - openingDelay))
+        .clamp(0.0, 1.0);
+    final scrolled = _reduced
+        ? 1.0
+        : ((_scrollProgress() - scrollDelay) / (1 - scrollDelay)).clamp(
+            0.0,
+            1.0,
+          );
+    final eased = WorkbenchMotion.enter.transform(
+      _reduced ? 1 : math.min(opening, scrolled),
+    );
+    _offset = Offset(_windowWidth * (1 - eased), 0);
+    super.paint(context, offset + _offset);
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    super.applyPaintTransform(child, transform);
+    transform.translateByDouble(_offset.dx, _offset.dy, 0, 1);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      result.addWithPaintOffset(
+        offset: _offset,
+        position: position,
+        hitTest: (result, position) =>
+            super.hitTestChildren(result, position: position),
+      );
 }
 
 class _CatalogEntranceState extends State<CatalogEntrance>
@@ -86,7 +215,9 @@ class _CatalogEntranceState extends State<CatalogEntrance>
   }
 
   @override
-  Widget build(BuildContext context) => widget.builder(context, _progress);
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => widget.builder(context, _progress),
+  );
 
   @override
   void dispose() {
