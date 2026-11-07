@@ -22,6 +22,8 @@ List<CatalogGroup> buildCatalogGroups(
   ].contains(tab);
   final byName = {for (final item in items) '${item['name']}': item as Map};
   final groups = <String, CatalogGroup>{};
+  final search = query.toLowerCase();
+  final separator = RegExp('[:：]');
   for (final raw in items) {
     final item = raw as Map;
     final id = '${item['id']}';
@@ -30,7 +32,7 @@ List<CatalogGroup> buildCatalogGroups(
         ? <dynamic>[]
         : item['groups'] as List;
     if (parents.isEmpty) {
-      final colon = RegExp('[:：]').firstMatch(name);
+      final colon = separator.firstMatch(name);
       final base = colon == null ? '' : name.substring(0, colon.start).trim();
       final root = noGrouping ? null : byName[base];
       parents = [
@@ -38,8 +40,8 @@ List<CatalogGroup> buildCatalogGroups(
       ];
     }
     final matched =
-        item.toString().toLowerCase().contains(query.toLowerCase()) &&
-        (!onlyChanged || item['changed'] == true);
+        (!onlyChanged || item['changed'] == true) &&
+        (search.isEmpty || item.toString().toLowerCase().contains(search));
     for (final rawParent in parents) {
       if (rawParent is! Map || rawParent['id'] == null) continue;
       final key = '${rawParent['id']}';

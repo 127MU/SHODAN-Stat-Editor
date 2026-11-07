@@ -1,3 +1,4 @@
+import 'motion.dart';
 import 'glass_theme.dart';
 import 'package:flutter/material.dart';
 import 'number_display.dart';
@@ -82,7 +83,7 @@ class _ArmorPageState extends State<ArmorPage> {
       final result = await widget.backend.call('armor_rows', [passive['id']]);
       if (!mounted) return;
       final rows = result is List ? result : [];
-      await showDialog<void>(
+      await showMotionDialog<void>(
         context: context,
         builder: (ctx) => _ArmorValuesDialog(
           name: passive['zh'],
@@ -198,95 +199,113 @@ class _ArmorPageState extends State<ArmorPage> {
           child: busy ? const LinearProgressIndicator() : null,
         ),
         Expanded(
-          child: visible.isEmpty
-              ? Center(
-                  child: Text(onlySelected && q.isEmpty ? '尚未选择被动' : '没有匹配的被动'),
-                )
-              : LayoutBuilder(
-                  builder: (context, box) {
-                    final scale =
-                        MediaQuery.textScalerOf(context).scale(14) / 14;
-                    // Keep four columns on a normal desktop, reduce only when text
-                    // would no longer fit at the user's chosen font size.
-                    final columns = (box.maxWidth / (230 * scale))
-                        .floor()
-                        .clamp(1, 4);
-                    return GridView.builder(
-                      key: const PageStorageKey('armor-passive-grid'),
-                      padding: const EdgeInsets.only(bottom: 12),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columns,
-                        mainAxisExtent: 148 * scale,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: visible.length,
-                      findChildIndexCallback: (key) {
-                        final i = visible.indexWhere(
-                          (p) => key == ValueKey('passive:${p['id']}'),
-                        );
-                        return i < 0 ? null : i;
-                      },
-                      itemBuilder: (context, i) {
-                        final p = visible[i] as Map;
-                        final selected = checked(p['id']);
-                        return AnimatedContainer(
-                          key: ValueKey('passive:${p['id']}'),
-                          duration: const Duration(milliseconds: 160),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: selected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                          child: widget.surface(
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                CheckboxListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  dense: true,
-                                  visualDensity: VisualDensity.compact,
-                                  title: Text(
-                                    p['zh'],
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  value: selected,
-                                  onChanged: busy
-                                      ? null
-                                      : (v) => change(p['id'], v),
+          child: CatalogEntrance(
+            key: ValueKey(passives.isNotEmpty),
+            builder: (context, entrance) => visible.isEmpty
+                ? Center(
+                    child: Text(
+                      onlySelected && q.isEmpty ? '尚未选择被动' : '没有匹配的被动',
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, box) {
+                      final scale =
+                          MediaQuery.textScalerOf(context).scale(14) / 14;
+                      // Keep four columns on a normal desktop, reduce only when text
+                      // would no longer fit at the user's chosen font size.
+                      final columns = (box.maxWidth / (230 * scale))
+                          .floor()
+                          .clamp(1, 4);
+                      return GridView.builder(
+                        key: const PageStorageKey('armor-passive-grid'),
+                        padding: const EdgeInsets.only(bottom: 12),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          mainAxisExtent: 148 * scale,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: visible.length,
+                        findChildIndexCallback: (key) {
+                          final i = visible.indexWhere(
+                            (p) => key == ValueKey('passive:${p['id']}'),
+                          );
+                          return i < 0 ? null : i;
+                        },
+                        itemBuilder: (context, i) {
+                          final p = visible[i] as Map;
+                          final selected = checked(p['id']);
+                          return CatalogEntrance.card(
+                            entrance,
+                            i,
+                            columns: columns,
+                            count: visible.length,
+                            key: ValueKey('passive:${p['id']}'),
+                            AnimatedContainer(
+                              duration: WorkbenchMotion.duration(
+                                context,
+                                WorkbenchMotion.feedback,
+                              ),
+                              curve: WorkbenchMotion.standard,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: selected
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.transparent,
+                                  width: 2,
                                 ),
-                                const Spacer(),
-                                Row(
+                              ),
+                              child: widget.surface(
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
-                                    Text(
-                                      selected ? '已加入组合' : '未选择',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
+                                    CheckboxListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      dense: true,
+                                      visualDensity: VisualDensity.compact,
+                                      title: Text(
+                                        p['zh'],
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      value: selected,
+                                      onChanged: busy
+                                          ? null
+                                          : (v) => change(p['id'], v),
                                     ),
                                     const Spacer(),
-                                    TextButton(
-                                      onPressed: busy ? null : () => values(p),
-                                      child: const Text('修改数值'),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          selected ? '已加入组合' : '未选择',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                        const Spacer(),
+                                        TextButton(
+                                          onPressed: busy
+                                              ? null
+                                              : () => values(p),
+                                          child: const Text('修改数值'),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+          ),
         ),
       ],
     );

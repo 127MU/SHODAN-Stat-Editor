@@ -1,3 +1,4 @@
+import 'motion.dart';
 import 'package:flutter/material.dart';
 import 'backend.dart';
 import 'glass_theme.dart';
@@ -66,7 +67,7 @@ class _GameTweaksPageState extends State<GameTweaksPage> {
   }
 
   Future<void> patch(bool on) async {
-    final yes = await showDialog<bool>(
+    final yes = await showMotionDialog<bool>(
       context: context,
       builder: (ctx) => GlassDialog(
         title: Text(on ? '启用布娃娃优化（实验性）' : '恢复布娃娃优化'),
@@ -100,64 +101,72 @@ class _GameTweaksPageState extends State<GameTweaksPage> {
   }
 
   @override
-  Widget build(BuildContext context) => ListView(
-    children: [
-      const Text('调整普通开关后，点击“写入游戏”并重新启动游戏生效。'),
-      if (loading || busy) const LinearProgressIndicator(),
-      for (final entry in const [
-        ('reticle', '瞄准显示', '狙击步枪第三人称准星', ''),
-        (
-          'bounce',
-          '投掷行为',
-          '策略球部署限制放宽',
-          '解除部分战备只能在导航网格上部署的限制；岩石、高台及碰撞仍可能使策略球弹开，不保证任意表面粘附。',
-        ),
-        ('foliage', '射弹交互', '射弹穿过树冠与灌木', ''),
-        ('vehicles', '载具配装', '允许携带多种同类载具', '放宽同类机甲、快速侦察车和坦克的配装数量限制。'),
-      ])
+  Widget build(BuildContext context) => CatalogEntrance(
+    builder: (context, entrance) {
+      final cards = <Widget>[
+        for (final entry in const [
+          ('reticle', '瞄准显示', '狙击步枪第三人称准星', ''),
+          (
+            'bounce',
+            '投掷行为',
+            '策略球部署限制放宽',
+            '解除部分战备只能在导航网格上部署的限制；岩石、高台及碰撞仍可能使策略球弹开，不保证任意表面粘附。',
+          ),
+          ('foliage', '射弹交互', '射弹穿过树冠与灌木', ''),
+          ('vehicles', '载具配装', '允许携带多种同类载具', '放宽同类机甲、快速侦察车和坦克的配装数量限制。'),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: widget.surface(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.$2,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(entry.$3),
+                    subtitle: entry.$4.isEmpty ? null : Text(entry.$4),
+                    value: tweaks[entry.$1] == true,
+                    onChanged: loading || busy
+                        ? null
+                        : (on) => change(entry.$1, on),
+                  ),
+                ],
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.only(top: 16),
           child: widget.surface(
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  entry.$2,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+                if (checking) const LinearProgressIndicator(),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(entry.$3),
-                  subtitle: entry.$4.isEmpty ? null : Text(entry.$4),
-                  value: tweaks[entry.$1] == true,
-                  onChanged: loading || busy
+                  title: const Text('受击与布娃娃（实验性）'),
+                  subtitle: Text(checking ? '正在核对资源与补丁…' : patchStatus),
+                  value: ragdoll['enabled'] == true,
+                  onChanged: checking || ragdoll['supported'] != true
                       ? null
-                      : (on) => change(entry.$1, on),
+                      : patch,
                 ),
               ],
             ),
           ),
         ),
-      Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: widget.surface(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (checking) const LinearProgressIndicator(),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('受击与布娃娃（实验性）'),
-                subtitle: Text(checking ? '正在核对资源与补丁…' : patchStatus),
-                value: ragdoll['enabled'] == true,
-                onChanged: checking || ragdoll['supported'] != true
-                    ? null
-                    : patch,
-              ),
-            ],
-          ),
-        ),
-      ),
-    ],
+      ];
+      return ListView(
+        children: [
+          const Text('调整普通开关后，点击“写入游戏”并重新启动游戏生效。'),
+          if (loading || busy) const LinearProgressIndicator(),
+          for (final (index, card) in cards.indexed)
+            CatalogEntrance.card(entrance, index, card),
+        ],
+      );
+    },
   );
 }

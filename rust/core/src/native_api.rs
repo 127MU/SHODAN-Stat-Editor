@@ -932,8 +932,11 @@ impl Api {
                 self.desktop.selected = Some(owner.id.clone());
                 return Ok(json!(true));
             }
-            "history" => {
+            "history" | "history_status" => {
                 let (undo, redo) = workspace.history();
+                if method == "history_status" {
+                    return Ok(json!({"undo":undo,"redo":redo}));
+                }
                 return Ok(
                     json!({"undo":undo,"redo":redo,"entries":desktop::pending(catalog,workspace)}),
                 );

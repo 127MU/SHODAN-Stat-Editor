@@ -1,3 +1,4 @@
+import 'motion.dart';
 import 'catalog_groups.dart';
 import 'group_chooser.dart';
 import 'editor_tools.dart';
@@ -23,6 +24,9 @@ import 'preset_page.dart';
 import 'review_body.dart';
 import 'release_updates.dart';
 import 'app_version.dart';
+import 'theme_reveal.dart';
+import 'window_activity.dart';
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,10 +64,26 @@ class _WorkbenchState extends State<Workbench> {
 
   Map? current;
   String? activeSection;
+  Object? sectionRequest;
   List<dynamic> items = [], rows = [];
+  (List<dynamic>, String, String, bool)? catalogViewKey;
+  List<CatalogGroup> catalogView = [];
   int epoch = 0;
   String material = 'liquid';
   double fontSize = 14, blur = 18, opacity = .3;
+  double pageOffset = 0;
+  static const defaultAccent = Color(0xff818cf8);
+  static const accentPresets = {
+    '靛蓝': defaultAccent,
+    '海蓝': Color(0xff0ea5e9),
+    '青绿': Color(0xff14b8a6),
+    '翡翠': Color(0xff22c55e),
+    '琥珀': Color(0xfff59e0b),
+    '珊瑚': Color(0xfff97360),
+    '玫红': Color(0xffec4899),
+    '紫罗兰': Color(0xffa855f7),
+  };
+  Color accent = defaultAccent;
   String backgroundPath = '';
   double backgroundDim = .35;
   Timer? styleTimer;
@@ -73,6 +93,10 @@ class _WorkbenchState extends State<Workbench> {
   TextEditingController get search =>
       current == null ? catalogSearch : parameterSearch;
   final navigator = GlobalKey<NavigatorState>();
+  final themeCapture = GlobalKey();
+  ui.Image? themeSnapshot;
+  Offset themeOrigin = Offset.zero;
+  bool themeCapturing = false;
   final rowRevision = ValueNotifier<int>(0);
   static const tabs = {
     'Armor': '被动组合',
@@ -206,22 +230,29 @@ class _WorkbenchState extends State<Workbench> {
 
   Future<void> load(String key) async {
     final ticket = ++epoch;
-    setState(() {
-      tab = key;
-      current = null;
-      catalogOnlyChanged = false;
-      catalogQuery = '';
-      parameterQuery = '';
-      catalogSearch.clear();
-      parameterSearch.clear();
-      busy = true;
-    });
+    setState(() => busy = true);
+    void showTab(List<dynamic> entries) {
+      setState(() {
+        final order = tabs.keys.toList();
+        pageOffset = key == tab ? 0 : order.indexOf(key) > order.indexOf(tab) ? 20 : -20;
+        tab = key;
+        current = null;
+        catalogOnlyChanged = false;
+        catalogQuery = '';
+        parameterQuery = '';
+        catalogSearch.clear();
+        parameterSearch.clear();
+        items = entries;
+        status = key == 'Armor'
+            ? '选择被动后，点击写入游戏生效'
+            : entries.isEmpty && ['Presets', 'Settings', 'Tweaks'].contains(key)
+            ? '数据已就绪'
+            : '${entries.length} 个条目';
+      });
+    }
     try {
       if (['Armor', 'Presets', 'Settings', 'Tweaks'].contains(key)) {
-        setState(() {
-          busy = false;
-          status = key == 'Armor' ? '选择被动后，点击写入游戏生效' : '数据已就绪';
-        });
+        showTab([]);
         return;
       }
       await backend.call('editor_mode', [
@@ -234,11 +265,7 @@ class _WorkbenchState extends State<Workbench> {
         ].contains(key),
       ]);
       final result = await backend.call('items', [key, '']);
-      if (mounted && ticket == epoch)
-        setState(() {
-          items = result is List ? result : [];
-          status = '${items.length} 个条目';
-        });
+      if (mounted && ticket == epoch) showTab(result is List ? result : []);
       if (mounted &&
           ticket == epoch &&
           key == 'Helldiver' &&
@@ -252,14 +279,15 @@ class _WorkbenchState extends State<Workbench> {
     }
   }
 
-  Future<void> openCatalogGroup(CatalogGroup group) async {
+  Future<void> openCatalogGroup(CatalogGroup group, BuildContext source) async {
     if (busy) return;
     if (group.entries.length == 1) {
       await select(group.entries.single);
       return;
     }
-    final entry = await showDialog<Map>(
+    final entry = await showMotionDialog<Map>(
       context: navigator.currentContext!,
+      source: source,
       builder: (_) => GroupChooser(group: group),
     );
     if (entry != null && mounted) await select(entry);
@@ -273,6 +301,7 @@ class _WorkbenchState extends State<Workbench> {
       final result = await backend.call('rows_fast');
       if (mounted && ticket == epoch) {
         setState(() {
+          pageOffset = 24;
           current = item;
           activeSection = null;
           parameterQuery = '';
@@ -296,6 +325,7 @@ class _WorkbenchState extends State<Workbench> {
       final result = await backend.call('items', [tab, '']);
       if (mounted && ticket == epoch)
         setState(() {
+          pageOffset = -24;
           items = result is List ? result : [];
           current = null;
           activeSection = null;
@@ -341,7 +371,7 @@ class _WorkbenchState extends State<Workbench> {
   void showError(Object e) {
     if (!mounted) return;
     setState(() => status = e.toString());
-    showDialog<void>(
+    showMotionDialog<void>(
       context: navigator.currentContext ?? context,
       builder: (ctx) => GlassDialog(
         title: const Text('操作未完成'),
@@ -362,7 +392,7 @@ class _WorkbenchState extends State<Workbench> {
       if (!mounted) return;
       final options = response is List ? response : [];
       String filter = '';
-      final choice = await showDialog<Map>(
+      final choice = await showMotionDialog<Map>(
         context: navigator.currentContext ?? context,
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, update) => GlassDialog(
@@ -414,7 +444,7 @@ class _WorkbenchState extends State<Workbench> {
         if (['resomode', 'smmode'].contains(row['choice_kind'])) {
           if (choice['id'] == 0) return;
           if (!mounted) return;
-          final yes = await showDialog<bool>(
+          final yes = await showMotionDialog<bool>(
             context: navigator.currentContext ?? context,
             builder: (ctx) => GlassDialog(
               title: const Text('确认修改资源补丁'),
@@ -441,7 +471,7 @@ class _WorkbenchState extends State<Workbench> {
   }
 
   Future<void> restoreGame() async {
-    final yes = await showDialog<bool>(
+    final yes = await showMotionDialog<bool>(
       context: navigator.currentContext!,
       builder: (ctx) => GlassDialog(
         title: const Text('恢复原版'),
@@ -461,7 +491,7 @@ class _WorkbenchState extends State<Workbench> {
     if (yes != true || !mounted) return;
     setState(() => busy = true);
     try {
-      await showDialog<dynamic>(
+      await showMotionDialog<dynamic>(
         context: navigator.currentContext!,
         barrierDismissible: false,
         builder: (_) => InstallDialog(backend: backend, restore: true),
@@ -474,7 +504,7 @@ class _WorkbenchState extends State<Workbench> {
   Future<void> inspectCatalog({required bool attachments}) async {
     final request = backend.call(attachments ? 'attachment_options' : 'baseline_check');
     var query = '';
-    await showDialog<void>(
+    await showMotionDialog<void>(
       context: navigator.currentContext ?? context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, update) => GlassDialog(
@@ -549,12 +579,13 @@ class _WorkbenchState extends State<Workbench> {
     );
   }
 
-  Future<void> install() async {
+  Future<void> install(BuildContext source) async {
     if (busy) return;
     setState(() => busy = true);
     try {
-      final preview = await showDialog<dynamic>(
+      final preview = await showMotionDialog<dynamic>(
         context: navigator.currentContext!,
+        source: source,
         barrierDismissible: false,
         builder: (_) => InstallDialog(backend: backend, preview: true),
       );
@@ -564,7 +595,7 @@ class _WorkbenchState extends State<Workbench> {
       final problems = preview is Map && preview['problems'] is List
           ? preview['problems'] as List
           : [];
-      final yes = await showDialog<bool>(
+      final yes = await showMotionDialog<bool>(
         context: navigator.currentContext ?? context,
         builder: (ctx) => GlassDialog(
           title: const Text('写入前预览'),
@@ -587,9 +618,9 @@ class _WorkbenchState extends State<Workbench> {
           ],
         ),
       );
-      if (yes == true) {
+      if (mounted && yes == true) {
         setState(() => busy = true);
-        final result = await showDialog<dynamic>(
+        final result = await showMotionDialog<dynamic>(
           context: navigator.currentContext!,
           barrierDismissible: false,
           builder: (_) => InstallDialog(
@@ -614,7 +645,7 @@ class _WorkbenchState extends State<Workbench> {
 
   Future<void> code(Map row) async {
     final arrows = <int>[];
-    final result = await showDialog<List<int>>(
+    final result = await showMotionDialog<List<int>>(
       context: navigator.currentContext ?? context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, update) => GlassDialog(
@@ -672,7 +703,9 @@ class _WorkbenchState extends State<Workbench> {
   }
 
   Future<void> equipmentPresets() async {
+    final ticket = epoch;
     int slot = 1;
+    var loading = false;
     Map info = {};
     Future<void> refresh() async {
       final x = await backend.call('preset_info', [slot]);
@@ -681,8 +714,8 @@ class _WorkbenchState extends State<Workbench> {
 
     try {
       await refresh();
-      if (!mounted) return;
-      await showDialog<void>(
+      if (!mounted || ticket != epoch) return;
+      await showMotionDialog<void>(
         context: navigator.currentContext ?? context,
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, update) => GlassDialog(
@@ -696,15 +729,24 @@ class _WorkbenchState extends State<Workbench> {
                       ButtonSegment(value: i, label: Text('$i')),
                   ],
                   selected: {slot},
-                  onSelectionChanged: (values) async {
-                    slot = values.first;
-                    await refresh();
-                    update(() {});
+                  onSelectionChanged: loading ? null : (values) async {
+                    update(() {
+                      slot = values.first;
+                      loading = true;
+                    });
+                    try {
+                      await refresh();
+                    } catch (e) {
+                      info = {};
+                      if (ctx.mounted) showError(e);
+                    } finally {
+                      if (ctx.mounted) update(() => loading = false);
+                    }
                   },
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '${info['name']} · ${info['saved'] == true ? '已保存' : '空预设'}',
+                  loading ? '正在读取预设…' : '${info['name'] ?? '预设 $slot'} · ${info['saved'] == true ? '已保存' : '空预设'}',
                 ),
               ],
             ),
@@ -715,17 +757,20 @@ class _WorkbenchState extends State<Workbench> {
                 'clear': '清空',
               }.entries)
                 TextButton(
-                  onPressed: op.key != 'save' && info['saved'] != true
+                  onPressed: loading || (op.key != 'save' && info['saved'] != true)
                       ? null
                       : () async {
+                          update(() => loading = true);
                           try {
                             await backend.call('preset', [op.key, slot]);
-                            await refresh();
-                            update(() {});
-                            final x = await backend.call('rows_fast');
-                            if (mounted) setState(() => rows = x as List);
+                            if (mounted && ticket == epoch && op.key == 'load') {
+                              await refreshCurrent();
+                            }
+                            if (ctx.mounted && ticket == epoch) await refresh();
                           } catch (e) {
                             showError(e);
+                          } finally {
+                            if (ctx.mounted) update(() => loading = false);
                           }
                         },
                   child: Text(op.value),
@@ -758,6 +803,10 @@ class _WorkbenchState extends State<Workbench> {
       if (!mounted || v is! Map) return;
       setState(() {
         dark = v['dark'] is bool ? v['dark'] : dark;
+        final savedAccent = v['accent'];
+        if (savedAccent is int && savedAccent >= 0xff000000 && savedAccent <= 0xffffffff) {
+          accent = Color(savedAccent);
+        }
         backend.diagnostics.enabled = v['diagnosticMode'] == true;
         backgroundPath = v['backgroundPath'] is String
             ? v['backgroundPath']
@@ -788,6 +837,7 @@ class _WorkbenchState extends State<Workbench> {
     {
       final text = jsonEncode({
         'dark': dark,
+        'accent': accent.toARGB32(),
         'material': material,
         'fontSize': fontSize,
         'blur': blur,
@@ -813,8 +863,147 @@ class _WorkbenchState extends State<Workbench> {
     await styleWrite;
   }
 
-  Widget settingsPage() => ListView(
-    children: [
+  Future<void> changeTheme(bool value, BuildContext source, {
+    Offset? pointer, bool trailing = false,
+  }) async {
+    if (value == dark || themeCapturing || themeSnapshot != null) return;
+    final boundary = themeCapture.currentContext?.findRenderObject();
+    if (boundary is RenderRepaintBoundary && boundary.hasSize && !boundary.size.isEmpty &&
+        !windowResizing.value && !MediaQuery.disableAnimationsOf(source)) {
+      final control = source.findRenderObject();
+      var origin = boundary.size.center(Offset.zero);
+      if (control is RenderBox && control.hasSize) {
+        final local = trailing
+            ? Offset(control.size.width - 26, control.size.height / 2)
+            : control.size.center(Offset.zero);
+        origin = boundary.globalToLocal(control.localToGlobal(local));
+      }
+      themeCapturing = true;
+      try {
+        final scale = (1920 / boundary.size.longestSide).clamp(.25, 1.0);
+        final image = await boundary.toImage(pixelRatio: scale);
+        if (!mounted || windowResizing.value) {
+          image.dispose();
+        } else {
+          themeSnapshot = image;
+          themeOrigin = pointer == null ? origin : boundary.globalToLocal(pointer);
+        }
+      } catch (_) {
+        // A frame that cannot be captured still permits the theme change.
+      } finally {
+        themeCapturing = false;
+      }
+    }
+    if (!mounted) return;
+    setState(() => dark = value);
+    saveStyle();
+  }
+
+  Widget themeControl(Widget Function(ValueChanged<bool>) build, {bool trailing = false}) =>
+      Builder(builder: (context) {
+        Offset? pointer;
+        return Listener(
+          onPointerDown: (event) => pointer = event.position,
+          onPointerCancel: (_) => pointer = null,
+          child: build((value) {
+            changeTheme(value, context, pointer: pointer, trailing: trailing);
+            pointer = null;
+          }),
+        );
+      });
+
+  void finishThemeReveal() {
+    final snapshot = themeSnapshot;
+    if (!mounted || snapshot == null) return;
+    setState(() => themeSnapshot = null);
+    WidgetsBinding.instance.addPostFrameCallback((_) => snapshot.dispose());
+  }
+
+  String accentHex(Color color) =>
+      '#${(color.toARGB32() & 0xffffff).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+
+  void setAccent(Color color) {
+    if (!mounted || color == accent) return;
+    setState(() => accent = color);
+    saveStyle();
+  }
+
+  Widget accentMenu() => Builder(builder: (source) => PopupMenuButton<int>(
+    tooltip: '选择强调色',
+    position: PopupMenuPosition.under,
+    onSelected: (value) {
+      if (value == -1) {
+        editAccent(source);
+      } else {
+        setAccent(Color(value));
+      }
+    },
+    itemBuilder: (_) => [
+      for (final entry in accentPresets.entries)
+        PopupMenuItem(
+          value: entry.value.toARGB32(),
+          child: Row(spacing: 12, children: [
+            CircleAvatar(backgroundColor: entry.value, radius: 8),
+            Expanded(child: Text(entry.key)),
+            if (accent == entry.value) const Icon(Icons.check, size: 16),
+          ]),
+        ),
+      const PopupMenuDivider(),
+      const PopupMenuItem(value: -1, child: Text('自定义颜色…')),
+    ],
+    child: const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('选择颜色'), Icon(Icons.arrow_drop_down),
+      ]),
+    ),
+  ));
+
+  Future<void> editAccent(BuildContext source) async {
+    final form = GlobalKey<FormState>();
+    Color? parse(String? value) {
+      final hex = value?.trim().replaceFirst(RegExp(r'^#'), '') ?? '';
+      if (!RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(hex)) return null;
+      return Color(0xff000000 | int.parse(hex, radix: 16));
+    }
+
+    final color = await showMotionDialog<Color>(
+      context: source,
+      source: source,
+      builder: (context) => GlassDialog(
+        title: const Text('自定义强调色'),
+        content: Form(
+          key: form,
+          child: TextFormField(
+            initialValue: accentHex(accent),
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '强调色',
+              hintText: '#818CF8',
+              helperText: '输入六位十六进制颜色值',
+            ),
+            validator: (value) => parse(value) == null ? '请输入有效的六位颜色值' : null,
+            onSaved: (value) => Navigator.pop(context, parse(value)),
+            onFieldSubmitted: (_) {
+              if (form.currentState!.validate()) form.currentState!.save();
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, defaultAccent), child: const Text('恢复默认')),
+          FilledButton(onPressed: () {
+            if (form.currentState!.validate()) form.currentState!.save();
+          }, child: const Text('应用')),
+        ],
+      ),
+    );
+    if (color != null) setAccent(color);
+  }
+
+  Widget settingsPage() => CatalogEntrance(
+    builder: (context, entrance) {
+    final cards = <Widget>[
       if (backend.usesNativeDesktop)
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -1026,15 +1215,20 @@ class _WorkbenchState extends State<Workbench> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
-            SwitchListTile(
+            themeControl((onChange) => SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('深色模式'),
               subtitle: const Text('切换整个工作台的背景和文字颜色'),
               value: dark,
-              onChanged: (v) {
-                setState(() => dark = v);
-                saveStyle();
-              },
+              onChanged: onChange,
+            ), trailing: true),
+            const SizedBox(height: 16),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('强调色'),
+              subtitle: Text(accentHex(accent)),
+              leading: CircleAvatar(backgroundColor: accent, radius: 12),
+              trailing: accentMenu(),
             ),
             const SizedBox(height: 16),
             const Text('卡片材质'),
@@ -1109,13 +1303,20 @@ class _WorkbenchState extends State<Workbench> {
           ],
         ),
       ),
-    ],
+    ];
+    var index = 0;
+    return ListView(children: [
+      for (final card in cards)
+        card is SizedBox ? card : CatalogEntrance.card(entrance, index++, card),
+    ]);
+    },
   );
   GlassAppearance get appearance =>
       GlassAppearance(mode: material, dark: dark, blur: blur, opacity: opacity);
-  Widget surface(Widget child, {Key? key}) => appearance.wrap(
+  Widget surface(Widget child, {Key? key, bool grouped = true}) => appearance.wrap(
     Padding(padding: const EdgeInsets.all(20), child: child),
     key: key,
+    grouped: grouped,
   );
 
   Widget field(Map row) => surface(
@@ -1202,7 +1403,7 @@ class _WorkbenchState extends State<Workbench> {
                 showError(e);
                 return;
               }
-              final item = await showDialog<Map>(
+              final item = await showMotionDialog<Map>(
                 context: navigator.currentContext!,
                 builder: (ctx) => GlassDialog(
                   title: const Text('共享影响'),
@@ -1243,17 +1444,16 @@ class _WorkbenchState extends State<Workbench> {
       ],
     ),
   );
-  Widget parameterPage() {
-    final filtered = rows
-        .where(
-          (r) =>
-              r.toString().toLowerCase().contains(query) &&
-              (!onlyChanged ||
-                  r['changed'] == true ||
-                  r['patch_pending'] == true),
-        )
-        .toList();
-    final sections = filtered.map((r) => r['section'] ?? '参数').toSet();
+  Widget parameterPage(Animation<double> entrance) {
+    final sections = <String, int>{};
+    for (final r in rows.where(matchesParameter)) {
+      sections.update(
+        '${r['section'] ?? '参数'}',
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+    }
+    final categories = sections.keys.toList();
     return CustomScrollView(
       key: PageStorageKey('parameter-categories:${current?['id']}'),
       slivers: [
@@ -1297,8 +1497,13 @@ class _WorkbenchState extends State<Workbench> {
             mainAxisExtent: 190 * fontSize / 14,
           ),
           delegate: SliverChildListDelegate([
-            for (final section in sections)
-              surface(
+            for (final (index, section) in categories.indexed)
+              CatalogEntrance.card(
+                entrance,
+                index,
+                columns: 4,
+                count: categories.length,
+                surface(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1312,20 +1517,19 @@ class _WorkbenchState extends State<Workbench> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '${filtered.where((r) => (r['section'] ?? '参数') == section).length} 项参数',
-                    ),
+                    Text('${sections[section]} 项参数'),
                     const Spacer(),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: FilledButton.tonal(
-                        onPressed: () => openSection('$section'),
+                      child: Builder(builder: (source) => FilledButton.tonal(
+                        onPressed: () => openSection('$section', source),
                         child: const Text('打开'),
-                      ),
+                      )),
                     ),
                   ],
                 ),
                 key: ValueKey('section:$section'),
+                ),
               ),
           ]),
         ),
@@ -1333,57 +1537,83 @@ class _WorkbenchState extends State<Workbench> {
     );
   }
 
-  Future<void> openSection(String section) async {
-    if (busy) return;
+  bool matchesParameter(dynamic row) =>
+      (!onlyChanged || row['changed'] == true || row['patch_pending'] == true) &&
+      (parameterQuery.isEmpty ||
+          row.toString().toLowerCase().contains(parameterQuery));
+
+  List<CatalogGroup> visibleCatalog() {
+    final key = (items, tab, catalogQuery, catalogOnlyChanged);
+    if (catalogViewKey != key) {
+      catalogViewKey = key;
+      catalogView = buildCatalogGroups(
+        items,
+        tab,
+        query: catalogQuery,
+        onlyChanged: catalogOnlyChanged,
+      );
+    }
+    return catalogView;
+  }
+
+  Future<void> openSection(String section, BuildContext source) async {
+    if (busy || activeSection != null) return;
     final ticket = epoch;
-    setState(() => busy = true);
-    try {
+    activeSection = section;
+    final token = sectionRequest = Object();
+    final request = WidgetsBinding.instance.endOfFrame.then((_) async {
+      if (!mounted || ticket != epoch || sectionRequest != token) return;
       final result = await backend.call('rows_section', [section]);
-      if (!mounted || ticket != epoch) return;
+      if (!mounted || ticket != epoch || sectionRequest != token) return;
       if (result is! List) throw StateError('参数分类响应格式错误');
       final updated = {for (final row in result) row['id']: row};
-      setState(
-        () => rows = [for (final row in rows) updated[row['id']] ?? row],
-      );
-      rowRevision.value++;
-    } catch (e) {
-      showError(e);
-      return;
-    } finally {
-      if (mounted && ticket == epoch) setState(() => busy = false);
-    }
-    if (!mounted || ticket != epoch) return;
-    activeSection = section;
-    await showDialog<void>(
+      rows = [for (final row in rows) updated[row['id']] ?? row];
+    });
+    await showMotionDialog<void>(
       context: navigator.currentContext!,
+      source: source,
       builder: (ctx) => GlassDialog(
         title: Text('${current?['name']} · $section'),
         content: SizedBox(
           width: 1300,
           height: MediaQuery.sizeOf(ctx).height * .65,
-          child: ValueListenableBuilder<int>(
+          child: FutureBuilder<void>(future: request, builder: (context, snapshot) {
+            if (snapshot.hasError) return SelectableText('${snapshot.error}');
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Align(alignment: Alignment.topLeft, child: Text('正在读取参数…'));
+            }
+            return ValueListenableBuilder<int>(
             valueListenable: rowRevision,
-            builder: (context, _, _) => LayoutBuilder(
-              builder: (context, box) {
-                final width = (box.maxWidth - 48) / 4;
-                return SingleChildScrollView(
-                  child: Wrap(
+            builder: (context, _, _) {
+              const columns = 4;
+              final visible = rows
+                  .where((r) =>
+                      (r['section'] ?? '参数') == section && matchesParameter(r))
+                  .toList();
+              return ListView.builder(
+                itemCount: (visible.length + columns - 1) ~/ columns,
+                itemBuilder: (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
                     spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      for (final r in rows)
-                        if ((r['section'] ?? '参数') == section &&
-                            r.toString().toLowerCase().contains(query) &&
-                            (!onlyChanged ||
-                                r['changed'] == true ||
-                                r['patch_pending'] == true))
-                          SizedBox(width: width, child: field(r as Map)),
-                    ],
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(columns, (column) {
+                      final i = index * columns + column;
+                      return Expanded(
+                        key: i < visible.length
+                            ? ValueKey(visible[i]['id'])
+                            : null,
+                        child: i < visible.length
+                            ? field(visible[i] as Map)
+                            : const SizedBox.shrink(),
+                      );
+                    }),
                   ),
-                );
-              },
-            ),
-          ),
+                ),
+              );
+            },
+            );
+          }),
         ),
         actions: [
           TextButton(
@@ -1396,7 +1626,10 @@ class _WorkbenchState extends State<Workbench> {
         ],
       ),
     );
-    activeSection = null;
+    if (sectionRequest == token) {
+      sectionRequest = null;
+      activeSection = null;
+    }
   }
 
   @override
@@ -1404,63 +1637,91 @@ class _WorkbenchState extends State<Workbench> {
     final theme = ThemeData(
       useMaterial3: true,
       brightness: dark ? Brightness.dark : Brightness.light,
-      colorSchemeSeed: const Color(0xff818cf8),
+      colorSchemeSeed: accent,
       fontFamily: 'MiSans',
       extensions: [appearance],
     );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: theme.copyWith(textTheme: theme.textTheme),
+      themeAnimationDuration: Duration.zero,
       navigatorKey: navigator,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
         ).copyWith(textScaler: TextScaler.linear(fontSize / 14)),
-        child: BackdropGroup(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              image: backgroundPath.isEmpty
-                  ? null
-                  : DecorationImage(
-                      image: FileImage(File(backgroundPath)),
-                      fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(
-                        (dark ? Colors.black : Colors.white).withValues(
-                          alpha: backgroundDim,
-                        ),
-                        BlendMode.srcOver,
-                      ),
-                      onError: (_, _) {
-                        if (mounted)
-                          setState(() {
-                            backgroundPath = '';
-                            status = '背景图片无法读取，已使用默认背景';
-                          });
-                      },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            RepaintBoundary(
+              key: themeCapture,
+              child: BackdropGroup(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              RepaintBoundary(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    image: backgroundPath.isEmpty
+                        ? null
+                        : DecorationImage(
+                            image: FileImage(File(backgroundPath)),
+                            fit: BoxFit.cover,
+                            colorFilter: ColorFilter.mode(
+                              (dark ? Colors.black : Colors.white).withValues(
+                                alpha: backgroundDim,
+                              ),
+                              BlendMode.srcOver,
+                            ),
+                            onError: (_, _) {
+                              if (mounted)
+                                setState(() {
+                                  backgroundPath = '';
+                                  status = '背景图片无法读取，已使用默认背景';
+                                });
+                            },
+                          ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: dark
+                          ? [
+                              const Color(0xff101427),
+                              const Color(0xff292038),
+                              const Color(0xff153033),
+                            ]
+                          : [
+                              const Color(0xffdce9ff),
+                              const Color(0xfff4dfef),
+                              const Color(0xffdef4ee),
+                            ],
                     ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: dark
-                    ? [
-                        const Color(0xff101427),
-                        const Color(0xff292038),
-                        const Color(0xff153033),
-                      ]
-                    : [
-                        const Color(0xffdce9ff),
-                        const Color(0xfff4dfef),
-                        const Color(0xffdef4ee),
-                      ],
+                  ),
+                ),
+              ),
+              DesktopFrame(
+                enabled: widget.persistAppearance,
+                onClose: shutdown,
+                onCloseError: showError,
+                child: child!,
+              ),
+            ],
+          ),
               ),
             ),
-            child: DesktopFrame(
-              enabled: widget.persistAppearance,
-              onClose: shutdown,
-              onCloseError: showError,
-              child: child!,
-            ),
-          ),
+            if (themeSnapshot case final snapshot?)
+              IgnorePointer(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: WorkbenchMotion.reveal,
+                  curve: dark ? Curves.easeInOutQuart : Curves.easeInOutQuint,
+                  onEnd: finishThemeReveal,
+                  builder: (_, progress, _) => CustomPaint(
+                    painter: ThemeReveal(snapshot, themeOrigin, progress, reverse: !dark),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
       home: Scaffold(
@@ -1520,18 +1781,29 @@ class _WorkbenchState extends State<Workbench> {
                                   ],
                                 ),
                               ),
-                              IconButton(
+                              themeControl((onChange) => IconButton(
                                 tooltip: '切换深浅色',
-                                onPressed: () {
-                                  setState(() => dark = !dark);
-                                  saveStyle();
-                                },
-                                icon: Icon(
-                                  dark ? Icons.light_mode : Icons.dark_mode,
+                                onPressed: () => onChange(!dark),
+                                icon: AnimatedSwitcher(
+                                  duration: WorkbenchMotion.duration(context, WorkbenchMotion.feedback),
+                                  switchInCurve: WorkbenchMotion.standard,
+                                  switchOutCurve: WorkbenchMotion.exit,
+                                  transitionBuilder: (child, animation) => FadeTransition(
+                                    opacity: animation,
+                                    child: RotationTransition(
+                                      turns: animation.drive(Tween(begin: -.10, end: 0.0)),
+                                      child: child,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    dark ? Icons.light_mode : Icons.dark_mode,
+                                    key: ValueKey(dark),
+                                  ),
                                 ),
-                              ),
+                              )),
                             ],
                           ),
+                          grouped: false,
                         ),
                       ),
                     ),
@@ -1557,11 +1829,11 @@ class _WorkbenchState extends State<Workbench> {
                                     ),
                                   ),
                                 ),
-                                FilledButton.icon(
-                                  onPressed: ready && !busy ? install : null,
+                                Builder(builder: (source) => FilledButton.icon(
+                                  onPressed: ready && !busy ? () => install(source) : null,
                                   icon: const Icon(Icons.save_outlined),
                                   label: const Text('写入游戏'),
-                                ),
+                                )),
                                 const SizedBox(width: 8),
                                 OutlinedButton(
                                   onPressed: ready && !busy
@@ -1644,24 +1916,19 @@ class _WorkbenchState extends State<Workbench> {
                             const SizedBox(height: 20),
                             if (busy) const LinearProgressIndicator(),
                             Expanded(
-                              child: AnimatedSwitcher(
-                                duration: Duration.zero,
-                                layoutBuilder: (current, previous) =>
-                                    current ?? const SizedBox.shrink(),
-                                transitionBuilder: (child, animation) =>
-                                    IgnorePointer(
-                                      ignoring:
-                                          animation.status ==
-                                          AnimationStatus.reverse,
-                                      child: FadeTransition(
-                                        opacity: animation,
-                                        child: child,
-                                      ),
-                                    ),
-                                child: KeyedSubtree(
+                              child: ClipRect(
+                                child: TweenAnimationBuilder<double>(
                                   key: ValueKey(
                                     '$tab:${current?["id"] ?? "catalog"}',
                                   ),
+                                  duration: WorkbenchMotion.duration(context, WorkbenchMotion.page),
+                                  curve: WorkbenchMotion.enter,
+                                  tween: Tween(begin: pageOffset, end: 0),
+                                  builder: (context, dy, child) =>
+                                      child is CatalogEntrance ? child : Transform.translate(
+                                        offset: Offset(dy, dy.abs() * .22),
+                                        child: child,
+                                      ),
                                   child: tab == 'Settings'
                                       ? settingsPage()
                                       : tab == 'Tweaks'
@@ -1683,15 +1950,11 @@ class _WorkbenchState extends State<Workbench> {
                                           onError: showError,
                                         )
                                       : current == null
-                                      ? LayoutBuilder(
-                                          builder: (context, box) {
+                                      ? CatalogEntrance(
+                                          key: ValueKey(items.isNotEmpty),
+                                          builder: (context, entrance) {
                                             const columns = 4;
-                                            final visible = buildCatalogGroups(
-                                              items,
-                                              tab,
-                                              query: query,
-                                              onlyChanged: catalogOnlyChanged,
-                                            );
+                                            final visible = visibleCatalog();
                                             return GridView.builder(
                                               gridDelegate:
                                                   SliverGridDelegateWithFixedCrossAxisCount(
@@ -1704,7 +1967,12 @@ class _WorkbenchState extends State<Workbench> {
                                               itemCount: visible.length,
                                               itemBuilder: (context, i) {
                                                 final group = visible[i];
-                                                return surface(
+                                                return CatalogEntrance.card(
+                                                  entrance,
+                                                  i,
+                                                  columns: columns,
+                                                  count: visible.length,
+                                                  surface(
                                                   Column(
                                                     crossAxisAlignment:
                                                         CrossAxisAlignment
@@ -1738,6 +2006,7 @@ class _WorkbenchState extends State<Workbench> {
                                                               : () =>
                                                                     openCatalogGroup(
                                                                       group,
+                                                                      context,
                                                                     ),
                                                           child: Text(
                                                             group
@@ -1754,12 +2023,15 @@ class _WorkbenchState extends State<Workbench> {
                                                   key: ValueKey(
                                                     'item:${group.id}',
                                                   ),
+                                                  ),
                                                 );
                                               },
                                             );
                                           },
                                         )
-                                      : parameterPage(),
+                                      : CatalogEntrance(
+                                          builder: (context, entrance) => parameterPage(entrance),
+                                        ),
                                 ),
                               ),
                             ),
@@ -1783,6 +2055,7 @@ class _WorkbenchState extends State<Workbench> {
   @override
   void dispose() {
     styleTimer?.cancel();
+    themeSnapshot?.dispose();
     rowRevision.dispose();
     catalogSearch.dispose();
     parameterSearch.dispose();

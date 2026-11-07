@@ -6,6 +6,8 @@ import 'editor_test.dart' show FakeBackend;
 
 class ParityBackend extends FakeBackend {
   Completer<void>? selectionWait;
+  Completer<void>? stratagemWait;
+  Completer<void>? sectionWait;
   int undoCount = 0, redoCount = 0, patchWrites = 0;
   final tweaks = <String, bool>{
     'reticle': false,
@@ -16,13 +18,21 @@ class ParityBackend extends FakeBackend {
   @override
   Future<dynamic> call(String method, [List<dynamic> args = const []]) async {
     calls.add(method);
+    if (method == 'items' && args.first == 'Stratagems') {
+      await stratagemWait?.future;
+      return [
+        {'id': 'stratagem-test', 'name': '重新补给', 'changed': false},
+      ];
+    }
     if (method == 'items')
       return [
         {'id': 'test', 'name': 'AR-11 仲裁者', 'changed': value != '66'},
       ];
     if (method == 'rows_fast' && selectionWait != null)
       await selectionWait!.future;
-    if (method == 'history')
+    if (method == 'rows_section' && sectionWait != null)
+      await sectionWait!.future;
+    if (method == 'history' || method == 'history_status')
       return {
         'undo': undoCount,
         'redo': redoCount,
@@ -88,6 +98,25 @@ class ParityBackend extends FakeBackend {
 }
 
 void main() {
+  testWidgets('参数弹窗先出现，再等待后端数据', (tester) async {
+    final backend = ParityBackend()..sectionWait = Completer<void>();
+    await tester.binding.setSurfaceSize(const Size(1480, 960));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      Workbench(backend: backend, persistAppearance: false),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    expect(find.text('正在读取参数…'), findsOneWidget);
+    backend.sectionWait!.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('正在读取参数…'), findsNothing);
+    expect(find.byType(TextField), findsWidgets);
+  });
+
   testWidgets('被动组合页仍显示恢复原版操作', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1100, 820));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -157,12 +186,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('parameter-search')), findsOneWidget);
     expect(find.text('伤害参数'), findsOneWidget);
+    expect(backend.calls, contains('history_status'));
+    expect(backend.calls, isNot(contains('history')));
     expect(
       (tester.getCenter(find.text('装备预设')).dy -
               tester.getCenter(find.text('仅已修改')).dy)
           .abs(),
       lessThan(6),
     );
+    await tester.pumpWidget(const SizedBox());
+    await tester.binding.setSurfaceSize(null);
+  });
+  testWidgets('跨分类加载时旧条目不会出现在新分类', (tester) async {
+    final backend = ParityBackend()..stratagemWait = Completer<void>();
+    await tester.binding.setSurfaceSize(const Size(1480, 960));
+    await tester.pumpWidget(
+      Workbench(backend: backend, persistAppearance: false),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('navigation-Stratagems')));
+    await tester.pump();
+    expect(find.text('AR-11 仲裁者'), findsOneWidget);
+    expect(find.text('重新补给'), findsNothing);
+    backend.stratagemWait!.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('AR-11 仲裁者'), findsNothing);
+    expect(find.text('重新补给'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.binding.setSurfaceSize(null);
   });

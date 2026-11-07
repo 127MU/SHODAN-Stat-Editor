@@ -1,3 +1,4 @@
+import 'motion.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'backend.dart';
@@ -22,7 +23,7 @@ Future<void> showReleaseOffer(
   BuildContext context,
   Backend backend,
   Map offer,
-) => showDialog<void>(
+) => showMotionDialog<void>(
   context: context,
   builder: (context) => GlassDialog(
     title: Text('发现新版本 ${offer['version']}'),

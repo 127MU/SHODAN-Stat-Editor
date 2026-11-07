@@ -1,3 +1,4 @@
+import 'motion.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
@@ -43,11 +44,11 @@ class _EditorToolsState extends State<EditorTools> {
   Future<void> refreshHistory() async {
     final ticket = ++request;
     try {
-      final data = await widget.backend.call('history');
+      final data = await widget.backend.call('history_status');
       if (mounted && ticket == request)
         setState(() => history = data is Map ? data : {});
     } catch (e) {
-      if (mounted) widget.onError(e);
+      if (mounted && ticket == request) widget.onError(e);
     }
   }
 
@@ -57,7 +58,6 @@ class _EditorToolsState extends State<EditorTools> {
     try {
       await widget.backend.call(method);
       await widget.onRefresh();
-      await refreshHistory();
     } catch (e) {
       widget.onError(e);
     } finally {
@@ -66,7 +66,7 @@ class _EditorToolsState extends State<EditorTools> {
   }
 
   Future<void> report(String method, String title) async {
-    final record = await showDialog<Map>(
+    final record = await showMotionDialog<Map>(
       context: context,
       builder: (_) =>
           EditorReport(backend: widget.backend, method: method, title: title),

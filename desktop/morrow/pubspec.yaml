@@ -1,6 +1,6 @@
 name: shodan_desktop
 publish_to: none
-version: 4.6.0-r3+4
+version: 4.6.0-r4+5
 environment:
   sdk: ">=3.12.0 <4.0.0"
 dependencies:
