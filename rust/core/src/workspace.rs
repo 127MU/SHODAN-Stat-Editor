@@ -345,6 +345,7 @@ pub struct Workspace {
     files: BTreeMap<String, File>,
     blocked_files: BTreeMap<String, String>,
     suspended_draft: BTreeMap<String, DraftFile>,
+    draft_problems: Vec<String>,
     installed_from: BTreeMap<String, Option<(Vec<u8>, Index)>>,
     metadata: serde_json::Value,
     undo: Vec<Checkpoint>,
@@ -378,6 +379,9 @@ impl Workspace {
     }
     pub(crate) fn resource_conflicts(&self) -> impl Iterator<Item = &String> {
         self.blocked_files.values()
+    }
+    pub(crate) fn draft_conflicts(&self) -> impl Iterator<Item = &String> {
+        self.draft_problems.iter()
     }
     pub(crate) fn disk_checks(&self) -> Vec<(&str, Result<&str, String>)> {
         self.files
@@ -692,16 +696,39 @@ impl Workspace {
                     self.suspended_draft.insert(name, pending);
                     continue;
                 }
-                let file = self.files.get(&name).ok_or("草稿引用的源文件缺失")?;
-                if pending.source != self.fingerprint(&name) {
-                    return Err(format!(
-                        "{name} 已由其他工具或游戏更新改变，保留草稿以供恢复"
-                    ));
+                // A draft records byte offsets into the data it was captured
+                // from, so it can only be replayed onto that exact source. When
+                // the game or another tool changed the file, replaying it would
+                // silently corrupt unrelated records. The draft stays on disk
+                // and is reported instead of aborting startup: otherwise the
+                // editor can never open again to recover or discard it.
+                let mut conflict = None;
+                if let Some(file) = self.files.get(&name) {
+                    if pending.source != self.fingerprint(&name) {
+                        conflict = Some(format!(
+                            "{name} 已由其他工具或游戏更新改变，草稿已保留但未应用；该文件的编辑以当前游戏数据为准"
+                        ));
+                    } else if pending
+                        .bytes
+                        .keys()
+                        .any(|&offset| file.document.slice(offset, 1).is_err())
+                    {
+                        conflict = Some(format!(
+                            "{name} 的草稿位置超出当前数据范围，草稿已保留但未应用；该文件的编辑以当前游戏数据为准"
+                        ));
+                    }
+                } else {
+                    conflict = Some(format!("{name} 不在当前数据文件集合中，草稿已保留但未应用"));
                 }
-                for &offset in pending.bytes.keys() {
-                    file.document.slice(offset, 1)?;
+                match conflict {
+                    Some(conflict) => {
+                        self.suspended_draft.insert(name, pending);
+                        self.draft_problems.push(conflict);
+                    }
+                    None => {
+                        snapshot.files.insert(name, pending.bytes);
+                    }
                 }
-                snapshot.files.insert(name, pending.bytes);
             }
             snapshot.metadata = draft.metadata;
             self.resume(snapshot);
@@ -795,7 +822,10 @@ impl Workspace {
                 }
             }
         }
-        let mut files = BTreeMap::new();
+        // Drafts set aside on open (their source changed outside the editor)
+        // stay in the file: dropping them here would discard edits the user was
+        // told were kept for recovery.
+        let mut files = self.suspended_draft.clone();
         for (name, file) in &self.files {
             let pending = file.document.checkpoint();
             let Some(after) = restored.get(name) else {
@@ -1092,6 +1122,7 @@ impl Workspace {
                     .map(move |why| format!("{name}: {why}"))
             })
             .chain(self.blocked_files.values().cloned())
+            .chain(self.draft_problems.iter().cloned())
             .collect()
     }
     pub fn snapshots(&self) -> impl Iterator<Item = (&str, &[u8])> {
@@ -1383,5 +1414,86 @@ mod tests {
         assert!(w.value(&loc("a", 1), &Encoding::U32).is_err());
         assert!(w.restore(loc("a", 1), Encoding::U32).is_err());
         assert_eq!(w.pending_count(), 0);
+    }
+    fn draft_dir(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("shodan-workspace-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+    fn draft_with(source: &str, name: &str) -> (PathBuf, Vec<u8>, BTreeMap<usize, u8>) {
+        let path = draft_dir(name).join("draft.json");
+        let mut edited = Workspace::default();
+        edited
+            .add(
+                "a".into(),
+                File::new("a".into(), bytes(1, 50), None).unwrap(),
+            )
+            .unwrap();
+        edited
+            .set_batch(&[(loc("a", 1), Encoding::U32, 100.0)], None)
+            .unwrap();
+        let pending = edited.checkpoint().files["a"].clone();
+        assert!(!pending.is_empty());
+        let encoded = serde_json::to_vec(&Draft {
+            version: 1,
+            metadata: serde_json::Value::Null,
+            files: BTreeMap::from([(
+                "a".to_string(),
+                DraftFile {
+                    source: source.into(),
+                    bytes: pending.clone(),
+                },
+            )]),
+        })
+        .unwrap();
+        fs::write(&path, &encoded).unwrap();
+        (path, encoded, pending)
+    }
+    fn reopen_with_draft(path: &std::path::Path) -> Workspace {
+        let mut w = Workspace::default();
+        w.add(
+            "a".into(),
+            File::new("a".into(), bytes(1, 50), None).unwrap(),
+        )
+        .unwrap();
+        w.configure_draft(path.to_path_buf())
+            .expect("草稿冲突不能中断启动");
+        w
+    }
+    #[test]
+    fn conflicting_draft_is_kept_aside_instead_of_blocking_startup() {
+        let (path, encoded, pending) = draft_with("stale-source", "draft-conflict");
+        let w = reopen_with_draft(&path);
+        assert_eq!(w.pending_count(), 0);
+        assert_eq!(w.value(&loc("a", 1), &Encoding::U32).unwrap().current, 50.0);
+        assert_eq!(w.suspended_draft["a"].bytes, pending);
+        assert!(w
+            .problems()
+            .iter()
+            .any(|problem| problem.contains("已由其他工具或游戏更新改变")));
+        assert_eq!(fs::read(&path).unwrap(), encoded, "草稿必须原样保留");
+        let _ = fs::remove_dir_all(path.parent().unwrap());
+    }
+    #[test]
+    fn matching_draft_still_restores_pending_values() {
+        let mut reference = Workspace::default();
+        reference
+            .add(
+                "a".into(),
+                File::new("a".into(), bytes(1, 50), None).unwrap(),
+            )
+            .unwrap();
+        let fingerprint = reference.fingerprint("a");
+        let (path, _, pending) = draft_with(&fingerprint, "draft-match");
+        let w = reopen_with_draft(&path);
+        assert_eq!(w.pending_count(), pending.len());
+        assert_eq!(
+            w.value(&loc("a", 1), &Encoding::U32).unwrap().current,
+            100.0
+        );
+        assert!(w.problems().is_empty());
+        let _ = fs::remove_dir_all(path.parent().unwrap());
     }
 }
