@@ -410,7 +410,11 @@ impl Game {
     }
 
     pub(crate) fn baseline_check(&self, workspace: &Workspace) -> Value {
-        let mut problems: BTreeSet<_> = workspace.resource_conflicts().cloned().collect();
+        let mut problems: BTreeSet<_> = workspace
+            .resource_conflicts()
+            .chain(workspace.draft_conflicts())
+            .cloned()
+            .collect();
         let mut warnings = Vec::new();
         let mut entries = Vec::new();
         match self.game_dll() {
