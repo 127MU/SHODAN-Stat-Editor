@@ -661,10 +661,16 @@ class _WorkbenchState extends State<Workbench> {
       );
       if (preview == null) return;
       if (!mounted) return;
+      if (preview is Map && preview['installed'] == true) {
+        await refreshCurrent();
+        if (mounted) setState(() => status = '${preview['message'] ?? '写入完成'}');
+        return;
+      }
       setState(() => busy = false);
       final problems = preview is Map && preview['problems'] is List
           ? preview['problems'] as List
           : [];
+      var force = false;
       final yes = await showMotionDialog<bool>(
         context: navigator.currentContext ?? context,
         builder: (ctx) => GlassDialog(
@@ -679,6 +685,11 @@ class _WorkbenchState extends State<Workbench> {
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('取消'),
             ),
+            if (problems.isNotEmpty)
+              OutlinedButton(
+                onPressed: () { force = true; Navigator.pop(ctx, true); },
+                child: const Text('强制写入'),
+              ),
             FilledButton(
               onPressed: problems.isEmpty
                   ? () => Navigator.pop(ctx, true)
@@ -695,6 +706,7 @@ class _WorkbenchState extends State<Workbench> {
           barrierDismissible: false,
           builder: (_) => InstallDialog(
             backend: backend,
+            force: force,
             allowFloatAdjustment:
                 preview is Map && preview['allow_float_adjustment'] == true,
           ),
@@ -2219,52 +2231,56 @@ class ValueInput extends StatefulWidget {
 }
 
 class _ValueInputState extends State<ValueInput> {
-  late final c = TextEditingController(text: displayNumber(widget.value));
+  late final draft = NumericDraft(widget.value);
+  late final c = TextEditingController(text: draft.display);
   final focus = FocusNode();
-  String saved = '';
   bool saving = false;
   bool queued = false;
   @override
   void initState() {
     super.initState();
-    saved = c.text;
     focus.addListener(() {
       if (!focus.hasFocus) save();
     });
   }
 
-  Future<void> save() async {
+  Future<void> save({bool submitted = false}) async {
+    if (submitted) draft.edited = true;
     if (saving) {
       queued = true;
       return;
     }
-    if (c.text == saved) return;
+    if (!draft.needsSave(c.text)) {
+      draft.edited = false;
+      return;
+    }
     saving = true;
     do {
       queued = false;
       final value = c.text;
+      final previousSource = widget.value;
+      draft.edited = false;
       try {
         await widget.onSave(value);
-        saved = value;
+        if (!mounted) return;
+        // Prefer the actual encoded result when the backend refreshed this row.
+        draft.acknowledge(widget.value != previousSource ? widget.value : value);
+        if (!draft.edited && c.text == value) c.text = draft.display;
       } catch (_) {
-        if (mounted) c.text = saved;
+        if (mounted && !draft.edited) c.text = draft.display;
         queued = false;
         break;
       }
-    } while (mounted && queued && c.text != saved);
-    if (mounted && c.text == saved) {
-      c.text = displayNumber(saved);
-      saved = c.text;
-    }
+    } while (mounted && queued && draft.needsSave(c.text));
     saving = false;
   }
 
   @override
   void didUpdateWidget(covariant ValueInput old) {
     super.didUpdateWidget(old);
-    if (!saving && !focus.hasFocus && widget.value != old.value) {
-      c.text = displayNumber(widget.value);
-      saved = c.text;
+    if (!saving && widget.value != old.value && !draft.edited) {
+      draft.acknowledge(widget.value);
+      c.text = draft.display;
     }
   }
 
@@ -2272,7 +2288,8 @@ class _ValueInputState extends State<ValueInput> {
   Widget build(BuildContext context) => TextField(
     controller: c,
     focusNode: focus,
-    onSubmitted: (_) => save(),
+    onChanged: (_) => draft.edited = true,
+    onSubmitted: (_) => save(submitted: true),
     decoration: const InputDecoration(
       border: OutlineInputBorder(),
       isDense: true,

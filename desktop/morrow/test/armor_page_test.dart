@@ -147,6 +147,36 @@ void main() {
     expect(find.byKey(const ValueKey('passive:2')), findsNothing);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('被动显示为2可回车提交整数，重新打开保留2', (tester) async {
+    final backend = ArmorBackend()..passiveValue = 1.9999999403953552;
+    await openValues(tester, backend);
+    await tester.tap(valueField);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(backend.passiveValue, 2);
+    expect(backend.saveCalls, 1);
+    await tester.tap(find.text('关闭'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('修改数值').first);
+    await tester.pumpAndSettle();
+    expect(find.text('2'), findsOneWidget);
+  });
+  testWidgets('只查看被动不取整，编辑回相同显示值关闭会保存', (tester) async {
+    final backend = ArmorBackend()..passiveValue = 2.000000238418579;
+    await openValues(tester, backend);
+    await tester.tap(valueField);
+    await tester.tap(find.text('关闭'));
+    await tester.pumpAndSettle();
+    expect(backend.saveCalls, 0);
+    await tester.tap(find.text('修改数值').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(valueField, '3');
+    await tester.enterText(valueField, '2');
+    await tester.tap(find.text('关闭'));
+    await tester.pumpAndSettle();
+    expect(backend.passiveValue, 2);
+    expect(backend.saveCalls, 1);
+  });
 }
 
 extension on Finder {

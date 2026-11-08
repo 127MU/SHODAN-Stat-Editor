@@ -13,6 +13,12 @@ pub fn installation_advice(error: &str) -> Value {
             "automatic",
             "关闭游戏后运行自动修复，按原事务指纹恢复中断写入，再重新预览。",
         )
+    } else if error.contains("LDLD")
+        || lower.contains("invalid table boundary")
+        || error.contains("密封文件")
+        || error.contains("无法解析") && error.contains("dl_bin")
+    {
+        ("invalid_numeric_data", "conditional", "关闭游戏后运行自动修复：损坏数值文件会先备份，仅从当前版本已校验的安装备份或随附原版数据恢复。没有可信来源时，请通过 Steam 验证游戏文件完整性；强制写入无法修复损坏的表结构。")
     } else if error.contains("草稿") {
         (
             "draft",

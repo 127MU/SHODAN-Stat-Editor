@@ -339,7 +339,7 @@ impl Game {
         }
         let key = hash::sha256_hex(root.to_string_lossy().as_bytes());
         let state = profile.join("native-game").join(&key[..16]);
-        let inputs = json!({"files":files});
+        let inputs = json!({"files":files,"isolate_invalid_files":true});
         let mut game = Self {
             root,
             state,
@@ -490,6 +490,11 @@ impl Game {
             total: 3,
         });
         let recovery = self.recover(&mut progress);
+        let unreadable_repair = if recovery.is_ok() {
+            self.repair_unreadable_files(&self.game_dll()?, &mut progress)
+        } else {
+            Err("安装事务尚未恢复，未修复无法解析的数值文件".into())
+        };
         let numeric_repair = if recovery.is_ok() {
             self.repair_numeric_records(&self.game_dll()?)
         } else {
@@ -550,6 +555,15 @@ impl Game {
             "已重新读取游戏数据并重建参数索引".to_string(),
             "已刷新资源查询缓存，保留现有数值、预设和外观设置".to_string(),
         ];
+        match unreadable_repair {
+            Ok((restored, remaining)) => {
+                if restored > 0 {
+                    actions.push(format!("已备份损坏文件，并从当前版本的已校验备份或随附原版数据恢复 {restored} 个无法解析的数值文件"));
+                }
+                problems.extend(remaining);
+            }
+            Err(error) => problems.push(format!("损坏数值文件修复未完成：{error}")),
+        }
         if crate::desktop_armor::needs_reapply(&workspace) {
             actions.push("已保留护甲配置并标记为待写入，请重新写入游戏以应用原有选择".into());
         }
@@ -631,6 +645,73 @@ impl Game {
             total: 3,
         });
         Ok((workspace, report))
+    }
+
+    fn repair_unreadable_files(
+        &self,
+        dll: &[u8],
+        progress: &mut impl FnMut(Progress),
+    ) -> Result<(usize, Vec<String>), String> {
+        let (_lock, _, backup) = self.begin()?;
+        let mut changes = Vec::new();
+        let mut problems = Vec::new();
+        let owned = self.owned().map(|(_, owned)| owned).unwrap_or_default();
+        for input in self.inputs["files"].as_array().ok_or("缺少数值文件清单")? {
+            let name = input["name"].as_str().ok_or("数值文件名无效")?;
+            if !valid_file(name) {
+                return Err("数值文件名无效".into());
+            }
+            let path = self.root.join(name);
+            let Some(before) = install::read(&path)? else {
+                continue;
+            };
+            if crate::sealed::open_data(&before).is_ok() {
+                continue;
+            }
+            if let Some(saved) = owned
+                .get(name)
+                .and_then(|item| self.verified_backup(name, item, true).ok())
+                .map(|(_, saved)| saved)
+                .filter(|saved| {
+                    crate::sealed::open_data(saved)
+                        .is_ok_and(|plain| hash::expected_by_game(&plain, dll))
+                })
+            {
+                changes.push(Change {
+                    path,
+                    before: Some(before),
+                    after: Some(saved),
+                });
+                continue;
+            }
+            let candidate = if input["embedded_armor"] == true {
+                Some(crate::desktop_armor::BASELINE.to_vec())
+            } else {
+                input["baseline_path"]
+                    .as_str()
+                    .and_then(|path| fs::read(path).ok())
+            };
+            let baseline_name = input["baseline_name"]
+                .as_str()
+                .unwrap_or("generated_customization_passive_bonuses.dl_plain");
+            let candidate = candidate.filter(|plain| {
+                hash::expected_by_game(plain, dll)
+                    && crate::baseline::Baseline::shipped(baseline_name, plain.clone()).is_ok()
+            });
+            let Some(plain) = candidate else {
+                problems.push(format!("{name} 无法解析，且没有匹配当前版本的可信原版数据；已保留该文件，请通过 Steam 验证游戏文件完整性"));
+                continue;
+            };
+            let after = crate::sealed::seal(&plain).map_err(|error| format!("{name}：{error}"))?;
+            changes.push(Change {
+                path,
+                before: Some(before),
+                after: Some(after),
+            });
+        }
+        let count = changes.len();
+        install::apply(changes, &backup, progress)?;
+        Ok((count, problems))
     }
 
     fn repair_numeric_records(&self, dll: &[u8]) -> Result<(usize, usize, Vec<String>), String> {
@@ -1502,6 +1583,83 @@ mod tests {
     use super::*;
 
     const NAME: &str = "generated_test_settings.dl_bin";
+
+    #[test]
+    fn invalid_numeric_files_are_isolated_and_repair_requires_pinned_current_build_data() {
+        let root = scratch("invalid-numeric");
+        let name = crate::desktop_armor::PASSIVE;
+        let original = crate::desktop_armor::BASELINE;
+        let broken = crate::sealed::seal(b"LDLD\x01\0\0\0broken-table").unwrap();
+        fs::write(root.join(name), &broken).unwrap();
+        fs::write(root.join(NAME), crate::sealed::seal(original).unwrap()).unwrap();
+        let mut game = game_at(&root);
+        game.inputs = json!({"isolate_invalid_files":true,"files":[
+            {"name":name,"path":root.join(name),"sealed":true,"embedded_armor":true},
+            {"name":NAME,"path":root.join(NAME),"sealed":true}
+        ]});
+        let workspace = crate::workspace_api::open(&game.inputs).unwrap();
+        assert!(workspace.contains(NAME));
+        assert!(!workspace.contains(name));
+        assert!(workspace
+            .blocking_problems()
+            .iter()
+            .any(|p| p.contains(name)));
+        let mut strict = game.inputs.clone();
+        strict["isolate_invalid_files"] = json!(false);
+        let error = crate::workspace_api::open(&strict).err().unwrap();
+        assert!(error.contains(name) && error.contains("LDLD"));
+        assert_eq!(fs::read(root.join(name)).unwrap(), broken);
+
+        let (restored, problems) = game
+            .repair_unreadable_files(b"wrong-build", &mut |_| {})
+            .unwrap();
+        assert_eq!(restored, 0);
+        assert_eq!(problems.len(), 1);
+        assert_eq!(fs::read(root.join(name)).unwrap(), broken);
+        let dll = hash::murmur64(original).to_le_bytes();
+        let (restored, problems) = game.repair_unreadable_files(&dll, &mut |_| {}).unwrap();
+        assert_eq!(restored, 1);
+        assert!(problems.is_empty());
+        assert_eq!(
+            crate::sealed::open_data(&fs::read(root.join(name)).unwrap()).unwrap(),
+            original
+        );
+        let originals = fs::read_dir(root.join("state/transactions"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter_map(|entry| fs::read(entry.path().join("0.original")).ok())
+            .collect::<Vec<_>>();
+        assert!(originals.contains(&broken));
+        assert!(crate::workspace_api::open(&game.inputs)
+            .unwrap()
+            .blocking_problems()
+            .is_empty());
+        let intact = fs::read(root.join(name)).unwrap();
+        assert_eq!(
+            game.repair_unreadable_files(&dll, &mut |_| {}).unwrap().0,
+            0
+        );
+        assert_eq!(fs::read(root.join(name)).unwrap(), intact);
+
+        // An unpinned table cannot be fabricated from another file's baseline.
+        fs::write(root.join(NAME), &broken).unwrap();
+        let (restored, problems) = game.repair_unreadable_files(&dll, &mut |_| {}).unwrap();
+        assert_eq!(restored, 0);
+        assert!(problems[0].contains(NAME));
+        assert_eq!(fs::read(root.join(NAME)).unwrap(), broken);
+        let saved = crate::sealed::seal(original).unwrap();
+        let item = owned(&root, &saved, b"old-installed-data");
+        fs::write(
+            root.join("state/managed.json"),
+            serde_json::to_vec(&BTreeMap::from([(NAME, item)])).unwrap(),
+        )
+        .unwrap();
+        let (restored, problems) = game.repair_unreadable_files(&dll, &mut |_| {}).unwrap();
+        assert_eq!(restored, 1);
+        assert!(problems.is_empty());
+        assert_eq!(fs::read(root.join(NAME)).unwrap(), saved);
+        let _ = fs::remove_dir_all(root);
+    }
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(

@@ -13,12 +13,14 @@ class InstallDialog extends StatefulWidget {
     this.restore = false,
     this.repair = false,
     this.allowFloatAdjustment = false,
+    this.force = false,
   });
   final Backend backend;
   final bool preview;
   final bool restore;
   final bool repair;
   final bool allowFloatAdjustment;
+  final bool force;
   @override
   State<InstallDialog> createState() => _InstallDialogState();
 }
@@ -28,11 +30,13 @@ class _InstallDialogState extends State<InstallDialog> {
   String stage = '正在准备安装', message = '';
   num done = 0, total = 0;
   bool finished = false, success = false, details = false;
+  bool forcedAttempt = false;
   dynamic result;
   final events = <String>[];
   @override
   void initState() {
     super.initState();
+    forcedAttempt = widget.force;
     stage = widget.repair
         ? '正在检查并修复'
         : widget.preview
@@ -50,14 +54,16 @@ class _InstallDialogState extends State<InstallDialog> {
         if (events.length > 40) events.removeAt(0);
       });
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => run());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => run(force: widget.force),
+    );
   }
 
   Future<void> run({bool force = false}) async {
     widget.backend.diagnostics.record(
       widget.repair
           ? '开始自动修复流程'
-          : widget.preview
+          : widget.preview && !force
           ? '开始安装预览'
           : '开始写入游戏',
     );
@@ -65,16 +71,20 @@ class _InstallDialogState extends State<InstallDialog> {
       result = widget.repair
           ? await widget.backend.repair()
           : await widget.backend.call(
-              widget.preview
+              widget.preview && !force
                   ? 'install_preview'
                   : widget.restore
                   ? 'restore_task'
                   : 'install_task',
-              [widget.allowFloatAdjustment, force],
+              [
+                widget.allowFloatAdjustment || (force && !widget.restore),
+                force,
+              ],
             );
       if (!mounted) return;
-      success = widget.preview || result is Map && result['ok'] == true;
-      if (widget.preview) {
+      success =
+          (widget.preview && !force) || result is Map && result['ok'] == true;
+      if (widget.preview && !force) {
         Navigator.pop(context, result);
         return;
       }
@@ -154,32 +164,35 @@ class _InstallDialogState extends State<InstallDialog> {
 
   Future<void> forceWrite() async {
     final restore = widget.restore;
-    final accepted = await showMotionDialog<bool>(
-      context: context,
-      builder: (ctx) => GlassDialog(
-        title: Text(restore ? '确认强制恢复' : '确认强制写入'),
-        content: Text(
-          restore
-              ? '当前游戏文件与安装记录不一致，可能已被其他工具修改。将用备份内容覆盖，并把当前文件先另存备份；原始备份本身若已变化仍会拒绝恢复。游戏版本、磁盘快照和资源补丁校验仍须通过。'
-              : '按当前打开的数据写入，并接管冲突的旧数值安装记录。当前文件会先备份；之后“恢复原版”将恢复到本次写入前的文件，可能仍含其他 Mod 的修改。游戏版本、磁盘快照和资源补丁校验仍须通过。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(restore ? '备份并强制恢复' : '备份并强制写入'),
-          ),
-        ],
-      ),
-    );
+    final accepted = restore
+        ? await showMotionDialog<bool>(
+            context: context,
+            builder: (ctx) => GlassDialog(
+              title: Text(restore ? '确认强制恢复' : '确认强制写入'),
+              content: Text(
+                restore
+                    ? '当前游戏文件与安装记录不一致，可能已被其他工具修改。将用备份内容覆盖，并把当前文件先另存备份；原始备份本身若已变化仍会拒绝恢复。游戏版本、磁盘快照和资源补丁校验仍须通过。'
+                    : '按当前打开的数据写入，并接管冲突的旧数值安装记录。当前文件会先备份；之后“恢复原版”将恢复到本次写入前的文件，可能仍含其他 Mod 的修改。游戏版本、磁盘快照和资源补丁校验仍须通过。',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(restore ? '备份并强制恢复' : '备份并强制写入'),
+                ),
+              ],
+            ),
+          )
+        : true;
     if (accepted != true || !mounted) return;
     setState(() {
       finished = false;
       success = false;
       result = null;
+      forcedAttempt = true;
       message = '';
       stage = restore ? '正在备份并强制恢复' : '正在备份并强制写入';
       done = 0;
@@ -196,7 +209,7 @@ class _InstallDialogState extends State<InstallDialog> {
       title: Text(
         widget.repair
             ? '自动修复'
-            : widget.preview
+            : widget.preview && !forcedAttempt
             ? '写入前检查'
             : widget.restore
             ? '恢复原版'
@@ -290,6 +303,8 @@ class _InstallDialogState extends State<InstallDialog> {
                 ),
                 child: SingleChildScrollView(child: SelectableText(message)),
               ),
+            if (finished && !success && !widget.repair && !widget.restore)
+              const Text('强制写入会先备份冲突文件，并允许已修改浮点值的极小校验修正；无法读取的数据表请先运行自动修复。'),
             TextButton(
               onPressed: () => setState(() => details = !details),
               child: Text(details ? '收起阶段日志' : '显示阶段日志'),
@@ -309,13 +324,7 @@ class _InstallDialogState extends State<InstallDialog> {
         ),
       ),
       actions: [
-        if (finished &&
-            !success &&
-            !widget.preview &&
-            !widget.repair &&
-            (widget.restore
-                ? message.contains('的文件已变化')
-                : message.contains('已被其他工具修改，已停止写入')))
+        if (finished && !success && !widget.repair)
           OutlinedButton.icon(
             onPressed: forceWrite,
             icon: const Icon(Icons.warning_amber_outlined),
@@ -334,7 +343,12 @@ class _InstallDialogState extends State<InstallDialog> {
           ),
         if (finished)
           FilledButton(
-            onPressed: () => Navigator.pop(context, result),
+            onPressed: () => Navigator.pop(
+              context,
+              widget.preview && forcedAttempt
+                  ? (success ? {'installed': true, ...result as Map} : null)
+                  : result,
+            ),
             child: const Text('关闭'),
           ),
       ],

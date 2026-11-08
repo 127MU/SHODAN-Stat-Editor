@@ -191,8 +191,16 @@ pub fn open(p: &Value) -> Result<Workspace, String> {
             None | Some(Value::Bool(false)) => File::new(path, current, baseline),
             Some(Value::Bool(true)) => File::sealed(path, current, baseline),
             Some(_) => return Err("密封输入选项必须为布尔值".into()),
-        }?;
-        workspace.add(text(input, "name")?.into(), file)?;
+        };
+        let name = text(input, "name")?;
+        match file {
+            Ok(file) => workspace.add(name.into(), file)?,
+            Err(error) if p["isolate_invalid_files"] == true => workspace.block_resource(
+                name.into(),
+                format!("{name} 无法解析：{error}；该文件未载入、未修改，请运行自动修复"),
+            ),
+            Err(error) => return Err(format!("{name}：{error}")),
+        }
     }
     Ok(workspace)
 }

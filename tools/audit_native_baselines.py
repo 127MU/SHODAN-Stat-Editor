@@ -21,6 +21,8 @@ def main():
     args = parser.parse_args()
     catalog = json.loads(gzip.decompress((args.runtime / 'catalog.json.gz').read_bytes()))
     counts, missing, errors = collections.Counter(), [], []
+    differences = []
+    fields = catalog["fields"]
     with tempfile.TemporaryDirectory(prefix='shodan-audit-') as folder:
         process = subprocess.Popen([str(args.native.resolve()), '--stdio'],
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -46,6 +48,13 @@ def main():
                             missing.append(dict(owner=owner['name'], owner_id=owner['id'],
                                                 parameter=row['label'], key=row['id'],
                                                 choice=row.get('choice_kind'), error=row.get('error')))
+                        if row.get('baseline_state') == 'different':
+                            source_row = next((r for r in owner['rows'] if r['key'] == row['id']), {})
+                            differences.append(dict(owner=owner['name'], owner_id=owner['id'],
+                                tab=owner['tab'], key=row['id'], parameter=row['label'],
+                                current=row.get('value'), original=row.get('original'),
+                                bindings=[b for part in source_row.get('parts', [])
+                                          for b in fields[part['field']].get('bindings', [])]))
                         if row.get('error'):
                             errors.append(dict(owner=owner['name'], key=row['id'], error=row['error']))
                 except ValueError as error:
@@ -53,8 +62,9 @@ def main():
         finally:
             process.terminate()
             process.wait()
-    counts.update(unknown=len(missing), errors=len(errors))
-    report = dict(counts=counts, unknown=missing, errors=errors)
+    counts.update(unknown=len(missing), errors=len(errors), different=len(differences))
+    report = dict(counts=counts, unknown=missing, errors=errors, differences=differences,
+                  differences_by_tab=dict(collections.Counter(d["tab"] for d in differences)))
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
     print(json.dumps(counts))
 

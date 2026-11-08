@@ -325,12 +325,12 @@ class _ArmorValuesDialog extends StatefulWidget {
 }
 
 class _ArmorValuesDialogState extends State<_ArmorValuesDialog> {
-  late final saved = <String, String>{
-    for (final row in widget.rows) row['key']: displayNumber(row['value']),
+  late final drafts = <String, NumericDraft>{
+    for (final row in widget.rows) row['key']: NumericDraft('${row['value']}'),
   };
   late final inputs = {
-    for (final entry in saved.entries)
-      entry.key: TextEditingController(text: entry.value),
+    for (final entry in drafts.entries)
+      entry.key: TextEditingController(text: entry.value.display),
   };
   Future<bool>? saving;
   bool closing = false;
@@ -343,7 +343,7 @@ class _ArmorValuesDialogState extends State<_ArmorValuesDialog> {
     while (mounted) {
       final pending = widget.rows.where((row) {
         final key = row['key'];
-        return inputs[key]!.text != saved[key];
+        return drafts[key]!.needsSave(inputs[key]!.text);
       }).firstOrNull;
       if (pending == null) {
         if (error != null) setState(() => error = null);
@@ -352,6 +352,8 @@ class _ArmorValuesDialogState extends State<_ArmorValuesDialog> {
       final key = pending['key'] as String;
       final input = inputs[key]!;
       final text = input.text;
+      final draft = drafts[key]!;
+      draft.edited = false;
       try {
         final value = double.tryParse(text);
         if (value == null || !value.isFinite) {
@@ -359,16 +361,13 @@ class _ArmorValuesDialogState extends State<_ArmorValuesDialog> {
         }
         await widget.save(key, value);
       } catch (e) {
+        draft.edited = true;
         if (mounted) setState(() => error = '${pending['label']} · $e');
         return false;
       }
       if (!mounted) return false;
-      saved[key] = text;
-      if (input.text == text) {
-        final formatted = displayNumber(text);
-        if (formatted != text) input.text = formatted;
-        saved[key] = formatted;
-      }
+      draft.acknowledge(text);
+      if (!draft.edited && input.text == text) input.text = draft.display;
     }
     return false;
   }
@@ -406,7 +405,11 @@ class _ArmorValuesDialogState extends State<_ArmorValuesDialog> {
                     controller: input,
                     readOnly: closing,
                     onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                    onSubmitted: (_) => commit(),
+                    onChanged: (_) => drafts[row['key']]!.edited = true,
+                    onSubmitted: (_) {
+                      drafts[row['key']]!.edited = true;
+                      commit();
+                    },
                   ),
                 ),
               ),
@@ -415,6 +418,7 @@ class _ArmorValuesDialogState extends State<_ArmorValuesDialog> {
                     ? null
                     : () {
                         input.text = original.toString();
+                        drafts[row['key']]!.edited = true;
                         commit();
                       },
                 child: const Text('恢复'),

@@ -138,4 +138,59 @@ void main() {
       dir.deleteSync(recursive: true);
     });
   }
+  for (final preview in [false, true]) {
+    testWidgets('任意安装错误保留强制入口，预览=$preview', (tester) async {
+      final dir = Directory.systemTemp.createTempSync('shodan-force-ui-');
+      final backend = SequencingBackend(dir);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InstallDialog(backend: backend, preview: preview),
+          ),
+        ),
+      );
+      await tester.pump();
+      backend.completers.single.completeError(StateError('校验空间不足'));
+      await tester.pumpAndSettle();
+      expect(find.text('强制写入'), findsOneWidget);
+      await tester.tap(find.text('强制写入'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(backend.calls.last, ['install_task', true, true]);
+      backend.completers.last.completeError(StateError('文件被占用'));
+      await tester.pumpAndSettle();
+      expect(find.text('强制写入'), findsOneWidget);
+      expect(find.textContaining('文件被占用'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(() => backend.diagnostics.snapshot());
+      await backend.progress.close();
+      dir.deleteSync(recursive: true);
+    });
+  }
+  testWidgets('强制恢复入口不再依赖特定错误文案', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('shodan-force-restore-ui-');
+    final backend = SequencingBackend(dir);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: InstallDialog(backend: backend, restore: true)),
+      ),
+    );
+    await tester.pump();
+    backend.completers.single.completeError(StateError('权限不足'));
+    await tester.pumpAndSettle();
+    expect(find.text('强制恢复'), findsOneWidget);
+    await tester.tap(find.text('强制恢复'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('备份并强制恢复'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(backend.calls.last, ['restore_task', false, true]);
+    backend.completers.last.complete({'ok': true, 'message': '恢复完成'});
+    await tester.pumpAndSettle();
+    expect(find.text('强制恢复'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(() => backend.diagnostics.snapshot());
+    await backend.progress.close();
+    dir.deleteSync(recursive: true);
+  });
 }
