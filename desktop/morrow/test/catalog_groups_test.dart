@@ -26,7 +26,110 @@ class GroupBackend extends FakeBackend {
   }
 }
 
+class RestoredBackend extends FakeBackend {
+  @override
+  Future<dynamic> call(String method, [List<dynamic> args = const []]) async {
+    if (method == 'items')
+      return [
+        {
+          'id': 'changed',
+          'name': 'AR-11 仲裁者',
+          'changed': true,
+          'baseline_state': 'different',
+        },
+        {
+          'id': 'restored',
+          'name': 'AR-23 解放者',
+          'changed': true,
+          'baseline_state': 'same',
+        },
+        {
+          'id': 'vanilla',
+          'name': 'AR-32 安抚者',
+          'changed': false,
+          'baseline_state': 'same',
+        },
+      ];
+    return super.call(method, args);
+  }
+}
+
 void main() {
+  test('恢复原值的待写入记录不进入已修改筛选，仍保留恢复状态', () {
+    final restored = {
+      'id': 'restored',
+      'name': '本体',
+      'changed': true,
+      'baseline_state': 'same',
+    };
+    final changed = {
+      'id': 'changed',
+      'name': '武器',
+      'changed': true,
+      'baseline_state': 'different',
+    };
+    expect(catalogItemChanged(restored), isFalse);
+    expect(catalogItemChanged(changed), isTrue);
+    expect(
+      catalogItemChanged({'changed': true, 'baseline_state': 'unknown'}),
+      isTrue,
+    );
+    expect(catalogItemChanged({'changed': true}), isTrue);
+    final groups = buildCatalogGroups(
+      [restored, changed],
+      'Primary',
+      onlyChanged: true,
+    );
+    expect(groups.single.id, 'changed');
+    expect(
+      buildCatalogGroups([restored], 'Primary').single.statusLabel,
+      '已恢复原值',
+    );
+    final family = [
+      {
+        ...restored,
+        'groups': [
+          {'id': 'exo', 'name': '机甲'},
+        ],
+      },
+      {
+        ...changed,
+        'groups': [
+          {'id': 'exo', 'name': '机甲'},
+        ],
+      },
+    ];
+    final group = buildCatalogGroups(
+      family,
+      'Mechas',
+      onlyChanged: true,
+    ).single;
+    expect(group.entries.length, 2);
+    expect(group.matches.single['id'], 'changed');
+    expect(
+      buildCatalogGroups(family, 'Mechas', query: '本体', onlyChanged: true),
+      isEmpty,
+    );
+  });
+  testWidgets('主页仅已修改排除已恢复原值，取消筛选仍能看到恢复状态', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1480, 960));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      Workbench(backend: RestoredBackend(), persistAppearance: false),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('已恢复原值'), findsOneWidget);
+    await tester.tap(find.text('仅已修改'));
+    await tester.pumpAndSettle();
+    expect(find.text('AR-11 仲裁者'), findsOneWidget);
+    expect(find.text('AR-23 解放者'), findsNothing);
+    expect(find.text('AR-32 安抚者'), findsNothing);
+    await tester.tap(find.text('仅已修改'));
+    await tester.pumpAndSettle();
+    expect(find.text('AR-23 解放者'), findsOneWidget);
+    expect(find.text('已恢复原值'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   test('旧值与原值不同仍可筛选，缺少原值不显示未修改', () {
     final items = [
       {

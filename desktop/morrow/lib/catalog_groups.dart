@@ -1,5 +1,8 @@
+// An undoable restoration is a pending write, but is no longer a non-vanilla
+// value. Keep that distinction out of the user's "only modified" filter.
 bool catalogItemChanged(Map item) =>
-    item['changed'] == true || item['baseline_state'] == 'different';
+    item['baseline_state'] != 'same' &&
+    (item['changed'] == true || item['baseline_state'] == 'different');
 
 /// Group only explicit parent relationships (or an exact colon-prefix parent).
 /// Do not infer families from similar names: M-10 and M-100 must remain separate.
@@ -14,7 +17,10 @@ class CatalogGroup {
         entries.every((item) => item['baseline_state'] == 'same') &&
         entries.any((item) => item['changed'] == true))
       return '已恢复原值';
-    if (entries.any((item) => item['changed'] == true)) return '已修改';
+    if (entries.any(
+      (item) => item['changed'] == true && catalogItemChanged(item),
+    ))
+      return '已修改';
     if (entries.any((item) => item['baseline_state'] == 'different')) {
       return '与原值不同';
     }
