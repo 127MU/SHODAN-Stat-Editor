@@ -88,8 +88,28 @@ fn extract(cache: &Path, payload: &[u8], files: &[File]) -> Result<(), String> {
                 .and_then(|_| output.sync_all())
                 .map_err(|_| "程序文件未完整写入")?;
         }
+        if cache_valid(cache, files) {
+            return Ok(());
+        }
+        // Preserve a damaged cache instead of repeatedly failing to rename a
+        // freshly verified directory over an existing directory on Windows.
+        let previous = if let Ok(meta) = fs::symlink_metadata(cache) {
+            if !meta.is_dir() || meta.file_type().is_symlink() {
+                return Err("程序缓存不是普通目录，未覆盖");
+            }
+            let saved = cache.with_extension(format!("damaged-{}-{stamp}", std::process::id()));
+            fs::rename(cache, &saved).map_err(|_| "旧缓存正在使用或无法备份")?;
+            Some(saved)
+        } else {
+            None
+        };
         if fs::rename(&staging, cache).is_err() && !cache_valid(cache, files) {
-            return Err("无法提交程序缓存，请重新解压程序包");
+            if let Some(saved) = previous {
+                if !cache.exists() {
+                    let _ = fs::rename(saved, cache);
+                }
+            }
+            return Err("无法提交程序缓存，旧缓存已保留");
         }
         Ok(())
     })();
@@ -168,6 +188,16 @@ fn run(verify: bool) -> Result<(), String> {
             continue;
         }
         let cache = root.join(&dir_name);
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(root.join(format!(".{dir_name}.lock")));
+        let Ok(lock) = lock else { continue };
+        if lock.try_lock().is_err() {
+            continue;
+        }
         if !cache_valid(&cache, &files) && extract(&cache, &payload[..packed], &files).is_err() {
             continue;
         }
@@ -212,5 +242,50 @@ fn main() -> ExitCode {
             }
             ExitCode::FAILURE
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn corrupt_cache_is_backed_up_and_rebuilt() {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root =
+            env::temp_dir().join(format!("shodan-cache-test-{}-{stamp}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        let cache = root.join("cache");
+        fs::create_dir(&cache).unwrap();
+        fs::write(cache.join("asset.dat"), b"damaged").unwrap();
+        let raw = b"verified";
+        let mut gzip = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        gzip.write_all(raw).unwrap();
+        let payload = gzip.finish().unwrap();
+        let specs = [File {
+            path: "asset.dat".into(),
+            size: raw.len(),
+            packed: payload.len(),
+            sha256: hash::sha256_hex(raw),
+        }];
+        assert!(!cache_valid(&cache, &specs));
+        extract(&cache, &payload, &specs).unwrap();
+        assert!(cache_valid(&cache, &specs));
+        let saved = fs::read_dir(&root)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .find(|path| path != &cache)
+            .unwrap();
+        assert_eq!(fs::read(saved.join("asset.dat")).unwrap(), b"damaged");
+        extract(&cache, &payload, &specs).unwrap();
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 2);
+        for dir in [cache, saved] {
+            fs::remove_file(dir.join("asset.dat")).unwrap();
+            fs::remove_dir(dir).unwrap();
+        }
+        fs::remove_dir(root).unwrap();
     }
 }

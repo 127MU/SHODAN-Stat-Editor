@@ -227,11 +227,16 @@ pub fn correct(
     for b in &blocks {
         data[b.header_offset + 17..b.header_offset + 24].fill(0);
     }
+    let whole = data.len() / 8 * 8;
+    let usable = |b: &&dlbin::Block| {
+        let x = b.header_offset;
+        x % 8 == 0 || (x % 4 == 0 && b.payload.len() >= 4 && x + 28 <= whole)
+    };
     let header = blocks
         .iter()
         .rev()
-        .find(|b| b.header_offset % 8 == 0)
-        .or_else(|| blocks.iter().rev().find(|b| b.header_offset % 4 == 0))
+        .find(|b| b.header_offset % 8 == 0 && usable(b))
+        .or_else(|| blocks.iter().rev().find(usable))
         .ok_or(Error::UnsupportedAlignment(blocks[0].header_offset))?;
     let x = header.header_offset;
     let aligned = x % 8 == 0;
@@ -246,7 +251,7 @@ pub fn correct(
     }
     let mut salts: Vec<_> = blocks
         .iter()
-        .filter(|b| b.header_offset != x)
+        .filter(|b| b.header_offset != x && (b.header_offset + 24).div_ceil(8) * 8 <= whole)
         .map(|b| Salt::Header(b.header_offset + 17))
         .collect();
     for &at in options.float_offsets {
@@ -431,6 +436,34 @@ mod tests {
         }
         let restored = correct(&original, target, &Options::default(), |_| {}).unwrap();
         assert_eq!(restored.bytes, original);
+    }
+    #[test]
+    fn partial_tail_header_is_not_used_as_a_full_hash_word() {
+        let mut original = block();
+        original.extend([7; 7]);
+        let mut last = block();
+        last[12..16].copy_from_slice(&0u32.to_le_bytes());
+        last.truncate(24);
+        original.extend(last); // Header 39, file length 63, last hash word is partial.
+        let mut edited = original.clone();
+        edited[24..28].copy_from_slice(&5f32.to_le_bytes());
+        assert!(matches!(
+            correct(&edited, murmur64(&original), &Options::default(), |_| {}),
+            Err(Error::NoSalt)
+        ));
+        let result = correct(
+            &edited,
+            murmur64(&original),
+            &Options {
+                float_offsets: &[24],
+                ..Options::default()
+            },
+            |_| {},
+        )
+        .unwrap();
+        assert_eq!(murmur64(&result.bytes), murmur64(&original));
+        assert_eq!(result.bytes.len(), original.len());
+        assert_eq!(&result.bytes[39..], &original[39..]);
     }
     #[test]
     fn odd_secondary_header_does_not_reject_valid_correction_anchor() {
