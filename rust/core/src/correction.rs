@@ -211,9 +211,6 @@ pub fn correct(
         if b.flag != 1 {
             return Err(Error::InvalidHeader(b.header_offset));
         }
-        if b.header_offset % 4 != 0 {
-            return Err(Error::UnsupportedAlignment(b.header_offset));
-        }
     }
     if murmur64(input) == target {
         return Ok(Corrected {
@@ -234,7 +231,8 @@ pub fn correct(
         .iter()
         .rev()
         .find(|b| b.header_offset % 8 == 0)
-        .unwrap_or_else(|| blocks.last().unwrap());
+        .or_else(|| blocks.iter().rev().find(|b| b.header_offset % 4 == 0))
+        .ok_or(Error::UnsupportedAlignment(blocks[0].header_offset))?;
     let x = header.header_offset;
     let aligned = x % 8 == 0;
     if !aligned && header.payload.len() < 4 {
@@ -433,6 +431,22 @@ mod tests {
         }
         let restored = correct(&original, target, &Options::default(), |_| {}).unwrap();
         assert_eq!(restored.bytes, original);
+    }
+    #[test]
+    fn odd_secondary_header_does_not_reject_valid_correction_anchor() {
+        let mut original = block();
+        original[12..16].copy_from_slice(&9u32.to_le_bytes());
+        original.push(7);
+        original.extend(block()); // Second header at 33, legal variable-size payload.
+        let target = murmur64(&original);
+        let mut edited = original.clone();
+        edited[24..28].copy_from_slice(&5f32.to_le_bytes());
+        let result = correct(&edited, target, &Options::default(), |_| {}).unwrap();
+        assert_eq!(murmur64(&result.bytes), target);
+        assert_eq!(result.report.header, Some(0));
+        assert_eq!(result.bytes.len(), original.len());
+        assert_eq!(&result.bytes[24..28], &5f32.to_le_bytes());
+        assert_eq!(dlbin::index(&result.bytes).unwrap()[1].header_offset, 33);
     }
     #[test]
     fn aligned_correction_only_changes_reserved_bytes() {

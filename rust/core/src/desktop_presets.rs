@@ -11,6 +11,15 @@ use std::{collections::BTreeMap, fs, path::Path};
 
 const FULL: u8 = 50;
 
+fn append_warnings(message: &mut String, review: &Value) {
+    if let Some(warnings) = review["warnings"].as_array() {
+        for warning in warnings.iter().filter_map(Value::as_str) {
+            message.push('\n');
+            message.push_str(warning);
+        }
+    }
+}
+
 #[derive(Default, Deserialize, Serialize)]
 struct Store {
     entries: BTreeMap<String, String>,
@@ -77,6 +86,7 @@ fn hex_decode(text: &str) -> Option<String> {
 }
 
 pub(crate) fn legacy_body(input: &str, mut preset: Preset) -> Result<Preset, String> {
+    let input = input.trim_start_matches('\u{feff}').trim();
     for line in input.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
@@ -115,6 +125,22 @@ pub(crate) fn legacy_body(input: &str, mut preset: Preset) -> Result<Preset, Str
         }
     }
     Ok(preset)
+}
+
+fn decode_text(input: &str, fallback: Preset) -> Result<Preset, String> {
+    let input = input.trim_start_matches('\u{feff}').trim();
+    if input.starts_with("SHODAN-PRESET 1") {
+        let preset = Preset::decode(input)?;
+        if preset.weapon != fallback.weapon
+            || (preset.editor.as_deref() == Some("enemy"))
+                != (fallback.editor.as_deref() == Some("enemy"))
+        {
+            return Err("预设类型与当前编辑页面不匹配".into());
+        }
+        Ok(preset)
+    } else {
+        legacy_body(input, fallback)
+    }
 }
 
 pub(crate) fn migrate_profile(
@@ -222,7 +248,7 @@ impl Store {
                 if let Some(input) = read_text(&profile.join(filename), 8 * 1024 * 1024)? {
                     if !input.lines().any(|l| l.trim() == "cleared") {
                         if let Ok(value) =
-                            legacy_body(&input, preset(format!("预设 {slot}"), enemy, None))
+                            decode_text(&input, preset(format!("预设 {slot}"), enemy, None))
                                 .and_then(|p| p.encode())
                         {
                             store.entries.insert(key(enemy, None, slot), value);
@@ -465,12 +491,12 @@ pub(crate) fn invoke(
             let (p, skipped) = if method == "preset_code_import" {
                 crate::preset_code::decode(catalog, arg(0).as_str().ok_or("缺少分享码")?)?
             } else {
-                let raw = arg(2).as_str().ok_or("缺少预设文本")?;
-                let p = if raw.starts_with("SHODAN-PRESET 1") {
-                    Preset::decode(raw)?
-                } else {
-                    legacy_body(raw, preset(format!("预设 {n}"), enemy, weapon))?
-                };
+                let raw = arg(2)
+                    .as_str()
+                    .ok_or("缺少预设文本")?
+                    .trim_start_matches('\u{feff}')
+                    .trim();
+                let p = decode_text(raw, preset(format!("预设 {n}"), enemy, weapon))?;
                 (p, 0)
             };
             if p.weapon.as_deref() != weapon
@@ -479,21 +505,25 @@ pub(crate) fn invoke(
                 return Err("预设类型与当前编辑页面不匹配".into());
             }
             let raw = p.encode()?;
-            review(catalog, workspace, &raw, false)?;
+            let review = review(catalog, workspace, &raw, false)?;
             store.entries.insert(id, raw);
             store.save(&profile)?;
-            Ok(json!(if skipped == 0 {
+            let mut message = if skipped == 0 {
                 "预设已导入".into()
             } else {
                 format!("预设已导入，跳过 {skipped} 项当前目录不存在的内容")
-            }))
+            };
+            append_warnings(&mut message, &review);
+            Ok(json!(message))
         }
         "preset" | "full_preset" => {
             let action = arg(0).as_str().ok_or("缺少预设操作")?;
             match action {
                 "load" => {
-                    review(catalog, workspace, saved.ok_or("找不到预设")?, true)?;
-                    return Ok(json!("已读取预设"));
+                    let review = review(catalog, workspace, saved.ok_or("找不到预设")?, true)?;
+                    let mut message = "已读取预设".to_owned();
+                    append_warnings(&mut message, &review);
+                    return Ok(json!(message));
                 }
                 "clear" | "delete" => {
                     store.entries.remove(&id);

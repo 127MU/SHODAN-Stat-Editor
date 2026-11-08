@@ -16,6 +16,7 @@ def main():
     parser.add_argument('--runtime', type=pathlib.Path, required=True)
     parser.add_argument('--game-data', type=pathlib.Path, required=True)
     parser.add_argument('--output', type=pathlib.Path, required=True)
+    parser.add_argument('--presets-only', action='store_true')
     options = parser.parse_args()
     runtime = options.runtime.resolve()
     source = options.game_data.resolve()
@@ -79,6 +80,23 @@ def main():
 
     p, call, desktop = start()
     try:
+        for label, text in [
+            ('portable', '\ufeffSHODAN-PRESET 1\nkind full\nname 4f6c64\neditor equipment\n'
+             f'value {selected["id"]} damage 90\n'),
+            ('legacy', '\ufeff# SHODAN preset\nname Old\n'
+             f'{selected["id"]} damage 90\n'),
+        ]:
+            legacy_profile = root / ('legacy-profile-' + label)
+            legacy_profile.mkdir()
+            (legacy_profile / 'preset_01.txt').write_text(text, encoding='utf8')
+            old_process, old_call, old_desktop = start(profile=legacy_profile)
+            try:
+                assert len(old_desktop('full_presets')) == 1
+                assert old_desktop('preset_compare', 'full', 1)['problems'] == []
+                assert (legacy_profile / 'preset_01.txt').read_text(encoding='utf8') == text
+            finally:
+                old_process.stdin.close()
+                old_process.wait(timeout=30)
         assert desktop('select', selected['id'])
         attachments = desktop('attachment_options')
         assert len(attachments) == 252, len(attachments)
@@ -158,6 +176,27 @@ def main():
         assert code.startswith('SSEO-S2-')
         desktop('preset_code_import', code)
         assert len(desktop('full_presets')) == 2
+        # Windows text exports may retain a UTF-8 BOM and blank lines. Both
+        # portable headers and the older config-style body must import.
+        portable = desktop('preset_export', 'full', 1)
+        desktop('preset_import', 'full', 2, '\ufeff\r\n' + portable + '\r\n')
+        desktop('preset_import', 'full', 2,
+                f'\ufeff\nname Legacy\n{selected["id"]} damage {damage["value"] + 1}\n')
+        assert desktop('preset_compare', 'full', 2)['problems'] == []
+        # 4.5.1 text container: retain recognized fields and report stale ones.
+        partial = portable + f'value {selected["id"]} legacy_missing_test 7\n'
+        message = desktop('preset_import', 'full', 2, partial)
+        assert 'legacy_missing_test' in message and '跳过' in message, message
+        unknown = ('SHODAN-PRESET 1\nkind full\nname 4c6567616379\neditor equipment\n'
+                   f'value {selected["id"]} legacy_missing_test 7\n')
+        before_unknown = desktop('rows_fast')
+        try:
+            desktop('preset_import', 'full', 2, unknown)
+        except AssertionError as error:
+            assert '以免清空当前修改' in str(error), error
+        else:
+            raise AssertionError('An unknown-only old preset must not clear pending edits')
+        assert desktop('rows_fast') == before_unknown
         desktop('preset_description', 'full', 1, '隔离测试说明')
         desktop('preset_duplicate', 'full', 1, '隔离测试副本')
         assert desktop('full_presets')[2]['description'] == '隔离测试说明'
@@ -165,6 +204,9 @@ def main():
         desktop('restore_examples')
         assert len(desktop('full_presets')) == 4
         desktop('editor_mode', False)
+        if options.presets_only:
+            print('Legacy local preset discovery, BOM imports and partial/unknown preset protections passed.')
+            return
         assert any(check['name'] == '游戏数据目录' and check['ok']
                    for check in call('diagnostic-check'))
         report = root / 'diagnostics.json'
@@ -429,13 +471,40 @@ def main():
         state.write_bytes(previous)
     broken_draft = b'{"version":1,"files":'
     draft_path.write_bytes(broken_draft)
-    p, call, desktop = start(expect_open_error=True)
+    p, call, desktop = start(expect_conflict=True)
     try:
+        assert desktop('items', 'Primary', ''), 'Invalid local draft must not hide game parameters'
+        assert draft_path.read_bytes() == broken_draft, 'Startup must preserve the invalid file'
+        assert desktop('install_preview')['problems'], 'Repair is required before writing'
         repaired = call('game-repair')
         assert repaired['ok'], repaired
         recovery = draft_path.with_name('draft-recovery-' + hashlib.sha256(broken_draft).hexdigest() + '.json')
         assert recovery.read_bytes() == broken_draft
         assert desktop('items', 'Primary', '')
+        assert not desktop('install_preview')['problems']
+        assert {name: digest(game / name) for name in names} == targets
+    finally:
+        p.stdin.close()
+        p.wait(timeout=30)
+    # The same isolation applies to installed metadata from an incompatible or
+    # interrupted local profile. Restore the exact bytes in a recovery copy.
+    broken_configuration = b'{"armor":'
+    state.write_bytes(broken_configuration)
+    p, call, desktop = start(expect_conflict=True)
+    try:
+        assert desktop('items', 'Primary', '')
+        assert state.read_bytes() == broken_configuration
+        assert desktop('install_preview')['problems']
+        try:
+            call('game-install', allow_float_adjustment=True, force=True)
+        except AssertionError as error:
+            assert 'configuration.json' in str(error), error
+        else:
+            raise AssertionError('Force install must not discard unreadable local metadata')
+        repaired = call('game-repair')
+        assert repaired['ok'], repaired
+        recovery = state.with_name('configuration-recovery-' + hashlib.sha256(broken_configuration).hexdigest() + '.json')
+        assert recovery.read_bytes() == broken_configuration
         assert not desktop('install_preview')['problems']
         assert {name: digest(game / name) for name in names} == targets
     finally:
@@ -486,6 +555,40 @@ def main():
     try:
         desktop('select', selected['id'])
         crosshair = next(r for r in desktop('rows_fast') if r['id'] == 'crosshair_mode')
+        for missing in [False, True]:
+            desktop('armor_update', 2, 1, True, False)
+            armor_field = desktop('armor_rows', passive_id)[0]
+            desktop('armor_set', passive_id, armor_field['key'], armor_field['value'] + 0.125)
+            assert call('game-install', allow_float_adjustment=True)['ok']
+            passive_name = 'generated_customization_passive_bonuses.dl_bin'
+            actual_plain = root / f'armor-installed-{missing}.dl_plain'
+            subprocess.run([options.exe, 'unseal-copy', game / passive_name, actual_plain], check=True, capture_output=True)
+            expected_armor = actual_plain.read_bytes()
+            ledger = json.loads((state.parent / 'managed.json').read_text(encoding='utf8'))
+            record = ledger[passive_name]
+            saved_armor = state.parent / 'transactions' / record['transaction'] / f"{record['index']}.original"
+            if missing:
+                (game / passive_name).unlink()
+            else:
+                (game / passive_name).write_bytes(saved_armor.read_bytes())
+            repaired = call('game-repair')
+            assert repaired['ok'], repaired
+            assert any('护甲配置' in action and '待写入' in action for action in repaired['actions']), repaired
+            assert desktop('status')['dirty']
+            assert any(row['parameter'] == '修复后重新应用' for row in desktop('install_preview')['entries'])
+            p.stdin.close()
+            p.wait(timeout=30)
+            p, call, desktop = start()
+            assert desktop('armor_profile', 2)['enabled'] == {'1': True}
+            assert desktop('status')['dirty']
+            assert call('game-install', allow_float_adjustment=True)['files'] > 0
+            reapplied = root / f'armor-reapplied-{missing}.dl_plain'
+            subprocess.run([options.exe, 'unseal-copy', game / passive_name, reapplied], check=True, capture_output=True)
+            assert reapplied.read_bytes() == expected_armor
+            assert not desktop('status')['dirty']
+            assert call('game-restore')['ok']
+            assert {name: digest(game / name) for name in names} == targets
+            desktop('select', selected['id'])
         choices = {c['id'] for c in desktop('choices', 'crosshair_mode')}
         assert {0, 3, 4, 16}.issubset(choices), choices
         projectile_binding = next(binding for row in selected['rows'] for part in row['parts']

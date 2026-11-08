@@ -40,6 +40,7 @@ fn hash(text: &str) -> Result<String, String> {
 }
 impl Preset {
     pub fn decode(input: &str) -> Result<Self, String> {
+        let input = input.trim_start_matches('\u{feff}').trim();
         if input.len() > 8 * 1024 * 1024 || input.contains('\0') {
             return Err("预设文件过大或包含无效字符".into());
         }
@@ -192,6 +193,14 @@ impl Preset {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn windows_bom_and_outer_whitespace_are_accepted() {
+        let raw = "SHODAN-PRESET 1\nkind full\nname 54657374\neditor equipment\nvalue FFFFFFFFFFFFFFFF slot1_strength 2.5\n";
+        assert_eq!(
+            Preset::decode(raw).unwrap(),
+            Preset::decode(&format!("\u{feff}\r\n{raw}\r\n")).unwrap()
+        );
+    }
     #[test]
     fn legacy_roundtrip_preserves_unicode_hash_and_armor_values() {
         let input=format!("SHODAN-PRESET 1\r\nkind full\r\nname {}\r\neditor equipment\r\narmor {}\r\nvalue FFFFFFFFFFFFFFFF slot1_strength -2.5\r\n",hex("中文 English"),hex("被动数值配置"));

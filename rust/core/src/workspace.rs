@@ -347,6 +347,7 @@ pub struct Workspace {
     suspended_draft: BTreeMap<String, DraftFile>,
     suspended_source: Option<Vec<u8>>,
     draft_problems: Vec<String>,
+    profile_problems: Vec<String>,
     installed_from: BTreeMap<String, Option<(Vec<u8>, Index)>>,
     metadata: serde_json::Value,
     undo: Vec<Checkpoint>,
@@ -375,6 +376,12 @@ pub struct Value {
     pub loaded: f64,
 }
 impl Workspace {
+    pub(crate) fn block_profile(&mut self, error: String) {
+        self.profile_problems.push(error);
+    }
+    pub(crate) fn profile_conflicts(&self) -> impl Iterator<Item = &String> {
+        self.profile_problems.iter()
+    }
     pub(crate) fn block_resource(&mut self, name: String, error: String) {
         self.blocked_files.insert(name, error);
     }
@@ -789,6 +796,9 @@ impl Workspace {
         }
     }
     fn persist(&mut self, next: &Checkpoint) -> Result<(), String> {
+        if let Some(error) = self.profile_problems.first() {
+            return Err(error.clone());
+        }
         let Some((path, disk)) = &self.draft else {
             return Ok(());
         };
@@ -1202,6 +1212,7 @@ impl Workspace {
     }
     pub(crate) fn blocking_problems(&self) -> Vec<String> {
         let mut problems = self.data_problems();
+        problems.extend(self.profile_problems.iter().cloned());
         problems.extend(self.blocked_files.values().cloned());
         problems
     }

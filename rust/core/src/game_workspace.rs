@@ -444,15 +444,22 @@ impl Game {
                 }
             }
         }
-        if let Some(bytes) = install::read(&self.state.join("configuration.json"))? {
-            if bytes.len() > 8 * 1024 * 1024 {
-                return Err("已安装编辑器配置过大".into());
+        let configuration = (|| {
+            if let Some(bytes) = install::read(&self.state.join("configuration.json"))? {
+                if bytes.len() > 8 * 1024 * 1024 {
+                    return Err("已安装编辑器配置过大".into());
+                }
+                workspace.set_loaded_metadata(
+                    serde_json::from_slice(&bytes).map_err(|_| "已安装编辑器配置无效")?,
+                )?;
             }
-            workspace.set_loaded_metadata(
-                serde_json::from_slice(&bytes).map_err(|_| "已安装编辑器配置无效")?,
-            )?;
+            Ok::<(), String>(())
+        })();
+        if let Err(error) = configuration {
+            workspace.block_profile(format!("本地 configuration.json 无法读取：{error}；已保留原文件，当前游戏参数仍可浏览，请先运行自动修复"));
+        } else if let Err(error) = workspace.configure_draft(self.state.join("draft.json")) {
+            workspace.block_profile(format!("本地 draft.json 无法读取：{error}；已保留原文件，当前游戏参数仍可浏览，请先运行自动修复"));
         }
-        workspace.configure_draft(self.state.join("draft.json"))?;
         Ok(workspace)
     }
 
@@ -489,6 +496,10 @@ impl Game {
             Err("安装事务尚未恢复，未变更数值安装登记".into())
         };
         let invalid_draft = self.repair_invalid_draft()?;
+        let invalid_configuration = self.repair_invalid_state("configuration.json", |bytes| {
+            serde_json::from_slice::<Value>(bytes)
+                .is_ok_and(|value| value.is_object() || value.is_null())
+        })?;
         let residency_repair = (|| {
             let (_lock, _, backup) = self.begin()?;
             let (changes, count) = crate::residency_install::repair_missing(
@@ -539,6 +550,9 @@ impl Game {
             "已重新读取游戏数据并重建参数索引".to_string(),
             "已刷新资源查询缓存，保留现有数值、预设和外观设置".to_string(),
         ];
+        if crate::desktop_armor::needs_reapply(&workspace) {
+            actions.push("已保留护甲配置并标记为待写入，请重新写入游戏以应用原有选择".into());
+        }
         match numeric_repair {
             Ok((restored, detached, remaining)) => {
                 if restored > 0 {
@@ -557,6 +571,9 @@ impl Game {
         }
         if invalid_draft {
             actions.push("已完整备份损坏的编辑草稿并解除其启动阻塞".into());
+        }
+        if invalid_configuration {
+            actions.push("已完整备份无法解析的本地安装配置并重新加载当前游戏参数；旧配置保留在 configuration-recovery 恢复副本中".into());
         }
         match recovery {
             Ok(0) => actions.push("未发现需要回滚的安装文件".into()),
@@ -668,6 +685,29 @@ impl Game {
             }
         }
         if !retired.is_empty() {
+            if retired.iter().any(|name| {
+                [crate::desktop_armor::PASSIVE, crate::desktop_armor::KITS].contains(&name.as_str())
+            }) {
+                let path = self.state.join("configuration.json");
+                if let Some(before) = install::read(&path)? {
+                    if before.len() > 8 * 1024 * 1024 {
+                        return Err("已安装编辑器配置过大".into());
+                    }
+                    let mut config: Value =
+                        serde_json::from_slice(&before).map_err(|_| "已安装编辑器配置无效")?;
+                    if config.get("armor").is_some_and(Value::is_object) {
+                        config[crate::desktop_armor::REAPPLY] = json!(true);
+                        changes.push(Change {
+                            path,
+                            before: Some(before),
+                            after: Some(
+                                serde_json::to_vec(&config)
+                                    .map_err(|_| "无法保存护甲待写入状态")?,
+                            ),
+                        });
+                    }
+                }
+            }
             for name in &retired {
                 owned.remove(name);
             }
@@ -682,20 +722,30 @@ impl Game {
     }
 
     fn repair_invalid_draft(&self) -> Result<bool, String> {
-        let path = self.state.join("draft.json");
+        self.repair_invalid_state("draft.json", Workspace::valid_draft)
+    }
+
+    fn repair_invalid_state(
+        &self,
+        name: &str,
+        valid: impl Fn(&[u8]) -> bool,
+    ) -> Result<bool, String> {
+        let path = self.state.join(name);
         let Some(bytes) = install::read(&path)? else {
             return Ok(false);
         };
         if bytes.len() > 8 * 1024 * 1024 {
-            return Err("编辑草稿过大，请导出诊断后手动检查".into());
+            return Err(format!("本地 {name} 过大，请导出诊断后手动检查"));
         }
-        if Workspace::valid_draft(&bytes) {
+        if valid(&bytes) {
             return Ok(false);
         }
         let (_lock, _, backup) = self.begin()?;
-        let recovery = self
-            .state
-            .join(format!("draft-recovery-{}.json", hash::sha256_hex(&bytes)));
+        let recovery = self.state.join(format!(
+            "{}-recovery-{}.json",
+            name.trim_end_matches(".json"),
+            hash::sha256_hex(&bytes)
+        ));
         let saved = install::read(&recovery)?;
         if saved.as_ref().is_some_and(|saved| saved != &bytes) {
             return Err("旧草稿恢复副本与原内容不一致，未覆盖".into());
@@ -768,6 +818,7 @@ impl Game {
             BTreeSet::new()
         };
         let mut warnings: Vec<String> = workspace.draft_conflicts().cloned().collect();
+        problems.extend(workspace.profile_conflicts().cloned());
         if !resources {
             warnings.extend(workspace.resource_conflicts().cloned());
         }
@@ -779,8 +830,9 @@ impl Game {
                         || workspace.file_has_pending(&name)
                         || ([crate::desktop_armor::PASSIVE, crate::desktop_armor::KITS]
                             .contains(&name.as_str())
-                            && workspace.metadata()["armor"]
-                                != workspace.loaded_metadata()["armor"])
+                            && (workspace.metadata()["armor"]
+                                != workspace.loaded_metadata()["armor"]
+                                || crate::desktop_armor::needs_reapply(workspace)))
                     {
                         if let Err(error) = self.verified_backup(&name, &item, false) {
                             if all_owned {
@@ -1162,6 +1214,9 @@ impl Game {
         mut progress: impl FnMut(Progress),
     ) -> Result<Value, String> {
         require_closed()?;
+        if let Some(error) = workspace.profile_conflicts().next() {
+            return Err(error.clone());
+        }
         if Self::needs_resource_changes(workspace) {
             if let Some(error) = workspace.resource_conflicts().next() {
                 return Err(error.clone());
@@ -1283,6 +1338,9 @@ impl Game {
         let resource_count: usize = edits.values().map(BTreeMap::len).sum();
         changes.extend(self.prepare_patch_edits(edits)?);
         let mut configuration = workspace.metadata().clone();
+        if let Some(config) = configuration.as_object_mut() {
+            config.remove(crate::desktop_armor::REAPPLY);
+        }
         if !derived.metadata.is_null() {
             configuration[crate::extra_stratagem::GENERATED] = derived.metadata;
         } else if let Some(config) = configuration.as_object_mut() {

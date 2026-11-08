@@ -15,6 +15,10 @@ use std::path::Path;
 pub(crate) const PASSIVE: &str = "generated_customization_passive_bonuses.dl_bin";
 pub(crate) const KITS: &str = "generated_customization_armor_sets.dl_bin";
 const STATE: &str = "armor";
+pub(crate) const REAPPLY: &str = "repair_pending_armor";
+pub(crate) fn needs_reapply(workspace: &Workspace) -> bool {
+    workspace.metadata()[REAPPLY] == true || workspace.loaded_metadata()[REAPPLY] == true
+}
 pub(crate) const BASELINE: &[u8] = include_bytes!("../data/armor-baseline.bin");
 
 #[derive(Default, Deserialize, Serialize)]
@@ -171,7 +175,9 @@ fn label(id: u32) -> String {
 }
 
 pub(crate) fn preview(workspace: &Workspace) -> Result<Vec<Value>, String> {
-    if workspace.metadata()[STATE] == workspace.loaded_metadata()[STATE] {
+    if workspace.metadata()[STATE] == workspace.loaded_metadata()[STATE]
+        && !needs_reapply(workspace)
+    {
         return Ok(Vec::new());
     }
     let current = state(workspace)?;
@@ -184,6 +190,10 @@ pub(crate) fn preview(workspace: &Workspace) -> Result<Vec<Value>, String> {
     };
     let previous = armor(workspace, &before)?;
     let mut entries = Vec::new();
+    if needs_reapply(workspace) {
+        entries.push(json!({"equipment":"护甲配置","parameter":"修复后重新应用",
+            "before":"已恢复安装前文件","after":"重新写入当前护甲配置","file":PASSIVE}));
+    }
     for row in active.rows.values() {
         let from = previous.value(&row.key)?;
         let to = active.value(&row.key)?;
@@ -485,7 +495,9 @@ pub(crate) fn prepare(
     workspace: &Workspace,
     backup: impl Fn(&str) -> Result<Option<Vec<u8>>, String>,
 ) -> Result<(BTreeMap<String, Vec<u8>>, Option<Value>), String> {
-    if workspace.metadata()[STATE] == workspace.loaded_metadata()[STATE] {
+    if workspace.metadata()[STATE] == workspace.loaded_metadata()[STATE]
+        && !needs_reapply(workspace)
+    {
         return Ok((BTreeMap::new(), None));
     }
     let mut settings = state(workspace)?;

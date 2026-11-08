@@ -237,6 +237,13 @@ pub(crate) fn prepare(
             }
             for (row, position) in matches {
                 if !supported(row) {
+                    if skip_missing {
+                        warnings.push(format!(
+                            "{} 的参数 {id} 需要专用处理，已跳过并保留原预设",
+                            owner.name
+                        ));
+                        continue;
+                    }
                     return Err(format!("参数 {id} 需要专用预设处理"));
                 }
                 let field = row.parts[position].field;
@@ -279,6 +286,13 @@ pub(crate) fn prepare(
                 record_value(&mut builder, row, part.field, target)?;
             }
         }
+    }
+    if !preset.values.is_empty()
+        && builder.fields.is_empty()
+        && preset.armor.is_none()
+        && preset.texts.is_empty()
+    {
+        return Err("此预设的数值参数均无法识别，已停止读取以免清空当前修改；请使用原版本重新导出或提供原预设进行核对".into());
     }
     if replace_pending {
         let mut seen = BTreeSet::new();

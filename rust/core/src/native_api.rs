@@ -993,7 +993,7 @@ impl Api {
             }
             "status" => {
                 return Ok(
-                    json!({"phase":"ready","dirty":workspace.pending_count()!=0 || workspace.metadata()!=workspace.loaded_metadata(),
+                    json!({"phase":"ready","dirty":workspace.pending_count()!=0 || workspace.metadata()!=workspace.loaded_metadata() || crate::desktop_armor::needs_reapply(workspace),
                 "problems":workspace.problems()}),
                 )
             }
