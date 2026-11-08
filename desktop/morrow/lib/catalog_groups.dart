@@ -10,6 +10,10 @@ class CatalogGroup {
   final matches = <Map>[];
   bool get changed => entries.any(catalogItemChanged);
   String get statusLabel {
+    if (entries.isNotEmpty &&
+        entries.every((item) => item['baseline_state'] == 'same') &&
+        entries.any((item) => item['changed'] == true))
+      return '已恢复原值';
     if (entries.any((item) => item['changed'] == true)) return '已修改';
     if (entries.any((item) => item['baseline_state'] == 'different')) {
       return '与原值不同';

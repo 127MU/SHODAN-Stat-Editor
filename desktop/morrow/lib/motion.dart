@@ -8,6 +8,7 @@ abstract final class WorkbenchMotion {
   static const settle = Duration(milliseconds: 230);
   static const page = Duration(milliseconds: 320);
   static const dialog = Duration(milliseconds: 300);
+  static const dialogExit = Duration(milliseconds: 180);
   static const reveal = Duration(milliseconds: 420);
   static const catalogEntrance = Duration(milliseconds: 490);
   static const standard = Cubic(.2, 0, 0, 1);
@@ -280,11 +281,20 @@ class MotionDialogRoute<T> extends DialogRoute<T> {
     required super.builder,
     super.barrierDismissible,
     this.anchor = Alignment.center,
+    this.onDismissStart,
   }) : reduced = MediaQuery.disableAnimationsOf(context);
 
   final Alignment anchor;
   final bool reduced;
+  final VoidCallback? onDismissStart;
   CurvedAnimation? _curve;
+
+  @override
+  bool didPop(T? result) {
+    final popped = super.didPop(result);
+    if (popped) onDismissStart?.call();
+    return popped;
+  }
 
   @override
   Duration get transitionDuration =>
@@ -292,7 +302,7 @@ class MotionDialogRoute<T> extends DialogRoute<T> {
 
   @override
   Duration get reverseTransitionDuration =>
-      reduced ? Duration.zero : WorkbenchMotion.settle;
+      reduced ? Duration.zero : WorkbenchMotion.dialogExit;
 
   @override
   Widget buildTransitions(
@@ -307,16 +317,14 @@ class MotionDialogRoute<T> extends DialogRoute<T> {
       curve: WorkbenchMotion.enter,
       reverseCurve: WorkbenchMotion.exit.flipped,
     );
-    return AnimatedBuilder(
-      animation: curve,
-      child: child,
-      builder: (context, child) {
-        final progress = curve.value;
-        return Transform.translate(
-          offset: Offset(anchor.x * 10, 12 + anchor.y * 8) * (1 - progress),
-          child: child,
-        );
-      },
+    return _DialogInteraction(
+      animation: animation,
+      child: ClipPath(
+        // Reclip only: radius changes never rebuild or relayout form fields.
+        clipper: DialogApertureClipper(progress: curve, anchor: anchor),
+        clipBehavior: Clip.antiAlias,
+        child: RepaintBoundary(child: child),
+      ),
     );
   }
 
@@ -327,12 +335,48 @@ class MotionDialogRoute<T> extends DialogRoute<T> {
   }
 }
 
+/// The same expanding-circle visual language as the theme switch, operating
+/// directly on retained dialog layers rather than taking a desktop screenshot.
+class DialogApertureClipper extends CustomClipper<Path> {
+  DialogApertureClipper({required this.progress, required this.anchor})
+    : super(reclip: progress);
+  final Animation<double> progress;
+  final Alignment anchor;
+
+  @override
+  Path getClip(Size size) {
+    final t = progress.value.clamp(0.0, 1.0);
+    if (t <= 0 || size.isEmpty) return Path();
+    if (t >= 1) return Path()..addRect(Offset.zero & size);
+    final center = anchor.alongSize(size);
+    final dx = math.max(center.dx, size.width - center.dx);
+    final dy = math.max(center.dy, size.height - center.dy);
+    final radius = math.sqrt(dx * dx + dy * dy) * t;
+    return Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+  }
+
+  @override
+  bool shouldReclip(DialogApertureClipper oldClipper) =>
+      oldClipper.progress != progress || oldClipper.anchor != anchor;
+}
+
+class _DialogInteraction extends StatusTransitionWidget {
+  const _DialogInteraction({required super.animation, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    ignoring: animation.status == AnimationStatus.reverse,
+    child: child,
+  );
+}
+
 Future<T?> showMotionDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool barrierDismissible = true,
   BuildContext? source,
-}) {
+  VoidCallback? onDismissStart,
+}) async {
   final navigator = Navigator.of(context, rootNavigator: true);
   final viewport = navigator.overlay?.context.findRenderObject();
   final trigger = source != null && source.mounted
@@ -353,12 +397,16 @@ Future<T?> showMotionDialog<T>({
       (point.dy / viewport.size.height * 2 - 1).clamp(-1, 1),
     );
   }
-  return navigator.push(
-    MotionDialogRoute<T>(
-      context: context,
-      builder: builder,
-      barrierDismissible: barrierDismissible,
-      anchor: anchor,
-    ),
+  final route = MotionDialogRoute<T>(
+    context: context,
+    builder: builder,
+    barrierDismissible: barrierDismissible,
+    anchor: anchor,
+    onDismissStart: onDismissStart,
   );
+  final result = await navigator.push(route);
+  // Navigator.push completes at pop, while the route is still animating.
+  // Delay expensive caller refreshes and controller disposal until removal.
+  await route.completed;
+  return result;
 }

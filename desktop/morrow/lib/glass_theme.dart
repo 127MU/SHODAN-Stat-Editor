@@ -102,13 +102,17 @@ class GlassDialog extends StatelessWidget {
       if (!animate) return child;
       return AnimatedBuilder(
         animation: animation,
-        child: child,
+        child: RepaintBoundary(child: child),
         builder: (context, child) {
-          final progress = Interval(
-            start,
-            end,
-            curve: WorkbenchMotion.enter,
-          ).transform(animation.value);
+          // Choreograph content on entry only. Exit clips one retained panel;
+          // do not invalidate three independent descendant transforms again.
+          final progress = animation.status == AnimationStatus.reverse
+              ? 1.0
+              : Interval(
+                  start,
+                  end,
+                  curve: WorkbenchMotion.enter,
+                ).transform(animation.value);
           return Transform.translate(
             offset: Offset(0, (1 - progress) * distance),
             child: child,
@@ -178,7 +182,10 @@ class _DialogGlass extends StatusTransitionWidget {
     return _DialogPaintMode(
       moving: moving,
       child: CustomPaint(
-        foregroundPainter: moving && !MediaQuery.disableAnimationsOf(context)
+        foregroundPainter:
+            moving &&
+                !MediaQuery.disableAnimationsOf(context) &&
+                animation.status == AnimationStatus.forward
             ? _DialogOutline(animation, Theme.of(context).colorScheme.primary)
             : null,
         child: GlassAppearance.of(

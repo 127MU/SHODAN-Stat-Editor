@@ -4,6 +4,9 @@ use super::{Field, Row, Source};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
+#[path = "catalog_vehicles.rs"]
+mod vehicles;
+
 const BUILD: &str = "61dcfcd201dacbf3545c97beb8a5a6186e9850d2670bf60b0e058320b477f6df";
 const ENTITIES: &str = "generated_entities.dl_bin";
 const WEAPON: &str = "88E4DBB1";
@@ -143,6 +146,7 @@ pub(super) fn extend(data: &mut Source) {
     if data.game_build.as_deref() != Some(BUILD) {
         return;
     }
+    vehicles::extend(data);
     let mut fields = Bindings::new(&mut data.fields);
     for owner in &mut data.owners {
         let id = owner.id.as_str();

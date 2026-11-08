@@ -1011,6 +1011,20 @@ impl Api {
                     arg(1).as_str().unwrap_or(""),
                 ))
             }
+            "baseline_cleanup_preview" | "baseline_cleanup_apply" => {
+                let token = if method == "baseline_cleanup_apply" {
+                    Some(arg(1).as_str().ok_or("请先预览已有差异")?)
+                } else {
+                    None
+                };
+                return crate::baseline_cleanup::call(
+                    catalog,
+                    workspace,
+                    arg(0).as_str().unwrap_or(""),
+                    token,
+                    Some(arg(2)),
+                );
+            }
             "select" => {
                 let owner = catalog.owner(arg(0).as_str().ok_or("缺少条目标识")?)?.1;
                 self.desktop.selected = Some(owner.id.clone());

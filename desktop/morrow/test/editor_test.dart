@@ -9,12 +9,14 @@ class FakeBackend extends Backend {
   FakeBackend() : super(diagnostics: AppDiagnostics(persist: false));
   String value = '66';
   int installs = 0;
+  int rowsFastCalls = 0;
   @override
   Future<void> start() async {}
   @override
   Future<void> close() async {}
   @override
   Future<dynamic> call(String method, [List<dynamic> args = const []]) async {
+    if (method == 'rows_fast') rowsFastCalls++;
     switch (method) {
       case 'game_text':
         return {'available': false};
@@ -168,6 +170,31 @@ void main() {
     );
     expect(confirm.onPressed, isNull);
     expect(backend.installs, 0);
+    await tester.pumpWidget(const SizedBox());
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('关闭参数时提交失焦输入，退场后再刷新页面', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1480, 960));
+    final backend = FakeBackend();
+    await tester.pumpWidget(Workbench(backend: backend, persistAppearance: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '123');
+    final reads = backend.rowsFastCalls;
+    await tester.tap(find.text('关闭'));
+    await tester.pump();
+    expect(backend.value, '123');
+    expect(backend.rowsFastCalls, reads);
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(backend.rowsFastCalls, reads);
+    await tester.pumpAndSettle();
+    expect(backend.rowsFastCalls, greaterThan(reads));
+    expect(backend.value, '123');
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     await tester.binding.setSurfaceSize(null);
   });

@@ -309,6 +309,8 @@ pub fn layouts(type_id: u32) -> Vec<Layout> {
         0x5653EA91 => &[152],              // faction
         0xBA9B803D => &[12],               // behavior
         0x4AEAFC86 => &[424],              // seat collection
+        0x83B65443 => &[456],              // vehicle motion
+        0x20288698 => &[208],              // vehicle collision damage
         0x5154DB66 => &[344],              // shield
         0xA98BB156 => &[568],              // hellpod rack
         0xEAC335A1 => &[216],              // charge

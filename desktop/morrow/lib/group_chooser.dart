@@ -14,6 +14,8 @@ class _GroupChooserState extends State<GroupChooser> {
   String query = '';
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final appearance = GlassAppearance.of(context);
     final group = widget.group;
     final entries = (all ? group.entries : group.matches)
         .where((item) => item.toString().toLowerCase().contains(query))
@@ -47,6 +49,19 @@ class _GroupChooserState extends State<GroupChooser> {
                 children: [
                   for (final item in entries)
                     Card(
+                      elevation: 0,
+                      color: colors.primary.withValues(
+                        alpha: appearance.dark ? .14 : .06,
+                      ),
+                      surfaceTintColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      clipBehavior: Clip.antiAlias,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: colors.onSurface.withValues(alpha: .12),
+                        ),
+                      ),
                       child: ListTile(
                         title: Text(
                           item['name'] == group.name
@@ -54,7 +69,16 @@ class _GroupChooserState extends State<GroupChooser> {
                               : '${item['name']}',
                         ),
                         subtitle: Text(
-                          item['changed'] == true ? '已修改' : '未修改',
+                          item['changed'] == true &&
+                                  item['baseline_state'] == 'same'
+                              ? '已恢复原值'
+                              : item['changed'] == true
+                              ? '已修改'
+                              : item['baseline_state'] == 'different'
+                              ? '已有差异（启动前存在）'
+                              : item['baseline_state'] == 'unknown'
+                              ? '原值待核对'
+                              : '未修改',
                         ),
                         trailing: const Icon(Icons.arrow_forward),
                         onTap: () => Navigator.pop(context, item),

@@ -1,6 +1,6 @@
 [package]
 name = "shodan-core"
-version = "4.6.0-r4.2"
+version = "4.6.0-r5"
 edition = "2021"
 license = "GPL-3.0-or-later"
 autobins = false

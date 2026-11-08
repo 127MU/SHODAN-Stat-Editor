@@ -7,6 +7,7 @@ pub mod arrays;
 mod attachments;
 pub mod audio;
 pub mod baseline;
+mod baseline_cleanup;
 pub mod binary;
 pub mod bundles;
 pub mod catalog;

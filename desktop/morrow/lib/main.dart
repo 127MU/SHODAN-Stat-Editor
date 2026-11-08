@@ -1,4 +1,5 @@
 import 'motion.dart';
+import 'baseline_cleanup.dart';
 import 'catalog_groups.dart';
 import 'group_chooser.dart';
 import 'editor_tools.dart';
@@ -66,6 +67,8 @@ class _WorkbenchState extends State<Workbench> {
   Map? current;
   String? activeSection;
   Object? sectionRequest;
+  bool sectionClosing = false;
+  Future<void>? sectionDismissed;
   List<dynamic> items = [], rows = [];
   (List<dynamic>, String, String, bool)? catalogViewKey;
   List<CatalogGroup> catalogView = [];
@@ -358,8 +361,29 @@ class _WorkbenchState extends State<Workbench> {
     }
   }
 
+  Future<void> cleanupBaseline() async {
+    if (busy || !ready) return;
+    final applied = await showMotionDialog<bool>(
+      context: navigator.currentContext!,
+      builder: (_) => BaselineCleanupDialog(backend: backend),
+    );
+    if (applied != true || !mounted) return;
+    final ticket = epoch;
+    try {
+      if (current != null) await refreshCurrent();
+      final updated = await backend.call('items', [tab, '']);
+      if (mounted && ticket == epoch) setState(() {
+        items = updated is List ? updated : [];
+        catalogViewKey = null;
+        status = '所选差异已暂存恢复，点击“写入游戏”生效；可在修改记录中撤销';
+      });
+    } catch (e) { showError(e); }
+  }
+
   Future<void> refreshCurrent() async {
     final ticket = epoch;
+    if (sectionClosing) await sectionDismissed;
+    if (!mounted || ticket != epoch) return;
     var result = await backend.call('rows_fast');
     if (activeSection != null && mounted && ticket == epoch) {
       final updated = await backend.call('rows_section', [activeSection]);
@@ -368,6 +392,7 @@ class _WorkbenchState extends State<Workbench> {
         result = [for (final row in result) byId[row['id']] ?? row];
       }
     }
+    if (sectionClosing) await sectionDismissed;
     if (mounted && ticket == epoch) {
       setState(() => rows = result is List ? result : []);
       rowRevision.value++;
@@ -1457,7 +1482,9 @@ class _WorkbenchState extends State<Workbench> {
         ),
         if ((row['inline_note'] ?? '').toString().isNotEmpty)
           Text(row['inline_note']),
-        if (row['changed'] == true)
+        if (row['changed'] == true && row['baseline_state'] == 'same')
+          const Text('已恢复原值')
+        else if (row['changed'] == true)
           const Text('已修改')
         else if (row['baseline_state'] == 'different')
           const Text('与原值不同'),
@@ -1632,6 +1659,9 @@ class _WorkbenchState extends State<Workbench> {
     if (busy || activeSection != null) return;
     final ticket = epoch;
     activeSection = section;
+    sectionClosing = false;
+    final dismissed = Completer<void>();
+    sectionDismissed = dismissed.future;
     final token = sectionRequest = Object();
     final request = WidgetsBinding.instance.endOfFrame.then((_) async {
       if (!mounted || ticket != epoch || sectionRequest != token) return;
@@ -1641,66 +1671,83 @@ class _WorkbenchState extends State<Workbench> {
       final updated = {for (final row in result) row['id']: row};
       rows = [for (final row in rows) updated[row['id']] ?? row];
     });
-    await showMotionDialog<void>(
-      context: navigator.currentContext!,
-      source: source,
-      builder: (ctx) => GlassDialog(
-        title: Text('${current?['name']} · $section'),
-        content: SizedBox(
-          width: 1300,
-          height: MediaQuery.sizeOf(ctx).height * .65,
-          child: FutureBuilder<void>(future: request, builder: (context, snapshot) {
-            if (snapshot.hasError) return SelectableText('${snapshot.error}');
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Align(alignment: Alignment.topLeft, child: Text('正在读取参数…'));
-            }
-            return ValueListenableBuilder<int>(
-            valueListenable: rowRevision,
-            builder: (context, _, _) {
-              const columns = 4;
-              final visible = rows
-                  .where((r) =>
-                      (r['section'] ?? '参数') == section && matchesParameter(r))
-                  .toList();
-              return ListView.builder(
-                itemCount: (visible.length + columns - 1) ~/ columns,
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    spacing: 16,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(columns, (column) {
-                      final i = index * columns + column;
-                      return Expanded(
-                        key: i < visible.length
-                            ? ValueKey(visible[i]['id'])
-                            : null,
-                        child: i < visible.length
-                            ? field(visible[i] as Map)
-                            : const SizedBox.shrink(),
-                      );
-                    }),
-                  ),
-                ),
-              );
-            },
-            );
-          }),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              FocusScope.of(ctx).unfocus();
-              Navigator.pop(ctx);
-            },
-            child: const Text('关闭'),
+    try {
+      await showMotionDialog<void>(
+        context: navigator.currentContext!,
+        source: source,
+        onDismissStart: () => sectionClosing = true,
+        builder: (ctx) => GlassDialog(
+          title: Text('${current?['name']} · $section'),
+          content: SizedBox(
+            width: 1300,
+            height: MediaQuery.sizeOf(ctx).height * .65,
+            child: FutureBuilder<void>(
+              future: request,
+              builder: (context, snapshot) {
+                if (snapshot.hasError)
+                  return SelectableText('${snapshot.error}');
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Align(
+                    alignment: Alignment.topLeft,
+                    child: Text('正在读取参数…'),
+                  );
+                }
+                return ValueListenableBuilder<int>(
+                  valueListenable: rowRevision,
+                  builder: (context, _, _) {
+                    const columns = 4;
+                    final visible = rows
+                        .where(
+                          (r) =>
+                              (r['section'] ?? '参数') == section &&
+                              matchesParameter(r),
+                        )
+                        .toList();
+                    return ListView.builder(
+                      itemCount: (visible.length + columns - 1) ~/ columns,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          spacing: 16,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: List.generate(columns, (column) {
+                            final i = index * columns + column;
+                            return Expanded(
+                              key: i < visible.length
+                                  ? ValueKey(visible[i]['id'])
+                                  : null,
+                              child: i < visible.length
+                                  ? field(visible[i] as Map)
+                                  : const SizedBox.shrink(),
+                            );
+                          }),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ],
-      ),
-    );
-    if (sectionRequest == token) {
-      sectionRequest = null;
-      activeSection = null;
+          actions: [
+            TextButton(
+              onPressed: () {
+                FocusScope.of(ctx).unfocus();
+                Navigator.pop(ctx);
+              },
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (sectionRequest == token) {
+        sectionRequest = null;
+        activeSection = null;
+        sectionClosing = false;
+        sectionDismissed = null;
+      }
+      dismissed.complete();
     }
   }
 
@@ -1974,14 +2021,23 @@ class _WorkbenchState extends State<Workbench> {
                                 padding: const EdgeInsets.only(top: 12),
                                 child: Align(
                                   alignment: Alignment.centerLeft,
-                                  child: FilterChip(
-                                    label: const Text('仅已修改'),
-                                    selected: catalogOnlyChanged,
-                                    onSelected: busy
-                                        ? null
-                                        : (value) => setState(
-                                            () => catalogOnlyChanged = value,
-                                          ),
+                                  child: Wrap(
+                                    spacing: 12,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    children: [
+                                      FilterChip(
+                                        label: const Text('仅已修改'),
+                                        selected: catalogOnlyChanged,
+                                        onSelected: busy ? null : (value) => setState(
+                                          () => catalogOnlyChanged = value,
+                                        ),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: ready && !busy ? cleanupBaseline : null,
+                                        icon: const Icon(Icons.cleaning_services_outlined, size: 18),
+                                        label: const Text('整理已有差异'),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
