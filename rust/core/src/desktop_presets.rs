@@ -11,6 +11,10 @@ use std::{collections::BTreeMap, fs, path::Path};
 
 const FULL: u8 = 50;
 
+pub(crate) fn saved_presets() -> Result<BTreeMap<String, String>, String> {
+    Ok(Store::load(&game_workspace::profile())?.entries)
+}
+
 fn append_warnings(message: &mut String, review: &Value) {
     if let Some(warnings) = review["warnings"].as_array() {
         for warning in warnings.iter().filter_map(Value::as_str) {

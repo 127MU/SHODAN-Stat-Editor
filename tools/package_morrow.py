@@ -42,7 +42,7 @@ def main():
     shutil.copy2(args.catalog, output / 'catalog.json.gz')
     shutil.copytree(ROOT / 'offline/originals', output / 'originals')
     (output / 'licenses').mkdir()
-    for name in ('MORROW-LICENSE', 'NOTICE.md', 'assets/fonts/MiSans-font-notice.txt'):
+    for name in ('MORROW-LICENSE', 'DESKTOP-DROP-LICENSE', 'NOTICE.md', 'assets/fonts/MiSans-font-notice.txt'):
         shutil.copy2(ROOT / 'desktop/morrow' / name, output / 'licenses')
     shutil.copy2(ROOT / 'LICENSE', output)
     paths = sorted(path for path in output.rglob('*') if path.is_file())

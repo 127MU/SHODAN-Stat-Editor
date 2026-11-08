@@ -39,6 +39,7 @@ pub mod parameters;
 pub mod passive;
 pub mod preset;
 mod preset_code;
+mod preset_library;
 pub mod references;
 pub mod residency;
 mod residency_install;

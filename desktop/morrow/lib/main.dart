@@ -21,7 +21,7 @@ import 'desktop_frame.dart';
 import 'armor_page.dart';
 import 'armor_item.dart';
 import 'game_text.dart';
-import 'preset_page.dart';
+import 'preset_library_page.dart';
 import 'review_body.dart';
 import 'release_updates.dart';
 import 'app_version.dart';
@@ -73,6 +73,8 @@ class _WorkbenchState extends State<Workbench> {
   (List<dynamic>, String, String, bool)? catalogViewKey;
   List<CatalogGroup> catalogView = [];
   int epoch = 0;
+  int libraryRevision = 0;
+  String? importedLibrary;
   String material = 'liquid';
   double fontSize = 14, blur = 18, opacity = .3;
   double pageOffset = 0;
@@ -105,7 +107,7 @@ class _WorkbenchState extends State<Workbench> {
   static const tabs = {
     'Armor': '被动组合',
     'Armors': '护甲、头盔与披风',
-    'Presets': '全局预设',
+    'Presets': '预设库',
     'Settings': '设置',
     'Tweaks': '游戏参数',
     'Primary': '主武器',
@@ -131,7 +133,8 @@ class _WorkbenchState extends State<Workbench> {
     'Armors': ('护甲', Icons.shield_outlined),
     'Helldiver': ('潜兵', Icons.person_outline),
     'Terminids': ('敌人', Icons.pest_control_outlined),
-    'Records': ('数据与预设', Icons.storage_outlined),
+    'Records': ('数据库', Icons.storage_outlined),
+    'Presets': ('预设库', Icons.folder_copy_outlined),
     'Tweaks': ('游戏参数', Icons.settings_outlined),
     'Settings': ('设置', Icons.tune),
   };
@@ -147,7 +150,6 @@ class _WorkbenchState extends State<Workbench> {
       ],
       ['Armors', 'Armor'],
       ['Terminids', 'Automatons', 'Illuminate', 'SEAF', 'Spawning'],
-      ['Records', 'Presets'],
     ]) {
       if (group.contains(key)) return group;
     }
@@ -1763,6 +1765,14 @@ class _WorkbenchState extends State<Workbench> {
     }
   }
 
+  Widget dropSurface(Widget child) => !widget.persistAppearance || !ready ? child : PresetDropZone(
+    backend: backend, dialogContext: () => navigator.currentContext!, onError: showError,
+    onImported: (result) async {
+      setState(() {importedLibrary=result['selected'];libraryRevision++;});
+      await load('Presets');
+    }, child: child,
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = ThemeData(
@@ -1781,7 +1791,7 @@ class _WorkbenchState extends State<Workbench> {
         data: MediaQuery.of(
           context,
         ).copyWith(textScaler: TextScaler.linear(fontSize / 14)),
-        child: DesktopFrame(
+        child: dropSurface(DesktopFrame(
           enabled: widget.persistAppearance,
           onClose: shutdown,
           onCloseError: showError,
@@ -1853,7 +1863,7 @@ class _WorkbenchState extends State<Workbench> {
               ),
           ],
         ),
-      ),
+      )),
       ),
       home: Scaffold(
         backgroundColor: Colors.transparent,
@@ -2106,7 +2116,9 @@ class _WorkbenchState extends State<Workbench> {
                                           surface: (child) => surface(child),
                                         )
                                       : tab == 'Presets'
-                                      ? PresetPage(
+                                      ? PresetLibraryPage(
+                                          key: ValueKey(libraryRevision),
+                                          initialSelection: importedLibrary,
                                           backend: backend,
                                           onError: showError,
                                         )

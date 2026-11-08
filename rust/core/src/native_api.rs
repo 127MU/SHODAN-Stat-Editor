@@ -1046,6 +1046,11 @@ impl Api {
             | "armor_validate" => {
                 return crate::desktop_armor::invoke(catalog, workspace, method, args);
             }
+            "library_list" | "library_capture" | "library_preview" | "library_import"
+            | "library_export" | "library_load" | "library_delete" | "library_join"
+            | "library_rename" => {
+                return crate::preset_library::invoke(catalog, workspace, method, args);
+            }
             "full_presets" | "full_preset" | "preset" | "preset_info" | "preset_compare"
             | "preset_export" | "preset_import" | "preset_rename" | "preset_code"
             | "preset_code_import" | "preset_description" | "preset_duplicate"

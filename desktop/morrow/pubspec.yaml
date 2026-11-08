@@ -8,6 +8,7 @@ dependencies:
   window_manager: ^0.5.2
   flutter:
     sdk: flutter
+  desktop_drop: ^0.8.4
 flutter:
   uses-material-design: true
   fonts:

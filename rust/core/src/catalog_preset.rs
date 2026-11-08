@@ -354,7 +354,24 @@ pub(crate) fn prepare(
 pub(crate) fn export(
     catalog: &Catalog,
     workspace: &Workspace,
+    preset: Preset,
+) -> Result<String, String> {
+    export_compared(catalog, workspace, preset, Mode::Loaded)
+}
+
+pub(crate) fn export_for_share(
+    catalog: &Catalog,
+    workspace: &Workspace,
+    preset: Preset,
+) -> Result<String, String> {
+    export_compared(catalog, workspace, preset, Mode::Original)
+}
+
+fn export_compared(
+    catalog: &Catalog,
+    workspace: &Workspace,
     mut preset: Preset,
+    comparison: Mode,
 ) -> Result<String, String> {
     let mut seen = BTreeSet::new();
     let mut texts = BTreeMap::new();
@@ -373,7 +390,15 @@ pub(crate) fn export(
             let (row, position) = entries[0];
             let field = row.parts[position].field;
             let current = catalog.field_value(field, workspace, Mode::Current);
-            let loaded = catalog.field_value(field, workspace, Mode::Loaded);
+            let loaded = catalog
+                .field_value(field, workspace, comparison)
+                .and_then(|value| {
+                    if value.is_some() {
+                        Ok(value)
+                    } else {
+                        catalog.field_value(field, workspace, Mode::Loaded)
+                    }
+                });
             if let (Ok(Some(current)), Ok(Some(loaded))) = (current, loaded) {
                 if current == loaded || seen.contains(&field) {
                     continue;
