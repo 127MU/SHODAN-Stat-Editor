@@ -1,4 +1,4 @@
-# 诊断日志（2026-11-08）
+# 诊断日志（2026-11-09）
 
 设置 → 日志与诊断 → 开启诊断模式，重新操作一次有问题的功能，再运行只读诊断并导出诊断日志。程序不会自动上传日志，也不会为诊断写入游戏数据。
 
@@ -43,3 +43,9 @@ JSON 中 `schema_version` 为 2。保留旧的 `events`、`checks`、`logs` 字�
 - `desktop/morrow/lib/backend.dart`：工作区信息、只读文件检查及自动修复报告。
 - `desktop/morrow/test/diagnostics_test.dart`：隐私、统计、上一会话日志及容量回归。
 - `desktop/morrow/test/native_service_test.dart`：异常退出后新建连接及日志关联回归。
+
+## r5.1 坏表与预设排障
+
+`invalid_numeric_data` 表示数值数据无法解封或解析，应同时记录具体文件与阶段；引擎仍运行不表示该文件可编辑或安装。自动修复使用可信来源恢复后重新打开工作区，无可信来源则保留文件并提示处理。见[安装失败处理](installation-failure-repair.md)。
+
+预设库排障记录操作名称、耗时与失败类型，不应增加预设名称、分享正文、剪贴板文本或搜索文字。分享时使用界面的脱敏导出。

@@ -1,6 +1,6 @@
 # SHODAN 开发指南
 
-适用基线为 Windows x64 桌面版 **4.6.0-r2**，整理于 **2026-11-07（香港时间）**。本文用于搭建环境、定位代码和验证改动。版本来源、发布流程和故障接手见[维护交接手册](maintainer-handover.md)。
+适用基线为 Windows x64 桌面版 **4.6.0-r5.1 dev**，更新于 **2026-11-09（香港时间）**。稳定版仍为 r5；测试版独立使用 `dev` 标签。本文用于搭建环境、定位代码和验证改动。版本来源、发布流程和故障接手见[维护交接手册](maintainer-handover.md)。
 
 [程序结构](#一程序如何运行) · [构建与测试](#二从源码构建) · [修改规则](#三修改规则) · [提交检查](#四改动提交前)
 
@@ -28,6 +28,8 @@ ZIP 版完整解压后可直接启动桌面程序。Flutter 负责界面、交�
 | Flutter 到 Rust 的调用、进度和错误分发 | [backend.dart](../desktop/morrow/lib/backend.dart)、[native_service.dart](../desktop/morrow/lib/native_service.dart)、[native_api.rs](../rust/core/src/native_api.rs) |
 | 参数结构、存储编码、共享引用、撤销和草稿 | [catalog.rs](../rust/core/src/catalog.rs)、[catalog_edit.rs](../rust/core/src/catalog_edit.rs)、[catalog_refs.rs](../rust/core/src/catalog_refs.rs)、[workspace.rs](../rust/core/src/workspace.rs) |
 | 装备与全局预设、分享码、旧配置迁移 | [preset_page.dart](../desktop/morrow/lib/preset_page.dart)、[desktop_presets.rs](../rust/core/src/desktop_presets.rs)、[preset_code.rs](../rust/core/src/preset_code.rs) |
+| 命名预设库、多件战备、TXT 分享与拖入 | [preset_library_page.dart](../desktop/morrow/lib/preset_library_page.dart)、[preset_library.rs](../rust/core/src/preset_library.rs)、[预设格式说明](preset-library.md) |
+| 两位小数显示与精确输入意图 | [number_display.dart](../desktop/morrow/lib/number_display.dart)；不要把显示字符串当作底层数值或保存成功标志 |
 | 原始值、游戏版本门禁、写入与恢复事务 | [baseline.rs](../rust/core/src/baseline.rs)、[game_workspace.rs](../rust/core/src/game_workspace.rs)、[install.rs](../rust/core/src/install.rs) |
 | 资源身份、依赖与声音事件、补丁槽位 | [desktop_resources.rs](../rust/core/src/desktop_resources.rs)、[resource_resolver.rs](../rust/core/src/resource_resolver.rs)、[audio.rs](../rust/core/src/audio.rs)、[residency_install.rs](../rust/core/src/residency_install.rs) |
 | 更新检查、本地 MCP、诊断脱敏 | [update.rs](../rust/core/src/update.rs)、[mcp.rs](../rust/core/src/mcp.rs)、[diagnostics.rs](../rust/core/src/diagnostics.rs) |
@@ -77,13 +79,15 @@ Push-Location desktop/morrow
 try {
     flutter pub get --enforce-lockfile
     flutter test --no-pub
-    flutter build windows --release --no-pub
+    flutter build windows --release --no-pub --build-name=4.6.0-r5.1 --build-number=11
 } finally {
     Pop-Location
 }
 ```
 
-原生服务与单文件启动器位于 `target/release/`。Flutter 编译输出位于 `desktop/morrow/build/windows/x64/runner/Release/`，还需和参数目录、原值及原生服务一起组装，才能得到可独立使用的程序包。
+原生服务与单文件启动器位于 `target/release/`。Flutter 编译输出位于 `desktop/morrow/build/windows/x64/runner/Release/`，还需和参数目录、原值及原生服务一起组装，才能得到可独立使用的程序包。以上版本和内部构建号对应本次测试版，下一版应与版本文件同步递增。
+
+Windows 构建插件需要创建符号链接；出现 symlink 支持错误时，在开发机启用 Windows 开发者模式后重新获取依赖。该要求针对构建机，用户运行发行包无需开启。预设拖入依赖 `desktop_drop`，打包必须包含 `desktop_drop_plugin.dll` 及其许可；不要只复制主 EXE。
 
 构建找不到 MSVC 或 Windows SDK 时，先用 `flutter doctor -v` 核对 Visual Studio 工作负载。若 `LNK1104` 指向 `lnk*.tmp`，或 `flutter test` 报临时文件不可访问，先检查当前构建进程使用的临时目录是否可创建文件。缺少 `fontTools` 时，用运行打包脚本的同一个 Python 安装依赖。包输出路径已被占用时换新目录，便于保留和对比旧附件。
 
@@ -139,6 +143,12 @@ python tests/test_native_desktop.py --exe target/release/shodan-native.exe --run
 ```
 
 这项回归包含被动数值保存后重启读取、预设往返、诊断脱敏、安装与恢复、资源驻留等。它检查工具行为、配置及文件结果。游戏中的音效、特效和复杂挂载仍需按具体装备在对应版本中验证。其他脚本的夹具参数用各自的 `--help` 确认，部分 `test_native_*.py` 依赖单独的历史审计目录。
+
+### r5.1 验证补充
+
+本次本地记录为 96 项 Rust 核心测试、1 项启动器测试、63 项 Flutter 测试通过。新增集成脚本 [test_native_numeric_inputs.py](../tests/test_native_numeric_inputs.py) 覆盖浮点输入与坏表修复，[test_native_preset_library.py](../tests/test_native_preset_library.py) 覆盖命名、多件、跨配置、撤销和重启持久化；运行前查看各脚本 `--help`，使用隔离数据副本。不要把该记录当作未来改动自动通过。
+
+静态目录为 1,983 个条目、70,559 行、67,552 个字段；运行时 Rust 补充后为 71,811 行。全量扫描的对象和计数必须写明。可信原版夹具中的未知、读错和差异均为 0；用户游戏目录中的真实外部修改应保留差异标记，不能靠放宽容差或改写基准隐藏。
 
 ## 三、修改规则
 

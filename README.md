@@ -9,11 +9,18 @@
 [![发行版](https://img.shields.io/github/v/release/127MU/SHODAN-Stat-Editor?label=发行版&color=7861c4)](https://github.com/127MU/SHODAN-Stat-Editor/releases/latest)
 [![许可](https://img.shields.io/badge/License-GPL--3.0-398675)](LICENSE)
 
-[下载发行版](https://github.com/127MU/SHODAN-Stat-Editor/releases) · [快速开始](#快速开始) · [问题反馈](https://github.com/127MU/SHODAN-Stat-Editor/issues) · [特别鸣谢](#特别鸣谢)
+[下载稳定版](https://github.com/127MU/SHODAN-Stat-Editor/releases/latest) · [dev 测试版](https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/dev) · [文档导航](docs/README.md) · [快速开始](#快速开始) · [问题反馈](https://github.com/127MU/SHODAN-Stat-Editor/issues) · [特别鸣谢](#特别鸣谢)
 
 </div>
 
-## 当前版本：4.6.0-r5
+## 版本与下载
+
+| 通道 | 版本 | 下载 |
+| --- | --- | --- |
+| 稳定版 | 4.6.0-r5 | [稳定发行版](https://github.com/127MU/SHODAN-Stat-Editor/releases/latest) |
+| 测试版 | 4.6.0-r5.1 · `dev` | [测试发行版](https://github.com/127MU/SHODAN-Stat-Editor/releases/tag/dev) · [单文件 EXE](https://github.com/127MU/SHODAN-Stat-Editor/releases/download/dev/SHODAN_4.6.0-r5.1_Windows_Single.exe) · [完整 ZIP](https://github.com/127MU/SHODAN-Stat-Editor/releases/download/dev/SHODAN_4.6.0-r5.1_Windows.zip) |
+
+以下使用说明以 **4.6.0-r5.1 dev** 为准。该版新增独立预设库，修复整数形式的浮点数提交，并补充坏表隔离、自动修复和强制操作入口。单文件附件约 18.9 MB；`dev` 为预发行通道，未替换稳定版。
 
 使用中文名称查找装备，在分类弹窗中调整参数，预览后统一写入游戏。新版桌面界面采用 **Flutter + Morrow**，支持玻璃材质、自定义背景与 MiSans 字体。
 
@@ -43,8 +50,9 @@
 | 护甲 | 护甲装备、逐护甲被动和多被动组合 |
 | 潜兵 | 直接打开潜兵参数，不在护甲列表重复显示 |
 | 敌人 | 单位属性与可解析的生成规则 |
-| 数据与预设 | 底层数据记录及全局预设 |
-| 游戏参数 | 准星、策略球部署、植被交互及受击与布娃娃补丁 |
+| 数据库 | 射弹、伤害及其他底层数据记录 |
+| 预设库 | 命名预设、单件 / 多件战备组合、TXT 分享及原全局预设入口 |
+| 游戏参数 | 策略球部署、植被交互及受击与布娃娃等设置；武器准星在对应武器参数中调整 |
 | 设置 | 外观、背景、字号、日志与诊断 |
 
 页面根据实际数据生成，并非每件装备都拥有相同参数。参数分类使用四列卡片，点击打开后在弹窗编辑；装备预设跟随当前选中的条目。参数页工具栏提供修改记录、撤销、重做、射击引用链和资源诊断；报告可独立搜索、导出。
@@ -52,7 +60,7 @@
 ### 数值、原值与共享影响
 
 - **原值**来自可信的原版基准，不应把其他工具已经修改过的数值当作默认值。无法可靠取得的原值应视为未知。
-- 浮点数最多显示 **两位小数**，底层精度保留；未编辑的输入框不会因为显示舍入而写回数值。
+- 浮点数最多显示 **两位小数**，底层精度保留；未编辑的输入框不会因为显示舍入而写回数值。明确提交 `2` 会按完整数值比较，不必补成 `2.000000001`。
 - 参数受实际存储类型约束：浮点数必须有限，整数必须可表示，引用 ID 必须有效。
 - 多个装备可能共用同一伤害、弹丸或爆炸记录。编辑前留意 **共享影响** 和参数旁的说明。
 - **特效资源包不改变实际发射类型**。更换弹丸应使用射弹选择，并核对实际发射来源。
@@ -62,7 +70,14 @@
 
 护甲装备可设置对应被动，多被动组合可选择应用范围、是否保留原生被动及同类效果处理方式。点击“修改数值”进入被动数值弹窗。
 
-装备预设只管理当前条目；全局预设用于保存整套修改，支持导入、导出及分享码。读取前检查差异与兼容提示。清空当前护甲组不会自动清空其他组。
+侧边栏的 **预设库** 集中管理预设，使用「切换预设」选择需要的方案：
+
+1. 点击「保存单件 / 多件战备」，搜索并勾选战备，填写自定义名称；也可以「保存整套修改」。
+2. 选择预设后，可读取、重命名、导出当前预设，或将全部已保存预设导出到一个 TXT。
+3. 对方将 TXT / JSON 拖入窗口，或使用文件选择、粘贴导入。悬停显示「松开以导入预设」，松开后显示识别动画，再确认导入。
+4. 导入按稳定条目标识匹配战备，保留作者的自定义名称。导入先保存到库中；点击「读取预设」放入编辑区，再「写入游戏」。
+
+同一战备的不同方案可以分别保存。原有装备槽位预设仍跟随当前条目；原全局预设入口保留在预设库。清空当前护甲组不会自动清空其他组。格式、容量与共享字段约束见 [预设库与 TXT 分享](docs/preset-library.md)。
 
 ### 资源补丁
 
@@ -79,6 +94,12 @@
 ## 安装进度与诊断
 
 写入操作在当前窗口内显示预览和进度弹窗，包括动态指示、实际处理阶段、阶段内文件计数及完成结果。进度来自安装流程，不使用模拟百分比。
+
+遇到文件异常，可先完全退出游戏，在 **设置 → 自动修复** 检查事务、草稿、数值安装登记和资源补丁。
+
+r5.1 会隔离无法解析的单个数值表，并标出具体文件，其余可读取内容仍可浏览。自动修复先备份坏文件，再从匹配当前游戏版本的可信安装备份或随附原版数据恢复；没有可信来源时保留问题并给出处理建议。
+
+安装失败、预览异常或预览受阻时提供「强制写入」；恢复失败时提供「强制恢复」。强制操作仍要求备份成功、有效数据、版本匹配及可写磁盘，不能绕过损坏表或文件占用。单块表校验空间不足时，强制写入允许已修改浮点值的极小校验修正，并报告实际结果。详见 [自动修复](docs/automatic-repair.md) 和 [安装失败处理](docs/installation-failure-repair.md)。
 
 遇到启动、空白、卡顿或写入失败，可在 **设置 → 日志与诊断**：
 
@@ -98,7 +119,7 @@
 
 **写入提示权限不足或文件已改变？**
 
-关闭游戏及其他编辑工具，检查报错目录是否可写。编辑期间文件被其他程序改变时，重新打开编辑器读取数据。不要删除原始备份来绕过错误。
+关闭游戏及其他编辑工具，检查报错目录是否可写。先运行自动修复、重新读取工作区，再根据预览决定是否强制写入或恢复。权限、占用、版本和备份错误仍需按具体提示处理，不要删除备份绕过检查。
 
 **游戏更新或使用过其他编辑器？**
 
@@ -107,6 +128,14 @@
 **配置和日志在哪里？**
 
 通常位于 `%LOCALAPPDATA%\SHODAN\StatEditor`。显式指定 `SHODAN_PROFILE` 时以该目录为准。单文件版释放的运行文件与用户配置分开存放。
+
+**显示很多“与原值不同”？**
+
+这表示当前数据与可信原版基准不同，不能仅凭标签判断是谁修改的。先查看具体参数与共享影响，再使用「整理已有差异」逐项核对。编辑器不应把这些值当成新的默认值，也不会为了隐藏提示而自动覆盖现有修改。
+
+## 文档
+
+[使用与维护文档导航](docs/README.md) 汇总当前指南与历史审计记录。开发请参阅 [开发指南](docs/development-guide.md)、[维护交接](docs/maintainer-handover.md) 和 [桌面构建](desktop/morrow/README.md)。
 
 ## 开发与构建
 
@@ -119,12 +148,13 @@
 在仓库根目录构建 Rust 宿主，再构建 Flutter Windows 界面：
 
 ```sh
-cargo build --release --workspace
+cargo test --workspace --locked
+cargo build --release --workspace --locked
 cd desktop/morrow
-flutter pub get
+flutter pub get --enforce-lockfile
 flutter analyze
 flutter test
-flutter build windows --release
+flutter build windows --release --build-name 4.6.0-r5.1 --build-number 11
 ```
 
 Windows 构建需要 Visual Studio C++ 桌面工具链。打包使用随源码提供的参数目录和可信原值，并校验图标字体与 20 MB 体积限制。 [桌面构建说明](desktop/morrow/README.md)
@@ -142,4 +172,4 @@ Windows 构建需要 Visual Studio C++ 桌面工具链。打包使用随源码�
 
 ## 许可
 
-项目许可见 [LICENSE](LICENSE)。第三方组件遵循各自许可；Morrow 的许可与声明见 [MORROW-LICENSE](desktop/morrow/MORROW-LICENSE) 和 [NOTICE](desktop/morrow/NOTICE.md)，发行包保留相关第三方声明。
+项目许可见 [LICENSE](LICENSE)。第三方组件遵循各自许可；Morrow 的许可与声明见 [MORROW-LICENSE](desktop/morrow/MORROW-LICENSE) 和 [NOTICE](desktop/morrow/NOTICE.md)，发行包保留相关第三方声明。文件拖入使用 [desktop_drop](https://github.com/MixinNetwork/flutter-plugins/tree/main/packages/desktop_drop)，许可见 [DESKTOP-DROP-LICENSE](desktop/morrow/DESKTOP-DROP-LICENSE)。
