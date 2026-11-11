@@ -27,6 +27,8 @@ import 'release_updates.dart';
 import 'app_version.dart';
 import 'theme_reveal.dart';
 import 'window_activity.dart';
+import 'wallpaper_engine.dart';
+import 'workbench_background.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 
 Future<void> main() async {
@@ -91,6 +93,7 @@ class _WorkbenchState extends State<Workbench> {
   };
   Color accent = defaultAccent;
   String backgroundPath = '';
+  String backgroundPreview = '', backgroundTitle = '';
   double backgroundDim = .35;
   Timer? styleTimer;
   Future<void> styleWrite = Future.value();
@@ -895,6 +898,12 @@ class _WorkbenchState extends State<Workbench> {
         backgroundPath = v['backgroundPath'] is String
             ? v['backgroundPath']
             : '';
+        backgroundPreview = v['backgroundPreview'] is String
+            ? v['backgroundPreview']
+            : '';
+        backgroundTitle = v['backgroundTitle'] is String
+            ? v['backgroundTitle']
+            : '';
         backgroundDim = v['backgroundDim'] is num
             ? (v['backgroundDim'] as num).toDouble().clamp(0, .9)
             : backgroundDim;
@@ -927,6 +936,8 @@ class _WorkbenchState extends State<Workbench> {
         'blur': blur,
         'opacity': opacity,
         'backgroundPath': backgroundPath,
+        'backgroundPreview': backgroundPreview,
+        'backgroundTitle': backgroundTitle,
         'backgroundDim': backgroundDim,
         'diagnosticMode': backend.diagnostics.enabled,
       });
@@ -945,6 +956,43 @@ class _WorkbenchState extends State<Workbench> {
   Future<void> shutdown() async {
     // All settings are queued at the time of the operation, not on close.
     await styleWrite;
+  }
+
+  void setBackground(String file, {String preview = '', String title = ''}) {
+    setState(() {
+      backgroundPath = file;
+      backgroundPreview = preview;
+      backgroundTitle = title;
+    });
+    saveStyle();
+  }
+
+  Future<void> selectBackgroundFile() async {
+    try {
+      final file = await openFile(
+        acceptedTypeGroups: const [
+          XTypeGroup(label: '背景图片和视频', extensions: [...backgroundImageExtensions, 'mp4']),
+        ],
+      );
+      if (file == null || !mounted) return;
+      await applyBackground(file.path);
+    } catch (error) {
+      if (mounted) showError('无法使用所选背景：$error');
+    }
+  }
+
+  Future<void> applyBackground(String file, {String? preview, String title = ''}) async {
+    if (!isVideoBackground(file) && !isSceneBackground(file)) {
+      final bytes = await File(file).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      try {
+        final frame = await codec.getNextFrame();
+        frame.image.dispose();
+      } finally {
+        codec.dispose();
+      }
+    }
+    if (mounted) setBackground(file, preview: preview ?? '', title: title);
   }
 
   Future<void> changeTheme(bool value, BuildContext source, {
@@ -1250,54 +1298,45 @@ class _WorkbenchState extends State<Workbench> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            const Text('选择本地图片，裁剪填满工作台；浅色模式使用浅色遮罩，深色模式使用深色遮罩，保持文字清晰。'),
+            const Text('场景壁纸实时播放，网页壁纸显示预览图。'),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
               runSpacing: 8,
               children: [
                 FilledButton.tonalIcon(
+                  onPressed: selectBackgroundFile,
+                  icon: const Icon(Icons.image_outlined),
+                  label: const Text('选择图片或视频'),
+                ),
+                FilledButton.tonalIcon(
                   onPressed: () async {
                     try {
-                      final image = await openFile(
-                        acceptedTypeGroups: [
-                          const XTypeGroup(
-                            label: '背景图片',
-                            extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'],
-                          ),
-                        ],
+                      final wallpaper = await chooseEngineWallpaper(navigator.currentContext!);
+                      if (wallpaper == null || !mounted) return;
+                      await applyBackground(
+                        wallpaper.file,
+                        preview: wallpaper.preview,
+                        title: wallpaper.title,
                       );
-                      if (image == null || !mounted) return;
-                      // Decode before accepting, so an invalid file cannot blank the background.
-                      final bytes = await image.readAsBytes();
-                      final codec = await ui.instantiateImageCodec(bytes);
-                      final frame = await codec.getNextFrame();
-                      frame.image.dispose();
-                      codec.dispose();
-                      if (!mounted) return;
-                      setState(() => backgroundPath = image.path);
-                      saveStyle();
-                    } catch (e) {
-                      showError('图片读取失败：$e');
+                    } catch (error) {
+                      if (mounted) showError('无法使用所选壁纸：$error');
                     }
                   },
-                  icon: const Icon(Icons.image_outlined),
-                  label: const Text('选择图片'),
+                  icon: const Icon(Icons.wallpaper_outlined),
+                  label: const Text('Wallpaper Engine'),
                 ),
                 OutlinedButton(
                   onPressed: backgroundPath.isEmpty
                       ? null
-                      : () {
-                          setState(() => backgroundPath = '');
-                          saveStyle();
-                        },
+                      : () => setBackground(''),
                   child: const Text('恢复默认背景'),
                 ),
               ],
             ),
             if (backgroundPath.isNotEmpty)
               Text(
-                backgroundPath,
+                backgroundTitle.isEmpty ? backgroundPath : backgroundTitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1782,6 +1821,7 @@ class _WorkbenchState extends State<Workbench> {
       fontFamily: 'MiSans',
       extensions: [appearance],
     );
+    final renderedBackground = backgroundPath;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: theme.copyWith(textTheme: theme.textTheme),
@@ -1804,45 +1844,25 @@ class _WorkbenchState extends State<Workbench> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              RepaintBoundary(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    image: backgroundPath.isEmpty
-                        ? null
-                        : DecorationImage(
-                            image: FileImage(File(backgroundPath)),
-                            fit: BoxFit.cover,
-                            colorFilter: ColorFilter.mode(
-                              (dark ? Colors.black : Colors.white).withValues(
-                                alpha: backgroundDim,
-                              ),
-                              BlendMode.srcOver,
-                            ),
-                            onError: (_, _) {
-                              if (mounted)
-                                setState(() {
-                                  backgroundPath = '';
-                                  status = '背景图片无法读取，已使用默认背景';
-                                });
-                            },
-                          ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: dark
-                          ? [
-                              const Color(0xff101427),
-                              const Color(0xff292038),
-                              const Color(0xff153033),
-                            ]
-                          : [
-                              const Color(0xffdce9ff),
-                              const Color(0xfff4dfef),
-                              const Color(0xffdef4ee),
-                            ],
-                    ),
-                  ),
-                ),
+              WorkbenchBackground(
+                file: backgroundPath,
+                preview: backgroundPreview,
+                dark: dark,
+                dim: backgroundDim,
+                onVideoError: () {
+                  if (mounted) setState(() => status = isSceneBackground(renderedBackground)
+                      ? '场景壁纸无法播放，已使用备用背景。请检查 Wallpaper Engine 安装。'
+                      : '视频壁纸无法播放，已切换到备用背景');
+                },
+                onImageError: () {
+                  if (!mounted || backgroundPath != renderedBackground) return;
+                  setState(() {
+                    backgroundPath = '';
+                    backgroundTitle = '';
+                    backgroundPreview = '';
+                    status = '背景图片无法读取，已使用默认背景';
+                  });
+                },
               ),
               child!,
             ],

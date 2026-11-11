@@ -9,6 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
   desktop_drop: ^0.8.4
+  path: 1.9.1
 flutter:
   uses-material-design: true
   fonts:

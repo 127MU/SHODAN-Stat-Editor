@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <dwmapi.h>
+#include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -32,6 +33,12 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  auto* engine = flutter_controller_->engine();
+  auto* wallpaper_registrar = flutter::PluginRegistrarManager::GetInstance()
+      ->GetRegistrar<flutter::PluginRegistrarWindows>(
+          engine->GetRegistrarForPlugin("ShodanWallpaperVideo"));
+  wallpaper_video_ = std::make_unique<WallpaperVideo>(
+      engine->messenger(), wallpaper_registrar->texture_registrar());
   close_channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
       flutter_controller_->engine()->messenger(), "shodan/window",
       &flutter::StandardMethodCodec::GetInstance());
@@ -63,6 +70,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  wallpaper_video_.reset();
   close_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -80,6 +88,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     // Do not route an explicit close through Dart/plugin teardown or wait for
     // a save dialog. Edits are auto-saved; the data host drains on pipe EOF.
     ::ShowWindow(hwnd, SW_HIDE);
+    if (wallpaper_video_) wallpaper_video_->CloseAll();
     ::SetTimer(hwnd, 120, 25, nullptr);
     return 0;
   }
@@ -90,6 +99,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   if (message == WM_APP + 120) {
     // Explicit user exit only. OS releases UI/GPU/COM resources atomically;
     // the independent Rust data process drains its input and flushes on EOF.
+    if (wallpaper_video_) wallpaper_video_->CloseAll();
     ::ExitProcess(0);
   }
   // Give Flutter, including plugins, an opportunity to handle window messages.

@@ -8,6 +8,8 @@ project(runner LANGUAGES CXX)
 # Any new source files that you add to the application should be added here.
 add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
+  "wallpaper_video.cpp"
+  "wallpaper_scene.cpp"
   "main.cpp"
   "utils.cpp"
   "win32_window.cpp"
@@ -32,8 +34,12 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 
 # Add dependency libraries and include directories. Add any application-specific
 # dependencies here.
-target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
+target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app flutter_wrapper_plugin)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE mfplat mfreadwrite mfuuid delayimp gdi32)
+# Some Windows editions omit the media components. Keep the editor and image
+# backgrounds available even when the decoder DLLs cannot be loaded.
+target_link_options(${BINARY_NAME} PRIVATE "/DELAYLOAD:mfplat.dll" "/DELAYLOAD:mfreadwrite.dll")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
