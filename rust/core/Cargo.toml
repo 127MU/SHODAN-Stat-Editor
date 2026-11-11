@@ -13,6 +13,10 @@ path = "src/bin/shodan-native.rs"
 name = "shodan-portable"
 path = "src/bin/shodan-portable.rs"
 
+[[bin]]
+name = "rescan-resources"
+path = "src/bin/rescan-resources.rs"
+
 [dependencies]
 serde_json = "=1.0.154"
 serde = { version = "=1.0.229", features = ["derive"] }

@@ -1,5 +1,6 @@
 //! Additions verified against the 26251122 table layouts. Entries use row
-//! identities instead of absolute offsets in the loose file.
+//! identities instead of absolute offsets in the loose file. The layouts were
+//! re-checked unchanged on Steam build 26568081.
 use super::{Field, Row, Source};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -7,7 +8,7 @@ use std::collections::BTreeMap;
 #[path = "catalog_vehicles.rs"]
 mod vehicles;
 
-const BUILD: &str = "61dcfcd201dacbf3545c97beb8a5a6186e9850d2670bf60b0e058320b477f6df";
+const BUILD: &str = "08b756f535cdb9bdd1b4953fba53c3dfacd25730a155ea6593e5de63211acf5f";
 const ENTITIES: &str = "generated_entities.dl_bin";
 const WEAPON: &str = "88E4DBB1";
 const SEEKING: &str = "BF3A6789";
